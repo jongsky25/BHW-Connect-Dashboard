@@ -1,0 +1,4 @@
+pandas
+pyarrow
+openpyxl
+psycopg2-binary

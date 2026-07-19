@@ -32,6 +32,7 @@ PUBLIC_READ_TABLES = [
     "agg_honorarium",
     "agg_geo_summary",
     "agg_data_completeness",
+    "agg_bhw_stepzero_counts",
     "changelog_entries",
 ]
 
