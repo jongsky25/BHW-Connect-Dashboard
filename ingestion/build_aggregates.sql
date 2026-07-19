@@ -1,0 +1,364 @@
+-- Aggregate build job (BUILD_PLAN.md §6, increment 0.5).
+--
+-- Computes all agg_* tables at all four real geo levels plus the 'national' sentinel
+-- ('PH' in dim_geo), from the already-ingested fact_bhw_raw/fact_honorarium tables.
+-- Idempotent: safe to re-run (each section deletes its own dataset_id's rows first).
+--
+-- Suppression (agg_demographics only, per the privacy model in BUILD_PLAN.md §4.1):
+-- any (geo_code, geo_level='barangay', dimension, category) cell with 0 < n < 5 is nulled
+-- (n and pct set to NULL), is_suppressed set true, and rollup_geo_code/rollup_geo_level
+-- point to the nearest ancestor (citymun -> province -> region -> national) whose same-cell
+-- n >= 5. n = 0 is left visible (a true zero reveals nothing about any individual).
+--
+-- Disk budget (Supabase free tier, 500 MB): agg_training is built at national/region/
+-- province/citymun only, not barangay (see §6 below) - the barangay x topic cross-product
+-- is what pushed the database over the cap on the first attempt. Everything else
+-- (agg_bhw_counts, agg_demographics, agg_certification) is kept at all 5 levels.
+--
+-- Run this after ingest.py / after any re-ingestion (bump dataset_id's data_version first).
+
+
+-- 0. Clean slate for this dataset (idempotent re-run).
+delete from agg_bhw_counts where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+delete from agg_demographics where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+delete from agg_training where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+delete from agg_certification where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+delete from agg_honorarium where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+delete from agg_geo_summary where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+delete from agg_data_completeness where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+-- 1. Working table: one row per (BHW x geo level), fanned out national/region/province/citymun/barangay.
+drop table if exists _agg_base;
+create table _agg_base as
+with base as (
+  select
+    f.bhw_id, f.accredited, f.active_years_count, f.sex, f.civil_status, f.age, f.bloodtype,
+    f.educational_attainment, f.ip_status, f.tesda_nc2, f.tesda_certified, f.ref_manual_trained,
+    f.training,
+    dg.geo_code as barangay_code, dg.region_code, dg.province_code, dg.citymun_code
+  from fact_bhw_raw f
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+)
+select b.*, lvl.geo_level, lvl.geo_code
+from base b
+cross join lateral (values
+  ('barangay'::geo_level_enum, b.barangay_code),
+  ('citymun'::geo_level_enum, b.citymun_code),
+  ('province'::geo_level_enum, b.province_code),
+  ('region'::geo_level_enum, b.region_code),
+  ('national'::geo_level_enum, 'PH')
+) as lvl(geo_level, geo_code);
+
+create index on _agg_base (geo_code, geo_level);
+
+-- 2. agg_bhw_counts
+with honorarium_any as (
+  select distinct bhw_id from fact_honorarium
+)
+insert into agg_bhw_counts (dataset_id, geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct)
+select
+  (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  b.geo_code, b.geo_level,
+  count(*),
+  count(*) filter (where b.accredited),
+  round(100.0 * count(*) filter (where b.accredited) / nullif(count(*), 0), 2),
+  round(avg(b.active_years_count), 2),
+  round(100.0 * count(*) filter (where ha.bhw_id is not null) / nullif(count(*), 0), 2)
+from _agg_base b
+left join honorarium_any ha on ha.bhw_id = b.bhw_id
+group by b.geo_code, b.geo_level;
+
+-- 3. agg_demographics (six dimensions, unioned)
+insert into agg_demographics (dataset_id, geo_code, geo_level, dimension, category, n, pct)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  b.geo_code, b.geo_level, 'sex'::demographic_dimension_enum, b.sex,
+  count(*), round(100.0 * count(*) / nullif(t.n_total, 0), 2)
+from _agg_base b
+join agg_bhw_counts t on t.geo_code = b.geo_code and t.geo_level = b.geo_level
+  and t.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+where b.sex is not null
+group by b.geo_code, b.geo_level, b.sex, t.n_total
+
+union all
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  b.geo_code, b.geo_level, 'civil_status'::demographic_dimension_enum, b.civil_status,
+  count(*), round(100.0 * count(*) / nullif(t.n_total, 0), 2)
+from _agg_base b
+join agg_bhw_counts t on t.geo_code = b.geo_code and t.geo_level = b.geo_level
+  and t.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+where b.civil_status is not null
+group by b.geo_code, b.geo_level, b.civil_status, t.n_total
+
+union all
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  b.geo_code, b.geo_level, 'bloodtype'::demographic_dimension_enum, b.bloodtype,
+  count(*), round(100.0 * count(*) / nullif(t.n_total, 0), 2)
+from _agg_base b
+join agg_bhw_counts t on t.geo_code = b.geo_code and t.geo_level = b.geo_level
+  and t.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+where b.bloodtype is not null
+group by b.geo_code, b.geo_level, b.bloodtype, t.n_total
+
+union all
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  b.geo_code, b.geo_level, 'education'::demographic_dimension_enum, b.educational_attainment,
+  count(*), round(100.0 * count(*) / nullif(t.n_total, 0), 2)
+from _agg_base b
+join agg_bhw_counts t on t.geo_code = b.geo_code and t.geo_level = b.geo_level
+  and t.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+where b.educational_attainment is not null
+group by b.geo_code, b.geo_level, b.educational_attainment, t.n_total
+
+union all
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  b.geo_code, b.geo_level, 'ip_status'::demographic_dimension_enum, b.ip_status,
+  count(*), round(100.0 * count(*) / nullif(t.n_total, 0), 2)
+from _agg_base b
+join agg_bhw_counts t on t.geo_code = b.geo_code and t.geo_level = b.geo_level
+  and t.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+where b.ip_status is not null
+group by b.geo_code, b.geo_level, b.ip_status, t.n_total
+
+union all
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  b.geo_code, b.geo_level, 'age_band'::demographic_dimension_enum,
+  case
+    when b.age < 30 then '<30'
+    when b.age between 30 and 39 then '30-39'
+    when b.age between 40 and 49 then '40-49'
+    when b.age between 50 and 59 then '50-59'
+    else '60+'
+  end,
+  count(*), round(100.0 * count(*) / nullif(t.n_total, 0), 2)
+from _agg_base b
+join agg_bhw_counts t on t.geo_code = b.geo_code and t.geo_level = b.geo_level
+  and t.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+where b.age is not null
+group by b.geo_code, b.geo_level,
+  case
+    when b.age < 30 then '<30'
+    when b.age between 30 and 39 then '30-39'
+    when b.age between 40 and 49 then '40-49'
+    when b.age between 50 and 59 then '50-59'
+    else '60+'
+  end,
+  t.n_total;
+
+-- 4. Suppression + roll-up (barangay-level cells only, per the privacy model).
+-- Postgres forbids an UPDATE's FROM-clause (even LATERAL) from referencing the update
+-- target, so the rollup mapping is materialized into a plain table first, then joined.
+drop table if exists _suppression_rollup;
+create table _suppression_rollup as
+select ad.geo_code, ad.geo_level, ad.dimension, ad.category, ad.dataset_id,
+  coalesce(pick.geo_code, 'PH') as rollup_geo_code,
+  coalesce(pick.geo_level, 'national'::geo_level_enum) as rollup_geo_level
+from agg_demographics ad
+join dim_geo dg on dg.geo_code = ad.geo_code and dg.geo_level = 'barangay'
+left join lateral (
+  select a2.geo_code, a2.geo_level
+  from agg_demographics a2
+  where a2.dataset_id = ad.dataset_id and a2.dimension = ad.dimension and a2.category = ad.category
+    and a2.n >= 5
+    and (
+      (a2.geo_level = 'citymun' and a2.geo_code = dg.citymun_code) or
+      (a2.geo_level = 'province' and a2.geo_code = dg.province_code) or
+      (a2.geo_level = 'region' and a2.geo_code = dg.region_code)
+    )
+  order by case a2.geo_level when 'citymun' then 1 when 'province' then 2 when 'region' then 3 end
+  limit 1
+) pick on true
+where ad.geo_level = 'barangay' and ad.n > 0 and ad.n < 5;
+
+update agg_demographics ad
+set is_suppressed = true, n = null, pct = null,
+    rollup_geo_code = sr.rollup_geo_code, rollup_geo_level = sr.rollup_geo_level
+from _suppression_rollup sr
+where ad.geo_code = sr.geo_code and ad.geo_level = sr.geo_level and ad.dimension = sr.dimension
+  and ad.category = sr.category and ad.dataset_id = sr.dataset_id;
+
+drop table _suppression_rollup;
+
+-- 5. agg_certification
+insert into agg_certification (dataset_id, geo_code, geo_level, cert_type, n, pct)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'), b.geo_code, b.geo_level,
+  'tesda_nc2', count(*) filter (where b.tesda_nc2), round(100.0 * count(*) filter (where b.tesda_nc2) / nullif(count(*), 0), 2)
+from _agg_base b group by b.geo_code, b.geo_level
+union all
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'), b.geo_code, b.geo_level,
+  'tesda_certified', count(*) filter (where b.tesda_certified), round(100.0 * count(*) filter (where b.tesda_certified) / nullif(count(*), 0), 2)
+from _agg_base b group by b.geo_code, b.geo_level
+union all
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'), b.geo_code, b.geo_level,
+  'ref_manual_trained', count(*) filter (where b.ref_manual_trained), round(100.0 * count(*) filter (where b.ref_manual_trained) / nullif(count(*), 0), 2)
+from _agg_base b group by b.geo_code, b.geo_level;
+
+-- _agg_base (a ~390 MB scratch table, given the training JSONB fanned out 5x per BHW) is not
+-- needed past this point - drop it now rather than at the very end. This matters on Supabase's
+-- free tier: building agg_training's full cross-product (all geo levels x 44 topics) while
+-- _agg_base was still alive pushed the database over its 500 MB disk cap and Postgres flipped
+-- to read-only. See docs/DECISIONS.md.
+drop table if exists _agg_base;
+
+-- 6. agg_training (topic slug/label list generated from ingestion/ingest.py's training_topics()).
+--
+-- Deliberately excludes geo_level='barangay': at 39,276 barangays x 44 topics that's the
+-- single biggest contributor to the disk-cap overrun above, for a granularity that a place page
+-- doesn't need per-topic (it shows agg_geo_summary.top_training_gap instead). Kept at
+-- national/region/province/citymun (~4,776 geos x 44 topics). Built directly from
+-- fact_bhw_raw/dim_geo (not the now-dropped _agg_base) so this never re-creates that scratch
+-- table's footprint.
+with topics(topic_slug, topic_label) as (
+  values
+    ('burns_choking_neck_head_spinal_injuries_poisoning', 'Burns/Choking/Neck-Head-Spinal Injuries/Poisoning'),
+    ('basic_life_support', 'Basic Life Support'),
+    ('basic_nutrition_malnutrition_nutrition_in_emergencies_and_disasters', 'Basic Nutrition/Malnutrition, Nutrition in Emergencies and Disasters'),
+    ('blood_pressure_bp_apparatus_measurement', 'Blood Pressure (BP) Apparatus Measurement'),
+    ('breastfeeding_lactation', 'Breastfeeding/Lactation'),
+    ('chronic_respiratory_diseases_chronic_obstructive_pulmonary_disease_copd_asthma', 'Chronic Respiratory Diseases/Chronic Obstructive Pulmonary Disease(COPD)/Asthma'),
+    ('cardiovascular_diseases_heart_attack_stroke', 'Cardiovascular Diseases/Heart Attack/Stroke'),
+    ('child_growth_standard_growth_development', 'Child Growth Standard/Growth Development'),
+    ('cancer', 'Cancer'),
+    ('cardio_pulmonary_resuscitation_cpr', 'Cardio Pulmonary Resuscitation (CPR)'),
+    ('dengue', 'Dengue'),
+    ('diabetes', 'Diabetes'),
+    ('disaster_risk_assessment_disaster_risk_preparedness', 'Disaster Risk Assessment/Disaster Risk Preparedness'),
+    ('early_childhood_care_and_development', 'Early Childhood Care and Development'),
+    ('emergency_reponse_rescue', 'Emergency Reponse/Rescue'),
+    ('emerging_and_re_emerging_infectious_diseases', 'Emerging and Re-emerging Infectious Diseases'),
+    ('environment_sanitation_solid_ecologic_waste_management', 'Environment Sanitation, Solid/Ecologic Waste Management'),
+    ('filariasis', 'Filariasis'),
+    ('fire_safety', 'Fire Safety'),
+    ('flu', 'Flu'),
+    ('food_preparation_food_safety', 'Food Preparation/Food Safety'),
+    ('family_planning_responsible_parenthood', 'Family Planning/Responsible Parenthood'),
+    ('first_1000_days', 'First 1000 Days'),
+    ('hepatitis', 'Hepatitis'),
+    ('hiv_aids', 'HIV/AIDS'),
+    ('healthy_lifestyle', 'Healthy Lifestyle'),
+    ('infant_and_young_child_feeding_practices', 'Infant and Young Child Feeding Practices'),
+    ('leprosy', 'Leprosy'),
+    ('mental_health', 'Mental Health'),
+    ('measles', 'Measles'),
+    ('malaria', 'Malaria'),
+    ('maternal_care', 'Maternal Care'),
+    ('others_please_specify', 'Others please specify'),
+    ('pneumonia', 'Pneumonia'),
+    ('polio', 'Polio'),
+    ('rabies', 'Rabies'),
+    ('standard_first_aid_training', 'Standard First Aid Training'),
+    ('sexually_transmitted_disease', 'Sexually Transmitted Disease'),
+    ('traditional_alternative_herbal_medicine', 'Traditional/Alternative/Herbal Medicine'),
+    ('tuberculosis', 'Tuberculosis'),
+    ('uhc_phc_f1_plus_for_health_sdn', 'UHC, PHC, F1 Plus for Health, SDN'),
+    ('water_sanitation_and_hygiene_wash', 'Water Sanitation and Hygiene (WASH)'),
+    ('women_s_health', 'Women’s Health'),
+    ('zero_open_defecation_zod', 'Zero Open Defecation (ZOD)')
+),
+geo_expanded as (
+  select f.bhw_id, f.training, lvl.geo_level, lvl.geo_code
+  from fact_bhw_raw f
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  cross join lateral (values
+    ('citymun'::geo_level_enum, dg.citymun_code),
+    ('province'::geo_level_enum, dg.province_code),
+    ('region'::geo_level_enum, dg.region_code),
+    ('national'::geo_level_enum, 'PH')
+  ) as lvl(geo_level, geo_code)
+),
+trained_expanded as (
+  select e.geo_code, e.geo_level, kv.key as topic_slug, (kv.value->>'year')::numeric as year
+  from geo_expanded e
+  cross join lateral jsonb_each(coalesce(e.training, '{}'::jsonb)) as kv(key, value)
+),
+per_topic as (
+  select geo_code, geo_level, topic_slug, count(*) as n_trained,
+    percentile_cont(0.5) within group (order by year) as median_year
+  from trained_expanded
+  group by geo_code, geo_level, topic_slug
+)
+insert into agg_training (dataset_id, geo_code, geo_level, topic_slug, topic_label, n_trained, n_total, coverage_pct, median_training_year)
+select
+  (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  c.geo_code, c.geo_level, t.topic_slug, t.topic_label,
+  coalesce(p.n_trained, 0),
+  c.n_total,
+  round(100.0 * coalesce(p.n_trained, 0) / nullif(c.n_total, 0), 2),
+  round(p.median_year)
+from agg_bhw_counts c
+cross join topics t
+left join per_topic p on p.geo_code = c.geo_code and p.geo_level = c.geo_level and p.topic_slug = t.topic_slug
+where c.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+  and c.geo_level != 'barangay';
+
+-- 7. agg_honorarium
+drop table if exists _agg_honorarium_base;
+create table _agg_honorarium_base as
+with fh as (
+  select h.bhw_id, h.payer_level, h.normalized_monthly_amount, h.frequency,
+    dg.geo_code as barangay_code, dg.region_code, dg.province_code, dg.citymun_code
+  from fact_honorarium h
+  join fact_bhw_raw f on f.bhw_id = h.bhw_id
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+)
+select fh.*, lvl.geo_level, lvl.geo_code
+from fh
+cross join lateral (values
+  ('barangay'::geo_level_enum, fh.barangay_code),
+  ('citymun'::geo_level_enum, fh.citymun_code),
+  ('province'::geo_level_enum, fh.province_code),
+  ('region'::geo_level_enum, fh.region_code),
+  ('national'::geo_level_enum, 'PH')
+) as lvl(geo_level, geo_code);
+
+insert into agg_honorarium (dataset_id, geo_code, geo_level, payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency)
+select
+  (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  hb.geo_code, hb.geo_level, hb.payer_level,
+  count(*),
+  round(100.0 * count(*) / nullif(c.n_total, 0), 2),
+  round(avg(hb.normalized_monthly_amount), 2),
+  mode() within group (order by hb.frequency)
+from _agg_honorarium_base hb
+join agg_bhw_counts c on c.geo_code = hb.geo_code and c.geo_level = hb.geo_level
+  and c.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+group by hb.geo_code, hb.geo_level, hb.payer_level, c.n_total;
+
+-- 8. agg_geo_summary
+-- top_training_gap is NULL for barangay-level rows (agg_training doesn't cover that level - see §6).
+insert into agg_geo_summary (dataset_id, geo_code, geo_level, geo_name, parent_chain, n_total, pct_accredited, top_training_gap, any_honorarium_pct, search_text)
+select
+  c.dataset_id, dg.geo_code, dg.geo_level, dg.geo_name,
+  jsonb_strip_nulls(jsonb_build_object('region', reg.geo_name, 'province', prov.geo_name, 'citymun', cm.geo_name)),
+  c.n_total, c.pct_accredited,
+  (
+    select at.topic_label from agg_training at
+    where at.dataset_id = c.dataset_id and at.geo_code = c.geo_code and at.geo_level = c.geo_level and at.n_total > 0
+    order by at.coverage_pct asc nulls last limit 1
+  ),
+  c.any_honorarium_pct,
+  to_tsvector('simple', dg.geo_name || ' ' || coalesce(reg.geo_name, '') || ' ' || coalesce(prov.geo_name, '') || ' ' || coalesce(cm.geo_name, ''))
+from dim_geo dg
+join agg_bhw_counts c on c.geo_code = dg.geo_code and c.geo_level = dg.geo_level
+  and c.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+left join dim_geo reg on reg.geo_code = dg.region_code and reg.geo_level = 'region'
+left join dim_geo prov on prov.geo_code = dg.province_code and prov.geo_level = 'province'
+left join dim_geo cm on cm.geo_code = dg.citymun_code and cm.geo_level = 'citymun';
+
+-- 9. agg_data_completeness (dataset-wide, over the demographic fields expected on every row).
+insert into agg_data_completeness (dataset_id, field_name, n_missing, pct_missing)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'), col, n_missing,
+  round(100.0 * n_missing / (select count(*) from fact_bhw_raw), 2)
+from (
+  select 'sex' as col, count(*) filter (where sex is null) as n_missing from fact_bhw_raw
+  union all select 'civil_status', count(*) filter (where civil_status is null) from fact_bhw_raw
+  union all select 'age', count(*) filter (where age is null) from fact_bhw_raw
+  union all select 'bloodtype', count(*) filter (where bloodtype is null) from fact_bhw_raw
+  union all select 'educational_attainment', count(*) filter (where educational_attainment is null) from fact_bhw_raw
+  union all select 'ip_status', count(*) filter (where ip_status is null) from fact_bhw_raw
+  union all select 'household', count(*) filter (where household is null) from fact_bhw_raw
+  union all select 'active_years', count(*) filter (where active_years is null) from fact_bhw_raw
+) x;
+
+-- 10. Cleanup working tables.
+drop table if exists _agg_base;
+drop table if exists _agg_honorarium_base;
