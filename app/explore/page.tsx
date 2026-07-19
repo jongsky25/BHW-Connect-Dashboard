@@ -1,7 +1,13 @@
 import { loadFilterState } from "@/lib/filters/codec";
-import { DEFAULT_BREAKDOWNS, NATIONAL_GEO_CODE } from "@/lib/filters/schema";
+import { DEFAULT_BREAKDOWNS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { getChildGeos, getGeoAncestors, resolveGeoOrNational } from "@/lib/db/geo";
-import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } from "@/lib/db/indicators";
+import {
+  getBhwCounts,
+  getChildIndicators,
+  getDemographics,
+  getHonorarium,
+  getTrainingCoverage,
+} from "@/lib/db/indicators";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
@@ -9,6 +15,15 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
+
+const CHILD_LEVEL_LABEL: Record<GeoLevel, string> = {
+  national: "Region",
+  region: "Province",
+  province: "City/Municipality",
+  citymun: "Barangay",
+  barangay: "Barangay",
+};
 
 export const metadata = { title: "Explore" };
 
@@ -56,6 +71,22 @@ export default async function ExplorePage({
   ];
 
   const caption = captionFor(counts?.nTotal ?? null, geo.geoName);
+
+  // Map-capable levels only go down to citymun (BUILD_PLAN.md §2/§4.3 — barangay
+  // choropleths are deferred to Phase 2's PMTiles work). At citymun/barangay,
+  // this figure is simply omitted rather than shown broken/empty.
+  const mapChildLevel: GeoLevel | null =
+    geo.geoLevel === "national" ? "region" : geo.geoLevel === "region" ? "province" : geo.geoLevel === "province" ? "citymun" : null;
+  const mapChildren = geo.geoLevel === "national" ? regions : geo.geoLevel === "region" ? provinces : geo.geoLevel === "province" ? citymuns : [];
+  const mapGeojsonUrl =
+    geo.geoLevel === "national"
+      ? "/geo/regions.json"
+      : geo.geoLevel === "region"
+        ? `/geo/provinces/${geo.geoCode}.json`
+        : geo.geoLevel === "province"
+          ? `/geo/citymun/${geo.geoCode}.json`
+          : null;
+  const childIndicators = mapChildLevel ? await getChildIndicators(mapChildren.map((c) => c.geoCode)) : [];
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
@@ -116,6 +147,18 @@ export default async function ExplorePage({
               {counts?.avgActiveYears ?? "—"}
             </p>
           </FigureCard>
+
+          {mapChildLevel && (
+            <div className="xl:col-span-2">
+              <GeoComparisonFigure
+                geojsonUrl={mapGeojsonUrl}
+                childLevel={mapChildLevel}
+                childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
+                items={childIndicators}
+                caption={caption}
+              />
+            </div>
+          )}
 
           {demographicsByDimension.map(({ dimension, rows }) => (
             <DemographicsFigure key={dimension} dimension={dimension} rows={rows} caption={caption} />
