@@ -8,6 +8,7 @@ import {
   getHonorarium,
   getTrainingCoverage,
 } from "@/lib/db/indicators";
+import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
@@ -28,8 +29,8 @@ const CHILD_LEVEL_LABEL: Record<GeoLevel, string> = {
 
 export const metadata = { title: "Explore" };
 
-function captionFor(nTotal: number | null, geoName: string) {
-  return `N = ${nTotal !== null ? nTotal.toLocaleString() : "—"} BHWs · ${geoName} · 2025 snapshot`;
+function captionFor(nProfiles: number | null, geoName: string) {
+  return `N = ${nProfiles !== null ? nProfiles.toLocaleString() : "—"} validated profiles · ${geoName} · 2025 snapshot`;
 }
 
 export default async function ExplorePage({
@@ -50,9 +51,10 @@ export default async function ExplorePage({
   // before batch two's three queries could even start.
   const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
 
-  const [regions, counts, demographicsByDimension, training, honorarium, provinces, citymuns, barangays] =
+  const [regions, overview, counts, demographicsByDimension, training, honorarium, provinces, citymuns, barangays] =
     await Promise.all([
       getChildGeos(NATIONAL_GEO_CODE, "national"),
+      getBhwOverview(geo.geoCode, geo.geoLevel),
       getBhwCounts(geo.geoCode, geo.geoLevel),
       Promise.all(
         breakdowns.map(async (dimension) => ({
@@ -75,7 +77,8 @@ export default async function ExplorePage({
     ...(geo.geoLevel === "barangay" ? [{ label: geo.geoName, geoLevel: "barangay" as const, geoCode: geo.geoCode }] : []),
   ];
 
-  const caption = captionFor(counts?.nTotal ?? null, geo.geoName);
+  const caption = captionFor(overview.validatedProfiles ?? null, geo.geoName);
+  const coverage = coverageForDisplay(overview);
 
   // Map-capable levels only go down to citymun (BUILD_PLAN.md §2/§4.3 — barangay
   // choropleths are deferred to Phase 2's PMTiles work). At citymun/barangay,
@@ -115,6 +118,22 @@ export default async function ExplorePage({
       <div className="flex flex-1 flex-col gap-6">
         <ActiveFilterChips steps={breadcrumbSteps} />
 
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+          <span>
+            <span className="font-semibold">{overview.totalBhw?.toLocaleString() ?? "—"}</span>{" "}
+            <span className="text-muted">total BHWs</span>
+          </span>
+          <span>
+            <span className="font-semibold">{overview.validatedProfiles?.toLocaleString() ?? "—"}</span>{" "}
+            <span className="text-muted">
+              validated profiles{coverage !== null ? ` (${coverage}% of registered)` : ""}
+            </span>
+          </span>
+          {!overview.hasStepzero && (
+            <span className="text-xs text-muted">Quick-count total not available for this area.</span>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <FigureCard
             title="Accreditation"
@@ -122,13 +141,13 @@ export default async function ExplorePage({
             exportMenu={<ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />}
             headline={
               counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-                ? `About ${Math.round(counts.pctAccredited)}% of BHWs here are accredited.`
+                ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
                 : "No accreditation data available."
             }
             technicalDetails={
               <p>
                 {counts?.nAccredited?.toLocaleString() ?? "—"} of {counts?.nTotal?.toLocaleString() ?? "—"}{" "}
-                BHWs are accredited ({counts?.pctAccredited ?? "—"}%).
+                validated profiles are accredited ({counts?.pctAccredited ?? "—"}%).
               </p>
             }
           >

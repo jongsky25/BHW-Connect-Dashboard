@@ -54,8 +54,9 @@ export default async function DataQualityPage() {
       )}
 
       <p className="text-xs text-muted">
-        Computed from the {dataset?.asOfDate ?? "2025"} snapshot across all 270,917 records. Fields
-        not listed here had no missingness worth tracking separately.
+        Computed from the {dataset?.asOfDate ?? "2025"} snapshot across all 270,917 validated
+        profiles (the individually-profiled subset of the country&apos;s ~278,240 registered BHWs).
+        Fields not listed here had no missingness worth tracking separately.
       </p>
     </div>
   );

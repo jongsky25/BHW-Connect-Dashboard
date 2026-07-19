@@ -1,9 +1,8 @@
 import { getBhwCounts, getGeoSummary } from "@/lib/db/indicators";
+import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getSpotlightInsight } from "@/lib/db/spotlight";
 import { GeoSearch } from "@/components/home/geo-search";
 import { StatTile } from "@/components/home/stat-tile";
-
-const CAPTION = "N = {n} BHWs · Philippines · 2025 snapshot";
 
 function formatCount(n: number | null) {
   return n === null ? "—" : n.toLocaleString();
@@ -14,13 +13,20 @@ function formatPct(n: number | null) {
 }
 
 export default async function Home() {
-  const [counts, summary, spotlight] = await Promise.all([
+  const [overview, counts, summary, spotlight] = await Promise.all([
+    getBhwOverview("PH", "national"),
     getBhwCounts("PH", "national"),
     getGeoSummary("PH"),
     getSpotlightInsight(),
   ]);
 
-  const caption = CAPTION.replace("{n}", formatCount(counts?.nTotal ?? null));
+  const coverage = coverageForDisplay(overview);
+  // Per-person figures are computed from the individually-profiled subset, so
+  // their Person/Place/Time line is captioned against validated profiles — not
+  // the StepZero universe total.
+  const profiledCaption = `N = ${formatCount(overview.validatedProfiles)} validated profiles · Philippines · 2025 snapshot`;
+  const coverageCaption =
+    coverage !== null ? `≈${coverage}% of registered BHWs profiled` : "individually profiled BHWs";
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6 sm:py-14">
@@ -36,23 +42,36 @@ export default async function Home() {
       </section>
 
       <section aria-label="National figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Total BHWs" value={formatCount(counts?.nTotal ?? null)} caption={caption} />
+        <StatTile
+          label="Total BHWs"
+          value={formatCount(overview.totalBhw)}
+          caption="Registered + non-registered · StepZero quick-count · 2025"
+        />
+        <StatTile
+          label="Validated profiles"
+          value={formatCount(overview.validatedProfiles)}
+          caption={coverageCaption}
+        />
         <StatTile
           label="Accredited"
           value={formatPct(counts?.pctAccredited ?? null)}
-          caption={caption}
-        />
-        <StatTile
-          label="Receive any honorarium"
-          value={formatPct(counts?.anyHonorariumPct ?? null)}
-          caption={caption}
+          caption={profiledCaption}
         />
         <StatTile
           label="Top training gap"
           value={summary?.topTrainingGap ?? "—"}
-          caption={caption}
+          caption={profiledCaption}
         />
       </section>
+
+      <p className="-mt-4 text-center text-xs text-muted">
+        Per-person figures below describe the {formatCount(overview.validatedProfiles)} individually
+        validated profiles
+        {coverage !== null && overview.registeredUniverse !== null
+          ? ` — about ${coverage}% of the country's ${formatCount(overview.registeredUniverse)} registered BHWs`
+          : ""}
+        . Total headcounts come from the DOH StepZero quick-count.
+      </p>
 
       {spotlight && (
         <section

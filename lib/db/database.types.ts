@@ -63,6 +63,63 @@ export type Database = {
           },
         ];
       };
+      agg_bhw_stepzero_counts: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          households: number | null;
+          id: number;
+          n_non_registered: number | null;
+          n_registered: number | null;
+          n_registered_accredited: number | null;
+          n_total_bhw: number | null;
+          pct_registered_accredited: number | null;
+          population: number | null;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          households?: number | null;
+          id?: never;
+          n_non_registered?: number | null;
+          n_registered?: number | null;
+          n_registered_accredited?: number | null;
+          n_total_bhw?: number | null;
+          pct_registered_accredited?: number | null;
+          population?: number | null;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          households?: number | null;
+          id?: never;
+          n_non_registered?: number | null;
+          n_registered?: number | null;
+          n_registered_accredited?: number | null;
+          n_total_bhw?: number | null;
+          pct_registered_accredited?: number | null;
+          population?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_bhw_stepzero_counts_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_bhw_stepzero_counts_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_certification: {
         Row: {
           cert_type: string;

@@ -21,6 +21,12 @@ export type CompareColumnData = {
   geoName: string;
   geoLevel: GeoLevel;
   counts: BhwCounts | null;
+  /** StepZero universe total for this geo (null when no quick-count row). */
+  totalBhw: number | null;
+  /** Individually-profiled BHWs (agg_bhw_counts.n_total). */
+  validatedProfiles: number | null;
+  /** Coverage % (already capped for display), or null. */
+  coveragePct: number | null;
   demographics: { dimension: string; rows: DemographicRow[] }[];
   training: TrainingRow[];
   honorarium: HonorariumRow[];
@@ -36,7 +42,7 @@ export function CompareColumn({
   canRemove: boolean;
 }) {
   const [filters, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
-  const caption = `N = ${data.counts?.nTotal?.toLocaleString() ?? "—"} BHWs · ${data.geoName} · 2025 snapshot`;
+  const caption = `N = ${data.validatedProfiles?.toLocaleString() ?? "—"} validated profiles · ${data.geoName} · 2025 snapshot`;
 
   function remove() {
     setFilters({ compareGeos: (filters.compareGeos ?? []).filter((c) => c !== data.geoCode) });
@@ -64,13 +70,19 @@ export function CompareColumn({
         )}
       </div>
 
+      <p className="text-xs text-muted">
+        {data.totalBhw !== null ? `${data.totalBhw.toLocaleString()} total BHWs · ` : ""}
+        {data.validatedProfiles?.toLocaleString() ?? "—"} validated profiles
+        {data.coveragePct !== null ? ` (${data.coveragePct}%)` : ""}
+      </p>
+
       {(showAll || indicator === "accreditation") && (
         <FigureCard
           title="Accreditation"
           caption={caption}
           headline={
             data.counts?.pctAccredited !== null && data.counts?.pctAccredited !== undefined
-              ? `About ${Math.round(data.counts.pctAccredited)}% of BHWs here are accredited.`
+              ? `About ${Math.round(data.counts.pctAccredited)}% of profiled BHWs here are accredited.`
               : "No accreditation data available."
           }
         >

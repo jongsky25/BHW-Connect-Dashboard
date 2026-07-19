@@ -24,13 +24,20 @@ export function ProfileHeader({
   geoName,
   geoLevel,
   ancestors,
-  nTotal,
+  totalBhw,
+  validatedProfiles,
+  coveragePct,
   incomeClass,
 }: {
   geoName: string;
   geoLevel: GeoLevel;
   ancestors: BreadcrumbAncestor[];
-  nTotal: number | null;
+  /** StepZero universe total for this geo (null when no quick-count row). */
+  totalBhw: number | null;
+  /** Individually-profiled BHWs (agg_bhw_counts.n_total). */
+  validatedProfiles: number | null;
+  /** Coverage % (already capped for display), or null. */
+  coveragePct: number | null;
   incomeClass: number | null;
 }) {
   return (
@@ -53,7 +60,21 @@ export function ProfileHeader({
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
         <span>{GEO_LEVEL_LABEL[geoLevel]}</span>
-        <span>{nTotal !== null ? `${nTotal.toLocaleString()} BHWs` : "No BHW data"}</span>
+        {totalBhw !== null ? (
+          <>
+            <span>{totalBhw.toLocaleString()} BHWs total</span>
+            {validatedProfiles !== null && (
+              <span>
+                {validatedProfiles.toLocaleString()} validated profiles
+                {coveragePct !== null ? ` (${coveragePct}%)` : ""}
+              </span>
+            )}
+          </>
+        ) : validatedProfiles !== null ? (
+          <span>{validatedProfiles.toLocaleString()} validated profiles</span>
+        ) : (
+          <span>No BHW data</span>
+        )}
         {incomeClass !== null && INCOME_CLASS_LABEL[incomeClass] && (
           <span>{INCOME_CLASS_LABEL[incomeClass]} income</span>
         )}
