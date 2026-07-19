@@ -87,3 +87,57 @@ export async function resolveGeoOrNational(
   if (geo && geo.geoLevel === geoLevel) return geo;
   return { geoCode: NATIONAL_GEO_CODE, geoLevel: "national", geoName: "Philippines", incomeClass: null };
 }
+
+export type GeoAncestors = {
+  region: GeoOption | null;
+  province: GeoOption | null;
+  citymun: GeoOption | null;
+};
+
+/**
+ * The region/province/citymun ancestors of a geo (denormalized directly on
+ * `dim_geo` at ingestion, per §4.1 — no recursive parent-chain walk needed).
+ * Backs the cascading filter sidebar's hydration from a deep-linked geo.
+ */
+export async function getGeoAncestors(geoCode: string, geoLevel: GeoLevel): Promise<GeoAncestors> {
+  const empty: GeoAncestors = { region: null, province: null, citymun: null };
+  if (geoLevel === "national") return empty;
+
+  const supabase = createSupabaseServerClient();
+  const { data: self } = await supabase
+    .from("dim_geo")
+    .select("region_code, province_code, citymun_code")
+    .eq("geo_code", geoCode)
+    .maybeSingle();
+
+  if (!self) return empty;
+
+  const ancestorCodes = [self.region_code, self.province_code, self.citymun_code].filter(
+    (code): code is string => Boolean(code),
+  );
+  if (ancestorCodes.length === 0) return empty;
+
+  const { data: rows } = await supabase
+    .from("dim_geo")
+    .select("geo_code, geo_level, geo_name, income_class")
+    .in("geo_code", ancestorCodes);
+
+  const byCode = new Map((rows ?? []).map((row) => [row.geo_code, row]));
+  const toOption = (code: string | null): GeoOption | null => {
+    if (!code) return null;
+    const row = byCode.get(code);
+    if (!row) return null;
+    return {
+      geoCode: row.geo_code,
+      geoLevel: row.geo_level,
+      geoName: row.geo_name,
+      incomeClass: row.income_class,
+    };
+  };
+
+  return {
+    region: toOption(self.region_code),
+    province: toOption(self.province_code),
+    citymun: toOption(self.citymun_code),
+  };
+}

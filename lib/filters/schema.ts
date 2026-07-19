@@ -47,6 +47,9 @@ export const filterStateSchema = z.object({
 
 export type FilterState = z.infer<typeof filterStateSchema>;
 
+/** Breakdowns shown on /explore when the URL doesn't specify any. */
+export const DEFAULT_BREAKDOWNS: DemographicDimension[] = ["sex", "age_band"];
+
 export const defaultFilterState: FilterState = filterStateSchema.parse({
   geoLevel: "national",
   geoCode: NATIONAL_GEO_CODE,
