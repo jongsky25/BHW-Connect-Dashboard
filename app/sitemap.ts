@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllGeosAtLevels } from "@/lib/db/geo";
 
-const BASE_URL = "https://bhw-connect.vercel.app";
+const BASE_URL = "https://bhw-connect-jongsky25s-projects.vercel.app";
 
 const STATIC_PATHS = [
   "",
