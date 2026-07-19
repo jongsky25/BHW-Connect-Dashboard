@@ -126,6 +126,26 @@ export default async function MethodologyPage() {
         </ul>
       </section>
 
+      <section id="ai" className="flex flex-col gap-2 scroll-mt-6">
+        <h2 className="text-lg font-semibold">
+          <GlossaryTerm slug="ai_generated">AI-generated</GlossaryTerm> insights
+        </h2>
+        <p>
+          Some pages show a short AI-written insight alongside the figures. The model can only get
+          numbers by calling the same lookup functions this site&apos;s pages use — it has no other
+          way to answer with a number. After it writes an answer, every number in the text is
+          checked against what those lookups actually returned; any sentence containing a number
+          that can&apos;t be traced back is removed automatically before it&apos;s shown, rather
+          than being published unchecked.
+        </p>
+        <p>
+          Generation falls back through several free-tier AI providers in a fixed order, and is
+          cached per place so most visitors see a precomputed answer rather than a live call. When
+          every provider is at capacity, the insight is simply left out — the template figures and
+          headlines throughout the rest of the site never depend on AI and always work.
+        </p>
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Changelog</h2>
         {changelog.length === 0 ? (

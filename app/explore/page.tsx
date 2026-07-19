@@ -18,6 +18,7 @@ import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
+import { ChatLauncher } from "@/components/chat/chat-launcher";
 
 const CHILD_LEVEL_LABEL: Record<GeoLevel, string> = {
   national: "Region",
@@ -206,6 +207,8 @@ export default async function ExplorePage({
           <HonorariumFigure rows={honorarium} caption={caption} />
         </div>
       </div>
+
+      <ChatLauncher geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
     </div>
   );
 }
