@@ -10,7 +10,7 @@ import { horizontalBarSpec, type BarDatum } from "./bar-chart";
  */
 export async function renderBarChartSvg(
   data: BarDatum[],
-  options: { xLabel?: string; valueSuffix?: string } = {},
+  options: { xLabel?: string; yLabel?: string; valueSuffix?: string } = {},
 ): Promise<{ svg: string; width: number; height: number }> {
   const [{ parseHTML }, Plot] = await Promise.all([import("linkedom"), import("@observablehq/plot")]);
   const { document } = parseHTML("<!DOCTYPE html><html><body></body></html>");

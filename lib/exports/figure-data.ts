@@ -17,6 +17,8 @@ export type ExportFigureData = {
   caption: string;
   headline: string;
   rows: ExportRow[];
+  xLabel: string;
+  yLabel: string;
   valueSuffix: string;
   isSuppressed: boolean;
   technicalNote: string;
@@ -69,6 +71,8 @@ export async function getExportFigureData(params: {
         title: "Accreditation",
         headline: pct !== null ? `About ${Math.round(pct)}% of BHWs here are accredited.` : "No data.",
         rows: pct !== null ? [{ label: "Accredited", value: pct }, { label: "Not accredited", value: Math.round((100 - pct) * 100) / 100 }] : [],
+        xLabel: "% of BHWs",
+        yLabel: "Accreditation status",
         valueSuffix: "%",
         isSuppressed: false,
         technicalNote: `${counts?.nAccredited?.toLocaleString() ?? "—"} of ${counts?.nTotal?.toLocaleString() ?? "—"} BHWs are accredited.`,
@@ -81,6 +85,8 @@ export async function getExportFigureData(params: {
         title: "Average years of service",
         headline: avg !== null ? `BHWs here have served an average of ${avg} years.` : "No data.",
         rows: avg !== null ? [{ label: "Average years", value: avg }] : [],
+        xLabel: "Years of service",
+        yLabel: "Metric",
         valueSuffix: "",
         isSuppressed: false,
         technicalNote: "Computed from each BHW's recorded active-service years.",
@@ -99,6 +105,8 @@ export async function getExportFigureData(params: {
         rows: isSuppressed
           ? []
           : demoRows.filter((r) => r.pct !== null).map((r) => ({ label: r.category, value: r.pct as number })),
+        xLabel: "% of BHWs",
+        yLabel: DIMENSION_LABEL[dimension],
         valueSuffix: "%",
         isSuppressed,
         technicalNote:
@@ -112,6 +120,8 @@ export async function getExportFigureData(params: {
         title: "Training coverage",
         headline: params.geoLevel === "barangay" ? "Not tracked at the barangay level." : "Coverage by training topic.",
         rows: rows.filter((r) => r.coveragePct !== null).map((r) => ({ label: r.topicLabel ?? r.topicSlug, value: r.coveragePct as number })),
+        xLabel: "% trained",
+        yLabel: "Training topic",
         valueSuffix: "%",
         isSuppressed: false,
         technicalNote: "agg_training is computed at national/region/province/citymun level only.",
@@ -125,6 +135,8 @@ export async function getExportFigureData(params: {
         title: "Honorarium, by paying level",
         headline: "% of BHWs receiving honorarium, by paying administrative level.",
         rows: rows.filter((r) => r.pctReceiving !== null).map((r) => ({ label: labels[r.payerLevel] ?? r.payerLevel, value: r.pctReceiving as number })),
+        xLabel: "% of BHWs receiving",
+        yLabel: "Paying level",
         valueSuffix: "%",
         isSuppressed: false,
         technicalNote: "A BHW may receive honorarium from more than one level; percentages aren't mutually exclusive.",

@@ -6,10 +6,12 @@ import { horizontalBarSpec, type BarDatum } from "@/lib/charts/bar-chart";
 export function BarChartClient({
   data,
   xLabel,
+  yLabel,
   valueSuffix,
 }: {
   data: BarDatum[];
   xLabel?: string;
+  yLabel?: string;
   valueSuffix?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -20,7 +22,7 @@ export function BarChartClient({
 
     import("@observablehq/plot").then((Plot) => {
       if (cancelled || !containerRef.current) return;
-      plot = Plot.plot(horizontalBarSpec(data, { xLabel, valueSuffix }));
+      plot = Plot.plot(horizontalBarSpec(data, { xLabel, yLabel, valueSuffix }));
       // The wrapping div already carries role="img" + a full text aria-label
       // (below); Plot's internal <g aria-label="..."> marks on plain <g>
       // elements otherwise trip aria-prohibited-attr, so hide the SVG itself
@@ -33,7 +35,7 @@ export function BarChartClient({
       cancelled = true;
       plot?.remove();
     };
-  }, [data, xLabel, valueSuffix]);
+  }, [data, xLabel, yLabel, valueSuffix]);
 
   return (
     <div

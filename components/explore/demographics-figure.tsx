@@ -87,7 +87,12 @@ export function DemographicsFigure({
           <GlossaryTerm slug="suppressed">Suppressed</GlossaryTerm> to protect privacy (n&lt;5)
         </p>
       ) : chartData.length > 0 ? (
-        <BarChartClient data={chartData} xLabel="% of BHWs" valueSuffix="%" />
+        <BarChartClient
+          data={chartData}
+          xLabel="% of BHWs"
+          yLabel={DIMENSION_LABEL[dimension]}
+          valueSuffix="%"
+        />
       ) : (
         <p className="text-sm text-muted">No data available.</p>
       )}

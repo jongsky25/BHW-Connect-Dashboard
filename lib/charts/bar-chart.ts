@@ -10,7 +10,7 @@ export type BarDatum = { label: string; value: number };
  */
 export function horizontalBarSpec(
   data: BarDatum[],
-  options: { xLabel?: string; valueSuffix?: string } = {},
+  options: { xLabel?: string; yLabel?: string; valueSuffix?: string } = {},
 ): Plot.PlotOptions {
   const suffix = options.valueSuffix ?? "";
   return {
@@ -18,7 +18,7 @@ export function horizontalBarSpec(
     width: 640,
     height: Math.max(80, data.length * 32 + 20),
     x: { label: options.xLabel ?? null, grid: true, nice: true },
-    y: { label: null },
+    y: { label: options.yLabel ?? null },
     marks: [
       Plot.barX(data, { y: "label", x: "value", fill: accent, sort: { y: "-x" } }),
       Plot.text(data, {

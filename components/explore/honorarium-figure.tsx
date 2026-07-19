@@ -35,7 +35,12 @@ export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; cap
       }
     >
       {chartData.length > 0 ? (
-        <BarChartClient data={chartData} xLabel="% of BHWs receiving" valueSuffix="%" />
+        <BarChartClient
+          data={chartData}
+          xLabel="% of BHWs receiving"
+          yLabel="Paying level"
+          valueSuffix="%"
+        />
       ) : (
         <p className="text-sm text-muted">No data available.</p>
       )}
