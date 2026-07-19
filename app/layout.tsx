@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BHW Connect",
+  title: {
+    default: "BHW Connect",
+    template: "%s · BHW Connect",
+  },
   description:
     "A public, open-access dashboard for the Philippine Barangay Health Worker (BHW) dataset.",
 };
@@ -25,7 +30,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <Header />
+        <main id="main-content" className="flex flex-1 flex-col">
+          {children}
+        </main>
+        <Footer />
+      </body>
     </html>
   );
 }
