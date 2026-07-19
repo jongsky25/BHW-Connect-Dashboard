@@ -25,6 +25,10 @@ export default function RoadmapPage() {
             </a>
           </li>
           <li>An admin panel for feedback triage, usage dashboards, and content curation (staff-only)</li>
+          <li>
+            Per-capita context — &quot;BHWs per 1,000 residents&quot; — using population and
+            household figures from the StepZero quick-count, shown alongside Total BHWs
+          </li>
         </ul>
       </section>
 
@@ -33,8 +37,7 @@ export default function RoadmapPage() {
         <ul className="list-inside list-disc">
           <li>Barangay-level map polygons</li>
           <li>
-            A second dataset — population figures for per-capita context (&quot;BHWs per 1,000
-            residents&quot;) is the leading candidate; see the scoping notes below
+            A second dataset — see the scoping notes below for candidates and how we assess them
           </li>
         </ul>
       </section>

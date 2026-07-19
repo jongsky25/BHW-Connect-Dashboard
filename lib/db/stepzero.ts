@@ -91,6 +91,15 @@ export type BhwOverview = {
   profilingCoveragePct: number | null;
   coverageExceedsBase: boolean;
   hasStepzero: boolean;
+  /** StepZero's per-barangay population figure, rolled up like everything else in
+   * `agg_bhw_stepzero_counts`. Null wherever StepZero has no row for this geo. */
+  population: number | null;
+  households: number | null;
+  /** Total BHWs (the StepZero universe) per 1,000 residents — the per-capita
+   * framing docs/DATASET_SCOPING.md scoped as a separate PSA-population dataset,
+   * built here instead from StepZero's own population column since it already
+   * covers every geo level. Null when population is missing or zero. */
+  bhwPer1000Residents: number | null;
 };
 
 /** Coverage percentage for display: capped at 100 when profiled counts exceed
@@ -101,6 +110,13 @@ export function coverageForDisplay(
 ): number | null {
   if (o.profilingCoveragePct === null) return null;
   return o.coverageExceedsBase ? 100 : o.profilingCoveragePct;
+}
+
+/** BHWs per 1,000 residents, rounded to one decimal place. Null when either
+ * input is missing or population is zero (nothing sane to divide by). */
+export function bhwPer1000ResidentsFor(totalBhw: number | null, population: number | null): number | null {
+  if (totalBhw === null || population === null || population <= 0) return null;
+  return Math.round((1000 * totalBhw * 10) / population) / 10;
 }
 
 export async function getBhwOverview(
@@ -123,15 +139,21 @@ export async function getBhwOverview(
     coverageExceedsBase = validatedProfiles > base;
   }
 
+  const population = stepzero?.population ?? null;
+  const totalBhw = stepzero?.nTotalBhw ?? null;
+
   return {
     geoCode,
     geoLevel,
-    totalBhw: stepzero?.nTotalBhw ?? null,
+    totalBhw,
     registeredUniverse: base,
     nonRegistered: stepzero?.nNonRegistered ?? null,
     validatedProfiles,
     profilingCoveragePct,
     coverageExceedsBase,
     hasStepzero: stepzero !== null,
+    population,
+    households: stepzero?.households ?? null,
+    bhwPer1000Residents: bhwPer1000ResidentsFor(totalBhw, population),
   };
 }

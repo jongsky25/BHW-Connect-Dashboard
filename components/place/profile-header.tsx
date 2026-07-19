@@ -27,6 +27,7 @@ export function ProfileHeader({
   totalBhw,
   validatedProfiles,
   coveragePct,
+  bhwPer1000Residents,
   incomeClass,
 }: {
   geoName: string;
@@ -38,6 +39,8 @@ export function ProfileHeader({
   validatedProfiles: number | null;
   /** Coverage % (already capped for display), or null. */
   coveragePct: number | null;
+  /** Total BHWs per 1,000 residents (null when population data is unavailable). */
+  bhwPer1000Residents: number | null;
   incomeClass: number | null;
 }) {
   return (
@@ -68,6 +71,9 @@ export function ProfileHeader({
                 {validatedProfiles.toLocaleString()} validated profiles
                 {coveragePct !== null ? ` (${coveragePct}%)` : ""}
               </span>
+            )}
+            {bhwPer1000Residents !== null && (
+              <span>{bhwPer1000Residents.toLocaleString()} per 1,000 residents</span>
             )}
           </>
         ) : validatedProfiles !== null ? (

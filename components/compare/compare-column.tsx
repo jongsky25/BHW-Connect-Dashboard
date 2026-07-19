@@ -27,6 +27,8 @@ export type CompareColumnData = {
   validatedProfiles: number | null;
   /** Coverage % (already capped for display), or null. */
   coveragePct: number | null;
+  /** Total BHWs per 1,000 residents (null when population data is unavailable). */
+  bhwPer1000Residents: number | null;
   demographics: { dimension: string; rows: DemographicRow[] }[];
   training: TrainingRow[];
   honorarium: HonorariumRow[];
@@ -74,6 +76,9 @@ export function CompareColumn({
         {data.totalBhw !== null ? `${data.totalBhw.toLocaleString()} total BHWs · ` : ""}
         {data.validatedProfiles?.toLocaleString() ?? "—"} validated profiles
         {data.coveragePct !== null ? ` (${data.coveragePct}%)` : ""}
+        {data.bhwPer1000Residents !== null
+          ? ` · ${data.bhwPer1000Residents.toLocaleString()} per 1,000 residents`
+          : ""}
       </p>
 
       {(showAll || indicator === "accreditation") && (

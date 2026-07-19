@@ -43,7 +43,7 @@ export default async function Home() {
         <GeoSearch />
       </section>
 
-      <section aria-label="National figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="National figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatTile
           label="Total BHWs"
           value={formatCount(overview.totalBhw)}
@@ -63,6 +63,15 @@ export default async function Home() {
           label="Top training gap"
           value={summary?.topTrainingGap ?? "—"}
           caption={profiledCaption}
+        />
+        <StatTile
+          label="BHWs per 1,000 residents"
+          value={overview.bhwPer1000Residents === null ? "—" : overview.bhwPer1000Residents.toLocaleString()}
+          caption={
+            overview.population !== null
+              ? `Total BHWs per population of ${formatCount(overview.population)} · StepZero · 2025`
+              : "Population data not available"
+          }
         />
       </section>
 

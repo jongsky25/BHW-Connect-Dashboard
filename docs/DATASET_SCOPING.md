@@ -4,6 +4,16 @@
 plan) was designed as shared infrastructure for more than one Philippine public-interest dataset —
 this document is the first pass at picking what comes next, per §8 2.6.
 
+**Update:** the specific gap that motivated candidate #1 below — a population denominator for
+"BHWs per 1,000 residents" — turned out to already be covered. The StepZero quick-count
+(`agg_bhw_stepzero_counts`) carries `population`/`households` columns per barangay, rolled up to
+every geo level, that were loaded for the total-vs-validated-profiles reframing but never surfaced
+in the UI. `bhwPer1000ResidentsFor()` (`lib/db/stepzero.ts`) computes the rate from that existing
+column, with no new ingestion pipeline or dataset needed — see `docs/DECISIONS.md`. The PSA
+population candidate stays below as a source of truth for future cross-checking (StepZero's
+population figures are a self-reported barangay-sheet field, not sourced from an actual census),
+but is no longer the blocking gap it was when this document was first written.
+
 Every candidate below is scored on the same three things that actually determine whether it's
 buildable on this stack: **license** (can we redistribute derived aggregates under CC BY, same as
 `bhw-2025`?), **geo-join** (does it key on PSGC the way `dim_geo` already does, or does it need a

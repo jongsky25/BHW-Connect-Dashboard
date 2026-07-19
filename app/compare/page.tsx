@@ -61,6 +61,7 @@ export default async function ComparePage({
           totalBhw: overview.totalBhw,
           validatedProfiles: overview.validatedProfiles,
           coveragePct: coverageForDisplay(overview),
+          bhwPer1000Residents: overview.bhwPer1000Residents,
           demographics,
           training,
           honorarium,

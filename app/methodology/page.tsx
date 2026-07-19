@@ -80,6 +80,14 @@ export default async function MethodologyPage() {
           <GlossaryTerm slug="accredited">accreditation</GlossaryTerm> figures come from each
           BHW&apos;s verified accreditation flag in the profiled dataset.
         </p>
+        <p>
+          StepZero&apos;s population and household counts also power{" "}
+          <GlossaryTerm slug="bhw_per_1000">BHWs per 1,000 residents</GlossaryTerm>, shown alongside
+          the headcount everywhere Total BHWs appears: Total BHWs divided by population, scaled to a
+          rate per 1,000 residents, so places of very different sizes can be compared on workforce
+          density rather than raw headcount. It&apos;s shown only where StepZero has a population
+          figure for that area.
+        </p>
       </section>
 
       <section className="flex flex-col gap-2">

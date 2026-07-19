@@ -130,6 +130,12 @@ export default async function ExplorePage({
               validated profiles{coverage !== null ? ` (${coverage}% of registered)` : ""}
             </span>
           </span>
+          {overview.bhwPer1000Residents !== null && (
+            <span>
+              <span className="font-semibold">{overview.bhwPer1000Residents.toLocaleString()}</span>{" "}
+              <span className="text-muted">BHWs per 1,000 residents</span>
+            </span>
+          )}
           {!overview.hasStepzero && (
             <span className="text-xs text-muted">Quick-count total not available for this area.</span>
           )}
