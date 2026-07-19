@@ -116,6 +116,13 @@ describe("getOrGenerateNarrative", () => {
     expect(fakeCache.upserts).toHaveLength(0);
   });
 
+  it("degrades to null rather than throwing when the service-role client is unconfigured (e.g. a build with only public env vars set)", async () => {
+    createSupabaseServiceClient.mockImplementationOnce(() => {
+      throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
+    });
+    await expect(getOrGenerateNarrative("PH", "national", "Philippines")).resolves.toBeNull();
+  });
+
   it("adversarial: out-of-dataset claims with no grounded numbers still fail through cleanly when nothing survives audit", async () => {
     runToolLoop.mockResolvedValue({
       finalText: "83% of Filipinos own a smartphone.",

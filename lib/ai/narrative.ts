@@ -37,13 +37,29 @@ function asNarrative(row: CachedRow): Narrative | null {
  * Cache lookup → live generate → write-back (BUILD_PLAN.md §4.2/§4.5). Returns null only when
  * there's neither a fresh cache entry nor a usable live generation and no stale entry to fall
  * back to — callers (the AI insight component, the precompute cron) treat null as "render the
- * Phase 1 template narrative instead," never as an error.
+ * Phase 1 template narrative instead," never as an error. Catches everything, including
+ * `SUPABASE_SERVICE_ROLE_KEY`/AI env vars being unconfigured (e.g. a preview build with only the
+ * public Supabase keys set) — an AI feature must never be able to break a page that doesn't
+ * otherwise depend on it, matching `getActiveDataset`'s degrade-gracefully pattern.
  */
 export async function getOrGenerateNarrative(
   geoCode: string,
   geoLevel: GeoLevel,
   geoName: string,
   narrativeType: NarrativeType = "overview",
+): Promise<Narrative | null> {
+  try {
+    return await generateOrReadCache(geoCode, geoLevel, geoName, narrativeType);
+  } catch {
+    return null;
+  }
+}
+
+async function generateOrReadCache(
+  geoCode: string,
+  geoLevel: GeoLevel,
+  geoName: string,
+  narrativeType: NarrativeType,
 ): Promise<Narrative | null> {
   const dataset = await getActiveDataset();
   const dataVersion = dataset?.lastUpdatedAt ?? "unknown";

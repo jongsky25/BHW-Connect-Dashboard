@@ -72,4 +72,9 @@ export const GLOSSARY = {
     definition:
       "A DOH barangay-level aggregate headcount of Barangay Health Workers (registered, accredited, and non-registered) with population and household context. It provides the total BHW universe; it is a coarser, self-reported tally distinct from the individually-validated per-person dataset.",
   },
+  ai_generated: {
+    term: "AI-generated",
+    definition:
+      "Written by an AI model, not a person — but every number in it is looked up from this site's own database at the moment it was written, then automatically checked and stripped if it can't be traced back to that lookup. See the methodology page for how this works.",
+  },
 } as const;

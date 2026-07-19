@@ -3,6 +3,7 @@ import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getSpotlightInsight } from "@/lib/db/spotlight";
 import { GeoSearch } from "@/components/home/geo-search";
 import { StatTile } from "@/components/home/stat-tile";
+import { AiInsight } from "@/components/narrative/ai-insight";
 
 function formatCount(n: number | null) {
   return n === null ? "—" : n.toLocaleString();
@@ -72,6 +73,8 @@ export default async function Home() {
           : ""}
         . Total headcounts come from the DOH StepZero quick-count.
       </p>
+
+      <AiInsight geoCode="PH" geoLevel="national" geoName="Philippines" />
 
       {spotlight && (
         <section

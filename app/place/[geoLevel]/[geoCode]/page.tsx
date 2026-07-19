@@ -11,6 +11,7 @@ import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profi
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { AiInsight } from "@/components/narrative/ai-insight";
 
 export const revalidate = 86_400; // ISR: refresh at most once a day (citymun/barangay; regions/provinces are SSG via generateStaticParams)
 
@@ -116,6 +117,8 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           Explore full breakdowns
         </Link>
       </div>
+
+      <AiInsight geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FigureCard

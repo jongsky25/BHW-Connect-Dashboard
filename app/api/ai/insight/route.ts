@@ -10,10 +10,12 @@ const querySchema = z.object({ geoCode: z.string().min(1).max(20), geoLevel: geo
 
 /**
  * AI narrative for one geography: cache lookup → live generate → write-back (BUILD_PLAN.md
- * §4.2 "api/ai/insight"). Used by components/narrative/ai-insight.tsx (a client-fetched, Suspense-
- * boundaried card) so a slow/all-capped AI call never blocks the rest of a server-rendered page.
- * Returns `{ content: null }` — never a 5xx — when nothing grounded is available; callers render
- * the existing Phase 1 template narrative in that case.
+ * §4.2 "api/ai/insight"). `components/narrative/ai-insight.tsx` calls `getOrGenerateNarrative`
+ * directly as a Suspense-boundaried Server Component rather than fetching this route (no reason
+ * to pay a self-HTTP round trip); this route exists as the standalone public API surface for the
+ * same lookup — e.g. the precompute cron, or an external caller. Returns `{ content: null }` —
+ * never a 5xx — when nothing grounded is available; callers render the Phase 1 template narrative
+ * in that case.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
