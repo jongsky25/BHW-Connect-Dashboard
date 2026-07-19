@@ -68,7 +68,7 @@ export function TrainingFigure({
       technicalDetails={<p>Showing the 8 topics with the lowest coverage percentage.</p>}
     >
       {topGaps.length > 0 ? (
-        <BarChartClient data={topGaps} xLabel="% trained" valueSuffix="%" />
+        <BarChartClient data={topGaps} xLabel="% trained" yLabel="Training topic" valueSuffix="%" />
       ) : (
         <p className="text-sm text-muted">No data available.</p>
       )}

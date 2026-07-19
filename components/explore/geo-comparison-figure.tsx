@@ -65,7 +65,12 @@ export function GeoComparisonFigure({
           />
         )}
         {chartData.length > 0 ? (
-          <BarChartClient data={chartData} xLabel="% accredited" valueSuffix="%" />
+          <BarChartClient
+            data={chartData}
+            xLabel="% accredited"
+            yLabel={childLevelLabel}
+            valueSuffix="%"
+          />
         ) : (
           <p className="text-sm text-muted">No data available.</p>
         )}

@@ -64,7 +64,7 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
 
   const chart = await renderBarChartSvg(
     data.rows.map((r) => ({ label: r.label, value: r.value })),
-    { xLabel: undefined, valueSuffix: data.valueSuffix },
+    { xLabel: data.xLabel, yLabel: data.yLabel, valueSuffix: data.valueSuffix },
   );
   const { viewBox, inner } = extractSvgInner(chart.svg);
 
