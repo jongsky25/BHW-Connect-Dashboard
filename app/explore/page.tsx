@@ -12,6 +12,7 @@ import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
 import { FigureCard } from "@/components/narrative/figure-card";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
@@ -114,6 +115,7 @@ export default async function ExplorePage({
           <FigureCard
             title="Accreditation"
             caption={caption}
+            exportMenu={<ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />}
             headline={
               counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
                 ? `About ${Math.round(counts.pctAccredited)}% of BHWs here are accredited.`
@@ -161,7 +163,14 @@ export default async function ExplorePage({
           )}
 
           {demographicsByDimension.map(({ dimension, rows }) => (
-            <DemographicsFigure key={dimension} dimension={dimension} rows={rows} caption={caption} />
+            <DemographicsFigure
+              key={dimension}
+              dimension={dimension}
+              rows={rows}
+              caption={caption}
+              geoCode={geo.geoCode}
+              geoLevel={geo.geoLevel}
+            />
           ))}
 
           <TrainingFigure

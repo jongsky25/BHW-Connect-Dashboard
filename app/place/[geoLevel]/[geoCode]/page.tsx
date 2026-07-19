@@ -5,6 +5,7 @@ import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } fro
 import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
 import { DEFAULT_BREAKDOWNS, GEO_LEVELS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { FigureCard } from "@/components/narrative/figure-card";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
@@ -110,6 +111,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         <FigureCard
           title="Accreditation"
           caption={caption}
+          exportMenu={<ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />}
           headline={
             counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
               ? `About ${Math.round(counts.pctAccredited)}% of BHWs here are accredited.`
@@ -143,7 +145,14 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         </FigureCard>
 
         {demographicsByDimension.map(({ dimension, rows }) => (
-          <DemographicsFigure key={dimension} dimension={dimension} rows={rows} caption={caption} />
+          <DemographicsFigure
+            key={dimension}
+            dimension={dimension}
+            rows={rows}
+            caption={caption}
+            geoCode={geo.geoCode}
+            geoLevel={geo.geoLevel}
+          />
         ))}
 
         <TrainingFigure

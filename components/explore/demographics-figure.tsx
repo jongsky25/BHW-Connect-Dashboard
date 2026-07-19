@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import type { DemographicRow } from "@/lib/db/indicators";
-import type { DemographicDimension } from "@/lib/filters/schema";
+import type { DemographicDimension, GeoLevel } from "@/lib/filters/schema";
 
 const DIMENSION_LABEL: Record<DemographicDimension, string> = {
   sex: "Sex",
@@ -22,10 +23,14 @@ export function DemographicsFigure({
   dimension,
   rows,
   caption,
+  geoCode,
+  geoLevel,
 }: {
   dimension: DemographicDimension;
   rows: DemographicRow[];
   caption: string;
+  geoCode?: string;
+  geoLevel?: GeoLevel;
 }) {
   const isSuppressed = rows.some((r) => r.isSuppressed);
   const rollup = rows.find((r) => r.isSuppressed && r.rollupGeoCode);
@@ -40,6 +45,11 @@ export function DemographicsFigure({
     <FigureCard
       title={DIMENSION_LABEL[dimension]}
       caption={caption}
+      exportMenu={
+        geoCode && geoLevel ? (
+          <ExportMenu geoCode={geoCode} geoLevel={geoLevel} indicator="demographics" dimension={dimension} />
+        ) : undefined
+      }
       headline={
         isSuppressed
           ? "This breakdown is suppressed to protect individual privacy."
