@@ -88,6 +88,21 @@ export async function resolveGeoOrNational(
   return { geoCode: NATIONAL_GEO_CODE, geoLevel: "national", geoName: "Philippines", incomeClass: null };
 }
 
+/**
+ * Every region + province geo_code, for `generateStaticParams` on place pages
+ * (BUILD_PLAN.md §7 1.5 — SSG for regions/provinces, ISR for citymun/barangay).
+ */
+export async function getStaticGeoParams(): Promise<{ geoLevel: GeoLevel; geoCode: string }[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("dim_geo")
+    .select("geo_code, geo_level")
+    .in("geo_level", ["region", "province"]);
+
+  if (error || !data) return [];
+  return data.map((row) => ({ geoLevel: row.geo_level, geoCode: row.geo_code }));
+}
+
 export type GeoAncestors = {
   region: GeoOption | null;
   province: GeoOption | null;

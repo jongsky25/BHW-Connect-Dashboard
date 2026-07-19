@@ -1,0 +1,160 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } from "@/lib/db/indicators";
+import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
+import { DEFAULT_BREAKDOWNS, GEO_LEVELS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
+import { FigureCard } from "@/components/narrative/figure-card";
+import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
+import { DemographicsFigure } from "@/components/explore/demographics-figure";
+import { TrainingFigure } from "@/components/explore/training-figure";
+import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+
+export const revalidate = 86_400; // ISR: refresh at most once a day (citymun/barangay; regions/provinces are SSG via generateStaticParams)
+
+type PlaceParams = { geoLevel: string; geoCode: string };
+
+export async function generateStaticParams() {
+  const params = await getStaticGeoParams();
+  return params.map((p) => ({ geoLevel: p.geoLevel, geoCode: p.geoCode }));
+}
+
+function isGeoLevel(value: string): value is GeoLevel {
+  return (GEO_LEVELS as readonly string[]).includes(value);
+}
+
+async function loadPlace(params: PlaceParams) {
+  if (!isGeoLevel(params.geoLevel)) return null;
+  const geo = await getGeoByCode(params.geoCode);
+  if (!geo || geo.geoLevel !== params.geoLevel) return null;
+  return geo;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<PlaceParams>;
+}): Promise<Metadata> {
+  const geo = await loadPlace(await params);
+  if (!geo) return { title: "Place not found" };
+
+  const counts = await getBhwCounts(geo.geoCode, geo.geoLevel);
+  const description =
+    counts?.nTotal !== null && counts?.nTotal !== undefined
+      ? `${counts.nTotal.toLocaleString()} Barangay Health Workers on record in ${geo.geoName}${
+          counts.pctAccredited !== null ? `, ${counts.pctAccredited}% accredited` : ""
+        }.`
+      : `Barangay Health Worker figures for ${geo.geoName}.`;
+
+  return {
+    title: geo.geoName,
+    description,
+    openGraph: { title: `${geo.geoName} · BHW Connect`, description, type: "website" },
+  };
+}
+
+export default async function PlacePage({ params }: { params: Promise<PlaceParams> }) {
+  const geo = await loadPlace(await params);
+  if (!geo) notFound();
+
+  const [ancestors, counts, demographicsByDimension, training, honorarium] = await Promise.all([
+    getGeoAncestors(geo.geoCode, geo.geoLevel),
+    getBhwCounts(geo.geoCode, geo.geoLevel),
+    Promise.all(
+      DEFAULT_BREAKDOWNS.map(async (dimension) => ({
+        dimension,
+        rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
+      })),
+    ),
+    getTrainingCoverage(geo.geoCode, geo.geoLevel),
+    getHonorarium(geo.geoCode, geo.geoLevel),
+  ]);
+
+  const breadcrumbAncestors: BreadcrumbAncestor[] = [
+    { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
+    ...(ancestors.region ? [{ label: ancestors.region.geoName, geoLevel: "region" as const, geoCode: ancestors.region.geoCode }] : []),
+    ...(ancestors.province ? [{ label: ancestors.province.geoName, geoLevel: "province" as const, geoCode: ancestors.province.geoCode }] : []),
+    ...(ancestors.citymun && geo.geoLevel === "barangay"
+      ? [{ label: ancestors.citymun.geoName, geoLevel: "citymun" as const, geoCode: ancestors.citymun.geoCode }]
+      : []),
+  ];
+
+  const caption = `N = ${counts?.nTotal?.toLocaleString() ?? "—"} BHWs · ${geo.geoName} · 2025 snapshot`;
+
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+      <ProfileHeader
+        geoName={geo.geoName}
+        geoLevel={geo.geoLevel}
+        ancestors={breadcrumbAncestors}
+        nTotal={counts?.nTotal ?? null}
+        incomeClass={geo.incomeClass}
+      />
+
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href={`/compare?geos=${geo.geoCode}`}
+          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+        >
+          Compare with other places
+        </Link>
+        <Link
+          href={`/explore?geoLevel=${geo.geoLevel}&geoCode=${geo.geoCode}`}
+          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+        >
+          Explore full breakdowns
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FigureCard
+          title="Accreditation"
+          caption={caption}
+          headline={
+            counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
+              ? `About ${Math.round(counts.pctAccredited)}% of BHWs here are accredited.`
+              : "No accreditation data available."
+          }
+          technicalDetails={
+            <p>
+              {counts?.nAccredited?.toLocaleString() ?? "—"} of {counts?.nTotal?.toLocaleString() ?? "—"} BHWs
+              are accredited ({counts?.pctAccredited ?? "—"}%).
+            </p>
+          }
+        >
+          <p className="text-4xl font-semibold tracking-tight">
+            {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
+              ? `${counts.pctAccredited}%`
+              : "—"}
+          </p>
+        </FigureCard>
+
+        <FigureCard
+          title="Average years of service"
+          caption={caption}
+          headline={
+            counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
+              ? `BHWs here have served an average of ${counts.avgActiveYears} years.`
+              : "No service-year data available."
+          }
+          technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
+        >
+          <p className="text-4xl font-semibold tracking-tight">{counts?.avgActiveYears ?? "—"}</p>
+        </FigureCard>
+
+        {demographicsByDimension.map(({ dimension, rows }) => (
+          <DemographicsFigure key={dimension} dimension={dimension} rows={rows} caption={caption} />
+        ))}
+
+        <TrainingFigure
+          rows={training}
+          caption={caption}
+          geoLevel={geo.geoLevel}
+          citymunAncestor={ancestors.citymun}
+        />
+
+        <HonorariumFigure rows={honorarium} caption={caption} />
+      </div>
+    </div>
+  );
+}
