@@ -761,7 +761,18 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      search_geo: {
+        Args: { result_limit?: number; search_query: string };
+        Returns: {
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          geo_name: string;
+          match_rank: number;
+          n_total: number;
+        }[];
+      };
+    };
     Enums: {
       admin_role_enum: "admin" | "editor";
       demographic_dimension_enum:
