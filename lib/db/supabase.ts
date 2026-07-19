@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
 /**
  * Server-only Supabase client for reading public `agg_*`/`dim_*` tables.
@@ -15,7 +16,7 @@ export function createSupabaseServerClient() {
     );
   }
 
-  return createClient(url, anonKey, {
+  return createClient<Database>(url, anonKey, {
     auth: { persistSession: false },
   });
 }

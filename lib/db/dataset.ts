@@ -2,11 +2,12 @@ import "server-only";
 import { createSupabaseServerClient } from "./supabase";
 
 export type DatasetInfo = {
+  datasetId: number;
   slug: string;
   name: string;
-  sourceName: string;
-  license: string;
-  asOfDate: string;
+  sourceName: string | null;
+  license: string | null;
+  asOfDate: string | null;
   lastUpdatedAt: string;
 };
 
@@ -20,7 +21,7 @@ export async function getActiveDataset(): Promise<DatasetInfo | null> {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
       .from("dim_dataset")
-      .select("slug, name, source_name, license, as_of_date, last_updated_at")
+      .select("dataset_id, slug, name, source_name, license, as_of_date, last_updated_at")
       .eq("status", "active")
       .order("last_updated_at", { ascending: false })
       .limit(1)
@@ -29,6 +30,7 @@ export async function getActiveDataset(): Promise<DatasetInfo | null> {
     if (error || !data) return null;
 
     return {
+      datasetId: data.dataset_id,
       slug: data.slug,
       name: data.name,
       sourceName: data.source_name,
@@ -39,4 +41,10 @@ export async function getActiveDataset(): Promise<DatasetInfo | null> {
   } catch {
     return null;
   }
+}
+
+/** Convenience accessor for query functions that only need the numeric FK. */
+export async function getActiveDatasetId(): Promise<number | null> {
+  const dataset = await getActiveDataset();
+  return dataset?.datasetId ?? null;
 }
