@@ -45,6 +45,8 @@ next-env.d.ts
 __pycache__/
 *.pyc
 .venv/
+ingestion/_qa_report.json
+ingestion/_sql_batches/
 
 # editor
 .vscode/
