@@ -17,6 +17,9 @@ describe("filter codec", () => {
     const parsed = loadFilterState(params);
 
     expect(parsed).toEqual(original);
+    // compareGeos reads/writes as ?geos= per BUILD_PLAN.md §7 1.7's URL spec.
+    expect(params.has("geos")).toBe(true);
+    expect(params.has("compareGeos")).toBe(false);
 
     // Second pass: re-serializing the parsed state reproduces an equivalent URL.
     const roundTripUrl = serializeFilterState("/explore", parsed);
@@ -55,7 +58,7 @@ describe("filter codec", () => {
   it("never throws on garbage input", () => {
     expect(() =>
       loadFilterState(
-        new URLSearchParams("geoLevel=%00&geoCode=&indicator=[object Object]&compareGeos=,,,"),
+        new URLSearchParams("geoLevel=%00&geoCode=&indicator=[object Object]&geos=,,,"),
       ),
     ).not.toThrow();
   });

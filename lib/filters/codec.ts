@@ -22,8 +22,11 @@ export const filterParsers = {
   breakdowns: parseAsArrayOf(parseAsStringEnum([...DEMOGRAPHIC_DIMENSIONS])),
 };
 
+/** `compareGeos` reads/writes as `?geos=` in the URL, matching BUILD_PLAN.md §7 1.7's spec exactly. */
+const urlKeys = { compareGeos: "geos" };
+
 /** Server-side: parse a `URLSearchParams`/`Request`/plain record into typed filter state. */
-export const loadFilterState = createLoader(filterParsers);
+export const loadFilterState = createLoader(filterParsers, { urlKeys });
 
 /** Build a query string (or full URL, given a base) from filter state — for permalinks/exports. */
-export const serializeFilterState = createSerializer(filterParsers);
+export const serializeFilterState = createSerializer(filterParsers, { urlKeys });
