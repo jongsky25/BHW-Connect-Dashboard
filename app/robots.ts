@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/admin"],
       },
     ],
-    sitemap: "https://bhw-connect.vercel.app/sitemap.xml",
+    sitemap: "https://bhw-connect-jongsky25s-projects.vercel.app/sitemap.xml",
   };
 }
