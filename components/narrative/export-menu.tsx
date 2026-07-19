@@ -1,3 +1,6 @@
+"use client";
+
+import { logEvent } from "@/lib/usage/log-client";
 import type { DemographicDimension, GeoLevel, Indicator } from "@/lib/filters/schema";
 
 const FORMATS = [
@@ -34,6 +37,9 @@ export function ExportMenu({
           {i > 0 && <span aria-hidden="true">·</span>}
           <a
             href={`/api/export/${format}?${params.toString()}`}
+            onClick={() =>
+              logEvent("export", { geoCode, meta: { format, indicator, dimension, geoLevel } })
+            }
             className="px-1 underline-offset-2 hover:text-accent hover:underline"
           >
             {label}

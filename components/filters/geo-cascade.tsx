@@ -3,6 +3,7 @@
 import { useQueryStates } from "nuqs";
 import { filterParsers } from "@/lib/filters/codec";
 import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
+import { logEvent } from "@/lib/usage/log-client";
 
 type Option = { geoCode: string; geoName: string };
 
@@ -67,6 +68,7 @@ export function GeoCascade({ regions, provinces, citymuns, barangays, selected }
 
   function navigateTo(geoLevel: GeoLevel, geoCode: string) {
     setFilters({ geoLevel, geoCode });
+    logEvent("filter_change", { geoCode, meta: { geoLevel } });
   }
 
   return (

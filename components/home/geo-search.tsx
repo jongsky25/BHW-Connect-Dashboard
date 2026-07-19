@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { logEvent } from "@/lib/usage/log-client";
 
 type GeoSearchResult = {
   geoCode: string;
@@ -41,6 +42,7 @@ export function GeoSearch() {
         const body = await res.json();
         setResults(body.results ?? []);
         setHasSearched(true);
+        logEvent("search", { meta: { query: trimmed, resultCount: (body.results ?? []).length } });
       } catch {
         if (currentRequest === requestId.current) {
           setResults([]);

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { BarChartClient } from "@/components/charts/bar-chart-client";
 import { ExportMenu } from "@/components/narrative/export-menu";
+import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { DemographicRow } from "@/lib/db/indicators";
 import type { DemographicDimension, GeoLevel } from "@/lib/filters/schema";
 
@@ -83,7 +84,7 @@ export function DemographicsFigure({
     >
       {isSuppressed ? (
         <p className="rounded-md bg-surface px-4 py-6 text-center text-sm text-muted">
-          Suppressed to protect privacy (n&lt;5)
+          <GlossaryTerm slug="suppressed">Suppressed</GlossaryTerm> to protect privacy (n&lt;5)
         </p>
       ) : chartData.length > 0 ? (
         <BarChartClient data={chartData} xLabel="% of BHWs" valueSuffix="%" />

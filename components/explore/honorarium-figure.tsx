@@ -1,5 +1,6 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { HonorariumRow } from "@/lib/db/indicators";
 
 const PAYER_LABEL: Record<string, string> = {
@@ -27,8 +28,9 @@ export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; cap
       }
       technicalDetails={
         <p>
-          A BHW may receive honorarium from more than one administrative level; percentages are
-          independent per level, not mutually exclusive.
+          A BHW may receive <GlossaryTerm slug="honorarium">honorarium</GlossaryTerm> from more
+          than one administrative level; percentages are independent per level, not mutually
+          exclusive.
         </p>
       }
     >
