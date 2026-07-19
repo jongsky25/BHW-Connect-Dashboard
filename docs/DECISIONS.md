@@ -282,3 +282,44 @@ honestly to the existing Phase 1 template/non-AI experience when unconfigured or
 verified concretely, not just by design, across every code path this phase touched (2.1's mocked-
 provider tests, 2.3/2.4/2.5's live `next build`-and-run checks that each caught a real
 service-client-throw or static-prerender bug before it could reach production).
+
+## 2026-07-19 — BHWs per 1,000 residents, using StepZero's own population data
+
+Picked up `docs/DATASET_SCOPING.md`'s recommended next step (per-capita context) without its
+recommended path (a new PSA population dataset): the owner pointed out that the StepZero
+quick-count already carries `population`/`households` per barangay, rolled up to every geo level —
+loaded back in the total-vs-validated-profiles reframing, but never actually read for anything
+beyond that reframing's own `agg_bhw_stepzero_counts` row. No new dataset, migration, or ingestion
+pipeline needed; this is a derived figure over data already in production.
+
+- **`lib/db/stepzero.ts`**: `BhwOverview` gained `population`, `households`, and
+  `bhwPer1000Residents` (a new pure `bhwPer1000ResidentsFor(totalBhw, population)` helper — Total
+  BHWs, the StepZero universe, not validated profiles, since the point is comparing places by their
+  actual workforce headcount, not the individually-profiled subset). Rounded to one decimal place;
+  null whenever population is missing or zero (about 2,689 barangays have no `dim_geo`-matched
+  StepZero row at all, per the original StepZero-loading entry above — this rate is simply absent
+  for those places rather than shown as a misleading zero).
+- **Surfaced everywhere `totalBhw`/`coverageForDisplay` already were**, no new page: a fifth home-page
+  `StatTile` (national rate), `ProfileHeader`'s meta line (every place page), the `/explore` overview
+  banner, and `CompareColumn` — all reading the same `getBhwOverview()` call those surfaces already
+  made, so this added zero new database round-trips.
+- **AI grounding**: `lib/ai/tools.ts`'s `getIndicatorByGeo` now includes `population`/
+  `bhwPer1000Residents` in every response's `base` object (the same object every indicator branch
+  spreads), so narratives/chat can cite the rate — it's exactly as grounded as every other number the
+  tools return, no separate audit-allowlist entry needed.
+- **`lib/glossary/terms.ts`** gained `bhw_per_1000`; wired into `/methodology`'s existing StepZero
+  section rather than a new one, and `/roadmap` moved the "per-capita context" line from "Coming
+  next" (where it named PSA population as the leading candidate) to "Live now" (describing what
+  actually shipped — StepZero-derived, not PSA-derived).
+- **`docs/DATASET_SCOPING.md`** updated with a note that its motivating gap for the PSA-population
+  candidate is closed; PSA stays listed as a future cross-check source (StepZero's population column
+  is a self-reported sheet field, not an actual census), not as a blocking dependency.
+- **Verify:** added `lib/db/stepzero.test.ts` for the new pure helpers (`bhwPer1000ResidentsFor`,
+  plus `coverageForDisplay`, which had no direct test before this) — normal case, one-decimal
+  rounding, and null-population/null-total/zero-population edge cases. `npm run lint && npm run
+  typecheck && npm test` all pass (49/49 tests); `next build` compiles and type-checks cleanly but
+  this session has no `.env.local` with live Supabase credentials (a fresh sandbox, unlike several
+  earlier increments' sessions — see 1.1's entry on how that file is sourced and gitignored), so it
+  can't get past `generateStaticParams`' live SSG data collection for `/place/[geoLevel]/[geoCode]`
+  to actually finish a full production build here; not a defect introduced by this change, since the
+  failure is the pre-existing missing-env-vars point, not anything touched in this diff.
