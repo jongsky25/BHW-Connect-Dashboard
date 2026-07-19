@@ -1,0 +1,542 @@
+{
+  "regions_missing_from_source": [
+    {
+      "geo_code": "18",
+      "name": "NEGROS ISLAND REGION (NIR)"
+    }
+  ],
+  "source_region_features_unmatched": [],
+  "provinces_missing_from_source": [
+    {
+      "geo_code": "03301",
+      "geo_name": "CITY OF ANGELES (HUC)",
+      "region_code": "03"
+    },
+    {
+      "geo_code": "03314",
+      "geo_name": "CITY OF OLONGAPO (HUC)",
+      "region_code": "03"
+    },
+    {
+      "geo_code": "04312",
+      "geo_name": "CITY OF LUCENA  (HUC)",
+      "region_code": "04"
+    },
+    {
+      "geo_code": "06310",
+      "geo_name": "CITY OF ILOILO  (HUC)",
+      "region_code": "06"
+    },
+    {
+      "geo_code": "07306",
+      "geo_name": "CITY OF CEBU  (HUC)",
+      "region_code": "07"
+    },
+    {
+      "geo_code": "07311",
+      "geo_name": "CITY OF LAPU-LAPU (HUC)",
+      "region_code": "07"
+    },
+    {
+      "geo_code": "07313",
+      "geo_name": "CITY OF MANDAUE (HUC)",
+      "region_code": "07"
+    },
+    {
+      "geo_code": "08316",
+      "geo_name": "CITY OF TACLOBAN  (HUC)",
+      "region_code": "08"
+    },
+    {
+      "geo_code": "09317",
+      "geo_name": "CITY OF ZAMBOANGA (HUC)",
+      "region_code": "09"
+    },
+    {
+      "geo_code": "10305",
+      "geo_name": "CITY OF CAGAYAN DE ORO  (HUC)",
+      "region_code": "10"
+    },
+    {
+      "geo_code": "10309",
+      "geo_name": "CITY OF ILIGAN (HUC)",
+      "region_code": "10"
+    },
+    {
+      "geo_code": "11307",
+      "geo_name": "CITY OF DAVAO (HUC)",
+      "region_code": "11"
+    },
+    {
+      "geo_code": "12308",
+      "geo_name": "CITY OF GENERAL SANTOS (HUC)",
+      "region_code": "12"
+    },
+    {
+      "geo_code": "13801",
+      "geo_name": "CITY OF CALOOCAN (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13802",
+      "geo_name": "CITY OF LAS PI\u00d1AS (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13803",
+      "geo_name": "CITY OF MAKATI (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13804",
+      "geo_name": "CITY OF MALABON (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13805",
+      "geo_name": "CITY OF MANDALUYONG (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13806",
+      "geo_name": "CITY OF MANILA (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13807",
+      "geo_name": "CITY OF MARIKINA (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13808",
+      "geo_name": "CITY OF MUNTINLUPA (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13809",
+      "geo_name": "CITY OF NAVOTAS (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13810",
+      "geo_name": "CITY OF PARA\u00d1AQUE (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13811",
+      "geo_name": "PASAY CITY (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13812",
+      "geo_name": "CITY OF PASIG (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13813",
+      "geo_name": "QUEZON CITY (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13814",
+      "geo_name": "CITY OF SAN JUAN (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13815",
+      "geo_name": "CITY OF TAGUIG (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13816",
+      "geo_name": "CITY OF VALENZUELA (HUC)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13817",
+      "geo_name": "PATEROS",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "14303",
+      "geo_name": "CITY OF BAGUIO (HUC)",
+      "region_code": "14"
+    },
+    {
+      "geo_code": "16304",
+      "geo_name": "CITY OF BUTUAN  (HUC)",
+      "region_code": "16"
+    },
+    {
+      "geo_code": "17315",
+      "geo_name": "CITY OF PUERTO PRINCESA  (HUC)",
+      "region_code": "17"
+    },
+    {
+      "geo_code": "19999",
+      "geo_name": "SPECIAL GEOGRAPHIC AREA (SGA)",
+      "region_code": "19"
+    }
+  ],
+  "source_province_features_unmatched": [
+    {
+      "geo_code": "06045",
+      "name": "Negros Occidental",
+      "region_code": "06"
+    },
+    {
+      "geo_code": "07046",
+      "name": "Negros Oriental",
+      "region_code": "07"
+    },
+    {
+      "geo_code": "07061",
+      "name": "Siquijor",
+      "region_code": "07"
+    },
+    {
+      "geo_code": "13039",
+      "name": "NCR, City of Manila, First District (Not a Province)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13074",
+      "name": "NCR, Second District (Not a Province)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13075",
+      "name": "NCR, Third District (Not a Province)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "13076",
+      "name": "NCR, Fourth District (Not a Province)",
+      "region_code": "13"
+    },
+    {
+      "geo_code": "19099",
+      "name": null,
+      "region_code": "19"
+    }
+  ],
+  "citymuns_missing_from_source": [
+    {
+      "geo_code": "0330100",
+      "geo_name": "CITY OF ANGELES",
+      "province_code": "03301"
+    },
+    {
+      "geo_code": "0331400",
+      "geo_name": "CITY OF OLONGAPO",
+      "province_code": "03314"
+    },
+    {
+      "geo_code": "0431200",
+      "geo_name": "CITY OF LUCENA (CAPITAL)",
+      "province_code": "04312"
+    },
+    {
+      "geo_code": "0631000",
+      "geo_name": "CITY OF ILOILO (CAPITAL)",
+      "province_code": "06310"
+    },
+    {
+      "geo_code": "0730600",
+      "geo_name": "CITY OF CEBU (CAPITAL)",
+      "province_code": "07306"
+    },
+    {
+      "geo_code": "0731100",
+      "geo_name": "CITY OF LAPU-LAPU",
+      "province_code": "07311"
+    },
+    {
+      "geo_code": "0731300",
+      "geo_name": "CITY OF MANDAUE",
+      "province_code": "07313"
+    },
+    {
+      "geo_code": "0831600",
+      "geo_name": "CITY OF TACLOBAN (CAPITAL)",
+      "province_code": "08316"
+    },
+    {
+      "geo_code": "0931700",
+      "geo_name": "CITY OF ZAMBOANGA",
+      "province_code": "09317"
+    },
+    {
+      "geo_code": "1030500",
+      "geo_name": "CITY OF CAGAYAN DE ORO (CAPITAL)",
+      "province_code": "10305"
+    },
+    {
+      "geo_code": "1030900",
+      "geo_name": "CITY OF ILIGAN",
+      "province_code": "10309"
+    },
+    {
+      "geo_code": "1130700",
+      "geo_name": "CITY OF DAVAO",
+      "province_code": "11307"
+    },
+    {
+      "geo_code": "1230800",
+      "geo_name": "CITY OF GENERAL SANTOS",
+      "province_code": "12308"
+    },
+    {
+      "geo_code": "1380100",
+      "geo_name": "CITY OF CALOOCAN",
+      "province_code": "13801"
+    },
+    {
+      "geo_code": "1380200",
+      "geo_name": "CITY OF LAS PI\u00d1AS",
+      "province_code": "13802"
+    },
+    {
+      "geo_code": "1380300",
+      "geo_name": "CITY OF MAKATI",
+      "province_code": "13803"
+    },
+    {
+      "geo_code": "1380400",
+      "geo_name": "CITY OF MALABON",
+      "province_code": "13804"
+    },
+    {
+      "geo_code": "1380500",
+      "geo_name": "CITY OF MANDALUYONG",
+      "province_code": "13805"
+    },
+    {
+      "geo_code": "1380601",
+      "geo_name": "TONDO I/II",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380603",
+      "geo_name": "QUIAPO",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380604",
+      "geo_name": "SAN NICOLAS",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380605",
+      "geo_name": "SANTA CRUZ",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380606",
+      "geo_name": "SAMPALOC",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380610",
+      "geo_name": "MALATE",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380611",
+      "geo_name": "PACO",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380612",
+      "geo_name": "PANDACAN",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380613",
+      "geo_name": "PORT AREA",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380614",
+      "geo_name": "SANTA ANA",
+      "province_code": "13806"
+    },
+    {
+      "geo_code": "1380700",
+      "geo_name": "CITY OF MARIKINA",
+      "province_code": "13807"
+    },
+    {
+      "geo_code": "1380800",
+      "geo_name": "CITY OF MUNTINLUPA",
+      "province_code": "13808"
+    },
+    {
+      "geo_code": "1380900",
+      "geo_name": "CITY OF NAVOTAS",
+      "province_code": "13809"
+    },
+    {
+      "geo_code": "1381000",
+      "geo_name": "CITY OF PARA\u00d1AQUE",
+      "province_code": "13810"
+    },
+    {
+      "geo_code": "1381100",
+      "geo_name": "PASAY CITY",
+      "province_code": "13811"
+    },
+    {
+      "geo_code": "1381200",
+      "geo_name": "CITY OF PASIG",
+      "province_code": "13812"
+    },
+    {
+      "geo_code": "1381300",
+      "geo_name": "QUEZON CITY",
+      "province_code": "13813"
+    },
+    {
+      "geo_code": "1381400",
+      "geo_name": "CITY OF SAN JUAN",
+      "province_code": "13814"
+    },
+    {
+      "geo_code": "1381500",
+      "geo_name": "CITY OF TAGUIG",
+      "province_code": "13815"
+    },
+    {
+      "geo_code": "1381600",
+      "geo_name": "CITY OF VALENZUELA",
+      "province_code": "13816"
+    },
+    {
+      "geo_code": "1381701",
+      "geo_name": "PATEROS",
+      "province_code": "13817"
+    },
+    {
+      "geo_code": "1430300",
+      "geo_name": "CITY OF BAGUIO",
+      "province_code": "14303"
+    },
+    {
+      "geo_code": "1630400",
+      "geo_name": "CITY OF BUTUAN (CAPITAL)",
+      "province_code": "16304"
+    },
+    {
+      "geo_code": "1731500",
+      "geo_name": "CITY OF PUERTO PRINCESA (CAPITAL)",
+      "province_code": "17315"
+    },
+    {
+      "geo_code": "1830200",
+      "geo_name": "CITY OF BACOLOD ",
+      "province_code": "18302"
+    },
+    {
+      "geo_code": "1999901",
+      "geo_name": "KAPALAWAN",
+      "province_code": "19999"
+    },
+    {
+      "geo_code": "1999902",
+      "geo_name": "OLD KAABAKAN",
+      "province_code": "19999"
+    },
+    {
+      "geo_code": "1999903",
+      "geo_name": "KADAYANGAN",
+      "province_code": "19999"
+    },
+    {
+      "geo_code": "1999904",
+      "geo_name": "NABALAWAG",
+      "province_code": "19999"
+    },
+    {
+      "geo_code": "1999905",
+      "geo_name": "PAHAMUDDIN",
+      "province_code": "19999"
+    },
+    {
+      "geo_code": "1999906",
+      "geo_name": "MALIDEGAO",
+      "province_code": "19999"
+    },
+    {
+      "geo_code": "1999907",
+      "geo_name": "LIGAWASAN",
+      "province_code": "19999"
+    },
+    {
+      "geo_code": "1999908",
+      "geo_name": "TUGUNAN",
+      "province_code": "19999"
+    }
+  ],
+  "source_citymun_features_unmatched": [
+    {
+      "geo_code": "0402109",
+      "name": "City of Imus",
+      "province_code": "04021"
+    },
+    {
+      "geo_code": "0402123",
+      "name": "Gen. Mariano Alvarez",
+      "province_code": "04021"
+    },
+    {
+      "geo_code": "0405628",
+      "name": "Mulanay",
+      "province_code": "04056"
+    },
+    {
+      "geo_code": "0405629",
+      "name": "Padre Burgos",
+      "province_code": "04056"
+    },
+    {
+      "geo_code": "0405634",
+      "name": "Pitogo",
+      "province_code": "04056"
+    },
+    {
+      "geo_code": "0405637",
+      "name": "Quezon",
+      "province_code": "04056"
+    },
+    {
+      "geo_code": "0405640",
+      "name": "San Andres",
+      "province_code": "04056"
+    },
+    {
+      "geo_code": "0405642",
+      "name": "San Francisco",
+      "province_code": "04056"
+    },
+    {
+      "geo_code": "1900705",
+      "name": "Sumisip",
+      "province_code": "19007"
+    },
+    {
+      "geo_code": "1900706",
+      "name": "Tipo-Tipo",
+      "province_code": "19007"
+    },
+    {
+      "geo_code": "1900709",
+      "name": "Al-Barka",
+      "province_code": "19007"
+    },
+    {
+      "geo_code": "1903639",
+      "name": "Kapatagan",
+      "province_code": "19036"
+    }
+  ]
+}

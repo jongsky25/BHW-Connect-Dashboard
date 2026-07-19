@@ -10,14 +10,26 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@observablehq/plot": "^0.6.17",
+    "@resvg/resvg-js": "^2.6.2",
+    "@supabase/supabase-js": "^2.110.7",
+    "exceljs": "^4.4.0",
+    "linkedom": "^0.18.13",
+    "maplibre-gl": "^5.24.0",
     "next": "16.2.10",
+    "nuqs": "^2.9.1",
+    "pptxgenjs": "^4.0.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
