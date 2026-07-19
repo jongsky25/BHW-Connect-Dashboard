@@ -51,6 +51,8 @@ __pycache__/
 .venv/
 ingestion/_qa_report.json
 ingestion/_sql_batches/
+ingestion/_qa_report_stepzero.json
+ingestion/_sql_batches_stepzero/
 
 # editor
 .vscode/
