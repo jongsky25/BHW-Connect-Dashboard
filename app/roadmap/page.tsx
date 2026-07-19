@@ -17,15 +17,25 @@ export default function RoadmapPage() {
           <li>Compare mode for side-by-side places</li>
           <li>CSV, XLSX, PNG, and PPTX exports for every figure</li>
           <li>Full methodology, glossary, and data-quality pages</li>
+          <li>
+            Strictly data-grounded AI insights and an &quot;ask the data&quot; chat — every number is
+            looked up live and checked before it&apos;s shown; see{" "}
+            <a href="/methodology#ai" className="underline hover:text-accent">
+              how this works
+            </a>
+          </li>
+          <li>An admin panel for feedback triage, usage dashboards, and content curation (staff-only)</li>
         </ul>
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Coming next (Phase 2)</h2>
+        <h2 className="text-lg font-semibold">Coming next</h2>
         <ul className="list-inside list-disc">
-          <li>Strictly data-grounded AI narratives and an &quot;ask the data&quot; chat, with every number traceable back to the same figures shown on screen</li>
           <li>Barangay-level map polygons</li>
-          <li>An admin panel for feedback triage, usage dashboards, and content curation</li>
+          <li>
+            A second dataset — population figures for per-capita context (&quot;BHWs per 1,000
+            residents&quot;) is the leading candidate; see the scoping notes below
+          </li>
         </ul>
       </section>
 
@@ -36,6 +46,16 @@ export default function RoadmapPage() {
           dataset. If there&apos;s a dataset you think belongs here next, tell us via{" "}
           <a href="/feedback" className="underline hover:text-accent">
             feedback
+          </a>
+          . We keep a running assessment of candidates — license, geographic join, how often it
+          updates — in{" "}
+          <a
+            href="https://github.com/jongsky25/bhw-connect-dashboard/blob/main/docs/DATASET_SCOPING.md"
+            className="underline hover:text-accent"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            our dataset scoping notes
           </a>
           .
         </p>

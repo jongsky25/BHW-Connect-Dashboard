@@ -254,3 +254,31 @@ Resolved what the two datasets mean relative to each other and reframed the whol
   - **`next build` tried to statically prerender `/admin/ai-quota`** (and would have for every admin leaf page) because nothing in that specific page component's own render path signals dynamic rendering to Next's static-analysis heuristics — even though the *layout* wrapping it reads cookies via the auth client. Static generation has no request cookie to read, so it hit `createSupabaseServiceClient()`'s missing-env-var throw and failed the whole build (not a graceful in-app degradation this time — a hard build failure, since there's no request/response to degrade for at prerender time). Fixed with `export const dynamic = "force-dynamic"` on the `(dashboard)` layout, which is also simply correct: every admin page is inherently per-request/per-cookie and was never a candidate for static caching in the first place.
 - **Verified live:** `next build` succeeds cleanly (public env vars only, matching a preview build); unauthenticated requests to `/admin` and `/admin/feedback` 307-redirect to `/admin/login` (confirmed via `curl`, not just code review); `/admin/login` itself renders without a redirect loop; the existing home → explore → export smoke spec is unaffected by `proxy.ts`'s matcher.
 - **Not verified live, and can't be in this sandbox:** the actual password-auth round trip (`supabase.auth.signInWithPassword` call from the browser to Supabase's Auth API) — the headless Chromium here has no outbound network access to *any* external host at all (confirmed directly: `page.goto()` to a bare Supabase health-check URL times out), unlike the Next.js **server** process, which does have outbound access (that's why every other live check this session — real builds, real SSG against the live DB, the chat route's server-side calls — worked). This is a sandbox limitation on the browser process specifically, not a code defect; server-side Supabase Auth calls (session refresh in `proxy.ts`/`getAdminAuthResult`) use the same client library and already work in every build/render tested. Once a real admin account exists, the owner should do one manual sign-in to confirm the round trip.
+
+## 2026-07-19 — Increment 2.6: growth groundwork
+
+- **`docs/DATASET_SCOPING.md`**: assessed four candidate complementary datasets against license,
+  PSGC geo-join fit, and update cadence — PSA population/census, DOH NHFR (facility registry), DOH
+  FHSIS (service indicators), and PhilAtlas-style reference sites. Recommended the **PSA
+  population candidate** (slug `psa-population-2020`) as dataset #2: it's the only one with a
+  confirmed open-data license and an expected-clean PSGC join (no crosswalk work anticipated,
+  unlike the boundary-vintage mismatch hit in 1.6), it's a one-time decennial load rather than an
+  ongoing sync, and "BHWs per 1,000 residents" is a genuinely requested kind of context Phase 1
+  can't currently show. NHFR and FHSIS are flagged as higher-value but blocked on confirming
+  license/access terms directly with DOH — both researched via their public sites/docs rather than
+  assumed, and both explicitly marked unconfirmed where the source material didn't settle the
+  question, rather than guessed at.
+- Also documented (not built), per §8 2.6's explicit "optional, document only": the barangay
+  PMTiles map upgrade path (deferred from 1.6/P11) and an open, versioned public API design
+  building on the existing `/api/export/csv` "researcher API" pattern from §4.4.
+- **`/roadmap`** updated: Phase 2 features (AI insights/chat, admin panel) moved from "Coming
+  next" to "Live now" now that 2.1–2.5 have shipped; "Coming next" reduced to what's actually still
+  outstanding (barangay polygons, dataset #2); the dataset-suggestion section now links to
+  `docs/DATASET_SCOPING.md` so a visitor can see the actual candidate assessment, not just a
+  feedback form.
+
+This closes out BUILD_PLAN.md Phase 2 (§8, increments 2.1–2.6). Everything AI-related degrades
+honestly to the existing Phase 1 template/non-AI experience when unconfigured or at capacity —
+verified concretely, not just by design, across every code path this phase touched (2.1's mocked-
+provider tests, 2.3/2.4/2.5's live `next build`-and-run checks that each caught a real
+service-client-throw or static-prerender bug before it could reach production).
