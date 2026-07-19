@@ -18,6 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://bhw-connect.vercel.app"),
   title: {
     default: "BHW Connect",
     template: "%s · BHW Connect",

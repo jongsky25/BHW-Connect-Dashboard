@@ -74,13 +74,29 @@ def fetch_json(url):
         return None, None
 
 
+PAGE_SIZE = 1000
+
+
 def supabase_get(rest_base, api_key, path):
-    req = urllib.request.Request(
-        f"{rest_base}/{path}",
-        headers={"apikey": api_key, "Authorization": f"Bearer {api_key}"},
-    )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+    """Paginates past the platform's hard 1,000-row-per-request cap (BUILD_PLAN.md
+    pitfall P9) — confirmed by testing that even an explicit larger `limit=` query
+    param still gets capped at 1,000 rows server-side, so a single request isn't
+    enough for dim_geo's 1,639 citymuns; this loops offset-based pages until a
+    short page signals the end."""
+    separator = "&" if "?" in path else "?"
+    results = []
+    offset = 0
+    while True:
+        req = urllib.request.Request(
+            f"{rest_base}/{path}{separator}limit={PAGE_SIZE}&offset={offset}",
+            headers={"apikey": api_key, "Authorization": f"Bearer {api_key}"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            page = json.loads(resp.read())
+        results.extend(page)
+        if len(page) < PAGE_SIZE:
+            return results
+        offset += PAGE_SIZE
 
 
 def psgc10(n):
@@ -104,6 +120,10 @@ def main():
         sys.exit(2)
     rest = f"{base_url.rstrip('/')}/rest/v1"
 
+    # supabase_get() paginates internally now (see its docstring) — this exact
+    # citymuns query (1,639 rows) previously came back truncated to 1,000 with a
+    # single request, producing a wrong "citymuns in dim_geo: 1000" count and an
+    # incomplete/misleading unmatched-features list.
     regions = supabase_get(rest, anon_key, "dim_geo?geo_level=eq.region&select=geo_code,geo_name&order=geo_code")
     provinces = supabase_get(rest, anon_key, "dim_geo?geo_level=eq.province&select=geo_code,geo_name,region_code&order=geo_code")
     citymuns = supabase_get(rest, anon_key, "dim_geo?geo_level=eq.citymun&select=geo_code,geo_name,province_code&order=geo_code")

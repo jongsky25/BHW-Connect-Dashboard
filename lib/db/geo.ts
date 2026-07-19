@@ -91,6 +91,7 @@ export async function resolveGeoOrNational(
 /**
  * Every region + province geo_code, for `generateStaticParams` on place pages
  * (BUILD_PLAN.md §7 1.5 — SSG for regions/provinces, ISR for citymun/barangay).
+ * 136 rows total — under the 1,000-row page size below, so a single page suffices.
  */
 export async function getStaticGeoParams(): Promise<{ geoLevel: GeoLevel; geoCode: string }[]> {
   const supabase = createSupabaseServerClient();
@@ -101,6 +102,44 @@ export async function getStaticGeoParams(): Promise<{ geoLevel: GeoLevel; geoCod
 
   if (error || !data) return [];
   return data.map((row) => ({ geoLevel: row.geo_level, geoCode: row.geo_code }));
+}
+
+const PAGE_SIZE = 1000;
+
+/**
+ * Every geo_code at the given levels, paginated past the platform's hard
+ * 1,000-row-per-request cap (BUILD_PLAN.md pitfall P9 — confirmed by testing
+ * that even an explicit larger `.range()` still gets capped at 1,000 rows
+ * server-side, so a single big request isn't enough; this loops pages until
+ * a short page signals the end). Used where a genuinely complete list is
+ * required (e.g. the sitemap), not for cascading UI selects, which only ever
+ * request one geo's direct children — always well under 1,000.
+ */
+export async function getAllGeosAtLevels(levels: GeoLevel[]): Promise<GeoOption[]> {
+  const supabase = createSupabaseServerClient();
+  const results: GeoOption[] = [];
+
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("dim_geo")
+      .select("geo_code, geo_level, geo_name, income_class")
+      .in("geo_level", levels)
+      .order("geo_code", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error || !data) break;
+    results.push(
+      ...data.map((row) => ({
+        geoCode: row.geo_code,
+        geoLevel: row.geo_level,
+        geoName: row.geo_name,
+        incomeClass: row.income_class,
+      })),
+    );
+    if (data.length < PAGE_SIZE) break;
+  }
+
+  return results;
 }
 
 export type GeoAncestors = {

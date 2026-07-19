@@ -18,3 +18,28 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+
+  playwright-smoke:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+        env:
+          # Public by design (anon key, RLS-scoped to agg_*/dim_* read + feedback/usage_events
+          # insert-only per 0.3) — safe to inline rather than requiring a repo secret to be
+          # configured before this job can run at all.
+          NEXT_PUBLIC_SUPABASE_URL: https://ejcuwrnxngdwvecxwrhy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqY3V3cm54bmdkd3ZlY3h3cmh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0NTI4MTUsImV4cCI6MjEwMDAyODgxNX0.jQo2jfqauSiPMQbVWgaUiMFnk73_y0i0x_xw4mMbkAA
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

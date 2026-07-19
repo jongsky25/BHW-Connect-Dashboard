@@ -42,9 +42,16 @@ export default async function ExplorePage({
   const geo = await resolveGeoOrNational(filters.geoCode, filters.geoLevel);
   const breakdowns = filters.breakdowns ?? DEFAULT_BREAKDOWNS;
 
-  const [ancestors, regions, counts, demographicsByDimension, training, honorarium] =
+  // Only `ancestors` gates the second batch below (province/citymun/barangay
+  // option lists need its resolved codes) — awaiting it alone first, then
+  // running every independent query concurrently, cuts one full sequential
+  // round-trip out of the page's server-rendering waterfall versus awaiting
+  // all of batch one (including the slower demographics/training queries)
+  // before batch two's three queries could even start.
+  const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
+
+  const [regions, counts, demographicsByDimension, training, honorarium, provinces, citymuns, barangays] =
     await Promise.all([
-      getGeoAncestors(geo.geoCode, geo.geoLevel),
       getChildGeos(NATIONAL_GEO_CODE, "national"),
       getBhwCounts(geo.geoCode, geo.geoLevel),
       Promise.all(
@@ -55,13 +62,10 @@ export default async function ExplorePage({
       ),
       getTrainingCoverage(geo.geoCode, geo.geoLevel),
       getHonorarium(geo.geoCode, geo.geoLevel),
+      ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
+      ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
+      ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
     ]);
-
-  const [provinces, citymuns, barangays] = await Promise.all([
-    ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
-    ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
-    ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
-  ]);
 
   const breadcrumbSteps: BreadcrumbStep[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
