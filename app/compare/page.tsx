@@ -2,6 +2,7 @@ import { loadFilterState } from "@/lib/filters/codec";
 import { DEFAULT_BREAKDOWNS } from "@/lib/filters/schema";
 import { getGeoByCode } from "@/lib/db/geo";
 import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } from "@/lib/db/indicators";
+import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { AddGeoSearch } from "@/components/compare/add-geo-search";
 import { IndicatorPicker } from "@/components/compare/indicator-picker";
 import { CompareColumn, type CompareColumnData } from "@/components/compare/compare-column";
@@ -40,7 +41,8 @@ export default async function ComparePage({
   if (canCompare) {
     columns = await Promise.all(
       valid.map(async (geo) => {
-        const [counts, demographics, training, honorarium] = await Promise.all([
+        const [overview, counts, demographics, training, honorarium] = await Promise.all([
+          getBhwOverview(geo.geoCode, geo.geoLevel),
           getBhwCounts(geo.geoCode, geo.geoLevel),
           Promise.all(
             DEFAULT_BREAKDOWNS.map(async (dimension) => ({
@@ -56,6 +58,9 @@ export default async function ComparePage({
           geoName: geo.geoName,
           geoLevel: geo.geoLevel,
           counts,
+          totalBhw: overview.totalBhw,
+          validatedProfiles: overview.validatedProfiles,
+          coveragePct: coverageForDisplay(overview),
           demographics,
           training,
           honorarium,

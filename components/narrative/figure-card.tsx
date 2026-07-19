@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 export type FigureCardProps = {
   /** Figure title, e.g. "Accreditation status". */
   title: string;
-  /** WPSAR-style Person/Place/Time line, e.g. "N = 270,917 BHWs · Philippines · 2025 snapshot". */
+  /** WPSAR-style Person/Place/Time line, e.g. "N = 270,917 validated profiles · Philippines · 2025 snapshot". */
   caption: string;
-  /** One-sentence plain-language takeaway, e.g. "About 7 in 10 BHWs here are accredited." */
+  /** One-sentence plain-language takeaway, e.g. "About 7 in 10 profiled BHWs here are accredited." */
   headline: string;
   /** The chart, table, or other figure content. */
   children: ReactNode;

@@ -48,3 +48,33 @@ export async function getActiveDatasetId(): Promise<number | null> {
   const dataset = await getActiveDataset();
   return dataset?.datasetId ?? null;
 }
+
+/** Canonical dataset slugs. The per-person "validated profile" dataset drives
+ * every individual-level figure; the StepZero quick-count is the aggregate
+ * BHW universe used only as the total/denominator. */
+export const DATASET_SLUGS = {
+  profiled: "bhw-2025",
+  stepzero: "bhw-stepzero-2026",
+} as const;
+
+/**
+ * Resolve a dataset_id by slug regardless of `status`. Used to reach the
+ * StepZero companion dataset (`bhw-stepzero-2026`), which is intentionally not
+ * `status = 'active'` so `getActiveDatasetId()` keeps returning only the
+ * per-person `bhw-2025` dataset. Returns null on any read failure.
+ */
+export async function getDatasetIdBySlug(slug: string): Promise<number | null> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("dim_dataset")
+      .select("dataset_id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return data.dataset_id;
+  } catch {
+    return null;
+  }
+}

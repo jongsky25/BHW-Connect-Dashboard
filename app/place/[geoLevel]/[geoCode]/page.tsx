@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } from "@/lib/db/indicators";
+import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
 import { DEFAULT_BREAKDOWNS, GEO_LEVELS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { FigureCard } from "@/components/narrative/figure-card";
@@ -39,11 +40,17 @@ export async function generateMetadata({
   const geo = await loadPlace(await params);
   if (!geo) return { title: "Place not found" };
 
-  const counts = await getBhwCounts(geo.geoCode, geo.geoLevel);
+  const [overview, counts] = await Promise.all([
+    getBhwOverview(geo.geoCode, geo.geoLevel),
+    getBhwCounts(geo.geoCode, geo.geoLevel),
+  ]);
+  const headlineTotal = overview.totalBhw ?? counts?.nTotal ?? null;
   const description =
-    counts?.nTotal !== null && counts?.nTotal !== undefined
-      ? `${counts.nTotal.toLocaleString()} Barangay Health Workers on record in ${geo.geoName}${
-          counts.pctAccredited !== null ? `, ${counts.pctAccredited}% accredited` : ""
+    headlineTotal !== null
+      ? `${headlineTotal.toLocaleString()} Barangay Health Workers in ${geo.geoName}${
+          counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
+            ? `, ${counts.pctAccredited}% of profiled BHWs accredited`
+            : ""
         }.`
       : `Barangay Health Worker figures for ${geo.geoName}.`;
 
@@ -58,8 +65,9 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   const geo = await loadPlace(await params);
   if (!geo) notFound();
 
-  const [ancestors, counts, demographicsByDimension, training, honorarium] = await Promise.all([
+  const [ancestors, overview, counts, demographicsByDimension, training, honorarium] = await Promise.all([
     getGeoAncestors(geo.geoCode, geo.geoLevel),
+    getBhwOverview(geo.geoCode, geo.geoLevel),
     getBhwCounts(geo.geoCode, geo.geoLevel),
     Promise.all(
       DEFAULT_BREAKDOWNS.map(async (dimension) => ({
@@ -80,7 +88,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
       : []),
   ];
 
-  const caption = `N = ${counts?.nTotal?.toLocaleString() ?? "—"} BHWs · ${geo.geoName} · 2025 snapshot`;
+  const caption = `N = ${overview.validatedProfiles?.toLocaleString() ?? "—"} validated profiles · ${geo.geoName} · 2025 snapshot`;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
@@ -88,7 +96,9 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         geoName={geo.geoName}
         geoLevel={geo.geoLevel}
         ancestors={breadcrumbAncestors}
-        nTotal={counts?.nTotal ?? null}
+        totalBhw={overview.totalBhw}
+        validatedProfiles={overview.validatedProfiles}
+        coveragePct={coverageForDisplay(overview)}
         incomeClass={geo.incomeClass}
       />
 
@@ -114,13 +124,13 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           exportMenu={<ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />}
           headline={
             counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-              ? `About ${Math.round(counts.pctAccredited)}% of BHWs here are accredited.`
+              ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
               : "No accreditation data available."
           }
           technicalDetails={
             <p>
-              {counts?.nAccredited?.toLocaleString() ?? "—"} of {counts?.nTotal?.toLocaleString() ?? "—"} BHWs
-              are accredited ({counts?.pctAccredited ?? "—"}%).
+              {counts?.nAccredited?.toLocaleString() ?? "—"} of {counts?.nTotal?.toLocaleString() ?? "—"} validated
+              profiles are accredited ({counts?.pctAccredited ?? "—"}%).
             </p>
           }
         >

@@ -110,6 +110,12 @@ agg_honorarium       + payer_level, n_receiving, pct_receiving, avg_monthly_amou
 agg_geo_summary      one denormalized profile row per geo_code (name, level, parents, n_total,
                        pct_accredited, top_training_gap, any_honorarium_pct, search_text tsvector)
 agg_data_completeness + field_name, n_missing, pct_missing
+agg_bhw_stepzero_counts  the BHW *universe* / denominator (dataset `bhw-stepzero-2026`): DOH
+                       barangay quick-count rolled to all 5 levels — n_registered,
+                       n_registered_accredited, n_non_registered, n_total_bhw,
+                       pct_registered_accredited, population, households. Total BHWs come from
+                       here; `agg_bhw_counts` (from `fact_bhw_raw`) is the individually-profiled
+                       *subset*. Read via `lib/db/stepzero.ts` (`getBhwOverview`).
 feedback           id PK, created_at, page_path, category ENUM(bug|data_question|suggestion|other),
                    message TEXT (length-capped), email TEXT NULL (optional, consented), session_id UUID
 usage_events       id PK, created_at, session_id UUID (client-random), event_type, page_path,
@@ -279,6 +285,11 @@ All export routes: stateless, bounded to single-figure/bounded-series output, ra
 - **Verify:** §10 checklist fully green; production URL live at `bhw-connect.vercel.app`.
 
 ---
+
+### 1.11 Total vs. validated profiles (StepZero integration)
+- Surface the two-dataset relationship: the StepZero quick-count (`agg_bhw_stepzero_counts`, dataset `bhw-stepzero-2026`) is the **total BHW universe** (306,835 nationally); the per-person dataset (`agg_bhw_counts`, `bhw-2025`) is the **validated profiled subset** (270,917). Load StepZero into the live project; add `lib/db/stepzero.ts` (`getBhwOverview` = single chokepoint returning total, validated profiles, and guarded profiling coverage against the *registered* universe 278,240 only — non-registered excluded). Reframe home/place/explore/compare so "Total BHWs" is the universe and per-person figures are captioned "validated profiles"; document both sources + the official DOH figure (277,767) in `/methodology` and glossary.
+- **Verify:** national home shows Total BHWs 306,835 and Validated profiles 270,917 (≈97%); a region page shows both with a sane coverage %; a drift geo caps coverage at 100%; a geo with no StepZero row falls back to validated-profiles-only; lint/typecheck/tests green.
+- **Guardrails:** `bhw-2025` stays the sole `status='active'` dataset (StepZero read by slug); never present the profiled subset as the total; keep the two "accredited" notions separate.
 
 ## 8. Phase 2 — AI, admin & growth
 

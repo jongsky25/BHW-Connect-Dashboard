@@ -42,4 +42,34 @@ export const GLOSSARY = {
     definition:
       "Highly Urbanized City — a city that is administratively independent of the province it's geographically part of.",
   },
+  total_bhw: {
+    term: "Total BHWs",
+    definition:
+      "The full count of Barangay Health Workers in an area, from the DOH StepZero quick-count: registered, registered & accredited, and non-registered BHWs combined. This is the universe against which the individually-profiled subset is measured.",
+  },
+  validated_profile: {
+    term: "Validated profile",
+    definition:
+      "A Barangay Health Worker who has been individually profiled and validated — one anonymized person-level record in the detailed dataset. Every per-person figure on this site (accreditation, demographics, training, honorarium, service years) is computed from these validated profiles, not from the quick-count total.",
+  },
+  profiling_coverage: {
+    term: "Profiling coverage",
+    definition:
+      "The share of registered BHWs who have a validated individual profile — validated profiles divided by the registered universe (registered + registered & accredited). Non-registered BHWs are excluded from this ratio because they are not individually profiled.",
+  },
+  registered_bhw: {
+    term: "Registered BHW",
+    definition:
+      "A Barangay Health Worker recorded as registered with the DOH, whether or not they are also accredited. In the StepZero quick-count this covers the 'registered' and 'registered & accredited' buckets.",
+  },
+  non_registered_bhw: {
+    term: "Non-registered BHW",
+    definition:
+      "A Barangay Health Worker counted in the StepZero quick-count who is not recorded as registered with the DOH. Non-registered BHWs are part of the total headcount but are not individually profiled.",
+  },
+  stepzero: {
+    term: "StepZero quick-count",
+    definition:
+      "A DOH barangay-level aggregate headcount of Barangay Health Workers (registered, accredited, and non-registered) with population and household context. It provides the total BHW universe; it is a coarser, self-reported tally distinct from the individually-validated per-person dataset.",
+  },
 } as const;

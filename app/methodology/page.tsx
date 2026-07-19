@@ -38,6 +38,51 @@ export default async function MethodologyPage() {
       </section>
 
       <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">Two data sources: total vs. validated profiles</h2>
+        <p>
+          BHW Connect draws on two complementary datasets that measure different things:
+        </p>
+        <ul className="list-inside list-disc">
+          <li>
+            The <GlossaryTerm slug="stepzero">StepZero quick-count</GlossaryTerm> — a DOH
+            barangay-level aggregate headcount — gives the{" "}
+            <GlossaryTerm slug="total_bhw">total number of BHWs</GlossaryTerm>: about{" "}
+            <strong>306,835</strong> nationally, split into{" "}
+            <GlossaryTerm slug="registered_bhw">registered</GlossaryTerm> and registered &amp;
+            accredited BHWs (<strong>278,240</strong> together) plus{" "}
+            <GlossaryTerm slug="non_registered_bhw">non-registered</GlossaryTerm> BHWs
+            (<strong>28,595</strong>). It also carries population and household context per barangay.
+          </li>
+          <li>
+            The detailed per-person dataset holds{" "}
+            <GlossaryTerm slug="validated_profile">validated profiles</GlossaryTerm> — about{" "}
+            <strong>270,917</strong> individually profiled, anonymized BHW records. Every per-person
+            figure on this site (accreditation, demographics, training, honorarium, service years) is
+            computed from these validated profiles.
+          </li>
+        </ul>
+        <p>
+          <GlossaryTerm slug="profiling_coverage">Profiling coverage</GlossaryTerm> is the share of
+          registered BHWs with a validated profile — nationally about{" "}
+          <strong>97%</strong> (270,917 of 278,240). Non-registered BHWs are excluded from this
+          ratio because they are not individually profiled, though they are still counted in the
+          total.
+        </p>
+        <p className="text-sm text-muted">
+          Note on the official figure: DOH cites approximately <strong>277,767</strong> registered
+          &amp; accredited BHWs. The StepZero sheet used here sums to 278,240 registered BHWs — a
+          difference of a few hundred that reflects ordinary drift between an official tally and this
+          sheet export. The site computes its totals from the sheet.
+        </p>
+        <p className="text-sm text-muted">
+          Two different notions of &quot;accredited&quot; exist and are not mixed: the StepZero
+          count is a self-reported barangay tally, while the per-person{" "}
+          <GlossaryTerm slug="accredited">accreditation</GlossaryTerm> figures come from each
+          BHW&apos;s verified accreditation flag in the profiled dataset.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Geography</h2>
         <p>
           Places are identified by their <GlossaryTerm slug="psgc">PSGC</GlossaryTerm> code, padded
@@ -55,9 +100,10 @@ export default async function MethodologyPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Denominators</h2>
         <p>
-          Unless stated otherwise, a percentage&apos;s denominator is the total BHW count for the
-          selected place and (for demographic breakdowns) the selected characteristic. Every figure
-          shows its exact N in the &quot;Technical details&quot; disclosure.
+          Unless stated otherwise, a per-person percentage&apos;s denominator is the number of{" "}
+          <GlossaryTerm slug="validated_profile">validated profiles</GlossaryTerm> for the selected
+          place and (for demographic breakdowns) the selected characteristic — not the total BHW
+          headcount. Every figure shows its exact N in the &quot;Technical details&quot; disclosure.
         </p>
       </section>
 
