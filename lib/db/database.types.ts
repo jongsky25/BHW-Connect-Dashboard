@@ -727,6 +727,7 @@ export type Database = {
           message: string;
           page_path: string;
           session_id: string;
+          status: Database["public"]["Enums"]["feedback_status_enum"];
         };
         Insert: {
           category: Database["public"]["Enums"]["feedback_category_enum"];
@@ -736,6 +737,7 @@ export type Database = {
           message: string;
           page_path: string;
           session_id: string;
+          status?: Database["public"]["Enums"]["feedback_status_enum"];
         };
         Update: {
           category?: Database["public"]["Enums"]["feedback_category_enum"];
@@ -745,6 +747,7 @@ export type Database = {
           message?: string;
           page_path?: string;
           session_id?: string;
+          status?: Database["public"]["Enums"]["feedback_status_enum"];
         };
         Relationships: [];
       };
@@ -840,6 +843,7 @@ export type Database = {
         | "education"
         | "ip_status";
       feedback_category_enum: "bug" | "data_question" | "suggestion" | "other";
+      feedback_status_enum: "open" | "resolved" | "dismissed";
       geo_level_enum: "national" | "region" | "province" | "citymun" | "barangay";
       honorarium_frequency_enum: "monthly" | "quarterly" | "semi_annual" | "annual" | "other";
       payer_level_enum: "region" | "province" | "citymun" | "barangay";
