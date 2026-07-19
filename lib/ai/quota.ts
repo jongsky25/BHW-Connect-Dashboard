@@ -89,15 +89,28 @@ async function getOrInitWindow(
 
 export type QuotaCheckResult =
   | { available: true }
-  | { available: false; reason: "paused" | "capped_minute" | "capped_day" };
+  | { available: false; reason: "paused" | "capped_minute" | "capped_day" | "unavailable" };
 
-/** Check-before-call, per provider — never attempt a request the provider is already known to be over quota for. */
+/**
+ * Check-before-call, per provider — never attempt a request the provider is already known to be
+ * over quota for. Treats a failure to even read quota state (e.g. `SUPABASE_SERVICE_ROLE_KEY`
+ * unconfigured) as unavailable rather than letting it throw — every provider shares the same
+ * service client, so this failure mode is identical across the whole cascade and correctly
+ * collapses to `completeWithCascade`'s `allCapped` signal instead of crashing the caller (see
+ * docs/DECISIONS.md 2.4, caught via an actual local run of the chat route).
+ */
 export async function checkQuota(provider: ProviderId, now: Date = new Date()): Promise<QuotaCheckResult> {
-  const supabase = createSupabaseServiceClient();
-  const [minuteRow, dayRow] = await Promise.all([
-    getOrInitWindow(supabase, provider, "minute", now),
-    getOrInitWindow(supabase, provider, "day", now),
-  ]);
+  let minuteRow: QuotaRow;
+  let dayRow: QuotaRow;
+  try {
+    const supabase = createSupabaseServiceClient();
+    [minuteRow, dayRow] = await Promise.all([
+      getOrInitWindow(supabase, provider, "minute", now),
+      getOrInitWindow(supabase, provider, "day", now),
+    ]);
+  } catch {
+    return { available: false, reason: "unavailable" };
+  }
 
   if (dayRow.is_paused && dayRow.paused_until && new Date(dayRow.paused_until) > now) {
     return { available: false, reason: "paused" };

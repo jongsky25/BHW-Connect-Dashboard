@@ -121,6 +121,14 @@ describe("checkQuota", () => {
     expect(result).toEqual({ available: false, reason: "capped_minute" });
   });
 
+  it("reports unavailable rather than throwing when the service client itself is unconfigured", async () => {
+    createSupabaseServiceClient.mockImplementationOnce(() => {
+      throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
+    });
+    const result = await checkQuota("gemini");
+    expect(result).toEqual({ available: false, reason: "unavailable" });
+  });
+
   it("reports paused while paused_until is in the future", async () => {
     const now = new Date("2026-07-19T10:00:30Z");
     fakeSupabase.current = createFakeSupabase([
@@ -203,6 +211,15 @@ describe("completeWithCascade", () => {
     const geminiDayRow = fakeSupabase.current!.rows.find((r) => r.provider === "gemini" && r.window_type === "day");
     expect(geminiDayRow?.is_paused).toBe(true);
     expect(geminiDayRow?.paused_until).toBeTruthy();
+  });
+
+  it("returns allCapped (not a throw) when the service client itself is unconfigured for the whole run", async () => {
+    createSupabaseServiceClient.mockImplementation(() => {
+      throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
+    });
+    getProvider.mockImplementation(() => ({ id: "unused", async complete() { return { content: "unreachable", toolCalls: [] }; } }));
+
+    await expect(completeWithCascade([], [])).resolves.toEqual({ allCapped: true, provider: null });
   });
 
   it("returns allCapped when every provider fails or is unconfigured", async () => {

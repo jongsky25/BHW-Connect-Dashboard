@@ -4,6 +4,7 @@ import { getSpotlightInsight } from "@/lib/db/spotlight";
 import { GeoSearch } from "@/components/home/geo-search";
 import { StatTile } from "@/components/home/stat-tile";
 import { AiInsight } from "@/components/narrative/ai-insight";
+import { ChatLauncher } from "@/components/chat/chat-launcher";
 
 function formatCount(n: number | null) {
   return n === null ? "—" : n.toLocaleString();
@@ -88,6 +89,8 @@ export default async function Home() {
           <p className="mt-1 text-xs text-muted">{spotlight.caption}</p>
         </section>
       )}
+
+      <ChatLauncher geoCode="PH" geoLevel="national" geoName="Philippines" />
     </div>
   );
 }
