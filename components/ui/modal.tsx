@@ -35,9 +35,9 @@ export function Modal({
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
-      className="w-[92vw] max-w-5xl rounded-lg border border-border bg-background p-0 shadow-xl backdrop:bg-foreground/40"
+      className="fixed inset-0 m-auto flex h-[92vh] w-[96vw] max-w-6xl flex-col rounded-lg border border-border bg-background p-0 shadow-xl backdrop:bg-foreground/40"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
         <button
           type="button"
@@ -48,7 +48,7 @@ export function Modal({
           ✕
         </button>
       </div>
-      <div className="max-h-[85vh] overflow-y-auto p-4 sm:p-5">{children}</div>
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5">{children}</div>
     </dialog>
   );
 }
