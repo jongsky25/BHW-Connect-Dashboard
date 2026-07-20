@@ -233,6 +233,12 @@ export type HonorariumRow = {
   pctReceiving: number | null;
   avgMonthlyAmount: number | null;
   modalFrequency: string | null;
+  minAmount: number | null;
+  p25Amount: number | null;
+  medianAmount: number | null;
+  p75Amount: number | null;
+  maxAmount: number | null;
+  isSuppressed: boolean;
 };
 
 /** Honorarium receipt broken down by which administrative level pays it. */
@@ -243,7 +249,9 @@ export async function getHonorarium(geoCode: string, geoLevel: GeoLevel): Promis
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_honorarium")
-    .select("payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency")
+    .select(
+      "payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency, min_amount, p25_amount, median_amount, p75_amount, max_amount, is_suppressed",
+    )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
     .eq("geo_level", geoLevel);
@@ -256,6 +264,12 @@ export async function getHonorarium(geoCode: string, geoLevel: GeoLevel): Promis
     pctReceiving: row.pct_receiving,
     avgMonthlyAmount: row.avg_monthly_amount,
     modalFrequency: row.modal_frequency,
+    minAmount: row.min_amount,
+    p25Amount: row.p25_amount,
+    medianAmount: row.median_amount,
+    p75Amount: row.p75_amount,
+    maxAmount: row.max_amount,
+    isSuppressed: row.is_suppressed,
   }));
 }
 

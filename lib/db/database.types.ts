@@ -1,15 +1,26 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5";
   };
   public: {
     Tables: {
       admin_users: {
-        Row: { role: Database["public"]["Enums"]["admin_role_enum"]; user_id: string };
-        Insert: { role: Database["public"]["Enums"]["admin_role_enum"]; user_id: string };
-        Update: { role?: Database["public"]["Enums"]["admin_role_enum"]; user_id?: string };
+        Row: {
+          role: Database["public"]["Enums"]["admin_role_enum"];
+          user_id: string;
+        };
+        Insert: {
+          role: Database["public"]["Enums"]["admin_role_enum"];
+          user_id: string;
+        };
+        Update: {
+          role?: Database["public"]["Enums"]["admin_role_enum"];
+          user_id?: string;
+        };
         Relationships: [];
       };
       agg_bhw_counts: {
@@ -322,8 +333,14 @@ export type Database = {
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
           id: number;
+          is_suppressed: boolean;
+          max_amount: number | null;
+          median_amount: number | null;
+          min_amount: number | null;
           modal_frequency: Database["public"]["Enums"]["honorarium_frequency_enum"] | null;
           n_receiving: number | null;
+          p25_amount: number | null;
+          p75_amount: number | null;
           payer_level: Database["public"]["Enums"]["payer_level_enum"];
           pct_receiving: number | null;
         };
@@ -333,8 +350,14 @@ export type Database = {
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
           id?: never;
+          is_suppressed?: boolean;
+          max_amount?: number | null;
+          median_amount?: number | null;
+          min_amount?: number | null;
           modal_frequency?: Database["public"]["Enums"]["honorarium_frequency_enum"] | null;
           n_receiving?: number | null;
+          p25_amount?: number | null;
+          p75_amount?: number | null;
           payer_level: Database["public"]["Enums"]["payer_level_enum"];
           pct_receiving?: number | null;
         };
@@ -344,8 +367,14 @@ export type Database = {
           geo_code?: string;
           geo_level?: Database["public"]["Enums"]["geo_level_enum"];
           id?: never;
+          is_suppressed?: boolean;
+          max_amount?: number | null;
+          median_amount?: number | null;
+          min_amount?: number | null;
           modal_frequency?: Database["public"]["Enums"]["honorarium_frequency_enum"] | null;
           n_receiving?: number | null;
+          p25_amount?: number | null;
+          p75_amount?: number | null;
           payer_level?: Database["public"]["Enums"]["payer_level_enum"];
           pct_receiving?: number | null;
         };
@@ -481,9 +510,24 @@ export type Database = {
         Relationships: [];
       };
       changelog_entries: {
-        Row: { body_md: string; id: number; published_at: string; title: string };
-        Insert: { body_md: string; id?: never; published_at?: string; title: string };
-        Update: { body_md?: string; id?: never; published_at?: string; title?: string };
+        Row: {
+          body_md: string;
+          id: number;
+          published_at: string;
+          title: string;
+        };
+        Insert: {
+          body_md: string;
+          id?: never;
+          published_at?: string;
+          title: string;
+        };
+        Update: {
+          body_md?: string;
+          id?: never;
+          published_at?: string;
+          title?: string;
+        };
         Relationships: [];
       };
       dim_dataset: {
@@ -820,7 +864,9 @@ export type Database = {
         ];
       };
     };
-    Views: { [_ in never]: never };
+    Views: {
+      [_ in never]: never;
+    };
     Functions: {
       search_geo: {
         Args: { result_limit?: number; search_query: string };
@@ -849,6 +895,145 @@ export type Database = {
       payer_level_enum: "region" | "province" | "citymun" | "barangay";
       quota_window_enum: "minute" | "day" | "month";
     };
-    CompositeTypes: { [_ in never]: never };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
 };
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
+
+export const Constants = {
+  public: {
+    Enums: {
+      admin_role_enum: ["admin", "editor"],
+      demographic_dimension_enum: [
+        "sex",
+        "age_band",
+        "civil_status",
+        "bloodtype",
+        "education",
+        "ip_status",
+      ],
+      feedback_category_enum: ["bug", "data_question", "suggestion", "other"],
+      feedback_status_enum: ["open", "resolved", "dismissed"],
+      geo_level_enum: ["national", "region", "province", "citymun", "barangay"],
+      honorarium_frequency_enum: ["monthly", "quarterly", "semi_annual", "annual", "other"],
+      payer_level_enum: ["region", "province", "citymun", "barangay"],
+      quota_window_enum: ["minute", "day", "month"],
+    },
+  },
+} as const;

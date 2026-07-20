@@ -4,11 +4,17 @@
 -- ('PH' in dim_geo), from the already-ingested fact_bhw_raw/fact_honorarium tables.
 -- Idempotent: safe to re-run (each section deletes its own dataset_id's rows first).
 --
--- Suppression (agg_demographics only, per the privacy model in BUILD_PLAN.md §4.1):
--- any (geo_code, geo_level='barangay', dimension, category) cell with 0 < n < 5 is nulled
--- (n and pct set to NULL), is_suppressed set true, and rollup_geo_code/rollup_geo_level
--- point to the nearest ancestor (citymun -> province -> region -> national) whose same-cell
--- n >= 5. n = 0 is left visible (a true zero reveals nothing about any individual).
+-- Suppression (per the privacy model in BUILD_PLAN.md §4.1):
+-- agg_demographics: any (geo_code, geo_level='barangay', dimension, category) cell with
+-- 0 < n < 5 is nulled (n and pct set to NULL), is_suppressed set true, and
+-- rollup_geo_code/rollup_geo_level point to the nearest ancestor (citymun -> province ->
+-- region -> national) whose same-cell n >= 5. n = 0 is left visible (a true zero reveals
+-- nothing about any individual).
+-- agg_honorarium: distribution columns (min/p25/median/p75/max_amount) are nulled and
+-- is_suppressed set true for any (geo_code, geo_level, payer_level) cell with
+-- 0 < n_receiving < 5 — a literal min/max at that n can reveal an individual's amount.
+-- No rollup here (unlike agg_demographics): n_receiving/pct_receiving/avg_monthly_amount
+-- stay visible since an average of <5 values is far less disclosive.
 --
 -- Disk budget (Supabase free tier, 500 MB): agg_training is built at national/region/
 -- province/citymun only, not barangay (see §6 below) - the barangay x topic cross-product
@@ -310,18 +316,32 @@ cross join lateral (values
   ('national'::geo_level_enum, 'PH')
 ) as lvl(geo_level, geo_code);
 
-insert into agg_honorarium (dataset_id, geo_code, geo_level, payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency)
+insert into agg_honorarium (dataset_id, geo_code, geo_level, payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency, min_amount, p25_amount, median_amount, p75_amount, max_amount)
 select
   (select dataset_id from dim_dataset where slug = 'bhw-2025'),
   hb.geo_code, hb.geo_level, hb.payer_level,
   count(*),
   round(100.0 * count(*) / nullif(c.n_total, 0), 2),
   round(avg(hb.normalized_monthly_amount), 2),
-  mode() within group (order by hb.frequency)
+  mode() within group (order by hb.frequency),
+  round(min(hb.normalized_monthly_amount), 2),
+  round((percentile_cont(0.25) within group (order by hb.normalized_monthly_amount))::numeric, 2),
+  round((percentile_cont(0.5) within group (order by hb.normalized_monthly_amount))::numeric, 2),
+  round((percentile_cont(0.75) within group (order by hb.normalized_monthly_amount))::numeric, 2),
+  round(max(hb.normalized_monthly_amount), 2)
 from _agg_honorarium_base hb
 join agg_bhw_counts c on c.geo_code = hb.geo_code and c.geo_level = hb.geo_level
   and c.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
 group by hb.geo_code, hb.geo_level, hb.payer_level, c.n_total;
+
+-- Suppress the distribution columns (not n_receiving/pct_receiving/avg_monthly_amount)
+-- for small-n cells, per the n<5 privacy convention (see §4 above) — with 1-4
+-- recipients, a literal min/median/max can reveal an individual's amount.
+update agg_honorarium
+set is_suppressed = true, min_amount = null, p25_amount = null,
+    median_amount = null, p75_amount = null, max_amount = null
+where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+  and n_receiving > 0 and n_receiving < 5;
 
 -- 8. agg_geo_summary
 -- top_training_gap is NULL for barangay-level rows (agg_training doesn't cover that level - see §6).

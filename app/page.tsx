@@ -12,6 +12,7 @@ import { InsightsGrid } from "@/components/home/insights-grid";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
+import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
 import { AiInsight } from "@/components/narrative/ai-insight";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
@@ -210,6 +211,7 @@ export default async function Home() {
         <CertificationFigure rows={certification} caption={profiledCaption} />
         <HonorariumFigure rows={honorarium} caption={profiledCaption} />
         <HonorariumAmountFigure rows={honorarium} caption={profiledCaption} />
+        <HonorariumDistributionFigure rows={honorarium} caption={profiledCaption} />
       </section>
 
       <InsightsGrid insights={insights} />
