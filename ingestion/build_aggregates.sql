@@ -364,20 +364,43 @@ left join dim_geo reg on reg.geo_code = dg.region_code and reg.geo_level = 'regi
 left join dim_geo prov on prov.geo_code = dg.province_code and prov.geo_level = 'province'
 left join dim_geo cm on cm.geo_code = dg.citymun_code and cm.geo_level = 'citymun';
 
--- 9. agg_data_completeness (dataset-wide, over the demographic fields expected on every row).
-insert into agg_data_completeness (dataset_id, field_name, n_missing, pct_missing)
-select (select dataset_id from dim_dataset where slug = 'bhw-2025'), col, n_missing,
-  round(100.0 * n_missing / (select count(*) from fact_bhw_raw), 2)
-from (
-  select 'sex' as col, count(*) filter (where sex is null) as n_missing from fact_bhw_raw
-  union all select 'civil_status', count(*) filter (where civil_status is null) from fact_bhw_raw
-  union all select 'age', count(*) filter (where age is null) from fact_bhw_raw
-  union all select 'bloodtype', count(*) filter (where bloodtype is null) from fact_bhw_raw
-  union all select 'educational_attainment', count(*) filter (where educational_attainment is null) from fact_bhw_raw
-  union all select 'ip_status', count(*) filter (where ip_status is null) from fact_bhw_raw
-  union all select 'household', count(*) filter (where household is null) from fact_bhw_raw
-  union all select 'active_years', count(*) filter (where active_years is null) from fact_bhw_raw
-) x;
+-- 9. agg_data_completeness (per-geo, over the demographic fields expected on every row).
+-- Built at national/region/province/citymun; barangay is omitted for the same disk-budget
+-- reason as agg_training (see the preamble) — barangay place pages point at their
+-- citymun's figures instead. The national rows equal the old dataset-wide figures
+-- (every fact_bhw_raw row joins to a barangay in dim_geo).
+insert into agg_data_completeness (dataset_id, geo_level, geo_code, field_name, n_missing, pct_missing)
+with fanned as (
+  select
+    f.sex, f.civil_status, f.age, f.bloodtype, f.educational_attainment, f.ip_status,
+    f.household, f.active_years,
+    lvl.geo_level, lvl.geo_code
+  from fact_bhw_raw f
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  cross join lateral (values
+    ('citymun'::geo_level_enum, dg.citymun_code),
+    ('province'::geo_level_enum, dg.province_code),
+    ('region'::geo_level_enum, dg.region_code),
+    ('national'::geo_level_enum, 'PH')
+  ) as lvl(geo_level, geo_code)
+)
+select
+  (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  f.geo_level, f.geo_code, fld.field_name,
+  count(*) filter (where fld.is_missing),
+  round(100.0 * count(*) filter (where fld.is_missing) / nullif(count(*), 0), 2)
+from fanned f
+cross join lateral (values
+  ('sex', f.sex is null),
+  ('civil_status', f.civil_status is null),
+  ('age', f.age is null),
+  ('bloodtype', f.bloodtype is null),
+  ('educational_attainment', f.educational_attainment is null),
+  ('ip_status', f.ip_status is null),
+  ('household', f.household is null),
+  ('active_years', f.active_years is null)
+) as fld(field_name, is_missing)
+group by f.geo_level, f.geo_code, fld.field_name;
 
 -- 10. Cleanup working tables.
 drop table if exists _agg_base;

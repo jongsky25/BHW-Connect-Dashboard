@@ -180,6 +180,8 @@ export type Database = {
         Row: {
           dataset_id: number;
           field_name: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
           id: number;
           n_missing: number | null;
           pct_missing: number | null;
@@ -187,6 +189,8 @@ export type Database = {
         Insert: {
           dataset_id: number;
           field_name: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
           id?: never;
           n_missing?: number | null;
           pct_missing?: number | null;
@@ -194,6 +198,8 @@ export type Database = {
         Update: {
           dataset_id?: number;
           field_name?: string;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
           id?: never;
           n_missing?: number | null;
           pct_missing?: number | null;

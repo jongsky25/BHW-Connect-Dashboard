@@ -443,3 +443,29 @@ geo level) is exactly the needed denominator. No schema, migration, or ingestion
   alongside the helper (replacing the deleted `bhwPer1000ResidentsFor` tests); lint, typecheck, and
   the full test suite pass. Same sandbox caveat as yesterday's entry: `next build` can't complete
   live SSG here without `.env.local` Supabase credentials.
+
+## 2026-07-20 — Data completeness made per-geo and surfaced on place pages
+
+`agg_data_completeness` was dataset-wide (one row per field), so a place page could only have
+shown a national figure dressed up as local. Made it per-geo instead — and the data proves the
+point: `active_years` is 0.01% missing nationally, but all 20 missing rows sit in Batad, Iloilo,
+where they are 23% of local profiles.
+
+- **Schema** (`20260720140000_agg_data_completeness_per_geo.sql`, applied to the live DB):
+  added `geo_level`/`geo_code` to `agg_data_completeness`, unique key now
+  `(dataset_id, geo_level, geo_code, field_name)`, plus a `(geo_code, geo_level)` index.
+- **Aggregation** (`build_aggregates.sql` §9): rebuilt with the same barangay→ancestor lateral
+  fan-out the other aggregates use, at national/region/province/citymun. **Barangay level is
+  deliberately omitted** — the same disk-budget cut as `agg_training` (the DB already sits at
+  ~529 MB against the free tier's 500 MB); it would have added ~314k of the ~328k rows for the
+  least-read pages. Live table rebuilt: 14,208 rows. National rows equal the old dataset-wide
+  figures exactly (every `fact_bhw_raw` row joins to a barangay in `dim_geo`).
+- **`lib/db/data-quality.ts`**: `getDataCompleteness(geoCode?, geoLevel?)` defaults to national,
+  so `/data-quality` is unchanged. Missingness remains NULL-only — fields with explicit
+  "unknown" source categories (e.g. blood type) count those rows as present; stated in the
+  card's technical details rather than silently.
+- **`components/place/completeness-figure.tsx`**: place-page FigureCard. Fields with gaps render
+  as a `FigureView` bar list (worst first); a fully-complete place states that plainly instead
+  of an empty chart; barangay pages link to their citymun's figures (same pattern as
+  `TrainingFigure`). Field labels are shared with `/data-quality` via
+  `COMPLETENESS_FIELD_LABEL` (map moved out of that page).

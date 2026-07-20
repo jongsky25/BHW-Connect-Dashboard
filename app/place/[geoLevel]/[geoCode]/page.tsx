@@ -9,6 +9,7 @@ import {
   getTrainingCoverage,
 } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import { getDataCompleteness } from "@/lib/db/data-quality";
 import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
 import { getPlaceLocator } from "@/lib/geo/locator";
 import { getInsights } from "@/lib/db/insights";
@@ -28,6 +29,7 @@ import { GeoSearch } from "@/components/home/geo-search";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { AiInsight } from "@/components/narrative/ai-insight";
 
@@ -103,6 +105,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     honorarium,
     insights,
     childSummaries,
+    completeness,
   ] = await Promise.all([
     getGeoAncestors(geo.geoCode, geo.geoLevel),
     getBhwOverview(geo.geoCode, geo.geoLevel),
@@ -117,6 +120,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     getHonorarium(geo.geoCode, geo.geoLevel),
     getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
     getChildSummaries(geo.geoCode, geo.geoLevel),
+    getDataCompleteness(geo.geoCode, geo.geoLevel),
   ]);
 
   // Needs ancestors (fetched above) to pick the right boundary file, so it
@@ -349,6 +353,13 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           caption={caption}
           geoCode={geo.geoCode}
           geoLevel={geo.geoLevel}
+        />
+
+        <CompletenessFigure
+          rows={completeness}
+          caption={caption}
+          geoLevel={geo.geoLevel}
+          citymunAncestor={ancestors.citymun}
         />
       </div>
 
