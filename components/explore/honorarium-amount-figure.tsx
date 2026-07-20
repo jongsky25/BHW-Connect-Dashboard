@@ -48,9 +48,9 @@ export function HonorariumAmountFigure({ rows, caption }: { rows: HonorariumRow[
             than one level, so these averages are not additive across levels.
           </p>
           <p>
-            An average can be pulled up by a few high payers; a fuller distribution — annual
-            minimum/median/maximum and each BHW&apos;s cumulative total across all levels — is a
-            planned follow-up.
+            An average can be pulled up by a few high payers — see the distribution figure below
+            for the monthly minimum, median, and maximum by paying level. Each BHW&apos;s cumulative
+            honorarium total across every level they receive from is a separate, planned follow-up.
           </p>
         </>
       }

@@ -34,22 +34,19 @@ amount field though no figure charted it before:
 2. **`HonorariumAmountFigure`** (new) — average monthly ₱ amount by paying level.
    Surfaces `avg_monthly_amount`, previously unused in any UI.
 
+## Built: distribution stats (item A below)
+
+`agg_honorarium` now also carries `min_amount`, `p25_amount`, `median_amount`,
+`p75_amount`, `max_amount` (monthly, same unit as `avg_monthly_amount`), and
+`is_suppressed`, nulled for any (geo, paying level) cell with 0 < n_receiving < 5.
+Surfaced by `HonorariumDistributionFigure` (box-and-whisker chart + stats table),
+shown on the home page next to `HonorariumAmountFigure`.
+
 ## Recommended follow-ups (need new aggregates / ingestion)
 
 The deck goes well beyond what `agg_honorarium` can currently answer. Each item below
 needs a migration and an ingestion re-run (`ingestion/build_aggregates.sql`), so they
 are deliberately out of scope for the home-dashboard pass.
-
-### A. Distribution, not just the mean (deck slide 13)
-
-`avg_monthly_amount` alone hides a wide spread — the deck reports, per unit, the
-**lowest, highest, median, and most-common** annual amount (e.g. barangay: ₱600 min,
-₱240,000 max, ₱12,000 median, `<₱12,000` for 57%). A single average is easily skewed
-by a few high payers.
-
-- Add `min_amount`, `p25_amount`, `median_amount`, `p75_amount`, `max_amount`,
-  `modal_amount_band` to `agg_honorarium` (annualized, per paying level).
-- Surface as a box-plot or a min / median / max range per level.
 
 ### B. Cumulative honorarium per BHW (deck slide 14)
 
