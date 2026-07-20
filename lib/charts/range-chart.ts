@@ -40,13 +40,22 @@ export function horizontalRangeSpec(
   const compact = width < 520;
   const longestLabel = Math.max(0, ...data.map((d) => d.label.length));
   const marginLeft = Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
+  // The median value labels are drawn starting at each row's max (the right end
+  // of the whisker) and read rightward, so marginRight has to reserve room for
+  // the widest "median …" label — otherwise it runs off the plot and clips at
+  // the card edge. Cap it so the whisker plot never collapses on a narrow width.
+  const longestMedianLabel = Math.max(0, ...data.map((d) => `median ${format(d.median)}`.length));
+  const marginRight = Math.min(
+    Math.round(width * 0.4),
+    Math.max(compact ? 44 : 56, longestMedianLabel * 7 + 14),
+  );
   // Render the y-axis title horizontally on top rather than rotated in the left
   // gutter (where it overlapped long tick labels) — same rationale as
   // horizontalBarSpec.
   const hasYTitle = options.yLabel != null;
   return {
     marginLeft,
-    marginRight: compact ? 44 : 56,
+    marginRight,
     marginTop: hasYTitle ? 34 : undefined,
     width,
     height: Math.max(100, data.length * 40 + 20 + (hasYTitle ? 20 : 0)),
