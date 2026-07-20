@@ -1,18 +1,8 @@
 import { getDataCompleteness } from "@/lib/db/data-quality";
 import { getActiveDataset } from "@/lib/db/dataset";
+import { COMPLETENESS_FIELD_LABEL } from "@/components/place/completeness-figure";
 
 export const metadata = { title: "Data quality" };
-
-const FIELD_LABEL: Record<string, string> = {
-  active_years: "Active-service years",
-  civil_status: "Civil status",
-  age: "Age",
-  bloodtype: "Blood type",
-  sex: "Sex",
-  ip_status: "Indigenous people (IP) status",
-  household: "Household count",
-  educational_attainment: "Educational attainment",
-};
 
 export default async function DataQualityPage() {
   const [rows, dataset] = await Promise.all([getDataCompleteness(), getActiveDataset()]);
@@ -43,7 +33,7 @@ export default async function DataQualityPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.fieldName} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3">{FIELD_LABEL[row.fieldName] ?? row.fieldName}</td>
+                  <td className="px-4 py-3">{COMPLETENESS_FIELD_LABEL[row.fieldName] ?? row.fieldName}</td>
                   <td className="px-4 py-3">{row.nMissing?.toLocaleString() ?? "—"}</td>
                   <td className="px-4 py-3">{row.pctMissing ?? "—"}%</td>
                 </tr>
