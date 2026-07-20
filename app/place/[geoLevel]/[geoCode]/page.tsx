@@ -1,14 +1,25 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } from "@/lib/db/indicators";
+import {
+  getBhwCounts,
+  getDemographics,
+  getHonorarium,
+  getTrainingCoverage,
+} from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
 import { getInsights } from "@/lib/db/insights";
-import { DEFAULT_BREAKDOWNS, GEO_LEVELS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
+import {
+  DEFAULT_BREAKDOWNS,
+  GEO_LEVELS,
+  NATIONAL_GEO_CODE,
+  type GeoLevel,
+} from "@/lib/filters/schema";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
+import { GeoSearch } from "@/components/home/geo-search";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
@@ -68,27 +79,50 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   const geo = await loadPlace(await params);
   if (!geo) notFound();
 
-  const [ancestors, overview, counts, demographicsByDimension, training, honorarium, insights] = await Promise.all([
-    getGeoAncestors(geo.geoCode, geo.geoLevel),
-    getBhwOverview(geo.geoCode, geo.geoLevel),
-    getBhwCounts(geo.geoCode, geo.geoLevel),
-    Promise.all(
-      DEFAULT_BREAKDOWNS.map(async (dimension) => ({
-        dimension,
-        rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
-      })),
-    ),
-    getTrainingCoverage(geo.geoCode, geo.geoLevel),
-    getHonorarium(geo.geoCode, geo.geoLevel),
-    getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
-  ]);
+  const [ancestors, overview, counts, demographicsByDimension, training, honorarium, insights] =
+    await Promise.all([
+      getGeoAncestors(geo.geoCode, geo.geoLevel),
+      getBhwOverview(geo.geoCode, geo.geoLevel),
+      getBhwCounts(geo.geoCode, geo.geoLevel),
+      Promise.all(
+        DEFAULT_BREAKDOWNS.map(async (dimension) => ({
+          dimension,
+          rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
+        })),
+      ),
+      getTrainingCoverage(geo.geoCode, geo.geoLevel),
+      getHonorarium(geo.geoCode, geo.geoLevel),
+      getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
+    ]);
 
   const breadcrumbAncestors: BreadcrumbAncestor[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
-    ...(ancestors.region ? [{ label: ancestors.region.geoName, geoLevel: "region" as const, geoCode: ancestors.region.geoCode }] : []),
-    ...(ancestors.province ? [{ label: ancestors.province.geoName, geoLevel: "province" as const, geoCode: ancestors.province.geoCode }] : []),
+    ...(ancestors.region
+      ? [
+          {
+            label: ancestors.region.geoName,
+            geoLevel: "region" as const,
+            geoCode: ancestors.region.geoCode,
+          },
+        ]
+      : []),
+    ...(ancestors.province
+      ? [
+          {
+            label: ancestors.province.geoName,
+            geoLevel: "province" as const,
+            geoCode: ancestors.province.geoCode,
+          },
+        ]
+      : []),
     ...(ancestors.citymun && geo.geoLevel === "barangay"
-      ? [{ label: ancestors.citymun.geoName, geoLevel: "citymun" as const, geoCode: ancestors.citymun.geoCode }]
+      ? [
+          {
+            label: ancestors.citymun.geoName,
+            geoLevel: "citymun" as const,
+            geoCode: ancestors.citymun.geoCode,
+          },
+        ]
       : []),
   ];
 
@@ -107,19 +141,24 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         incomeClass={geo.incomeClass}
       />
 
-      <div className="flex flex-wrap gap-3">
-        <Link
-          href={`/compare?geos=${geo.geoCode}`}
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
-        >
-          Compare with other places
-        </Link>
-        <Link
-          href={`/explore?geoLevel=${geo.geoLevel}&geoCode=${geo.geoCode}`}
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
-        >
-          Explore full breakdowns
-        </Link>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href={`/compare?geos=${geo.geoCode}`}
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+          >
+            Compare with other places
+          </Link>
+          <Link
+            href={`/explore?geoLevel=${geo.geoLevel}&geoCode=${geo.geoCode}`}
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+          >
+            Explore full breakdowns
+          </Link>
+        </div>
+        <div className="sm:w-64">
+          <GeoSearch variant="compact" />
+        </div>
       </div>
 
       <AiInsight geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
@@ -128,7 +167,9 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         <FigureCard
           title="Accreditation"
           caption={caption}
-          exportMenu={<ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />}
+          exportMenu={
+            <ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />
+          }
           headline={
             counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
               ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
@@ -136,8 +177,9 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           }
           technicalDetails={
             <p>
-              {counts?.nAccredited?.toLocaleString() ?? "—"} of {counts?.nTotal?.toLocaleString() ?? "—"} validated
-              profiles are accredited ({counts?.pctAccredited ?? "—"}%).
+              {counts?.nAccredited?.toLocaleString() ?? "—"} of{" "}
+              {counts?.nTotal?.toLocaleString() ?? "—"} validated profiles are accredited (
+              {counts?.pctAccredited ?? "—"}%).
             </p>
           }
         >

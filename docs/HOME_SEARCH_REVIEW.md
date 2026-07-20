@@ -2,7 +2,12 @@
 
 A three-lens review (designer · lay person · epidemiologist) of the home page, its "find my barangay" search, and the place profile page the search routes to — concluding in a prioritized enhancement plan that builds on the current pages.
 
-**Status:** reviewed 2026-07-20 against `main` (`e9f4068`). This document proposes; it does not change code. Individual items should land as their own increments with the usual verify steps.
+**Status:** reviewed 2026-07-20 against `main` (`e9f4068`). Implementation is now underway, phase by phase; each phase lands with the usual verify steps.
+
+**Implementation progress:**
+
+- **P0 — Search trust & mechanics: done** (items 1–6). Parent-chain disambiguation, ARIA combobox + keyboard navigation, overlaid dropdown with pending/error states, per-result data-availability, search on place pages, and empty-state hints are all implemented in this PR. Item 1 also ships migration `supabase/migrations/20260720130000_search_geo_parent_chain.sql`, which must be applied for the parent-locality line to appear (the UI degrades cleanly until then).
+- **P1, P2:** not started.
 
 ## 1. Scope & method
 

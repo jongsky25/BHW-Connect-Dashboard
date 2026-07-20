@@ -2,11 +2,21 @@ import "server-only";
 import { createSupabaseServerClient } from "./supabase";
 import type { GeoLevel } from "@/lib/filters/schema";
 
+/** Ancestor locality names for a geo, used to disambiguate same-named places
+ * in search results (e.g. one of the many "Poblacion" barangays). Any level may
+ * be absent — a region has no parents, a province has only a region. */
+export type GeoParentChain = {
+  region?: string;
+  province?: string;
+  citymun?: string;
+};
+
 export type GeoSearchResult = {
   geoCode: string;
   geoLevel: GeoLevel;
   geoName: string;
   nTotal: number | null;
+  parentChain: GeoParentChain;
 };
 
 /**
@@ -35,5 +45,11 @@ export async function searchGeo(query: string, limit = 8): Promise<GeoSearchResu
     geoLevel: row.geo_level,
     geoName: row.geo_name,
     nTotal: row.n_total,
+    // parent_chain is absent until the P0.1 migration is applied; treat a
+    // missing/non-object value as "no parents known" so the UI degrades cleanly.
+    parentChain:
+      row.parent_chain && typeof row.parent_chain === "object" && !Array.isArray(row.parent_chain)
+        ? (row.parent_chain as GeoParentChain)
+        : {},
   }));
 }
