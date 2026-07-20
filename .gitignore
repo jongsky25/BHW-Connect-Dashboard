@@ -53,6 +53,8 @@ ingestion/_qa_report.json
 ingestion/_sql_batches/
 ingestion/_qa_report_stepzero.json
 ingestion/_sql_batches_stepzero/
+ingestion/_qa_report_patch_psgc_gap.json
+ingestion/_sql_patch_psgc_gap/
 
 # editor
 .vscode/
