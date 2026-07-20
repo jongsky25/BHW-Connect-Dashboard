@@ -78,7 +78,8 @@ export const TOOLS: Tool[] = [
         validatedProfiles: overview.validatedProfiles,
         profilingCoveragePct: overview.profilingCoveragePct,
         population: overview.population,
-        bhwPer1000Residents: overview.bhwPer1000Residents,
+        households: overview.households,
+        householdsPerBhw: overview.householdsPerBhw,
       };
 
       if (indicator === "accreditation" || indicator === "service_years") {
