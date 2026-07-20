@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
+import { getPlaceLocator } from "@/lib/geo/locator";
 import { getInsights } from "@/lib/db/insights";
 import {
   DEFAULT_BREAKDOWNS,
@@ -20,6 +21,7 @@ import {
 import { FigureCard } from "@/components/narrative/figure-card";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
+import { LocatorMapThumbnail } from "@/components/place/locator-map";
 import { ChildrenTable } from "@/components/place/children-table";
 import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
 import { GeoSearch } from "@/components/home/geo-search";
@@ -117,6 +119,10 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     getChildSummaries(geo.geoCode, geo.geoLevel),
   ]);
 
+  // Needs ancestors (fetched above) to pick the right boundary file, so it
+  // can't join the first Promise.all; it's a cached local-file read, not a DB call.
+  const locator = await getPlaceLocator(geo, ancestors);
+
   const childLevelLabel = CHILD_LEVEL_PLURAL[geo.geoLevel];
 
   // Benchmark context: this place vs. its region and the nation, so every figure
@@ -188,6 +194,16 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         coveragePct={coverageForDisplay(overview)}
         householdsPerBhw={overview.householdsPerBhw}
         incomeClass={geo.incomeClass}
+        locator={
+          locator ? (
+            <LocatorMapThumbnail
+              locator={locator}
+              geoLevel={geo.geoLevel}
+              geoCode={geo.geoCode}
+              placeName={geo.geoName}
+            />
+          ) : undefined
+        }
       />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
