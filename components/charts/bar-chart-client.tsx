@@ -9,12 +9,18 @@ export function BarChartClient({
   yLabel,
   valueSuffix,
   valueFormat,
+  width,
+  fill,
 }: {
   data: BarDatum[];
   xLabel?: string;
   yLabel?: string;
   valueSuffix?: string;
   valueFormat?: (n: number) => string;
+  /** Plot width in px — the enlarged modal passes a larger value to fill the wider view. */
+  width?: number;
+  /** Bar fill color (hex), set by the chart's recolor swatch control. */
+  fill?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -24,7 +30,7 @@ export function BarChartClient({
 
     import("@observablehq/plot").then((Plot) => {
       if (cancelled || !containerRef.current) return;
-      plot = Plot.plot(horizontalBarSpec(data, { xLabel, yLabel, valueSuffix, valueFormat }));
+      plot = Plot.plot(horizontalBarSpec(data, { xLabel, yLabel, valueSuffix, valueFormat, width, fill }));
       // The wrapping div already carries role="img" + a full text aria-label
       // (below); Plot's internal <g aria-label="..."> marks on plain <g>
       // elements otherwise trip aria-prohibited-attr, so hide the SVG itself
@@ -37,7 +43,7 @@ export function BarChartClient({
       cancelled = true;
       plot?.remove();
     };
-  }, [data, xLabel, yLabel, valueSuffix, valueFormat]);
+  }, [data, xLabel, yLabel, valueSuffix, valueFormat, width, fill]);
 
   const format = valueFormat ?? ((n: number) => n.toLocaleString());
 

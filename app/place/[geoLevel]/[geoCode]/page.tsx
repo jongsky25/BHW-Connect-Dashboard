@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
+import { getInsights } from "@/lib/db/insights";
 import { DEFAULT_BREAKDOWNS, GEO_LEVELS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { ExportMenu } from "@/components/narrative/export-menu";
@@ -11,6 +12,7 @@ import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profi
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { InsightsGrid } from "@/components/home/insights-grid";
 import { AiInsight } from "@/components/narrative/ai-insight";
 
 export const revalidate = 86_400; // ISR: refresh at most once a day (citymun/barangay; regions/provinces are SSG via generateStaticParams)
@@ -66,7 +68,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   const geo = await loadPlace(await params);
   if (!geo) notFound();
 
-  const [ancestors, overview, counts, demographicsByDimension, training, honorarium] = await Promise.all([
+  const [ancestors, overview, counts, demographicsByDimension, training, honorarium, insights] = await Promise.all([
     getGeoAncestors(geo.geoCode, geo.geoLevel),
     getBhwOverview(geo.geoCode, geo.geoLevel),
     getBhwCounts(geo.geoCode, geo.geoLevel),
@@ -78,6 +80,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     ),
     getTrainingCoverage(geo.geoCode, geo.geoLevel),
     getHonorarium(geo.geoCode, geo.geoLevel),
+    getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
   ]);
 
   const breadcrumbAncestors: BreadcrumbAncestor[] = [
@@ -178,6 +181,8 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
 
         <HonorariumFigure rows={honorarium} caption={caption} />
       </div>
+
+      <InsightsGrid insights={insights} geoLevel={geo.geoLevel} geoName={geo.geoName} />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   getTrainingCoverage,
 } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import { getInsights } from "@/lib/db/insights";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
@@ -18,6 +19,7 @@ import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
+import { InsightsGrid } from "@/components/home/insights-grid";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
 const CHILD_LEVEL_LABEL: Record<GeoLevel, string> = {
@@ -52,7 +54,7 @@ export default async function ExplorePage({
   // before batch two's three queries could even start.
   const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
 
-  const [regions, overview, counts, demographicsByDimension, training, honorarium, provinces, citymuns, barangays] =
+  const [regions, overview, counts, demographicsByDimension, training, honorarium, provinces, citymuns, barangays, insights] =
     await Promise.all([
       getChildGeos(NATIONAL_GEO_CODE, "national"),
       getBhwOverview(geo.geoCode, geo.geoLevel),
@@ -68,6 +70,7 @@ export default async function ExplorePage({
       ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
       ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
       ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
+      getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
     ]);
 
   const breadcrumbSteps: BreadcrumbStep[] = [
@@ -212,6 +215,8 @@ export default async function ExplorePage({
 
           <HonorariumFigure rows={honorarium} caption={caption} />
         </div>
+
+        <InsightsGrid insights={insights} geoLevel={geo.geoLevel} geoName={geo.geoName} />
       </div>
 
       <ChatLauncher geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
