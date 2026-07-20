@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { GeoLevel } from "@/lib/filters/schema";
+import { GlossaryTerm } from "@/components/glossary/glossary-term";
 
 const GEO_LEVEL_LABEL: Record<GeoLevel, string> = {
   national: "Country",
@@ -19,6 +21,16 @@ const INCOME_CLASS_LABEL: Record<number, string> = {
 };
 
 export type BreadcrumbAncestor = { label: string; geoLevel: GeoLevel; geoCode: string };
+
+/** One labelled stat in the header chip row. */
+function StatChip({ label, value }: { label: ReactNode; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-surface/40 px-3 py-1.5">
+      <div className="text-[0.7rem] uppercase tracking-wide text-muted">{label}</div>
+      <div className="text-sm font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
 
 export function ProfileHeader({
   geoName,
@@ -59,32 +71,42 @@ export function ProfileHeader({
         </ol>
       </nav>
 
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geoName}</h1>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
-        <span>{GEO_LEVEL_LABEL[geoLevel]}</span>
-        {totalBhw !== null ? (
-          <>
-            <span>{totalBhw.toLocaleString()} BHWs total</span>
-            {validatedProfiles !== null && (
-              <span>
-                {validatedProfiles.toLocaleString()} validated profiles
-                {coveragePct !== null ? ` (${coveragePct}%)` : ""}
-              </span>
-            )}
-            {householdsPerBhw !== null && (
-              <span>{householdsPerBhw.toLocaleString()} households per BHW</span>
-            )}
-          </>
-        ) : validatedProfiles !== null ? (
-          <span>{validatedProfiles.toLocaleString()} validated profiles</span>
-        ) : (
-          <span>No BHW data</span>
-        )}
-        {incomeClass !== null && INCOME_CLASS_LABEL[incomeClass] && (
-          <span>{INCOME_CLASS_LABEL[incomeClass]} income</span>
-        )}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geoName}</h1>
+        <span className="text-sm text-muted">{GEO_LEVEL_LABEL[geoLevel]}</span>
       </div>
+
+      {totalBhw === null && validatedProfiles === null ? (
+        <p className="text-sm text-muted">No BHW data for this area.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {totalBhw !== null && (
+            <StatChip
+              label={<GlossaryTerm slug="total_bhw">Total BHWs</GlossaryTerm>}
+              value={totalBhw.toLocaleString()}
+            />
+          )}
+          {validatedProfiles !== null && (
+            <StatChip
+              label={<GlossaryTerm slug="validated_profile">Validated profiles</GlossaryTerm>}
+              value={
+                coveragePct !== null
+                  ? `${validatedProfiles.toLocaleString()} (${coveragePct}%)`
+                  : validatedProfiles.toLocaleString()
+              }
+            />
+          )}
+          {householdsPerBhw !== null && (
+            <StatChip
+              label={<GlossaryTerm slug="households_per_bhw">Households per BHW</GlossaryTerm>}
+              value={householdsPerBhw.toLocaleString()}
+            />
+          )}
+          {incomeClass !== null && INCOME_CLASS_LABEL[incomeClass] && (
+            <StatChip label="Income class" value={INCOME_CLASS_LABEL[incomeClass]} />
+          )}
+        </div>
+      )}
     </header>
   );
 }

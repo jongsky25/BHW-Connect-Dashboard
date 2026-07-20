@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseServerClient } from "./supabase";
 import { getActiveDatasetId } from "./dataset";
+import { getChildGeos } from "./geo";
 import type { DemographicDimension, GeoLevel } from "@/lib/filters/schema";
 
 export type BhwCounts = {
@@ -26,7 +27,9 @@ export async function getBhwCounts(geoCode: string, geoLevel: GeoLevel): Promise
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_bhw_counts")
-    .select("geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct")
+    .select(
+      "geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct",
+    )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
     .eq("geo_level", geoLevel)
@@ -63,7 +66,9 @@ export async function getGeoSummary(geoCode: string): Promise<GeoSummary | null>
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_geo_summary")
-    .select("geo_code, geo_level, geo_name, n_total, pct_accredited, top_training_gap, any_honorarium_pct")
+    .select(
+      "geo_code, geo_level, geo_name, n_total, pct_accredited, top_training_gap, any_honorarium_pct",
+    )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
     .maybeSingle();
@@ -168,7 +173,10 @@ export type TrainingRow = {
  * granularity wasn't needed and blew the free-tier disk budget), so barangay
  * callers get an empty array and the UI falls back to the citymun ancestor.
  */
-export async function getTrainingCoverage(geoCode: string, geoLevel: GeoLevel): Promise<TrainingRow[]> {
+export async function getTrainingCoverage(
+  geoCode: string,
+  geoLevel: GeoLevel,
+): Promise<TrainingRow[]> {
   if (geoLevel === "barangay") return [];
 
   const datasetId = await getActiveDatasetId();
@@ -206,7 +214,10 @@ export type CertificationRow = {
  * `agg_training`, `agg_certification` is built at all 5 geo levels including
  * barangay (see ingestion/build_aggregates.sql), so no barangay fallback needed.
  */
-export async function getCertification(geoCode: string, geoLevel: GeoLevel): Promise<CertificationRow[]> {
+export async function getCertification(
+  geoCode: string,
+  geoLevel: GeoLevel,
+): Promise<CertificationRow[]> {
   const datasetId = await getActiveDatasetId();
   if (datasetId === null) return [];
 
@@ -294,4 +305,68 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
     geoName: row.geo_name,
     pctAccredited: row.pct_accredited,
   }));
+}
+
+export type ChildSummaryRow = {
+  geoCode: string;
+  geoLevel: GeoLevel;
+  geoName: string;
+  nTotal: number | null;
+  pctAccredited: number | null;
+  topTrainingGap: string | null;
+  anyHonorariumPct: number | null;
+};
+
+/**
+ * Summary indicators for every direct child of a geo (regions of the country,
+ * provinces of a region, cities of a province, barangays of a city), for the
+ * "Places within" drill-down table on place pages. Joins the child geo list
+ * (`dim_geo`, via getChildGeos) to their precomputed `agg_geo_summary` rows.
+ * Children with no summary row are still returned (with null indicators) so the
+ * table reflects the full administrative structure, not just places with data.
+ * Barangay children of a single city stay well under the platform's 1,000-row
+ * request cap, so a single `.in()` query suffices (no pagination needed).
+ */
+export async function getChildSummaries(
+  parentCode: string,
+  parentLevel: GeoLevel,
+): Promise<ChildSummaryRow[]> {
+  const children = await getChildGeos(parentCode, parentLevel);
+  if (children.length === 0) return [];
+
+  const datasetId = await getActiveDatasetId();
+  const emptyRow = (c: (typeof children)[number]): ChildSummaryRow => ({
+    geoCode: c.geoCode,
+    geoLevel: c.geoLevel,
+    geoName: c.geoName,
+    nTotal: null,
+    pctAccredited: null,
+    topTrainingGap: null,
+    anyHonorariumPct: null,
+  });
+  if (datasetId === null) return children.map(emptyRow);
+
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase
+    .from("agg_geo_summary")
+    .select("geo_code, n_total, pct_accredited, top_training_gap, any_honorarium_pct")
+    .eq("dataset_id", datasetId)
+    .in(
+      "geo_code",
+      children.map((c) => c.geoCode),
+    );
+
+  const byCode = new Map((data ?? []).map((row) => [row.geo_code, row]));
+  return children.map((c) => {
+    const s = byCode.get(c.geoCode);
+    return {
+      geoCode: c.geoCode,
+      geoLevel: c.geoLevel,
+      geoName: c.geoName,
+      nTotal: s?.n_total ?? null,
+      pctAccredited: s?.pct_accredited ?? null,
+      topTrainingGap: s?.top_training_gap ?? null,
+      anyHonorariumPct: s?.any_honorarium_pct ?? null,
+    };
+  });
 }

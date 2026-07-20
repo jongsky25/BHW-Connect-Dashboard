@@ -1,4 +1,10 @@
-import { getBhwCounts, getCertification, getHonorarium, getDemographics, hsGradOrAbovePct } from "@/lib/db/indicators";
+import {
+  getBhwCounts,
+  getCertification,
+  getHonorarium,
+  getDemographics,
+  hsGradOrAbovePct,
+} from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getHomeInsights } from "@/lib/db/insights";
 import type { DemographicRow } from "@/lib/db/indicators";
@@ -8,6 +14,7 @@ import { GeoSearch } from "@/components/home/geo-search";
 import { StatHero } from "@/components/home/stat-hero";
 import { StatTile } from "@/components/home/stat-tile";
 import { Donut, Gauge, LadderBars } from "@/components/home/mini-viz";
+import { DenominatorExplainer } from "@/components/home/denominator-explainer";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
@@ -75,8 +82,16 @@ export default async function Home() {
   // non-registered (the LGU-declared headcount from before profiling).
   const registrationMix = [
     { label: "Registered", value: overview.nRegistered ?? 0, color: "var(--seq-3)" },
-    { label: "Registered & accredited", value: overview.nRegisteredAccredited ?? 0, color: "var(--seq-6)" },
-    { label: "Non-registered (LGU-declared)", value: overview.nonRegistered ?? 0, color: "var(--seq-1)" },
+    {
+      label: "Registered & accredited",
+      value: overview.nRegisteredAccredited ?? 0,
+      color: "var(--seq-6)",
+    },
+    {
+      label: "Non-registered (LGU-declared)",
+      value: overview.nonRegistered ?? 0,
+      color: "var(--seq-1)",
+    },
   ];
   const totalChartData: BarDatum[] = registrationMix.map(({ label, value }) => ({ label, value }));
 
@@ -95,7 +110,11 @@ export default async function Home() {
       : [];
 
   const edu = educationTile(education);
-  const educationChartData: BarDatum[] = edu.rows.map((r) => ({ label: r.label, value: r.pct, count: r.n }));
+  const educationChartData: BarDatum[] = edu.rows.map((r) => ({
+    label: r.label,
+    value: r.pct,
+    count: r.n,
+  }));
 
   const householdChartData: BarDatum[] =
     overview.totalBhw !== null && overview.households !== null
@@ -118,7 +137,10 @@ export default async function Home() {
         <GeoSearch />
       </section>
 
-      <section aria-label="National figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section
+        aria-label="National figures"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
         <StatHero
           label="Total BHWs"
           value={formatCount(overview.totalBhw)}
@@ -163,7 +185,11 @@ export default async function Home() {
           caption={profiledCaption}
           visual={
             counts?.pctAccredited != null ? (
-              <Gauge value={counts.pctAccredited} max={100} ariaLabel={`${counts.pctAccredited}% accredited`} />
+              <Gauge
+                value={counts.pctAccredited}
+                max={100}
+                ariaLabel={`${counts.pctAccredited}% accredited`}
+              />
             ) : undefined
           }
           enlarge={
@@ -182,7 +208,11 @@ export default async function Home() {
           label="Educational attainment"
           value={edu.hasData ? `${edu.hsPlusPct}%` : "—"}
           caption="High school graduate or higher · validated profiles · 2025"
-          visual={edu.rows.length > 0 ? <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" /> : undefined}
+          visual={
+            edu.rows.length > 0 ? (
+              <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" />
+            ) : undefined
+          }
           enlarge={
             educationChartData.length > 0
               ? {
@@ -198,7 +228,9 @@ export default async function Home() {
         />
         <StatTile
           label="Households per BHW"
-          value={overview.householdsPerBhw === null ? "—" : overview.householdsPerBhw.toLocaleString()}
+          value={
+            overview.householdsPerBhw === null ? "—" : overview.householdsPerBhw.toLocaleString()
+          }
           caption={
             overview.households !== null
               ? `Total BHWs across ${formatCount(overview.households)} households · StepZero · 2025`
@@ -227,15 +259,12 @@ export default async function Home() {
         />
       </section>
 
-      <p className="-mt-4 text-center text-xs text-muted">
-        Total BHWs comes from the DOH StepZero quick-count (the LGU-declared headcount). Every
-        per-person figure below describes the {formatCount(overview.validatedProfiles)} individually
-        validated profiles
-        {coverage !== null && overview.registeredUniverse !== null
-          ? ` — about ${coverage}% of the country's ${formatCount(overview.registeredUniverse)} registered BHWs`
-          : ""}
-        . Tap any figure to see the full breakdown.
-      </p>
+      <DenominatorExplainer
+        totalBhw={overview.totalBhw}
+        registeredUniverse={overview.registeredUniverse}
+        validatedProfiles={overview.validatedProfiles}
+        coveragePct={coverage}
+      />
 
       <AiInsight geoCode="PH" geoLevel="national" geoName="Philippines" />
 
