@@ -4,8 +4,9 @@ import { useState } from "react";
 import { StackedMiniBar } from "@/components/home/mini-viz";
 import { StatEnlargeModal, type StatEnlarge } from "@/components/home/stat-tile";
 
-/** The large "Total BHWs" hero KPI card — spans 2 grid columns, leads the
- * home page's F-pattern KPI strip with the single most important number. */
+/** The large "Total BHWs" hero KPI card — spans the KPI grid's full top row
+ * (both columns of the 2-column grid), leading with the single most
+ * important number before the 2×2 of supporting tiles. */
 export function StatHero({
   label,
   value,
