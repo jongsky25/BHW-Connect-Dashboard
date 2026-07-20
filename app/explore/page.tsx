@@ -19,7 +19,7 @@ import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
-import { InsightsGrid } from "@/components/home/insights-grid";
+import { InsightsGrid } from "@/components/insights/insights-grid";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
 const CHILD_LEVEL_LABEL: Record<GeoLevel, string> = {

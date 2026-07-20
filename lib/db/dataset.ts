@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createSupabaseServerClient } from "./supabase";
 
 export type DatasetInfo = {
@@ -15,8 +16,13 @@ export type DatasetInfo = {
  * The single active dataset for v1 (`bhw-2025`). Returns null on any read
  * failure so callers (footer, etc.) can degrade gracefully rather than crash
  * a page that doesn't otherwise depend on the database.
+ *
+ * Wrapped in React's per-request `cache()` — nearly every query helper calls
+ * this for the dataset_id FK, so a page composing many figures (home, place,
+ * insights grid) would otherwise re-run the identical lookup dozens of times
+ * per render.
  */
-export async function getActiveDataset(): Promise<DatasetInfo | null> {
+export const getActiveDataset = cache(async (): Promise<DatasetInfo | null> => {
   try {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
@@ -41,7 +47,7 @@ export async function getActiveDataset(): Promise<DatasetInfo | null> {
   } catch {
     return null;
   }
-}
+});
 
 /** Convenience accessor for query functions that only need the numeric FK. */
 export async function getActiveDatasetId(): Promise<number | null> {
@@ -62,8 +68,9 @@ export const DATASET_SLUGS = {
  * StepZero companion dataset (`bhw-stepzero-2026`), which is intentionally not
  * `status = 'active'` so `getActiveDatasetId()` keeps returning only the
  * per-person `bhw-2025` dataset. Returns null on any read failure.
+ * Per-request `cache()`d for the same reason as `getActiveDataset`.
  */
-export async function getDatasetIdBySlug(slug: string): Promise<number | null> {
+export const getDatasetIdBySlug = cache(async (slug: string): Promise<number | null> => {
   try {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
@@ -77,4 +84,4 @@ export async function getDatasetIdBySlug(slug: string): Promise<number | null> {
   } catch {
     return null;
   }
-}
+});
