@@ -39,7 +39,10 @@ export function horizontalRangeSpec(
   // fixed 160px left margin would leave almost no room for the whisker plot.
   const compact = width < 520;
   const longestLabel = Math.max(0, ...data.map((d) => d.label.length));
-  const marginLeft = Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
+  // Reserve a gutter for the rotated y-axis title so short tick labels don't
+  // overlap it — same rationale as horizontalBarSpec.
+  const titleGutter = options.yLabel != null ? 22 : 0;
+  const marginLeft = titleGutter + Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
   return {
     marginLeft,
     marginRight: compact ? 44 : 56,
