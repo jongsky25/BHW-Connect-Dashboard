@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { RangeChartClient } from "@/components/charts/range-chart-client";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { PeriodToggle, PERIOD_MONTHS, PERIOD_NOUN, type AmountPeriod } from "@/components/ui/period-toggle";
 import type { HonorariumRow } from "@/lib/db/indicators";
+import type { GeoLevel } from "@/lib/filters/schema";
 import type { RangeDatum } from "@/lib/charts/range-chart";
 import { formatPesoFloor100 } from "@/lib/format";
 
@@ -38,9 +40,13 @@ const scale = (n: number | null, multiplier: number): number | null => (n === nu
 export function HonorariumDistributionFigure({
   rows,
   caption,
+  geoCode,
+  geoLevel,
 }: {
   rows: HonorariumRow[];
   caption: string;
+  geoCode?: string;
+  geoLevel?: GeoLevel;
 }) {
   const [period, setPeriod] = useState<AmountPeriod>("monthly");
   const multiplier = PERIOD_MONTHS[period];
@@ -76,6 +82,11 @@ export function HonorariumDistributionFigure({
     <FigureCard
       title="Honorarium distribution, by paying level"
       caption={caption}
+      exportMenu={
+        geoCode && geoLevel ? (
+          <ExportMenu geoCode={geoCode} geoLevel={geoLevel} indicator="honorarium_distribution" />
+        ) : undefined
+      }
       headline={
         barangay && !barangay.isSuppressed && barangay.medianAmount != null
           ? `Barangay honorarium ranges from ${formatPesoFloor100(scale(barangay.minAmount, multiplier))} to ${formatPesoFloor100(scale(barangay.maxAmount, multiplier))} a ${noun}, with a median of ${formatPesoFloor100(scale(barangay.medianAmount, multiplier))}.`

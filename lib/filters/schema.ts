@@ -7,7 +7,10 @@ export const INDICATORS = [
   "accreditation",
   "demographics",
   "training",
+  "certification",
   "honorarium",
+  "honorarium_amount",
+  "honorarium_distribution",
   "service_years",
 ] as const;
 export type Indicator = (typeof INDICATORS)[number];

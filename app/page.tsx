@@ -273,7 +273,7 @@ export default async function Home() {
       <AiInsight geoCode="PH" geoLevel="national" geoName="Philippines" />
 
       <section aria-label="National breakdowns" className="flex flex-col gap-6">
-        <CertificationFigure rows={certification} caption={profiledCaption} />
+        <CertificationFigure rows={certification} caption={profiledCaption} geoCode="PH" geoLevel="national" />
         {/* One honorarium story told three ways — tabbed instead of three
             stacked cards with identical rhythm (HOME_SEARCH_REVIEW item 16). */}
         <FigureTabs
@@ -282,17 +282,17 @@ export default async function Home() {
             {
               id: "who",
               label: "Who receives",
-              content: <HonorariumFigure rows={honorarium} caption={profiledCaption} />,
+              content: <HonorariumFigure rows={honorarium} caption={profiledCaption} geoCode="PH" geoLevel="national" />,
             },
             {
               id: "amount",
               label: "How much",
-              content: <HonorariumAmountFigure rows={honorarium} caption={profiledCaption} />,
+              content: <HonorariumAmountFigure rows={honorarium} caption={profiledCaption} geoCode="PH" geoLevel="national" />,
             },
             {
               id: "distribution",
               label: "Distribution",
-              content: <HonorariumDistributionFigure rows={honorarium} caption={profiledCaption} />,
+              content: <HonorariumDistributionFigure rows={honorarium} caption={profiledCaption} geoCode="PH" geoLevel="national" />,
             },
           ]}
         />
