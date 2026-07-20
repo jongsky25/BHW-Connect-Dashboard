@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FigureCard } from "@/components/narrative/figure-card";
-import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { FigureView } from "@/components/charts/figure-view";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { DemographicRow } from "@/lib/db/indicators";
@@ -87,7 +87,8 @@ export function DemographicsFigure({
           <GlossaryTerm slug="suppressed">Suppressed</GlossaryTerm> to protect privacy (n&lt;5)
         </p>
       ) : chartData.length > 0 ? (
-        <BarChartClient
+        <FigureView
+          title={DIMENSION_LABEL[dimension]}
           data={chartData}
           xLabel="% of BHWs"
           yLabel={DIMENSION_LABEL[dimension]}
