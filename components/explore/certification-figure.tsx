@@ -1,5 +1,5 @@
 import { FigureCard } from "@/components/narrative/figure-card";
-import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { FigureView } from "@/components/charts/figure-view";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { CertificationRow } from "@/lib/db/indicators";
 
@@ -46,7 +46,8 @@ export function CertificationFigure({ rows, caption }: { rows: CertificationRow[
       }
     >
       {chartData.length > 0 ? (
-        <BarChartClient
+        <FigureView
+          title="Training & certification coverage"
           data={chartData}
           xLabel="% of BHWs"
           yLabel="Training / certification"

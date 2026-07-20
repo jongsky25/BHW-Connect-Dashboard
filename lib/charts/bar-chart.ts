@@ -10,9 +10,17 @@ export type BarDatum = { label: string; value: number };
  */
 export function horizontalBarSpec(
   data: BarDatum[],
-  options: { xLabel?: string; yLabel?: string; valueSuffix?: string } = {},
+  options: {
+    xLabel?: string;
+    yLabel?: string;
+    valueSuffix?: string;
+    /** Formats the bar's value label. Defaults to a thousands-separated number
+     * (`toLocaleString`) so labels never render as raw digits (e.g. `5,000`, not `5000`). */
+    valueFormat?: (n: number) => string;
+  } = {},
 ): Plot.PlotOptions {
   const suffix = options.valueSuffix ?? "";
+  const format = options.valueFormat ?? ((n: number) => n.toLocaleString());
   return {
     marginLeft: 160,
     width: 640,
@@ -24,7 +32,7 @@ export function horizontalBarSpec(
       Plot.text(data, {
         y: "label",
         x: "value",
-        text: (d: BarDatum) => `${d.value}${suffix}`,
+        text: (d: BarDatum) => `${format(d.value)}${suffix}`,
         dx: 6,
         textAnchor: "start",
         sort: { y: "-x" },

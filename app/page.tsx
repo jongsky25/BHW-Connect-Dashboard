@@ -1,27 +1,25 @@
-import { getBhwCounts, getCertification, getHonorarium, getDemographics } from "@/lib/db/indicators";
+import { getBhwCounts, getCertification, getHonorarium, getDemographics, hsGradOrAbovePct } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
-import { getSpotlightInsight } from "@/lib/db/spotlight";
+import { getHomeInsights } from "@/lib/db/insights";
 import type { DemographicRow } from "@/lib/db/indicators";
+import type { BarDatum } from "@/lib/charts/bar-chart";
+import { formatCount, formatPct } from "@/lib/format";
 import { GeoSearch } from "@/components/home/geo-search";
-import { StatTile, type StatTileDetail } from "@/components/home/stat-tile";
+import { StatHero } from "@/components/home/stat-hero";
+import { StatTile } from "@/components/home/stat-tile";
+import { Donut, Gauge, LadderBars } from "@/components/home/mini-viz";
+import { InsightsGrid } from "@/components/home/insights-grid";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
 import { AiInsight } from "@/components/narrative/ai-insight";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
-function formatCount(n: number | null) {
-  return n === null ? "—" : n.toLocaleString();
-}
-
-function formatPct(n: number | null) {
-  return n === null ? "—" : `${n}%`;
-}
-
 // Educational-attainment categories, lowest to highest. "High school graduate or
-// higher" sums every level at High School Graduate and above (including the
-// Vocational Degree category, which is post-secondary). Ladder order is also used
-// to sort the expandable breakdown instead of by count.
+// higher" (lib/db/indicators.ts's HS_GRAD_AND_ABOVE) sums every level at High
+// School Graduate and above (including the Vocational Degree category, which is
+// post-secondary). Ladder order is also used to sort the ladder-bars visual and
+// the enlarged breakdown instead of by count.
 const EDUCATION_LADDER = [
   "No Formal Education",
   "Elementary Level",
@@ -33,43 +31,32 @@ const EDUCATION_LADDER = [
   "College Graduate",
   "Masteral Degree",
 ];
-const HS_GRAD_AND_ABOVE = new Set([
-  "High School Graduate",
-  "Vocational Degree",
-  "College Level",
-  "College Graduate",
-  "Masteral Degree",
-]);
 
 function educationTile(rows: DemographicRow[]): {
   hsPlusPct: number;
-  details: StatTileDetail[];
+  rows: { label: string; n: number; pct: number }[];
   hasData: boolean;
 } {
   const byCat = new Map(rows.filter((r) => !r.isSuppressed).map((r) => [r.category, r]));
-  let hsPlus = 0;
-  for (const [cat, r] of byCat) {
-    if (HS_GRAD_AND_ABOVE.has(cat) && r.pct !== null) hsPlus += r.pct;
-  }
   const ordered = [
     ...EDUCATION_LADDER.filter((c) => byCat.has(c)),
     ...[...byCat.keys()].filter((c) => !EDUCATION_LADDER.includes(c)),
   ];
-  const details = ordered.map((c) => {
-    const r = byCat.get(c)!;
-    return { label: c, value: `${formatCount(r.n)} (${r.pct ?? "—"}%)` };
-  });
-  return { hsPlusPct: Math.round(hsPlus), details, hasData: byCat.size > 0 };
+  const rowsOut = ordered
+    .map((c) => byCat.get(c)!)
+    .filter((r) => r.n !== null && r.pct !== null)
+    .map((r) => ({ label: r.category, n: r.n as number, pct: r.pct as number }));
+  return { hsPlusPct: hsGradOrAbovePct(rows) ?? 0, rows: rowsOut, hasData: byCat.size > 0 };
 }
 
 export default async function Home() {
-  const [overview, counts, certification, honorarium, education, spotlight] = await Promise.all([
+  const [overview, counts, certification, honorarium, education, insights] = await Promise.all([
     getBhwOverview("PH", "national"),
     getBhwCounts("PH", "national"),
     getCertification("PH", "national"),
     getHonorarium("PH", "national"),
     getDemographics("PH", "national", ["education"]),
-    getSpotlightInsight(),
+    getHomeInsights(),
   ]);
 
   const coverage = coverageForDisplay(overview);
@@ -84,11 +71,12 @@ export default async function Home() {
 
   // Item 1 — Total BHWs = StepZero registered + registered & accredited +
   // non-registered (the LGU-declared headcount from before profiling).
-  const totalDetails: StatTileDetail[] = [
-    { label: "Registered", value: formatCount(overview.nRegistered) },
-    { label: "Registered & accredited", value: formatCount(overview.nRegisteredAccredited) },
-    { label: "Non-registered (LGU-declared)", value: formatCount(overview.nonRegistered) },
+  const registrationMix = [
+    { label: "Registered", value: overview.nRegistered ?? 0, color: "var(--seq-3)" },
+    { label: "Registered & accredited", value: overview.nRegisteredAccredited ?? 0, color: "var(--seq-6)" },
+    { label: "Non-registered (LGU-declared)", value: overview.nonRegistered ?? 0, color: "var(--seq-1)" },
   ];
+  const totalChartData: BarDatum[] = registrationMix.map(({ label, value }) => ({ label, value }));
 
   // Item 2/3 — Validated profiles break down into accredited vs. not-yet-accredited
   // (the per-person accreditation flag), disaggregating the profiled BHWs.
@@ -96,12 +84,24 @@ export default async function Home() {
     counts?.nTotal != null && counts?.nAccredited != null
       ? counts.nTotal - counts.nAccredited
       : null;
-  const validatedDetails: StatTileDetail[] = [
-    { label: "Accredited", value: formatCount(counts?.nAccredited ?? null) },
-    { label: "Not yet accredited", value: formatCount(notYetAccredited) },
-  ];
+  const accreditationChartData: BarDatum[] =
+    counts?.nAccredited != null && notYetAccredited !== null
+      ? [
+          { label: "Accredited", value: counts.nAccredited },
+          { label: "Not yet accredited", value: notYetAccredited },
+        ]
+      : [];
 
   const edu = educationTile(education);
+  const educationChartData: BarDatum[] = edu.rows.map((r) => ({ label: r.label, value: r.pct }));
+
+  const per1000ChartData: BarDatum[] =
+    overview.totalBhw !== null && overview.population !== null
+      ? [
+          { label: "Total BHWs", value: overview.totalBhw },
+          { label: "Population", value: overview.population },
+        ]
+      : [];
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6 sm:py-14">
@@ -116,44 +116,80 @@ export default async function Home() {
         <GeoSearch />
       </section>
 
-      <section
-        aria-label="National figures"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
-      >
-        <StatTile
+      <section aria-label="National figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatHero
           label="Total BHWs"
           value={formatCount(overview.totalBhw)}
           caption="Registered/accredited + non-registered (LGU-declared, pre-profiling) · 2025"
-          details={overview.hasStepzero ? totalDetails : undefined}
+          registrationMix={overview.hasStepzero ? registrationMix : undefined}
+          enlarge={
+            overview.hasStepzero
+              ? { title: "Total BHWs breakdown", chartData: totalChartData, xLabel: "BHWs", yLabel: "Class" }
+              : undefined
+          }
         />
         <StatTile
           label="Validated profiles"
           value={formatCount(overview.validatedProfiles)}
           caption={coverageCaption}
-          details={counts?.nTotal != null ? validatedDetails : undefined}
+          visual={
+            counts?.pctAccredited != null ? (
+              <Donut pct={counts.pctAccredited} ariaLabel={`${counts.pctAccredited}% accredited`} />
+            ) : undefined
+          }
+          enlarge={
+            accreditationChartData.length > 0
+              ? { title: "Validated profiles: accredited vs. not yet", chartData: accreditationChartData, xLabel: "BHWs", yLabel: "Status" }
+              : undefined
+          }
         />
         <StatTile
           label="Accredited"
           value={formatPct(counts?.pctAccredited ?? null)}
           caption={profiledCaption}
+          visual={
+            counts?.pctAccredited != null ? (
+              <Gauge value={counts.pctAccredited} max={100} ariaLabel={`${counts.pctAccredited}% accredited`} />
+            ) : undefined
+          }
+          enlarge={
+            accreditationChartData.length > 0
+              ? { title: "Accredited vs. not accredited", chartData: accreditationChartData, xLabel: "BHWs", yLabel: "Status" }
+              : undefined
+          }
         />
         <StatTile
           label="Educational attainment"
           value={edu.hasData ? `${edu.hsPlusPct}%` : "—"}
           caption="High school graduate or higher · validated profiles · 2025"
-          details={edu.hasData ? edu.details : undefined}
+          visual={edu.rows.length > 0 ? <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" /> : undefined}
+          enlarge={
+            educationChartData.length > 0
+              ? { title: "Educational attainment", chartData: educationChartData, xLabel: "% of BHWs", yLabel: "Category", valueFormatter: (n) => `${n}%` }
+              : undefined
+          }
         />
         <StatTile
           label="BHWs per 1,000 residents"
-          value={
-            overview.bhwPer1000Residents === null
-              ? "—"
-              : overview.bhwPer1000Residents.toLocaleString()
-          }
+          value={overview.bhwPer1000Residents === null ? "—" : overview.bhwPer1000Residents.toLocaleString()}
           caption={
             overview.population !== null
               ? `Total BHWs per population of ${formatCount(overview.population)} · StepZero · 2025`
               : "Population data not available"
+          }
+          visual={
+            overview.bhwPer1000Residents !== null ? (
+              <Gauge
+                value={overview.bhwPer1000Residents}
+                max={Math.max(5, overview.bhwPer1000Residents * 1.5)}
+                ariaLabel={`${overview.bhwPer1000Residents} BHWs per 1,000 residents`}
+              />
+            ) : undefined
+          }
+          enlarge={
+            per1000ChartData.length > 0
+              ? { title: "BHWs vs. population", chartData: per1000ChartData, xLabel: "Count", yLabel: "Metric" }
+              : undefined
           }
         />
       </section>
@@ -165,7 +201,7 @@ export default async function Home() {
         {coverage !== null && overview.registeredUniverse !== null
           ? ` — about ${coverage}% of the country's ${formatCount(overview.registeredUniverse)} registered BHWs`
           : ""}
-        . Tap Total BHWs or Validated profiles to see the classification breakdown.
+        . Tap any figure to see the full breakdown.
       </p>
 
       <AiInsight geoCode="PH" geoLevel="national" geoName="Philippines" />
@@ -176,16 +212,7 @@ export default async function Home() {
         <HonorariumAmountFigure rows={honorarium} caption={profiledCaption} />
       </section>
 
-      {spotlight && (
-        <section
-          aria-label="Spotlight insight"
-          className="rounded-lg border border-accent/30 bg-accent-subtle p-5 sm:p-6"
-        >
-          <p className="text-xs font-medium uppercase tracking-wide text-accent">Spotlight insight</p>
-          <p className="mt-2 text-lg font-medium">{spotlight.headline}</p>
-          <p className="mt-1 text-xs text-muted">{spotlight.caption}</p>
-        </section>
-      )}
+      <InsightsGrid insights={insights} />
 
       <ChatLauncher geoCode="PH" geoLevel="national" geoName="Philippines" />
     </div>

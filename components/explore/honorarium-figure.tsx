@@ -1,5 +1,5 @@
 import { FigureCard } from "@/components/narrative/figure-card";
-import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { FigureView } from "@/components/charts/figure-view";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { HonorariumRow } from "@/lib/db/indicators";
 
@@ -35,7 +35,8 @@ export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; cap
       }
     >
       {chartData.length > 0 ? (
-        <BarChartClient
+        <FigureView
+          title="Honorarium, by paying level"
           data={chartData}
           xLabel="% of BHWs receiving"
           yLabel="Paying level"

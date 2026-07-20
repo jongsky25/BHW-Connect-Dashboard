@@ -28,13 +28,13 @@
   --warning: #8a5a00;
 
   /* Type scale (major third, 1.25) */
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.5625rem;
-  --text-2xl: 1.953rem;
-  --text-3xl: 2.441rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5625rem;
+  --font-size-2xl: 1.953rem;
+  --font-size-3xl: 2.441rem;
 
   /* Spacing scale (4px base) */
   --space-1: 0.25rem;
@@ -67,6 +67,17 @@
   --color-seq-7: var(--seq-7);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Register the type scale as Tailwind's font-size theme namespace, so
+     text-xs..text-3xl utilities resolve to the app's own scale instead of
+     Tailwind's built-in defaults. */
+  --text-xs: var(--font-size-xs);
+  --text-sm: var(--font-size-sm);
+  --text-base: var(--font-size-base);
+  --text-lg: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+  --text-2xl: var(--font-size-2xl);
+  --text-3xl: var(--font-size-3xl);
 }
 
 @media (prefers-color-scheme: dark) {

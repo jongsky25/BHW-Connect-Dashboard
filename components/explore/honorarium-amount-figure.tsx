@@ -1,7 +1,8 @@
 import { FigureCard } from "@/components/narrative/figure-card";
-import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { FigureView } from "@/components/charts/figure-view";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { HonorariumRow } from "@/lib/db/indicators";
+import { formatPeso } from "@/lib/format";
 
 const PAYER_LABEL: Record<string, string> = {
   region: "Region",
@@ -11,10 +12,6 @@ const PAYER_LABEL: Record<string, string> = {
 };
 
 const PAYER_ORDER = ["region", "province", "citymun", "barangay"];
-
-function peso(n: number): string {
-  return `₱${Math.round(n).toLocaleString()}`;
-}
 
 /**
  * Average monthly honorarium *amount* by paying level — the companion to
@@ -38,7 +35,7 @@ export function HonorariumAmountFigure({ rows, caption }: { rows: HonorariumRow[
       caption={caption}
       headline={
         barangay?.avgMonthlyAmount != null
-          ? `Barangays — where the most BHWs are paid — give ${peso(barangay.avgMonthlyAmount)} per month on average.`
+          ? `Barangays — where the most BHWs are paid — give ${formatPeso(barangay.avgMonthlyAmount)} per month on average.`
           : chartData.length > 0
             ? "Average monthly honorarium varies widely by paying level."
             : "No honorarium amount data available."
@@ -59,7 +56,13 @@ export function HonorariumAmountFigure({ rows, caption }: { rows: HonorariumRow[
       }
     >
       {chartData.length > 0 ? (
-        <BarChartClient data={chartData} xLabel="Average ₱ per month" yLabel="Paying level" />
+        <FigureView
+          title="Average honorarium amount, by paying level"
+          data={chartData}
+          xLabel="Average ₱ per month"
+          yLabel="Paying level"
+          valueFormatter={formatPeso}
+        />
       ) : (
         <p className="text-sm text-muted">No data available.</p>
       )}
