@@ -3,7 +3,6 @@ import {
   MAX_CARDS,
   MIN_LEADER_N,
   benchmarkDiff,
-  householdsPerBhw,
   pickTopInsights,
   rankChildren,
   spreadOf,
@@ -103,19 +102,6 @@ describe("benchmarkDiff", () => {
   it("returns null when either side is missing", () => {
     expect(benchmarkDiff(null, 50)).toBeNull();
     expect(benchmarkDiff(50, undefined)).toBeNull();
-  });
-});
-
-describe("householdsPerBhw", () => {
-  it("computes the rounded households-per-BHW ratio", () => {
-    expect(householdsPerBhw(1_050, 4)).toBe(263);
-  });
-
-  it("returns null when either input is missing or non-positive", () => {
-    expect(householdsPerBhw(null, 4)).toBeNull();
-    expect(householdsPerBhw(1_000, null)).toBeNull();
-    expect(householdsPerBhw(0, 4)).toBeNull();
-    expect(householdsPerBhw(1_000, 0)).toBeNull();
   });
 });
 

@@ -26,8 +26,9 @@ export default function RoadmapPage() {
           </li>
           <li>An admin panel for feedback triage, usage dashboards, and content curation (staff-only)</li>
           <li>
-            Per-capita context — &quot;BHWs per 1,000 residents&quot; — using population and
-            household figures from the StepZero quick-count, shown alongside Total BHWs
+            Workload context — &quot;Households per BHW&quot;, the ratio BHWs are actually
+            assigned by — using household figures from the StepZero quick-count, shown alongside
+            Total BHWs
           </li>
         </ul>
       </section>

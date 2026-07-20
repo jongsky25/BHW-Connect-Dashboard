@@ -1,25 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { bhwPer1000ResidentsFor, coverageForDisplay } from "./stepzero";
+import { coverageForDisplay, householdsPerBhw } from "./stepzero";
 
-describe("bhwPer1000ResidentsFor", () => {
-  it("computes a rounded per-1,000-residents rate", () => {
-    expect(bhwPer1000ResidentsFor(3068, 306_835)).toBe(10);
+describe("householdsPerBhw", () => {
+  it("computes the rounded households-per-BHW ratio", () => {
+    expect(householdsPerBhw(1_050, 4)).toBe(263);
   });
 
-  it("rounds to one decimal place", () => {
-    expect(bhwPer1000ResidentsFor(1, 3_000)).toBe(0.3);
-  });
-
-  it("returns null when population is missing", () => {
-    expect(bhwPer1000ResidentsFor(100, null)).toBeNull();
+  it("returns null when households is missing", () => {
+    expect(householdsPerBhw(null, 4)).toBeNull();
   });
 
   it("returns null when totalBhw is missing", () => {
-    expect(bhwPer1000ResidentsFor(null, 1000)).toBeNull();
+    expect(householdsPerBhw(1_000, null)).toBeNull();
   });
 
-  it("returns null when population is zero", () => {
-    expect(bhwPer1000ResidentsFor(100, 0)).toBeNull();
+  it("returns null when either input is zero", () => {
+    expect(householdsPerBhw(0, 4)).toBeNull();
+    expect(householdsPerBhw(1_000, 0)).toBeNull();
   });
 });
 

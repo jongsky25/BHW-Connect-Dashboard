@@ -103,7 +103,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         totalBhw={overview.totalBhw}
         validatedProfiles={overview.validatedProfiles}
         coveragePct={coverageForDisplay(overview)}
-        bhwPer1000Residents={overview.bhwPer1000Residents}
+        householdsPerBhw={overview.householdsPerBhw}
         incomeClass={geo.incomeClass}
       />
 

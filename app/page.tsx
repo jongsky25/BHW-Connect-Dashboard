@@ -97,11 +97,11 @@ export default async function Home() {
   const edu = educationTile(education);
   const educationChartData: BarDatum[] = edu.rows.map((r) => ({ label: r.label, value: r.pct, count: r.n }));
 
-  const per1000ChartData: BarDatum[] =
-    overview.totalBhw !== null && overview.population !== null
+  const householdChartData: BarDatum[] =
+    overview.totalBhw !== null && overview.households !== null
       ? [
           { label: "Total BHWs", value: overview.totalBhw },
-          { label: "Population", value: overview.population },
+          { label: "Households", value: overview.households },
         ]
       : [];
 
@@ -197,28 +197,28 @@ export default async function Home() {
           }
         />
         <StatTile
-          label="BHWs per 1,000 residents"
-          value={overview.bhwPer1000Residents === null ? "—" : overview.bhwPer1000Residents.toLocaleString()}
+          label="Households per BHW"
+          value={overview.householdsPerBhw === null ? "—" : overview.householdsPerBhw.toLocaleString()}
           caption={
-            overview.population !== null
-              ? `Total BHWs per population of ${formatCount(overview.population)} · StepZero · 2025`
-              : "Population data not available"
+            overview.households !== null
+              ? `Total BHWs across ${formatCount(overview.households)} households · StepZero · 2025`
+              : "Household data not available"
           }
           visual={
-            overview.bhwPer1000Residents !== null ? (
+            overview.householdsPerBhw !== null ? (
               <Gauge
-                value={overview.bhwPer1000Residents}
-                max={Math.max(5, overview.bhwPer1000Residents * 1.5)}
-                ariaLabel={`${overview.bhwPer1000Residents} BHWs per 1,000 residents`}
+                value={overview.householdsPerBhw}
+                max={Math.max(20, overview.householdsPerBhw * 1.5)}
+                ariaLabel={`1 BHW for every ${overview.householdsPerBhw} households`}
               />
             ) : undefined
           }
           enlarge={
-            per1000ChartData.length > 0
+            householdChartData.length > 0
               ? {
-                  title: "BHWs vs. population",
+                  title: "BHWs vs. households",
                   caption: totalCaption,
-                  chartData: per1000ChartData,
+                  chartData: householdChartData,
                   xLabel: "Count",
                   yLabel: "Metric",
                 }

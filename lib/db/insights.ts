@@ -10,7 +10,7 @@ import {
   hsGradOrAbovePct,
   type BhwCounts,
 } from "./indicators";
-import { getStepzeroCounts, type StepzeroCounts } from "./stepzero";
+import { getStepzeroCounts, householdsPerBhw, type StepzeroCounts } from "./stepzero";
 import { getChildGeos, getGeoAncestors, type GeoAncestors, type GeoOption } from "./geo";
 import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 
@@ -127,15 +127,6 @@ export function benchmarkDiff(
   const roundedOwn = Math.round(own);
   const roundedParent = Math.round(parent);
   return { own: roundedOwn, parent: roundedParent, diff: roundedOwn - roundedParent };
-}
-
-/** Households served per BHW, rounded. Null without both inputs positive. */
-export function householdsPerBhw(
-  households: number | null,
-  totalBhw: number | null,
-): number | null {
-  if (households === null || totalBhw === null || households <= 0 || totalBhw <= 0) return null;
-  return Math.round(households / totalBhw);
 }
 
 /** Highest-scoring cards first (stable on ties, preserving registry order),
@@ -477,8 +468,8 @@ const registrationGap: InsightGenerator = {
   },
 };
 
-/** Households per BHW — at barangay scale, households is a more intuitive
- * denominator than the per-1,000-residents rate used higher up. */
+/** Households per BHW at barangay scale — the assignment-level view of the
+ * same ratio the overview strip shows for every geo. */
 const householdCoverage: InsightGenerator = {
   id: "household-coverage",
   levels: ["barangay"],

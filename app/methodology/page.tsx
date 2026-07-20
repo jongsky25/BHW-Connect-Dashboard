@@ -91,12 +91,13 @@ export default async function MethodologyPage() {
           BHW&apos;s verified accreditation flag in the profiled dataset.
         </p>
         <p>
-          StepZero&apos;s population and household counts also power{" "}
-          <GlossaryTerm slug="bhw_per_1000">BHWs per 1,000 residents</GlossaryTerm>, shown alongside
-          the headcount everywhere Total BHWs appears: Total BHWs divided by population, scaled to a
-          rate per 1,000 residents, so places of very different sizes can be compared on workforce
-          density rather than raw headcount. It&apos;s shown only where StepZero has a population
-          figure for that area.
+          StepZero&apos;s household counts also power{" "}
+          <GlossaryTerm slug="households_per_bhw">Households per BHW</GlossaryTerm>, shown alongside
+          the headcount everywhere Total BHWs appears: households divided by Total BHWs, giving
+          roughly how many households each BHW serves. BHWs in the Philippines are assigned to
+          households, so this ratio — rather than a per-capita rate — is the workload measure that
+          matters, and it lets places of very different sizes be compared. It&apos;s shown only
+          where StepZero has a household figure for that area.
         </p>
       </section>
 
