@@ -1,6 +1,7 @@
 import "server-only";
 import {
   getBhwCounts,
+  getCertification,
   getDemographics,
   getHonorarium,
   getTrainingCoverage,
@@ -26,6 +27,23 @@ export type ExportFigureData = {
   license: string;
   asOfDate: string | null;
 };
+
+/** Same labels/order as CertificationFigure, so exports read like the screen. */
+const CERT_LABEL: Record<string, string> = {
+  ref_manual_trained: "BHW Reference Manual Training",
+  tesda_nc2: "TESDA BHS NC II Training",
+  tesda_certified: "TESDA BHS NC II Certification",
+};
+const CERT_ORDER = ["ref_manual_trained", "tesda_nc2", "tesda_certified"];
+
+/** Same labels/order as the honorarium figures. */
+const PAYER_LABEL: Record<string, string> = {
+  region: "Region",
+  province: "Province",
+  citymun: "City/Municipality",
+  barangay: "Barangay",
+};
+const PAYER_ORDER = ["region", "province", "citymun", "barangay"];
 
 const DIMENSION_LABEL: Record<DemographicDimension, string> = {
   sex: "Sex",
@@ -127,19 +145,97 @@ export async function getExportFigureData(params: {
         technicalNote: "agg_training is computed at national/region/province/citymun level only.",
       };
     }
+    case "certification": {
+      const rows = await getCertification(params.geoCode, params.geoLevel);
+      const byType = new Map(rows.map((r) => [r.certType, r]));
+      return {
+        ...shared,
+        title: "Training & certification coverage",
+        headline: "% of BHWs with each training/certification, tracked independently.",
+        rows: CERT_ORDER.map((t) => byType.get(t))
+          .filter((r): r is NonNullable<typeof r> => !!r && r.pct !== null)
+          .map((r) => ({ label: CERT_LABEL[r.certType] ?? r.certType, value: r.pct as number })),
+        xLabel: "% of BHWs",
+        yLabel: "Training / certification",
+        valueSuffix: "%",
+        isSuppressed: false,
+        technicalNote:
+          "Reference Manual training, TESDA NC II training, and TESDA NC II certification are tracked independently; a BHW may have any combination of the three.",
+      };
+    }
     case "honorarium": {
       const rows = await getHonorarium(params.geoCode, params.geoLevel);
-      const labels: Record<string, string> = { region: "Region", province: "Province", citymun: "City/Municipality", barangay: "Barangay" };
       return {
         ...shared,
         title: "Honorarium, by paying level",
         headline: "% of BHWs receiving honorarium, by paying administrative level.",
-        rows: rows.filter((r) => r.pctReceiving !== null).map((r) => ({ label: labels[r.payerLevel] ?? r.payerLevel, value: r.pctReceiving as number })),
+        rows: rows.filter((r) => r.pctReceiving !== null).map((r) => ({ label: PAYER_LABEL[r.payerLevel] ?? r.payerLevel, value: r.pctReceiving as number })),
         xLabel: "% of BHWs receiving",
         yLabel: "Paying level",
         valueSuffix: "%",
         isSuppressed: false,
         technicalNote: "A BHW may receive honorarium from more than one level; percentages aren't mutually exclusive.",
+      };
+    }
+    case "honorarium_amount": {
+      const rows = await getHonorarium(params.geoCode, params.geoLevel);
+      const byLevel = new Map(rows.map((r) => [r.payerLevel, r]));
+      return {
+        ...shared,
+        title: "Average honorarium amount, by paying level",
+        headline: "Average monthly honorarium among BHWs who receive one from that level.",
+        rows: PAYER_ORDER.map((l) => byLevel.get(l))
+          .filter((r): r is NonNullable<typeof r> => !!r && r.avgMonthlyAmount !== null)
+          .map((r) => ({ label: PAYER_LABEL[r.payerLevel] ?? r.payerLevel, value: r.avgMonthlyAmount as number })),
+        xLabel: "Average ₱ per month",
+        yLabel: "Paying level",
+        valueSuffix: "",
+        isSuppressed: false,
+        technicalNote:
+          "Amounts are monthly averages in pesos, among BHWs receiving from that level. A BHW may receive from more than one level, so averages are not additive across levels.",
+      };
+    }
+    case "honorarium_distribution": {
+      const rows = await getHonorarium(params.geoCode, params.geoLevel);
+      const byLevel = new Map(rows.map((r) => [r.payerLevel, r]));
+      const ordered = PAYER_ORDER.map((l) => byLevel.get(l)).filter(
+        (r): r is NonNullable<typeof r> => !!r,
+      );
+      // The flat {label, value} export contract can't carry a five-number
+      // summary per row, so each (level, statistic) becomes its own row —
+      // "Barangay — median" etc. — matching the figure's companion table.
+      const stats = [
+        ["min", (r: (typeof ordered)[number]) => r.minAmount],
+        ["p25", (r: (typeof ordered)[number]) => r.p25Amount],
+        ["median", (r: (typeof ordered)[number]) => r.medianAmount],
+        ["p75", (r: (typeof ordered)[number]) => r.p75Amount],
+        ["max", (r: (typeof ordered)[number]) => r.maxAmount],
+      ] as const;
+      const suppressedLevels = ordered.filter((r) => r.isSuppressed);
+      return {
+        ...shared,
+        title: "Honorarium distribution, by paying level",
+        headline:
+          "Monthly honorarium min/p25/median/p75/max among BHWs receiving from each level.",
+        rows: ordered.flatMap((r) =>
+          stats
+            .filter(([, pick]) => pick(r) !== null)
+            .map(([stat, pick]) => ({
+              label: `${PAYER_LABEL[r.payerLevel] ?? r.payerLevel} — ${stat}`,
+              value: pick(r) as number,
+            })),
+        ),
+        xLabel: "₱ per month",
+        yLabel: "Paying level · statistic",
+        valueSuffix: "",
+        isSuppressed: false,
+        technicalNote:
+          "Amounts are monthly, in pesos, among BHWs receiving from that level." +
+          (suppressedLevels.length > 0
+            ? ` Distribution values are withheld for ${suppressedLevels
+                .map((r) => PAYER_LABEL[r.payerLevel] ?? r.payerLevel)
+                .join(", ")} (fewer than 5 recipients at this geography, to prevent re-identification).`
+            : ""),
       };
     }
   }

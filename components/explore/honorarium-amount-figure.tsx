@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { PeriodToggle, PERIOD_MONTHS, PERIOD_NOUN, type AmountPeriod } from "@/components/ui/period-toggle";
 import type { HonorariumRow } from "@/lib/db/indicators";
+import type { GeoLevel } from "@/lib/filters/schema";
 import { formatPeso } from "@/lib/format";
 
 const PAYER_LABEL: Record<string, string> = {
@@ -23,7 +25,17 @@ const PAYER_ORDER = ["region", "province", "citymun", "barangay"];
  * `getHonorarium` already returns but no figure charted before. The period
  * toggle scales the monthly average to a quarterly (×3) or annual (×12) figure.
  */
-export function HonorariumAmountFigure({ rows, caption }: { rows: HonorariumRow[]; caption: string }) {
+export function HonorariumAmountFigure({
+  rows,
+  caption,
+  geoCode,
+  geoLevel,
+}: {
+  rows: HonorariumRow[];
+  caption: string;
+  geoCode?: string;
+  geoLevel?: GeoLevel;
+}) {
   const [period, setPeriod] = useState<AmountPeriod>("monthly");
   const multiplier = PERIOD_MONTHS[period];
   const noun = PERIOD_NOUN[period];
@@ -42,6 +54,11 @@ export function HonorariumAmountFigure({ rows, caption }: { rows: HonorariumRow[
     <FigureCard
       title="Average honorarium amount, by paying level"
       caption={caption}
+      exportMenu={
+        geoCode && geoLevel ? (
+          <ExportMenu geoCode={geoCode} geoLevel={geoLevel} indicator="honorarium_amount" />
+        ) : undefined
+      }
       headline={
         barangay?.avgMonthlyAmount != null
           ? `Barangays — where the most BHWs are paid — give ${formatPeso(barangay.avgMonthlyAmount * multiplier)} per ${noun} on average.`

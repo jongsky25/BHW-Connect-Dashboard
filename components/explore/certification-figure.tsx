@@ -1,7 +1,9 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { CertificationRow } from "@/lib/db/indicators";
+import type { GeoLevel } from "@/lib/filters/schema";
 
 const CERT_LABEL: Record<string, string> = {
   ref_manual_trained: "BHW Reference Manual Training",
@@ -13,7 +15,17 @@ const CERT_LABEL: Record<string, string> = {
 // TESDA NC II training → TESDA NC II certification.
 const CERT_ORDER = ["ref_manual_trained", "tesda_nc2", "tesda_certified"];
 
-export function CertificationFigure({ rows, caption }: { rows: CertificationRow[]; caption: string }) {
+export function CertificationFigure({
+  rows,
+  caption,
+  geoCode,
+  geoLevel,
+}: {
+  rows: CertificationRow[];
+  caption: string;
+  geoCode?: string;
+  geoLevel?: GeoLevel;
+}) {
   const byType = new Map(rows.map((r) => [r.certType, r]));
   const chartData = CERT_ORDER.map((t) => byType.get(t))
     .filter((r): r is CertificationRow => !!r && r.pct !== null)
@@ -26,6 +38,11 @@ export function CertificationFigure({ rows, caption }: { rows: CertificationRow[
     <FigureCard
       title="Training & certification coverage"
       caption={caption}
+      exportMenu={
+        geoCode && geoLevel ? (
+          <ExportMenu geoCode={geoCode} geoLevel={geoLevel} indicator="certification" />
+        ) : undefined
+      }
       headline={
         refManual?.pct != null && certified?.pct != null
           ? `${Math.round(refManual.pct)}% have completed BHW Reference Manual training, but only ${Math.round(certified.pct)}% hold TESDA BHS NC II certification.`
