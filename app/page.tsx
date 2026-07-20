@@ -22,6 +22,7 @@ import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-f
 import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
 import { AiInsight } from "@/components/narrative/ai-insight";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
+import { FigureTabs } from "@/components/ui/figure-tabs";
 
 // Educational-attainment categories, lowest to highest. "High school graduate or
 // higher" (lib/db/indicators.ts's HS_GRAD_AND_ABOVE) sums every level at High
@@ -137,9 +138,12 @@ export default async function Home() {
         <GeoSearch />
       </section>
 
+      {/* Hero spans the full top row; the four supporting tiles sit 2×2 below
+          it, so the grid reads hero-first instead of an unbalanced 3+2
+          (HOME_SEARCH_REVIEW item 16 / D7). */}
       <section
         aria-label="National figures"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
       >
         <StatHero
           label="Total BHWs"
@@ -270,9 +274,28 @@ export default async function Home() {
 
       <section aria-label="National breakdowns" className="flex flex-col gap-6">
         <CertificationFigure rows={certification} caption={profiledCaption} />
-        <HonorariumFigure rows={honorarium} caption={profiledCaption} />
-        <HonorariumAmountFigure rows={honorarium} caption={profiledCaption} />
-        <HonorariumDistributionFigure rows={honorarium} caption={profiledCaption} />
+        {/* One honorarium story told three ways — tabbed instead of three
+            stacked cards with identical rhythm (HOME_SEARCH_REVIEW item 16). */}
+        <FigureTabs
+          heading="Honorarium"
+          tabs={[
+            {
+              id: "who",
+              label: "Who receives",
+              content: <HonorariumFigure rows={honorarium} caption={profiledCaption} />,
+            },
+            {
+              id: "amount",
+              label: "How much",
+              content: <HonorariumAmountFigure rows={honorarium} caption={profiledCaption} />,
+            },
+            {
+              id: "distribution",
+              label: "Distribution",
+              content: <HonorariumDistributionFigure rows={honorarium} caption={profiledCaption} />,
+            },
+          ]}
+        />
       </section>
 
       <InsightsGrid insights={insights} />
