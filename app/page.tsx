@@ -5,7 +5,11 @@ import {
   getDemographics,
   hsGradOrAbovePct,
 } from "@/lib/db/indicators";
-import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import {
+  getBhwOverview,
+  getRegionHouseholdsPerBhw,
+  coverageForDisplay,
+} from "@/lib/db/stepzero";
 import { getHomeInsights } from "@/lib/db/insights";
 import type { DemographicRow } from "@/lib/db/indicators";
 import type { BarDatum } from "@/lib/charts/bar-chart";
@@ -13,7 +17,7 @@ import { formatCount, formatPct } from "@/lib/format";
 import { GeoSearch } from "@/components/home/geo-search";
 import { StatHero } from "@/components/home/stat-hero";
 import { StatTile } from "@/components/home/stat-tile";
-import { Donut, Gauge, LadderBars } from "@/components/home/mini-viz";
+import { Donut, DotStrip, Gauge, LadderBars } from "@/components/home/mini-viz";
 import { DenominatorExplainer } from "@/components/home/denominator-explainer";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { CertificationFigure } from "@/components/explore/certification-figure";
@@ -59,14 +63,16 @@ function educationTile(rows: DemographicRow[]): {
 }
 
 export default async function Home() {
-  const [overview, counts, certification, honorarium, education, insights] = await Promise.all([
-    getBhwOverview("PH", "national"),
-    getBhwCounts("PH", "national"),
-    getCertification("PH", "national"),
-    getHonorarium("PH", "national"),
-    getDemographics("PH", "national", ["education"]),
-    getHomeInsights(),
-  ]);
+  const [overview, counts, certification, honorarium, education, insights, regionRatios] =
+    await Promise.all([
+      getBhwOverview("PH", "national"),
+      getBhwCounts("PH", "national"),
+      getCertification("PH", "national"),
+      getHonorarium("PH", "national"),
+      getDemographics("PH", "national", ["education"]),
+      getHomeInsights(),
+      getRegionHouseholdsPerBhw(),
+    ]);
 
   const coverage = coverageForDisplay(overview);
   // Per-person figures are computed from the individually-profiled subset, so
@@ -117,13 +123,13 @@ export default async function Home() {
     count: r.n,
   }));
 
-  const householdChartData: BarDatum[] =
-    overview.totalBhw !== null && overview.households !== null
-      ? [
-          { label: "Total BHWs", value: overview.totalBhw },
-          { label: "Households", value: overview.households },
-        ]
-      : [];
+  // Households-per-BHW spread across regions (highest first in the enlarge
+  // chart), replacing the old arbitrary-max gauge — HOME_SEARCH_REVIEW item 9:
+  // with no owner-confirmed target ratio, the honest comparator in the
+  // national context is the observed regional distribution.
+  const regionRatioChartData: BarDatum[] = [...regionRatios]
+    .sort((a, b) => b.value - a.value)
+    .map((r) => ({ label: r.geoName, value: r.value }));
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6 sm:py-14">
@@ -241,22 +247,22 @@ export default async function Home() {
               : "Household data not available"
           }
           visual={
-            overview.householdsPerBhw !== null ? (
-              <Gauge
-                value={overview.householdsPerBhw}
-                max={Math.max(20, overview.householdsPerBhw * 1.5)}
-                ariaLabel={`1 BHW for every ${overview.householdsPerBhw} households`}
+            overview.householdsPerBhw !== null && regionRatios.length > 0 ? (
+              <DotStrip
+                points={regionRatios.map((r) => r.value)}
+                marker={overview.householdsPerBhw}
+                ariaLabel={`1 BHW for every ${overview.householdsPerBhw} households nationally; regional averages range from ${regionRatios[0].value} to ${regionRatios[regionRatios.length - 1].value}`}
               />
             ) : undefined
           }
           enlarge={
-            householdChartData.length > 0
+            regionRatioChartData.length > 0
               ? {
-                  title: "BHWs vs. households",
+                  title: "Households per BHW, by region",
                   caption: totalCaption,
-                  chartData: householdChartData,
-                  xLabel: "Count",
-                  yLabel: "Metric",
+                  chartData: regionRatioChartData,
+                  xLabel: "Households per BHW",
+                  yLabel: "Region",
                 }
               : undefined
           }

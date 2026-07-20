@@ -168,3 +168,37 @@ export async function getBhwOverview(
     householdsPerBhw: householdsPerBhw(households, totalBhw),
   };
 }
+
+export type RegionHouseholdsPerBhw = { geoCode: string; geoName: string; value: number };
+
+/**
+ * Households-per-BHW for every region, for the home tile's regional-spread
+ * comparator (HOME_SEARCH_REVIEW item 9: in the national context, show the
+ * distribution across regions rather than a gauge against an arbitrary or
+ * unconfirmed target). Regions with no household or BHW data are omitted.
+ */
+export async function getRegionHouseholdsPerBhw(): Promise<RegionHouseholdsPerBhw[]> {
+  const datasetId = await getDatasetIdBySlug(DATASET_SLUGS.stepzero);
+  if (datasetId === null) return [];
+
+  const supabase = createSupabaseServerClient();
+  const [{ data: counts }, { data: names }] = await Promise.all([
+    supabase
+      .from("agg_bhw_stepzero_counts")
+      .select("geo_code, n_total_bhw, households")
+      .eq("dataset_id", datasetId)
+      .eq("geo_level", "region"),
+    supabase.from("dim_geo").select("geo_code, geo_name").eq("geo_level", "region"),
+  ]);
+  if (!counts) return [];
+
+  const nameByCode = new Map((names ?? []).map((row) => [row.geo_code, row.geo_name]));
+  return counts
+    .map((row) => ({
+      geoCode: row.geo_code,
+      geoName: nameByCode.get(row.geo_code) ?? row.geo_code,
+      value: householdsPerBhw(row.households, row.n_total_bhw),
+    }))
+    .filter((r): r is RegionHouseholdsPerBhw => r.value !== null)
+    .sort((a, b) => a.value - b.value);
+}

@@ -153,3 +153,51 @@ export function Gauge({
     </svg>
   );
 }
+
+/**
+ * Strip plot of a value's spread across sibling geos (one dot per geo) with an
+ * accent marker for the headline value. Replaces the gauge for indicators with
+ * no defensible target/max (HOME_SEARCH_REVIEW item 9 / E2: a gauge arc
+ * implies a benchmark that doesn't exist; the honest comparator is the
+ * observed distribution). Scale runs 0 to the largest observed value, so dot
+ * positions read as proportions of the real spread, not of an invented cap.
+ */
+export function DotStrip({
+  points,
+  marker,
+  ariaLabel,
+}: {
+  points: number[];
+  marker: number;
+  ariaLabel: string;
+}) {
+  const max = Math.max(...points, marker);
+  if (max <= 0) return null;
+  const left = (v: number) => `${(100 * v) / max}%`;
+  const lowest = Math.min(...points);
+  const highest = Math.max(...points);
+  return (
+    <div role="img" aria-label={ariaLabel}>
+      <div className="relative h-5">
+        <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
+        {points.map((v, i) => (
+          <span
+            key={i}
+            className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-60"
+            style={{ left: left(v), backgroundColor: "var(--seq-3)" }}
+          />
+        ))}
+        <span
+          className="absolute top-1/2 h-4 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{ left: left(marker), backgroundColor: "var(--accent)" }}
+        />
+      </div>
+      <div className="mt-0.5 flex justify-between text-[0.65rem] text-muted" aria-hidden="true">
+        <span>0</span>
+        <span>
+          regions {lowest.toLocaleString()}–{highest.toLocaleString()}
+        </span>
+      </div>
+    </div>
+  );
+}
