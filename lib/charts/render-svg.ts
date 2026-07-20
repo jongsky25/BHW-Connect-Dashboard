@@ -1,5 +1,6 @@
 import "server-only";
 import { horizontalBarSpec, type BarDatum } from "./bar-chart";
+import { styleAxisTitles } from "./style-axis";
 
 /**
  * Server-side counterpart to components/charts/bar-chart-client.tsx — same
@@ -17,6 +18,8 @@ export async function renderBarChartSvg(
 
   const spec = horizontalBarSpec(data, options);
   const node = Plot.plot({ ...spec, document });
+  // Match the on-screen chart: bold/enlarge the axis titles.
+  styleAxisTitles(node);
 
   return {
     svg: node.outerHTML,

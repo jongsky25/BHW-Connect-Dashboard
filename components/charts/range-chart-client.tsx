@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { horizontalRangeSpec, type RangeDatum } from "@/lib/charts/range-chart";
+import { styleAxisTitles } from "@/lib/charts/style-axis";
 import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
 /**
@@ -58,6 +59,8 @@ export function RangeChartClient({
       plot = Plot.plot(
         horizontalRangeSpec(data, { xLabel, yLabel, valueFormat: format, width: plotWidth, fill }),
       );
+      // Bold/enlarge the axis titles so they read clearly against the tick labels.
+      styleAxisTitles(plot);
       // Same rationale as BarChartClient: the wrapping div already carries
       // role="img" + a full text aria-label, so hide the SVG from the a11y tree.
       plot.setAttribute("aria-hidden", "true");

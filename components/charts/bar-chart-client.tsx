@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { horizontalBarSpec, type BarDatum } from "@/lib/charts/bar-chart";
+import { styleAxisTitles } from "@/lib/charts/style-axis";
 
 export function BarChartClient({
   data,
@@ -56,6 +57,8 @@ export function BarChartClient({
       plot = Plot.plot(
         horizontalBarSpec(data, { xLabel, yLabel, valueSuffix, valueFormat, width: plotWidth, barHeight, fill }),
       );
+      // Bold/enlarge the axis titles so they read clearly against the tick labels.
+      styleAxisTitles(plot);
       // The wrapping div already carries role="img" + a full text aria-label
       // (below); Plot's internal <g aria-label="..."> marks on plain <g>
       // elements otherwise trip aria-prohibited-attr, so hide the SVG itself
