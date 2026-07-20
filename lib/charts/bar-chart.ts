@@ -38,26 +38,27 @@ export function horizontalBarSpec(
   // most in the enlarged modal, which fills a ~96vw phone screen.
   const compact = width < 520;
   const longestLabel = Math.max(0, ...data.map((d) => d.label.length));
-  // Plot draws the (rotated) y-axis title in a fixed vertical strip at the far
-  // left, but sizes no margin for it — so reserve a ~22px gutter whenever a
-  // yLabel is set. Without it, short tick labels (e.g. "Paid"/"Unpaid") extend
-  // left to the frame edge and overlap the title.
-  const titleGutter = options.yLabel != null ? 22 : 0;
   // Reserve just enough of the left gutter for the longest y-axis label, but
-  // cap it so a narrow plot still leaves usable room for the bars. Add the
-  // title gutter on top so the tick labels always clear the axis title.
-  const marginLeft = titleGutter + Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
+  // cap it so a narrow plot still leaves usable room for the bars.
+  const marginLeft = Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
   const barHeight = Math.min(options.barHeight ?? 32, compact ? 40 : 200);
+  // Render the y-axis title horizontally along the top (labelAnchor "top")
+  // rather than rotated in the left gutter, where — even with a widened margin
+  // — it collided with long tick labels on narrow widths. A top band keeps the
+  // title clear of the labels entirely; reserve room for it (and pad the height
+  // so the bars keep their size) only when a yLabel is actually set.
+  const hasYTitle = options.yLabel != null;
   return {
     marginLeft,
     // Reserve room for the value label drawn past the end of the longest
     // bar — without it, a wide value (e.g. "201,653") can clip against the
     // plot's right edge on a narrow/responsive width.
     marginRight: compact ? 44 : 56,
+    marginTop: hasYTitle ? 34 : undefined,
     width,
-    height: Math.max(80, data.length * barHeight + 20),
+    height: Math.max(80, data.length * barHeight + 20 + (hasYTitle ? 20 : 0)),
     x: { label: options.xLabel ?? null, grid: true, nice: true },
-    y: { label: options.yLabel ?? null },
+    y: { label: options.yLabel ?? null, labelAnchor: "top" },
     marks: [
       // Base bars render slightly dimmed; the pointerY overlay below brings
       // the hovered row back to full opacity so it visually pops.
