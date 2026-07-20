@@ -3,28 +3,14 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { logEvent } from "@/lib/usage/log-client";
+import { getSessionId } from "@/lib/feedback/session";
 
-const CATEGORIES = [
+export const CATEGORIES = [
   { value: "bug", label: "Something's broken" },
   { value: "data_question", label: "A question about the data" },
   { value: "suggestion", label: "A suggestion" },
   { value: "other", label: "Something else" },
 ] as const;
-
-const SESSION_KEY = "bhw-connect-session-id";
-
-function getSessionId(): string {
-  try {
-    let id = sessionStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      sessionStorage.setItem(SESSION_KEY, id);
-    }
-    return id;
-  } catch {
-    return crypto.randomUUID();
-  }
-}
 
 export function FeedbackForm() {
   const pathname = usePathname();

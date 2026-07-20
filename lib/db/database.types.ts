@@ -765,33 +765,45 @@ export type Database = {
       feedback: {
         Row: {
           category: Database["public"]["Enums"]["feedback_category_enum"];
+          context: Json | null;
           created_at: string;
           email: string | null;
           id: number;
           message: string;
           page_path: string;
+          page_url: string | null;
+          screenshot_path: string | null;
           session_id: string;
           status: Database["public"]["Enums"]["feedback_status_enum"];
+          target_selector: string | null;
         };
         Insert: {
           category: Database["public"]["Enums"]["feedback_category_enum"];
+          context?: Json | null;
           created_at?: string;
           email?: string | null;
           id?: never;
           message: string;
           page_path: string;
+          page_url?: string | null;
+          screenshot_path?: string | null;
           session_id: string;
           status?: Database["public"]["Enums"]["feedback_status_enum"];
+          target_selector?: string | null;
         };
         Update: {
           category?: Database["public"]["Enums"]["feedback_category_enum"];
+          context?: Json | null;
           created_at?: string;
           email?: string | null;
           id?: never;
           message?: string;
           page_path?: string;
+          page_url?: string | null;
+          screenshot_path?: string | null;
           session_id?: string;
           status?: Database["public"]["Enums"]["feedback_status_enum"];
+          target_selector?: string | null;
         };
         Relationships: [];
       };
