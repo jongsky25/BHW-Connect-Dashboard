@@ -21,6 +21,7 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
 import { ChildrenTable } from "@/components/place/children-table";
+import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
 import { GeoSearch } from "@/components/home/geo-search";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
@@ -118,6 +119,31 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
 
   const childLevelLabel = CHILD_LEVEL_PLURAL[geo.geoLevel];
 
+  // Benchmark context: this place vs. its region and the nation, so every figure
+  // answers "versus what?". National is always fetched; the region only when the
+  // place sits inside one (below region level) so a region page never compares
+  // against itself. Benchmarks are hidden entirely on the national page.
+  const showBenchmarks = geo.geoLevel !== "national";
+  const regionBenchmark =
+    geo.geoLevel !== "national" && geo.geoLevel !== "region" ? ancestors.region : null;
+
+  const [nationalOverview, nationalCounts, regionOverview, regionCounts] = await Promise.all([
+    showBenchmarks ? getBhwOverview(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+    showBenchmarks ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+    regionBenchmark ? getBhwOverview(regionBenchmark.geoCode, "region") : Promise.resolve(null),
+    regionBenchmark ? getBhwCounts(regionBenchmark.geoCode, "region") : Promise.resolve(null),
+  ]);
+
+  const benchmarkRows = (
+    place: number | null,
+    region: number | null,
+    national: number | null,
+  ): BenchmarkRow[] => [
+    { label: "This place", value: place, isPrimary: true },
+    ...(regionBenchmark ? [{ label: regionBenchmark.geoName, value: region }] : []),
+    { label: "Philippines", value: national },
+  ];
+
   const breadcrumbAncestors: BreadcrumbAncestor[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
     ...(ancestors.region
@@ -205,6 +231,18 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               {counts?.pctAccredited ?? "—"}%).
             </p>
           }
+          benchmark={
+            showBenchmarks ? (
+              <BenchmarkBars
+                rows={benchmarkRows(
+                  counts?.pctAccredited ?? null,
+                  regionCounts?.pctAccredited ?? null,
+                  nationalCounts?.pctAccredited ?? null,
+                )}
+                format="percent"
+              />
+            ) : undefined
+          }
         >
           <p className="text-4xl font-semibold tracking-tight">
             {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
@@ -222,9 +260,48 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               : "No service-year data available."
           }
           technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
+          benchmark={
+            showBenchmarks ? (
+              <BenchmarkBars
+                rows={benchmarkRows(
+                  counts?.avgActiveYears ?? null,
+                  regionCounts?.avgActiveYears ?? null,
+                  nationalCounts?.avgActiveYears ?? null,
+                )}
+                format="count"
+                unitSuffix="yrs"
+              />
+            ) : undefined
+          }
         >
           <p className="text-4xl font-semibold tracking-tight">{counts?.avgActiveYears ?? "—"}</p>
         </FigureCard>
+
+        {overview.bhwPer1000Residents !== null && (
+          <FigureCard
+            title="BHWs per 1,000 residents"
+            caption={`Total BHWs per resident population · ${geo.geoName} · 2025`}
+            headline={`There are ${overview.bhwPer1000Residents} BHWs for every 1,000 residents here.`}
+            technicalDetails={
+              <p>Total BHWs (StepZero headcount) divided by resident population, then ×1,000.</p>
+            }
+            benchmark={
+              showBenchmarks ? (
+                <BenchmarkBars
+                  rows={benchmarkRows(
+                    overview.bhwPer1000Residents,
+                    regionOverview?.bhwPer1000Residents ?? null,
+                    nationalOverview?.bhwPer1000Residents ?? null,
+                  )}
+                  format="count"
+                  unitSuffix="/1,000"
+                />
+              ) : undefined
+            }
+          >
+            <p className="text-4xl font-semibold tracking-tight">{overview.bhwPer1000Residents}</p>
+          </FigureCard>
+        )}
 
         {demographicsByDimension.map(({ dimension, rows }) => (
           <DemographicsFigure

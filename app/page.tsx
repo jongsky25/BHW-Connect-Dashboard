@@ -1,4 +1,10 @@
-import { getBhwCounts, getCertification, getHonorarium, getDemographics, hsGradOrAbovePct } from "@/lib/db/indicators";
+import {
+  getBhwCounts,
+  getCertification,
+  getHonorarium,
+  getDemographics,
+  hsGradOrAbovePct,
+} from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getHomeInsights } from "@/lib/db/insights";
 import type { DemographicRow } from "@/lib/db/indicators";
@@ -75,8 +81,16 @@ export default async function Home() {
   // non-registered (the LGU-declared headcount from before profiling).
   const registrationMix = [
     { label: "Registered", value: overview.nRegistered ?? 0, color: "var(--seq-3)" },
-    { label: "Registered & accredited", value: overview.nRegisteredAccredited ?? 0, color: "var(--seq-6)" },
-    { label: "Non-registered (LGU-declared)", value: overview.nonRegistered ?? 0, color: "var(--seq-1)" },
+    {
+      label: "Registered & accredited",
+      value: overview.nRegisteredAccredited ?? 0,
+      color: "var(--seq-6)",
+    },
+    {
+      label: "Non-registered (LGU-declared)",
+      value: overview.nonRegistered ?? 0,
+      color: "var(--seq-1)",
+    },
   ];
   const totalChartData: BarDatum[] = registrationMix.map(({ label, value }) => ({ label, value }));
 
@@ -95,7 +109,11 @@ export default async function Home() {
       : [];
 
   const edu = educationTile(education);
-  const educationChartData: BarDatum[] = edu.rows.map((r) => ({ label: r.label, value: r.pct, count: r.n }));
+  const educationChartData: BarDatum[] = edu.rows.map((r) => ({
+    label: r.label,
+    value: r.pct,
+    count: r.n,
+  }));
 
   const per1000ChartData: BarDatum[] =
     overview.totalBhw !== null && overview.population !== null
@@ -118,7 +136,10 @@ export default async function Home() {
         <GeoSearch />
       </section>
 
-      <section aria-label="National figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section
+        aria-label="National figures"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
         <StatHero
           label="Total BHWs"
           value={formatCount(overview.totalBhw)}
@@ -163,7 +184,11 @@ export default async function Home() {
           caption={profiledCaption}
           visual={
             counts?.pctAccredited != null ? (
-              <Gauge value={counts.pctAccredited} max={100} ariaLabel={`${counts.pctAccredited}% accredited`} />
+              <Gauge
+                value={counts.pctAccredited}
+                max={100}
+                ariaLabel={`${counts.pctAccredited}% accredited`}
+              />
             ) : undefined
           }
           enlarge={
@@ -182,7 +207,11 @@ export default async function Home() {
           label="Educational attainment"
           value={edu.hasData ? `${edu.hsPlusPct}%` : "—"}
           caption="High school graduate or higher · validated profiles · 2025"
-          visual={edu.rows.length > 0 ? <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" /> : undefined}
+          visual={
+            edu.rows.length > 0 ? (
+              <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" />
+            ) : undefined
+          }
           enlarge={
             educationChartData.length > 0
               ? {
@@ -198,20 +227,15 @@ export default async function Home() {
         />
         <StatTile
           label="BHWs per 1,000 residents"
-          value={overview.bhwPer1000Residents === null ? "—" : overview.bhwPer1000Residents.toLocaleString()}
+          value={
+            overview.bhwPer1000Residents === null
+              ? "—"
+              : overview.bhwPer1000Residents.toLocaleString()
+          }
           caption={
             overview.population !== null
               ? `Total BHWs per population of ${formatCount(overview.population)} · StepZero · 2025`
               : "Population data not available"
-          }
-          visual={
-            overview.bhwPer1000Residents !== null ? (
-              <Gauge
-                value={overview.bhwPer1000Residents}
-                max={Math.max(5, overview.bhwPer1000Residents * 1.5)}
-                ariaLabel={`${overview.bhwPer1000Residents} BHWs per 1,000 residents`}
-              />
-            ) : undefined
           }
           enlarge={
             per1000ChartData.length > 0

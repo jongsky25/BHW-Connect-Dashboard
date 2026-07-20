@@ -13,6 +13,8 @@ export type FigureCardProps = {
   technicalDetails?: ReactNode;
   /** Rendered next to the title when this increment wires up CSV/XLSX/PNG/PPTX (increment 1.8). */
   exportMenu?: ReactNode;
+  /** Optional "vs. region / nation" comparator rendered under the headline. */
+  benchmark?: ReactNode;
 };
 
 /**
@@ -28,6 +30,7 @@ export function FigureCard({
   children,
   technicalDetails,
   exportMenu,
+  benchmark,
 }: FigureCardProps) {
   return (
     <section className="rounded-lg border border-border bg-background p-4 sm:p-6">
@@ -42,6 +45,8 @@ export function FigureCard({
       <div className="mt-4">{children}</div>
 
       <p className="mt-4 text-sm font-medium">{headline}</p>
+
+      {benchmark}
 
       {technicalDetails && (
         <details className="mt-2 text-sm text-muted">
