@@ -41,6 +41,7 @@ export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; cap
       {chartData.length > 0 ? (
         <FigureView
           title="Honorarium, by paying level"
+          caption={caption}
           data={chartData}
           xLabel="% of BHWs receiving"
           yLabel="Paying level"

@@ -64,6 +64,7 @@ export default async function Home() {
   // their Person/Place/Time line is captioned against validated profiles — not
   // the StepZero universe total.
   const profiledCaption = `N = ${formatCount(overview.validatedProfiles)} validated profiles · Philippines · 2025 snapshot`;
+  const totalCaption = `N = ${formatCount(overview.totalBhw)} BHWs · Philippines · 2025 snapshot`;
   const coverageCaption =
     coverage !== null
       ? `≈${coverage}% of registered BHWs profiled (non-registered excluded)`
@@ -124,7 +125,13 @@ export default async function Home() {
           registrationMix={overview.hasStepzero ? registrationMix : undefined}
           enlarge={
             overview.hasStepzero
-              ? { title: "Total BHWs breakdown", chartData: totalChartData, xLabel: "BHWs", yLabel: "Class" }
+              ? {
+                  title: "Total BHWs breakdown",
+                  caption: totalCaption,
+                  chartData: totalChartData,
+                  xLabel: "BHWs",
+                  yLabel: "Class",
+                }
               : undefined
           }
         />
@@ -139,7 +146,13 @@ export default async function Home() {
           }
           enlarge={
             accreditationChartData.length > 0
-              ? { title: "Validated profiles: accredited vs. not yet", chartData: accreditationChartData, xLabel: "BHWs", yLabel: "Status" }
+              ? {
+                  title: "Validated profiles: accredited vs. not yet",
+                  caption: profiledCaption,
+                  chartData: accreditationChartData,
+                  xLabel: "BHWs",
+                  yLabel: "Status",
+                }
               : undefined
           }
         />
@@ -154,7 +167,13 @@ export default async function Home() {
           }
           enlarge={
             accreditationChartData.length > 0
-              ? { title: "Accredited vs. not accredited", chartData: accreditationChartData, xLabel: "BHWs", yLabel: "Status" }
+              ? {
+                  title: "Accredited vs. not accredited",
+                  caption: profiledCaption,
+                  chartData: accreditationChartData,
+                  xLabel: "BHWs",
+                  yLabel: "Status",
+                }
               : undefined
           }
         />
@@ -165,7 +184,14 @@ export default async function Home() {
           visual={edu.rows.length > 0 ? <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" /> : undefined}
           enlarge={
             educationChartData.length > 0
-              ? { title: "Educational attainment", chartData: educationChartData, xLabel: "% of BHWs", yLabel: "Category", valueFormat: "percent" }
+              ? {
+                  title: "Educational attainment",
+                  caption: profiledCaption,
+                  chartData: educationChartData,
+                  xLabel: "% of BHWs",
+                  yLabel: "Category",
+                  valueFormat: "percent",
+                }
               : undefined
           }
         />
@@ -188,7 +214,13 @@ export default async function Home() {
           }
           enlarge={
             per1000ChartData.length > 0
-              ? { title: "BHWs vs. population", chartData: per1000ChartData, xLabel: "Count", yLabel: "Metric" }
+              ? {
+                  title: "BHWs vs. population",
+                  caption: totalCaption,
+                  chartData: per1000ChartData,
+                  xLabel: "Count",
+                  yLabel: "Metric",
+                }
               : undefined
           }
         />

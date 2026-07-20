@@ -58,6 +58,7 @@ export function HonorariumAmountFigure({ rows, caption }: { rows: HonorariumRow[
       {chartData.length > 0 ? (
         <FigureView
           title="Average honorarium amount, by paying level"
+          caption={caption}
           data={chartData}
           xLabel="Average ₱ per month"
           yLabel="Paying level"

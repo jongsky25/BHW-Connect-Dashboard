@@ -22,6 +22,7 @@ import { formatterFor, type ValueFormatKind } from "@/lib/format";
 export function FigureView({
   data,
   title,
+  caption,
   xLabel,
   yLabel,
   valueSuffix,
@@ -30,6 +31,9 @@ export function FigureView({
   data: BarDatum[];
   /** Modal title. */
   title: string;
+  /** WPSAR-style Person/Place/Time line shown in the enlarged modal —
+   * matches the same caption already shown on the figure's FigureCard. */
+  caption?: string;
   xLabel?: string;
   yLabel?: string;
   valueSuffix?: string;
@@ -79,21 +83,23 @@ export function FigureView({
         />
       )}
 
-      <Modal open={enlarged} onClose={() => setEnlarged(false)} title={title}>
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <Modal open={enlarged} onClose={() => setEnlarged(false)} title={title} caption={caption}>
+        <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
           <ViewToggle value={mode} onChange={setMode} />
           {mode === "chart" && <ColorSwatches value={color} onChange={setColor} />}
         </div>
         {mode === "chart" ? (
-          <BarChartClient
-            data={data}
-            xLabel={xLabel}
-            yLabel={yLabel}
-            valueSuffix={valueSuffix}
-            valueFormat={format}
-            width={900}
-            fill={color}
-          />
+          <div className="flex flex-1 items-center justify-center">
+            <BarChartClient
+              data={data}
+              xLabel={xLabel}
+              yLabel={yLabel}
+              valueSuffix={valueSuffix}
+              valueFormat={format}
+              barHeight={56}
+              fill={color}
+            />
+          </div>
         ) : (
           <FigureTable
             data={data}

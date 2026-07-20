@@ -20,6 +20,9 @@ export function horizontalBarSpec(
     /** Plot width in px. Defaults to the inline-figure width; the enlarged
      * modal (near-full-page, see components/ui/modal.tsx) passes a larger value. */
     width?: number;
+    /** Px height per bar row. Defaults to the inline-figure spacing; the
+     * enlarged modal passes a taller value so bars use the extra room. */
+    barHeight?: number;
     /** Bar fill color (hex). Defaults to the palette accent; overridden by the
      * chart's recolor swatch control. */
     fill?: string;
@@ -28,10 +31,15 @@ export function horizontalBarSpec(
   const suffix = options.valueSuffix ?? "";
   const format = options.valueFormat ?? ((n: number) => n.toLocaleString());
   const fill = options.fill ?? accent;
+  const barHeight = options.barHeight ?? 32;
   return {
     marginLeft: 160,
+    // Reserve room for the value label drawn past the end of the longest
+    // bar — without it, a wide value (e.g. "201,653") can clip against the
+    // plot's right edge on a narrow/responsive width.
+    marginRight: 56,
     width: options.width ?? 640,
-    height: Math.max(80, data.length * 32 + 20),
+    height: Math.max(80, data.length * barHeight + 20),
     x: { label: options.xLabel ?? null, grid: true, nice: true },
     y: { label: options.yLabel ?? null },
     marks: [
