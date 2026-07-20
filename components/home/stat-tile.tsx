@@ -18,6 +18,10 @@ export type StatTileDetail = {
 export type StatEnlarge = {
   /** Modal title. */
   title: string;
+  /** WPSAR-style Person/Place/Time line, e.g. "N = 270,917 validated
+   * profiles · Philippines · 2025 snapshot" — matches the figure-card
+   * convention used everywhere else in the app. */
+  caption: string;
   chartData: BarDatum[];
   xLabel?: string;
   yLabel?: string;
@@ -45,20 +49,22 @@ export function StatEnlargeModal({
     enlarge.valueFormat === "peso" ? "amount" : enlarge.valueFormat === "percent" ? "percent" : "count";
 
   return (
-    <Modal open={open} onClose={onClose} title={enlarge.title}>
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <Modal open={open} onClose={onClose} title={enlarge.title} caption={enlarge.caption}>
+      <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
         <ViewToggle value={mode} onChange={setMode} />
         {mode === "chart" && <ColorSwatches value={color} onChange={setColor} />}
       </div>
       {mode === "chart" ? (
-        <BarChartClient
-          data={enlarge.chartData}
-          xLabel={enlarge.xLabel}
-          yLabel={enlarge.yLabel}
-          valueFormat={format}
-          width={900}
-          fill={color}
-        />
+        <div className="flex flex-1 items-center justify-center">
+          <BarChartClient
+            data={enlarge.chartData}
+            xLabel={enlarge.xLabel}
+            yLabel={enlarge.yLabel}
+            valueFormat={format}
+            barHeight={56}
+            fill={color}
+          />
+        </div>
       ) : (
         <FigureTable
           data={enlarge.chartData}

@@ -48,6 +48,7 @@ export function CertificationFigure({ rows, caption }: { rows: CertificationRow[
       {chartData.length > 0 ? (
         <FigureView
           title="Training & certification coverage"
+          caption={caption}
           data={chartData}
           xLabel="% of BHWs"
           yLabel="Training / certification"
