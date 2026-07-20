@@ -194,7 +194,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         <div className="flex flex-wrap gap-3">
           <Link
             href={`/compare?geos=${geo.geoCode}`}
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
           >
             Compare with other places
           </Link>

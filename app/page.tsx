@@ -14,6 +14,7 @@ import { GeoSearch } from "@/components/home/geo-search";
 import { StatHero } from "@/components/home/stat-hero";
 import { StatTile } from "@/components/home/stat-tile";
 import { Donut, Gauge, LadderBars } from "@/components/home/mini-viz";
+import { DenominatorExplainer } from "@/components/home/denominator-explainer";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
@@ -251,15 +252,12 @@ export default async function Home() {
         />
       </section>
 
-      <p className="-mt-4 text-center text-xs text-muted">
-        Total BHWs comes from the DOH StepZero quick-count (the LGU-declared headcount). Every
-        per-person figure below describes the {formatCount(overview.validatedProfiles)} individually
-        validated profiles
-        {coverage !== null && overview.registeredUniverse !== null
-          ? ` — about ${coverage}% of the country's ${formatCount(overview.registeredUniverse)} registered BHWs`
-          : ""}
-        . Tap any figure to see the full breakdown.
-      </p>
+      <DenominatorExplainer
+        totalBhw={overview.totalBhw}
+        registeredUniverse={overview.registeredUniverse}
+        validatedProfiles={overview.validatedProfiles}
+        coveragePct={coverage}
+      />
 
       <AiInsight geoCode="PH" geoLevel="national" geoName="Philippines" />
 
