@@ -3,7 +3,7 @@ import { RangeChartClient } from "@/components/charts/range-chart-client";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { HonorariumRow } from "@/lib/db/indicators";
 import type { RangeDatum } from "@/lib/charts/range-chart";
-import { formatPeso } from "@/lib/format";
+import { formatPesoFloor100 } from "@/lib/format";
 
 const PAYER_LABEL: Record<string, string> = {
   region: "Region",
@@ -58,7 +58,7 @@ export function HonorariumDistributionFigure({
       caption={caption}
       headline={
         barangay && !barangay.isSuppressed && barangay.medianAmount != null
-          ? `Barangay honorarium ranges from ${formatPeso(barangay.minAmount)} to ${formatPeso(barangay.maxAmount)} a month, with a median of ${formatPeso(barangay.medianAmount)}.`
+          ? `Barangay honorarium ranges from ${formatPesoFloor100(barangay.minAmount)} to ${formatPesoFloor100(barangay.maxAmount)} a month, with a median of ${formatPesoFloor100(barangay.medianAmount)}.`
           : chartData.length > 0
             ? "Honorarium amounts vary widely within each paying level, not just between them."
             : "No honorarium distribution data available."
@@ -72,6 +72,11 @@ export function HonorariumDistributionFigure({
             recipients), and the tick marks the median. Unlike a single average, this shows how much
             amounts actually vary — a few high payers can pull an average up without most recipients
             seeing anywhere near that amount.
+          </p>
+          <p>
+            Amounts under ₱100/month are shown as &quot;&lt;₱100&quot; rather than an exact figure —
+            these are genuine reported values, not suppressed, just too small a token amount to
+            usefully compare down to the peso.
           </p>
           {anySuppressed && (
             <p>
@@ -89,7 +94,7 @@ export function HonorariumDistributionFigure({
           data={chartData}
           xLabel="Monthly ₱"
           yLabel="Paying level"
-          valueFormat="peso"
+          valueFormat="pesoFloor100"
         />
       ) : (
         <p className="text-sm text-muted">No data available.</p>
@@ -116,12 +121,12 @@ export function HonorariumDistributionFigure({
                   className="border-b border-border last:border-0 hover:bg-surface"
                 >
                   <td className="px-4 py-3">{PAYER_LABEL[r.payerLevel] ?? r.payerLevel}</td>
-                  <td className="px-4 py-3">{formatPeso(r.minAmount)}</td>
-                  <td className="px-4 py-3">{formatPeso(r.p25Amount)}</td>
-                  <td className="px-4 py-3">{formatPeso(r.medianAmount)}</td>
-                  <td className="px-4 py-3">{formatPeso(r.p75Amount)}</td>
-                  <td className="px-4 py-3">{formatPeso(r.maxAmount)}</td>
-                  <td className="px-4 py-3">{formatPeso(r.avgMonthlyAmount)}</td>
+                  <td className="px-4 py-3">{formatPesoFloor100(r.minAmount)}</td>
+                  <td className="px-4 py-3">{formatPesoFloor100(r.p25Amount)}</td>
+                  <td className="px-4 py-3">{formatPesoFloor100(r.medianAmount)}</td>
+                  <td className="px-4 py-3">{formatPesoFloor100(r.p75Amount)}</td>
+                  <td className="px-4 py-3">{formatPesoFloor100(r.maxAmount)}</td>
+                  <td className="px-4 py-3">{formatPesoFloor100(r.avgMonthlyAmount)}</td>
                 </tr>
               ))}
             </tbody>
