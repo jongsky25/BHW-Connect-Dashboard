@@ -469,3 +469,24 @@ where they are 23% of local profiles.
   of an empty chart; barangay pages link to their citymun's figures (same pattern as
   `TrainingFigure`). Field labels are shared with `/data-quality` via
   `COMPLETENESS_FIELD_LABEL` (map moved out of that page).
+
+## 2026-07-20 — Households-per-BHW home tile: gauge replaced with regional spread
+
+Closes the E2 loose end from HOME_SEARCH_REVIEW: #29 gave the households-per-BHW home tile the
+gauge the old per-1,000 tile had, whose max was still an arbitrary `1.5×` of the value — a gauge
+arc implies a benchmark, and none exists (the previous entry deliberately cites no DOH target
+ratio). Implemented the review's item-9 prescription for the national context: show the observed
+distribution across regions instead.
+
+- **`lib/db/stepzero.ts`**: `getRegionHouseholdsPerBhw()` — all regions' ratios from
+  `agg_bhw_stepzero_counts` in one query (names joined from `dim_geo`), computed with the same
+  shared `householdsPerBhw()` helper, sorted ascending.
+- **`components/home/mini-viz.tsx`**: `DotStrip` — a strip plot (one dot per region, accent
+  marker for the national value) on a 0-to-max-observed scale, with "0" / "regions lo–hi" end
+  labels. Positions read as proportions of the real spread, not of an invented cap.
+- **`app/page.tsx`**: the tile's gauge swapped for the strip; its enlarge modal now charts
+  households-per-BHW by region (replacing the old "Total BHWs vs. Households" two-bar chart,
+  whose million-scale bars dwarfed the actual story). The data makes the case for the change:
+  regional averages run 45 to 519 (NCR) households per BHW around the national 91 — a spread no
+  half-arc against `1.5×` could show. The Accredited tile keeps its gauge: percent-of-100 is a
+  real scale, not an invented one.
