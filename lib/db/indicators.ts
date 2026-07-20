@@ -172,6 +172,39 @@ export async function getTrainingCoverage(geoCode: string, geoLevel: GeoLevel): 
   }));
 }
 
+export type CertificationRow = {
+  certType: string;
+  n: number | null;
+  pct: number | null;
+};
+
+/**
+ * Certification/training coverage for one geo — BHW Reference Manual training,
+ * TESDA BHS NC2 training, and TESDA BHS NC II certification. Unlike
+ * `agg_training`, `agg_certification` is built at all 5 geo levels including
+ * barangay (see ingestion/build_aggregates.sql), so no barangay fallback needed.
+ */
+export async function getCertification(geoCode: string, geoLevel: GeoLevel): Promise<CertificationRow[]> {
+  const datasetId = await getActiveDatasetId();
+  if (datasetId === null) return [];
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("agg_certification")
+    .select("cert_type, n, pct")
+    .eq("dataset_id", datasetId)
+    .eq("geo_code", geoCode)
+    .eq("geo_level", geoLevel);
+
+  if (error || !data) return [];
+
+  return data.map((row) => ({
+    certType: row.cert_type,
+    n: row.n,
+    pct: row.pct,
+  }));
+}
+
 export type HonorariumRow = {
   payerLevel: string;
   nReceiving: number | null;

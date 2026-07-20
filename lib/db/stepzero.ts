@@ -86,6 +86,10 @@ export type BhwOverview = {
   geoLevel: GeoLevel;
   totalBhw: number | null;
   registeredUniverse: number | null;
+  /** StepZero's "registered" bucket alone (excludes registered & accredited). */
+  nRegistered: number | null;
+  /** StepZero's "registered & accredited" bucket alone. */
+  nRegisteredAccredited: number | null;
   nonRegistered: number | null;
   validatedProfiles: number | null;
   profilingCoveragePct: number | null;
@@ -147,6 +151,8 @@ export async function getBhwOverview(
     geoLevel,
     totalBhw,
     registeredUniverse: base,
+    nRegistered: stepzero?.nRegistered ?? null,
+    nRegisteredAccredited: stepzero?.nRegisteredAccredited ?? null,
     nonRegistered: stepzero?.nNonRegistered ?? null,
     validatedProfiles,
     profilingCoveragePct,
