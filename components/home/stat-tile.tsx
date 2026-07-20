@@ -6,6 +6,7 @@ import { FigureTable } from "@/components/charts/figure-table";
 import { Modal } from "@/components/ui/modal";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { BarDatum } from "@/lib/charts/bar-chart";
+import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
 export type StatTileDetail = {
   label: string;
@@ -18,7 +19,10 @@ export type StatEnlarge = {
   chartData: BarDatum[];
   xLabel?: string;
   yLabel?: string;
-  valueFormatter?: (n: number) => string;
+  /** Named formatter kind, not a function — app/page.tsx is a Server
+   * Component and functions can't cross the Server -> Client Component
+   * boundary, so the formatter is resolved locally from this string. */
+  valueFormat?: ValueFormatKind;
 };
 
 /** Shared chart/table modal body for a KPI card's enlarged breakdown — used by
@@ -33,7 +37,7 @@ export function StatEnlargeModal({
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<ViewMode>("chart");
-  const format = enlarge.valueFormatter ?? ((n: number) => n.toLocaleString());
+  const format = formatterFor(enlarge.valueFormat);
 
   return (
     <Modal open={open} onClose={onClose} title={enlarge.title}>

@@ -61,7 +61,7 @@ export function HonorariumAmountFigure({ rows, caption }: { rows: HonorariumRow[
           data={chartData}
           xLabel="Average ₱ per month"
           yLabel="Paying level"
-          valueFormatter={formatPeso}
+          valueFormat="peso"
         />
       ) : (
         <p className="text-sm text-muted">No data available.</p>

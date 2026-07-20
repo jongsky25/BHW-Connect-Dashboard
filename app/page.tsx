@@ -165,7 +165,7 @@ export default async function Home() {
           visual={edu.rows.length > 0 ? <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" /> : undefined}
           enlarge={
             educationChartData.length > 0
-              ? { title: "Educational attainment", chartData: educationChartData, xLabel: "% of BHWs", yLabel: "Category", valueFormatter: (n) => `${n}%` }
+              ? { title: "Educational attainment", chartData: educationChartData, xLabel: "% of BHWs", yLabel: "Category", valueFormat: "percent" }
               : undefined
           }
         />

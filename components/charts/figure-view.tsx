@@ -6,11 +6,16 @@ import { FigureTable } from "@/components/charts/figure-table";
 import { Modal } from "@/components/ui/modal";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { BarDatum } from "@/lib/charts/bar-chart";
+import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
 /**
  * Chart/table toggle + "Enlarge" wrapper around a figure's data. Keeps the
  * inline view compact and moves the enlarged figure into a shared <Modal>,
  * both driven by the same view state so switching stays in sync.
+ *
+ * `valueFormat` is a named kind (not a function): the figures that render
+ * this are Server Components, and functions can't cross the Server -> Client
+ * Component boundary, so the formatter is resolved locally instead.
  */
 export function FigureView({
   data,
@@ -18,7 +23,7 @@ export function FigureView({
   xLabel,
   yLabel,
   valueSuffix,
-  valueFormatter,
+  valueFormat,
 }: {
   data: BarDatum[];
   /** Modal title. */
@@ -26,12 +31,12 @@ export function FigureView({
   xLabel?: string;
   yLabel?: string;
   valueSuffix?: string;
-  valueFormatter?: (n: number) => string;
+  valueFormat?: ValueFormatKind;
 }) {
   const [mode, setMode] = useState<ViewMode>("chart");
   const [enlarged, setEnlarged] = useState(false);
 
-  const format = valueFormatter ?? ((n: number) => n.toLocaleString());
+  const format = formatterFor(valueFormat);
   const tableFormat = (n: number) => `${format(n)}${valueSuffix ?? ""}`;
 
   return (
