@@ -6,6 +6,8 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { PageViewLogger } from "@/components/analytics/page-view-logger";
+import { NoFlashScript } from "@/components/settings/no-flash-script";
+import { SettingsProvider } from "@/components/settings/settings-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,20 +36,25 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <head>
+        <NoFlashScript />
+      </head>
       <body className="flex min-h-full flex-col">
-        <NuqsAdapter>
-          <Suspense fallback={null}>
-            <PageViewLogger />
-          </Suspense>
-          <a href="#main-content" className="skip-link">
-            Skip to main content
-          </a>
-          <Header />
-          <main id="main-content" className="flex flex-1 flex-col">
-            {children}
-          </main>
-          <Footer />
-        </NuqsAdapter>
+        <SettingsProvider>
+          <NuqsAdapter>
+            <Suspense fallback={null}>
+              <PageViewLogger />
+            </Suspense>
+            <a href="#main-content" className="skip-link">
+              Skip to main content
+            </a>
+            <Header />
+            <main id="main-content" className="flex flex-1 flex-col">
+              {children}
+            </main>
+            <Footer />
+          </NuqsAdapter>
+        </SettingsProvider>
       </body>
     </html>
   );
