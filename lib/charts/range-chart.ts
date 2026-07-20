@@ -34,9 +34,16 @@ export function horizontalRangeSpec(
 ): Plot.PlotOptions {
   const format = options.valueFormat ?? ((n: number) => n.toLocaleString());
   const fill = options.fill ?? accent;
+  const width = options.width ?? 640;
+  // Same responsive gutter as horizontalBarSpec: on a narrow (mobile) width the
+  // fixed 160px left margin would leave almost no room for the whisker plot.
+  const compact = width < 520;
+  const longestLabel = Math.max(0, ...data.map((d) => d.label.length));
+  const marginLeft = Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
   return {
-    marginLeft: 160,
-    width: options.width ?? 640,
+    marginLeft,
+    marginRight: compact ? 44 : 56,
+    width,
     height: Math.max(100, data.length * 40 + 20),
     x: { label: options.xLabel ?? null, grid: true, nice: true },
     y: { label: options.yLabel ?? null },

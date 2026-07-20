@@ -105,13 +105,13 @@ export function HonorariumDistributionFigure({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-surface">
               <tr>
-                <th className="px-4 py-3 font-medium">Paying level</th>
-                <th className="px-4 py-3 font-medium">Min</th>
-                <th className="px-4 py-3 font-medium">P25</th>
-                <th className="px-4 py-3 font-medium">Median</th>
-                <th className="px-4 py-3 font-medium">P75</th>
-                <th className="px-4 py-3 font-medium">Max</th>
-                <th className="px-4 py-3 font-medium">Avg</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">Paying level</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">Min</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">P25</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">Median</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">P75</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">Max</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">Avg</th>
               </tr>
             </thead>
             <tbody>
@@ -120,13 +120,13 @@ export function HonorariumDistributionFigure({
                   key={r.payerLevel}
                   className="border-b border-border last:border-0 hover:bg-surface"
                 >
-                  <td className="px-4 py-3">{PAYER_LABEL[r.payerLevel] ?? r.payerLevel}</td>
-                  <td className="px-4 py-3">{formatPesoFloor100(r.minAmount)}</td>
-                  <td className="px-4 py-3">{formatPesoFloor100(r.p25Amount)}</td>
-                  <td className="px-4 py-3">{formatPesoFloor100(r.medianAmount)}</td>
-                  <td className="px-4 py-3">{formatPesoFloor100(r.p75Amount)}</td>
-                  <td className="px-4 py-3">{formatPesoFloor100(r.maxAmount)}</td>
-                  <td className="px-4 py-3">{formatPesoFloor100(r.avgMonthlyAmount)}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{PAYER_LABEL[r.payerLevel] ?? r.payerLevel}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.minAmount)}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.p25Amount)}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.medianAmount)}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.p75Amount)}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.maxAmount)}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.avgMonthlyAmount)}</td>
                 </tr>
               ))}
             </tbody>
