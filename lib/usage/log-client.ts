@@ -1,21 +1,6 @@
 "use client";
 
-const SESSION_KEY = "bhw-connect-session-id";
-
-function getSessionId(): string {
-  try {
-    let id = sessionStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      sessionStorage.setItem(SESSION_KEY, id);
-    }
-    return id;
-  } catch {
-    // sessionStorage unavailable (private browsing edge cases) — fall back to a
-    // per-call random id rather than failing; usage logging is best-effort.
-    return crypto.randomUUID();
-  }
-}
+import { getSessionId } from "@/lib/feedback/session";
 
 function doNotTrackEnabled(): boolean {
   if (typeof navigator === "undefined") return false;

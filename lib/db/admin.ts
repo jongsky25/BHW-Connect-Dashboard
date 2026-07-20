@@ -3,15 +3,30 @@ import { createSupabaseServiceClient } from "./service-client";
 
 export type FeedbackStatus = "open" | "resolved" | "dismissed";
 
+/** Spot-feedback context (see lib/feedback/capture.ts `ElementContext`) — present only for pinned
+ * feedback; the plain /feedback form leaves it null. Typed loosely here since it's stored as jsonb
+ * and only read for display. */
+export type FeedbackContext = {
+  elementText?: string;
+  viewport?: { w?: number; h?: number };
+  [key: string]: unknown;
+} | null;
+
 export type FeedbackRow = {
   id: number;
   createdAt: string;
   pagePath: string;
+  pageUrl: string | null;
   category: string;
   message: string;
   email: string | null;
   status: FeedbackStatus;
+  targetSelector: string | null;
+  context: FeedbackContext;
+  screenshotPath: string | null;
 };
+
+const SCREENSHOT_BUCKET = "feedback-screenshots";
 
 /** Every read here goes through the service-role client — `feedback`/`ingestion_batches`/
  * `ai_provider_quota` are all insert-only or service-role-only to the public (0.3/2.1). */
@@ -19,7 +34,9 @@ export async function listFeedback(status?: FeedbackStatus): Promise<FeedbackRow
   const supabase = createSupabaseServiceClient();
   let query = supabase
     .from("feedback")
-    .select("id, created_at, page_path, category, message, email, status")
+    .select(
+      "id, created_at, page_path, page_url, category, message, email, status, target_selector, context, screenshot_path",
+    )
     .order("created_at", { ascending: false })
     .limit(200);
   if (status) query = query.eq("status", status);
@@ -30,11 +47,26 @@ export async function listFeedback(status?: FeedbackStatus): Promise<FeedbackRow
     id: row.id,
     createdAt: row.created_at,
     pagePath: row.page_path,
+    pageUrl: row.page_url,
     category: row.category,
     message: row.message,
     email: row.email,
     status: row.status,
+    targetSelector: row.target_selector,
+    context: row.context as FeedbackContext,
+    screenshotPath: row.screenshot_path,
   }));
+}
+
+/** Short-lived signed URL for a screenshot in the private bucket (null if the path is missing or
+ * signing fails). Screenshots are never public — admins view them through these expiring links. */
+export async function getFeedbackScreenshotUrl(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  const supabase = createSupabaseServiceClient();
+  const { data, error } = await supabase.storage
+    .from(SCREENSHOT_BUCKET)
+    .createSignedUrl(path, 60);
+  return error || !data ? null : data.signedUrl;
 }
 
 export async function updateFeedbackStatus(id: number, status: FeedbackStatus): Promise<boolean> {
