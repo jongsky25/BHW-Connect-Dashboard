@@ -77,6 +77,21 @@ export const GLOSSARY = {
     definition:
       "Total BHWs (the StepZero universe) divided by the area's population, scaled to a per-1,000-residents rate. Lets places of very different sizes be compared on workforce density rather than raw headcount. Population comes from the StepZero quick-count and is unavailable for areas with no StepZero row.",
   },
+  ref_manual_trained: {
+    term: "BHW Reference Manual Training",
+    definition:
+      "Whether a BHW has completed training on the DOH's official BHW Reference Manual, as recorded in the source dataset's training fields.",
+  },
+  tesda_nc2: {
+    term: "TESDA BHS NC2 Training",
+    definition:
+      "Whether a BHW has taken TESDA's Barangay Health Services (BHS) National Certificate II training/assessment. Distinct from having actually earned the NC II certification (see 'TESDA BHS NC II Certification').",
+  },
+  tesda_certified: {
+    term: "TESDA BHS NC II Certification",
+    definition:
+      "Whether a BHW holds an official TESDA National Certificate II (NC II) in Barangay Health Services — the certified outcome of the BHS NC2 training/assessment.",
+  },
   ai_generated: {
     term: "AI-generated",
     definition:
