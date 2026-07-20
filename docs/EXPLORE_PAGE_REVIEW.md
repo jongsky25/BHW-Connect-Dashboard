@@ -3,11 +3,13 @@
 A four-lens review (designer · lay person · epidemiologist · **UX researcher**) of the `/explore`
 dashboard, following the method established by `HOME_SEARCH_REVIEW.md` — concluding in prioritized
 recommendations covering (a) the whole page, (b) deeper map interaction specifically, (c) dataset
-variables ingested but never surfaced, and (d) whether Explore is the right home for cross-analysis
-against external data sources.
+variables ingested but never surfaced, (d) deeper statistical computations derivable from the
+existing data (owner directive: go beyond the variables as given, provided every derived figure is
+explained in simple terms), and (e) whether Explore is the right home for cross-analysis against
+external data sources.
 
 **Status:** recommendations only — reviewed 2026-07-20 against `main` (`ee1b383`). No implementation
-plan is committed yet; the plan is agreed with the owner after this review is discussed (see §11
+plan is committed yet; the plan is agreed with the owner after this review is discussed (see §12
 open questions).
 
 **Hard constraint honored throughout:** nothing below duplicates what the Home page already does
@@ -84,7 +86,7 @@ It is to give Explore the one identity no other page has — the **analyst's wor
 where you pick an *indicator* (not just a place) and see it across geography — on a map, as a
 ranked list, as a distribution, and against other indicators. Place pages stay place-first
 narrative; Home stays national narrative; Compare stays N-way side-by-side; Explore becomes
-indicator-first analysis. That framing drives §7–§9.
+indicator-first analysis. That framing drives §7–§10.
 
 ## 3. Designer review
 
@@ -193,7 +195,7 @@ indicator-first analysis. That framing drives §7–§9.
   questions with overlapping figures; nav labels ("Explore") don't communicate what's different.
   Recommend an explicit task model — Home: *orient*; Place: *look up my place*; Compare: *pit
   places against each other*; Explore: *analyze an indicator across places* — and let it decide
-  every "where does this feature go?" question (including §9's external-data cross-analysis).
+  every "where does this feature go?" question (including §10's external-data cross-analysis).
 - **XU2 — Map interactions are invisible to telemetry.** `geo-cascade.tsx` logs `filter_change`,
   but `choropleth-map.tsx`'s click handler calls `setFilters` without `logEvent` — the team cannot
   currently answer "does anyone use the map?", the exact question this review begs. Instrument
@@ -272,7 +274,7 @@ Ordered so each builds on the previous; all preserve the always-rendered ranked-
 - **R4 — Relationships view (in-dataset cross-analysis).** A scatter of child geos: X = one
   indicator, Y = another (dot size = N, dot label on hover, click → place page). Powered entirely
   by existing per-geo aggregates at region/province/citymun grain — no new tables, no suppression
-  exposure (geo-level rates only). This is the natural seat for §9's external variables later:
+  exposure (geo-level rates only). This is the natural seat for §10's external variables later:
   the X-axis source just gains non-BHW options. Watch the PostgREST 1,000-row cap if ever run at
   national→citymun grain (1,639 rows — paginate or pre-join server-side).
 - **R5 — Sidebar: add the compact `GeoSearch` variant above the cascade** (XL1 — the identical
@@ -299,9 +301,102 @@ Ordered so each builds on the previous; all preserve the always-rendered ranked-
      new dimension. Flagged for the owner: is role/designation analytically interesting and clean
      enough to publish?
 
-## 9. Cross-analysis with external data sources
+## 9. Recommendations — deeper statistical computations (owner directive)
 
-### 9.1 Is Explore the right page for it? Yes — with a specific shape
+Owner directive for this review: **don't stop at the variables as collected — derive deeper
+statistics from them, provided every derived figure is explained in the dashboard in simple
+terms.** That condition is already the product's design language (`FigureCard`'s layman headline +
+collapsed technical details + glossary), so each item below specifies its plain-language framing
+alongside the statistic. Ground rules for all of them:
+
+- **Precompute, don't compute live.** Everything here is derivable at build time in
+  `ingestion/*` / `build_aggregates.sql` into `agg_*` tables (closed-form math, no heavy
+  dependencies) — zero runtime cost, free-tier-neutral, and RLS-compatible (facts stay private;
+  only aggregates publish).
+- **Every derived figure gets:** a plain-language headline, a `GlossaryTerm` for its name, a
+  technical-details note with the formula/assumptions, and a `/methodology` section. A statistic
+  that can't be explained simply doesn't ship.
+- **Suppression still rules.** Derived stats inherit the n<5 discipline (and distribution-shaped
+  stats need the same `is_suppressed` treatment `agg_honorarium` already models).
+
+### S1 — Uncertainty intervals on every rate (Wilson 95% CI) · effort S
+For accreditation %, honorarium %, training coverage % at every geo: closed-form Wilson intervals
+from `n`/`N` already in the aggregates. *Plain framing:* "Only 12 BHWs are profiled here, so the
+true rate is somewhere between 34% and 78%." Feeds M4 directly — the map can grey/hatch by CI
+width (a principled small-N rule) instead of a bare N cutoff, and ranked lists can show interval
+whiskers in the enlarged view.
+
+### S2 — Stabilized small-area rates (empirical-Bayes shrinkage toward the parent) · effort M
+Standard disease-mapping practice for exactly this page's problem: a 3-person barangay showing
+0% or 100%. Publish both `raw` and `adjusted` columns; UI defaults to raw with an "adjusted for
+small numbers" toggle. *Plain framing:* "Adjusted so places with very few BHWs don't swing to 0%
+or 100% by chance — small places are nudged toward their province's average." **Owner decision
+required** (see §12): model-adjusted figures on a trust-first public dashboard are a real
+methodological stance, not a UI detail.
+
+### S3 — Peer percentile ranks · effort S
+"Ranks 97th of 118 provinces on training coverage" / "in the bottom quarter of its region's
+municipalities" — computed among same-level siblings, shown as a chip on figures and in tooltips.
+The insight generators already rank internally (`lib/db/insights.ts`); this surfaces the rank as
+a first-class, always-visible statistic. Plain by construction.
+
+### S4 — Outlier flagging among peers (MAD / Tukey fences) · effort S–M
+Auto-flag geos that stand out from same-level siblings on any indicator; drives map outline
+styling, a ranked-list badge, and a new insight generator. *Plain framing:* "Unusually low
+compared with similar places — worth a closer look." Robust statistics (median/MAD, not mean/SD)
+so a few extreme LGUs don't define "normal."
+
+### S5 — Inequality measures · effort M
+Two distinct stories from data already ingested:
+- **Pay inequality:** Gini / p90:p10 ratio of monthly honorarium amounts across BHWs within a geo
+  (from `fact_honorarium`; `agg_honorarium` already holds the percentile scaffolding), plus
+  best-to-worst median ratios across child geos. *Plain framing:* "The best-paid tenth of BHWs
+  here receive at least 6× what the least-paid tenth receive."
+- **Workload inequality:** Lorenz/Gini of per-BHW `household` assignments within a geo (the
+  per-person field currently used only for completeness). *Plain framing:* "The busiest 10% of
+  BHWs here cover 40% of all assigned households."
+
+### S6 — Tenure, retention & attrition curves · effort M
+The `active_years`/`inactive_years` arrays support cohort retention analysis, not just the mean:
+share of each starting cohort still active after k years (Kaplan-Meier-style from year lists),
+service-gap prevalence, reactivation. *Plain framing:* "Of BHWs who started in 2015, 62% were
+still serving in 2025." Honest caption caveat: recorded in the 2025 snapshot, so it reflects
+surviving records (people who left the roster entirely may be under-counted) — say so in
+technical details.
+
+### S7 — Correlation with uncertainty in the Relationships view · effort S (rides on R4)
+The R4 scatter should state its statistic rather than letting readers eyeball: Spearman rank
+correlation with a CI, N-weighted, translated to words — "places with higher workload tend to
+have lower training coverage — a moderate link (this compares places, not individual BHWs)."
+The ecological-inference caveat ships inside the sentence, not a footnote.
+
+### S8 — Spatial clustering (hot/cold spots) · effort L
+Precompute neighbor adjacency from the existing GeoJSON at build time, then local spatial
+statistics (LISA / Getis-Ord) per indicator at province/citymun grain: does low honorarium
+coverage cluster regionally? Renders as cluster outlines on the map. *Plain framing:* "This area
+and its neighbors together have low coverage — a pattern, not a coincidence." Highest effort item
+here; sequence after M1–M8 land.
+
+### S9 — Composite "BHW support" measure — scorecard first, index only if wanted · effort M
+A single 0–100 index (accreditation + training + honorarium + workload) is tempting and risky:
+weights are editorial, and composite rankings attract exactly the criticism a trust-first product
+avoids. Recommended shape: a **scorecard** (small-multiples chip row showing the components side
+by side per geo, each with its peer percentile from S3) rather than one number. If the owner
+wants a headline index for ranking, it needs a published weighting rationale in `/methodology`.
+**Owner decision required** (see §12).
+
+### S10 — Data-quality grade per geo · effort S–M
+Collapse `agg_data_completeness` into a simple per-geo grade (e.g. A–C by weighted field
+completeness) shown beside figures on Explore. *Plain framing:* "Data completeness here: B —
+most records are complete, but blood type is often missing." Links to `/data-quality`.
+
+Sequencing note: S1/S3/S4/S7/S10 are cheap and self-explaining — natural companions to the P0/P1
+work. S2, S5, S6 are meatier but each unlocks a genuinely new analytical story. S8/S9 are the
+only ones worth deferring past the first release.
+
+## 10. Cross-analysis with external data sources
+
+### 10.1 Is Explore the right page for it? Yes — with a specific shape
 
 Under §6 XU1's task model, cross-dataset analysis is indicator-first work ("does BHW density track
 poverty?"), which makes **Explore's Relationships view (R4) its natural seat**: external variables
@@ -319,7 +414,7 @@ context chip (e.g. poverty incidence next to income class). Two design rules kee
 The existing `dim_dataset` registry (BUILD_PLAN §1: "this dataset is #1 of many") was designed for
 exactly this — each source below is a candidate `dim_dataset` row + one `agg_*` table.
 
-### 9.2 Ranked candidate sources (feasibility × value)
+### 10.2 Ranked candidate sources (feasibility × value)
 
 Deep-dive research (2026-07-20) updating `DATASET_SCOPING.md`; PSA/DOH/HDX sites partially block
 automated fetchers, so download URLs should be re-verified in a browser before ingestion work.
@@ -365,7 +460,7 @@ loads of a few MB each):**
 - **PSADA microdata generally** (LFS etc.) — explicitly non-redistributable; use only published
   OpenSTAT tables.
 
-### 9.3 Suggested acquisition order
+### 10.3 Suggested acquisition order
 
 1. POPCEN 2024 + CPH 2020 population (unlocks per-capita everywhere, incl. map indicator M1)
 2. SAE 2021 poverty per citymun (the flagship Relationships-view variable)
@@ -376,7 +471,7 @@ loads of a few MB each):**
 
 All Tier 1 items are small static tabular loads — comfortably free-tier, no ongoing sync.
 
-## 10. Prioritized recommendation summary
+## 11. Prioritized recommendation summary
 
 Effort: **S** ≤ half a day · **M** ≈ 1–2 days · **L** > 2 days. Sequencing is a proposal to
 discuss, not a committed plan.
@@ -408,11 +503,13 @@ discuss, not a committed plan.
 | # | Recommendation | Fixes | Effort |
 | --- | --- | --- | --- |
 | 13 | Surface computed-but-unread fields: training recency, self-reported vs verified accreditation, per-capita rate (R8.1–3) | XE7 | S–M |
-| 14 | New internal aggregates: year cohorts, workload distribution, attrition, income-class equity (R8.4) | XE7 | M–L |
-| 15 | Tier-1 external loads (POPCEN/CPH, SAE poverty, income class, PSGC crosswalk) feeding the Relationships view and map indicators (§9) | XE6 | L |
-| 16 | UX research loop: baseline funnel analysis, intercept question, 3-task moderated tests (XU3, XU6) | XU3, XU6 | S–M (ongoing) |
+| 14 | Cheap derived statistics riding on P0/P1 surfaces: rate CIs, peer percentiles, outlier flags, correlation-in-words, data-quality grade (S1, S3, S4, S7, S10) | XE2, XE3, XE6 | S–M |
+| 15 | New internal aggregates: year cohorts, workload distribution, attrition, income-class equity (R8.4) | XE7 | M–L |
+| 16 | Deeper derived statistics: stabilized small-area rates, inequality measures, retention curves (S2, S5, S6); spatial clustering + scorecard/index later (S8, S9) | XE3, XE6, XE7 | M–L |
+| 17 | Tier-1 external loads (POPCEN/CPH, SAE poverty, income class, PSGC crosswalk) feeding the Relationships view and map indicators (§10) | XE6 | L |
+| 18 | UX research loop: baseline funnel analysis, intercept question, 3-task moderated tests (XU3, XU6) | XU3, XU6 | S–M (ongoing) |
 
-## 11. Open questions for the owner (before the plan is written)
+## 12. Open questions for the owner (before the plan is written)
 
 1. **Identity confirmation.** Agree that Explore becomes the indicator-first analyst workbench
    (§2), with place pages remaining the place-first narrative? This decides items 7–10 and where
@@ -430,3 +527,8 @@ discuss, not a committed plan.
    snapshot")?
 6. **Sequencing preference.** Ship P0 (map trust) alone first, or P0+P1 as one "new Explore"
    release?
+7. **Model-adjusted figures (S2).** Comfortable publishing empirical-Bayes "adjusted for small
+   numbers" rates alongside raw ones (clearly labeled, methodology-documented), or should the
+   dashboard stay strictly raw-plus-uncertainty (S1 only)?
+8. **Composite measure (S9).** Scorecard only, or also a single headline "BHW support" index with
+   published weights? (Recommendation: scorecard only, at least initially.)
