@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   getBhwCounts,
+  getChildSummaries,
   getDemographics,
   getHonorarium,
   getTrainingCoverage,
@@ -19,6 +20,7 @@ import {
 import { FigureCard } from "@/components/narrative/figure-card";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
+import { ChildrenTable } from "@/components/place/children-table";
 import { GeoSearch } from "@/components/home/geo-search";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
@@ -27,6 +29,16 @@ import { InsightsGrid } from "@/components/insights/insights-grid";
 import { AiInsight } from "@/components/narrative/ai-insight";
 
 export const revalidate = 86_400; // ISR: refresh at most once a day (citymun/barangay; regions/provinces are SSG via generateStaticParams)
+
+/** Plural label for the level one step below the given level, for the
+ * "Places within" drill-down heading. Barangay has no children. */
+const CHILD_LEVEL_PLURAL: Record<GeoLevel, string | null> = {
+  national: "Regions",
+  region: "Provinces",
+  province: "Cities / municipalities",
+  citymun: "Barangays",
+  barangay: null,
+};
 
 type PlaceParams = { geoLevel: string; geoCode: string };
 
@@ -79,21 +91,32 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   const geo = await loadPlace(await params);
   if (!geo) notFound();
 
-  const [ancestors, overview, counts, demographicsByDimension, training, honorarium, insights] =
-    await Promise.all([
-      getGeoAncestors(geo.geoCode, geo.geoLevel),
-      getBhwOverview(geo.geoCode, geo.geoLevel),
-      getBhwCounts(geo.geoCode, geo.geoLevel),
-      Promise.all(
-        DEFAULT_BREAKDOWNS.map(async (dimension) => ({
-          dimension,
-          rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
-        })),
-      ),
-      getTrainingCoverage(geo.geoCode, geo.geoLevel),
-      getHonorarium(geo.geoCode, geo.geoLevel),
-      getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
-    ]);
+  const [
+    ancestors,
+    overview,
+    counts,
+    demographicsByDimension,
+    training,
+    honorarium,
+    insights,
+    childSummaries,
+  ] = await Promise.all([
+    getGeoAncestors(geo.geoCode, geo.geoLevel),
+    getBhwOverview(geo.geoCode, geo.geoLevel),
+    getBhwCounts(geo.geoCode, geo.geoLevel),
+    Promise.all(
+      DEFAULT_BREAKDOWNS.map(async (dimension) => ({
+        dimension,
+        rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
+      })),
+    ),
+    getTrainingCoverage(geo.geoCode, geo.geoLevel),
+    getHonorarium(geo.geoCode, geo.geoLevel),
+    getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
+    getChildSummaries(geo.geoCode, geo.geoLevel),
+  ]);
+
+  const childLevelLabel = CHILD_LEVEL_PLURAL[geo.geoLevel];
 
   const breadcrumbAncestors: BreadcrumbAncestor[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
@@ -223,6 +246,14 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
 
         <HonorariumFigure rows={honorarium} caption={caption} />
       </div>
+
+      {childLevelLabel && childSummaries.length > 0 && (
+        <ChildrenTable
+          rows={childSummaries}
+          childLevelLabel={childLevelLabel}
+          showTrainingGap={geo.geoLevel !== "citymun"}
+        />
+      )}
 
       <InsightsGrid insights={insights} geoLevel={geo.geoLevel} geoName={geo.geoName} />
     </div>
