@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FigureCard } from "@/components/narrative/figure-card";
-import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { FigureView } from "@/components/charts/figure-view";
 import type { TrainingRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -68,7 +68,13 @@ export function TrainingFigure({
       technicalDetails={<p>Showing the 8 topics with the lowest coverage percentage.</p>}
     >
       {topGaps.length > 0 ? (
-        <BarChartClient data={topGaps} xLabel="% trained" yLabel="Training topic" valueSuffix="%" />
+        <FigureView
+          title="Training coverage — biggest gaps"
+          data={topGaps}
+          xLabel="% trained"
+          yLabel="Training topic"
+          valueSuffix="%"
+        />
       ) : (
         <p className="text-sm text-muted">No data available.</p>
       )}

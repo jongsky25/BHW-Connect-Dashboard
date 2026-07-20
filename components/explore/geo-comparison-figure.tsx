@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { FigureCard } from "@/components/narrative/figure-card";
-import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { FigureView } from "@/components/charts/figure-view";
 import type { GeoLevel } from "@/lib/filters/schema";
 
 const ChoroplethMap = dynamic(
@@ -65,7 +65,8 @@ export function GeoComparisonFigure({
           />
         )}
         {chartData.length > 0 ? (
-          <BarChartClient
+          <FigureView
+            title={`Accreditation by ${childLevelLabel.toLowerCase()}`}
             data={chartData}
             xLabel="% accredited"
             yLabel={childLevelLabel}
