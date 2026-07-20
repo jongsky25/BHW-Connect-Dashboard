@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { horizontalRangeSpec, type RangeDatum } from "@/lib/charts/range-chart";
 import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
@@ -28,16 +28,35 @@ export function RangeChartClient({
   fill?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState<number>();
   const format = formatterFor(valueFormat);
 
+  // Track the container's width so the chart fills it (and stays readable on a
+  // narrow mobile screen) instead of overflowing at a fixed 640px, unless the
+  // caller forces an explicit width (e.g. the enlarged modal).
   useEffect(() => {
+    if (width != null) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setMeasuredWidth(Math.round(w));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [width]);
+
+  const plotWidth = width ?? measuredWidth;
+
+  useEffect(() => {
+    if (plotWidth == null) return;
     let plot: (SVGSVGElement | HTMLElement) & { remove: () => void };
     let cancelled = false;
 
     import("@observablehq/plot").then((Plot) => {
       if (cancelled || !containerRef.current) return;
       plot = Plot.plot(
-        horizontalRangeSpec(data, { xLabel, yLabel, valueFormat: format, width, fill }),
+        horizontalRangeSpec(data, { xLabel, yLabel, valueFormat: format, width: plotWidth, fill }),
       );
       // Same rationale as BarChartClient: the wrapping div already carries
       // role="img" + a full text aria-label, so hide the SVG from the a11y tree.
@@ -49,7 +68,7 @@ export function RangeChartClient({
       cancelled = true;
       plot?.remove();
     };
-  }, [data, xLabel, yLabel, format, width, fill]);
+  }, [data, xLabel, yLabel, format, plotWidth, fill]);
 
   return (
     <div
@@ -61,7 +80,7 @@ export function RangeChartClient({
             `${d.label} — min ${format(d.min)}, p25 ${format(d.p25)}, median ${format(d.median)}, p75 ${format(d.p75)}, max ${format(d.max)}`,
         )
         .join("; ")}`}
-      className="overflow-x-auto"
+      className="w-full overflow-x-auto"
     />
   );
 }

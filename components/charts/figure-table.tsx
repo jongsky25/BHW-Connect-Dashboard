@@ -83,21 +83,21 @@ export function FigureTable({
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border bg-surface">
           <tr>
-            <th className="px-4 py-3 font-medium">{labelHeader}</th>
+            <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">{labelHeader}</th>
             {valueKind === "amount" ? (
-              <th className="px-4 py-3" aria-sort={ariaSortFor("value")}>
+              <th className="px-3 py-2 sm:px-4 sm:py-3" aria-sort={ariaSortFor("value")}>
                 <SortButton active={sort.column === "value"} dir={sort.dir} onClick={() => toggleSort("value")}>
                   {valueHeader}
                 </SortButton>
               </th>
             ) : (
               <>
-                <th className="px-4 py-3" aria-sort={ariaSortFor("count")}>
+                <th className="px-3 py-2 sm:px-4 sm:py-3" aria-sort={ariaSortFor("count")}>
                   <SortButton active={sort.column === "count"} dir={sort.dir} onClick={() => toggleSort("count")}>
                     No.
                   </SortButton>
                 </th>
-                <th className="px-4 py-3" aria-sort={ariaSortFor("percent")}>
+                <th className="px-3 py-2 sm:px-4 sm:py-3" aria-sort={ariaSortFor("percent")}>
                   <SortButton active={sort.column === "percent"} dir={sort.dir} onClick={() => toggleSort("percent")}>
                     %
                   </SortButton>
@@ -109,13 +109,13 @@ export function FigureTable({
         <tbody>
           {sorted.map((d) => (
             <tr key={d.label} className="border-b border-border last:border-0 hover:bg-surface">
-              <td className="px-4 py-3">{d.label}</td>
+              <td className="px-3 py-2 sm:px-4 sm:py-3">{d.label}</td>
               {valueKind === "amount" ? (
-                <td className="px-4 py-3">{valueFormatter(d.value)}</td>
+                <td className="px-3 py-2 sm:px-4 sm:py-3">{valueFormatter(d.value)}</td>
               ) : (
                 <>
-                  <td className="px-4 py-3">{d.count != null ? formatCount(d.count) : "—"}</td>
-                  <td className="px-4 py-3">{Math.round(d.percent * 10) / 10}%</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{d.count != null ? formatCount(d.count) : "—"}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{Math.round(d.percent * 10) / 10}%</td>
                 </>
               )}
             </tr>

@@ -41,21 +41,21 @@ export function Modal({
       }}
       className="fixed inset-0 m-auto hidden max-h-[92vh] min-h-[40vh] w-[96vw] max-w-6xl rounded-lg border border-border bg-background p-0 shadow-xl backdrop:bg-foreground/40 open:flex open:flex-col"
     >
-      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-3 sm:p-5">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+          <h2 className="text-base font-semibold tracking-tight sm:text-lg">{title}</h2>
           {caption && <p className="mt-0.5 text-xs text-muted">{caption}</p>}
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="rounded-md px-2 py-1 text-muted hover:bg-surface"
+          className="shrink-0 rounded-md px-2 py-1 text-muted hover:bg-surface"
         >
           ✕
         </button>
       </div>
-      <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:p-5">{children}</div>
+      <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto p-3 sm:p-5">{children}</div>
     </dialog>
   );
 }

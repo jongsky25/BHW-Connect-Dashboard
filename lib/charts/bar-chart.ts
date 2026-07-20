@@ -31,14 +31,24 @@ export function horizontalBarSpec(
   const suffix = options.valueSuffix ?? "";
   const format = options.valueFormat ?? ((n: number) => n.toLocaleString());
   const fill = options.fill ?? accent;
-  const barHeight = options.barHeight ?? 32;
+  const width = options.width ?? 640;
+  // On narrow (mobile) widths the fixed desktop margins would eat most of the
+  // plot, leaving the bars themselves squished into a sliver. Scale the label
+  // gutter and per-row height down so the chart stays readable — this matters
+  // most in the enlarged modal, which fills a ~96vw phone screen.
+  const compact = width < 520;
+  const longestLabel = Math.max(0, ...data.map((d) => d.label.length));
+  // Reserve just enough of the left gutter for the longest y-axis label, but
+  // cap it so a narrow plot still leaves usable room for the bars.
+  const marginLeft = Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
+  const barHeight = Math.min(options.barHeight ?? 32, compact ? 40 : 200);
   return {
-    marginLeft: 160,
+    marginLeft,
     // Reserve room for the value label drawn past the end of the longest
     // bar — without it, a wide value (e.g. "201,653") can clip against the
     // plot's right edge on a narrow/responsive width.
-    marginRight: 56,
-    width: options.width ?? 640,
+    marginRight: compact ? 44 : 56,
+    width,
     height: Math.max(80, data.length * barHeight + 20),
     x: { label: options.xLabel ?? null, grid: true, nice: true },
     y: { label: options.yLabel ?? null },
