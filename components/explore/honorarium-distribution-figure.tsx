@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { RangeChartClient } from "@/components/charts/range-chart-client";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { PeriodToggle, PERIOD_MONTHS, PERIOD_NOUN, type AmountPeriod } from "@/components/ui/period-toggle";
 import type { HonorariumRow } from "@/lib/db/indicators";
 import type { RangeDatum } from "@/lib/charts/range-chart";
 import { formatPesoFloor100 } from "@/lib/format";
@@ -14,11 +18,22 @@ const PAYER_LABEL: Record<string, string> = {
 
 const PAYER_ORDER = ["region", "province", "citymun", "barangay"];
 
+/** Adjective form of a period for axis/labels, e.g. "Monthly ₱". */
+const PERIOD_ADJECTIVE: Record<AmountPeriod, string> = {
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annual",
+};
+
+/** Scale a monthly amount to the chosen period, preserving null. */
+const scale = (n: number | null, multiplier: number): number | null => (n === null ? null : n * multiplier);
+
 /**
  * Distribution of honorarium amounts by paying level — min/p25/median/p75/max,
  * shown as a box-and-whisker chart plus a companion stats table. Companion to
  * HonorariumAmountFigure (which shows only the average, which a few high
- * payers can pull up). See docs/HONORARIUM_ANALYSIS_SCOPE.md item A.
+ * payers can pull up). See docs/HONORARIUM_ANALYSIS_SCOPE.md item A. The period
+ * toggle scales the monthly values to quarterly (×3) or annual (×12).
  */
 export function HonorariumDistributionFigure({
   rows,
@@ -27,6 +42,11 @@ export function HonorariumDistributionFigure({
   rows: HonorariumRow[];
   caption: string;
 }) {
+  const [period, setPeriod] = useState<AmountPeriod>("monthly");
+  const multiplier = PERIOD_MONTHS[period];
+  const noun = PERIOD_NOUN[period];
+  const adjective = PERIOD_ADJECTIVE[period];
+
   const byLevel = new Map(rows.map((r) => [r.payerLevel, r]));
   const orderedRows = PAYER_ORDER.map((l) => byLevel.get(l)).filter((r): r is HonorariumRow => !!r);
 
@@ -42,11 +62,11 @@ export function HonorariumDistributionFigure({
     )
     .map((r) => ({
       label: PAYER_LABEL[r.payerLevel] ?? r.payerLevel,
-      min: r.minAmount as number,
-      p25: r.p25Amount as number,
-      median: r.medianAmount as number,
-      p75: r.p75Amount as number,
-      max: r.maxAmount as number,
+      min: (r.minAmount as number) * multiplier,
+      p25: (r.p25Amount as number) * multiplier,
+      median: (r.medianAmount as number) * multiplier,
+      p75: (r.p75Amount as number) * multiplier,
+      max: (r.maxAmount as number) * multiplier,
     }));
 
   const anySuppressed = orderedRows.some((r) => r.isSuppressed);
@@ -58,7 +78,7 @@ export function HonorariumDistributionFigure({
       caption={caption}
       headline={
         barangay && !barangay.isSuppressed && barangay.medianAmount != null
-          ? `Barangay honorarium ranges from ${formatPesoFloor100(barangay.minAmount)} to ${formatPesoFloor100(barangay.maxAmount)} a month, with a median of ${formatPesoFloor100(barangay.medianAmount)}.`
+          ? `Barangay honorarium ranges from ${formatPesoFloor100(scale(barangay.minAmount, multiplier))} to ${formatPesoFloor100(scale(barangay.maxAmount, multiplier))} a ${noun}, with a median of ${formatPesoFloor100(scale(barangay.medianAmount, multiplier))}.`
           : chartData.length > 0
             ? "Honorarium amounts vary widely within each paying level, not just between them."
             : "No honorarium distribution data available."
@@ -66,15 +86,16 @@ export function HonorariumDistributionFigure({
       technicalDetails={
         <>
           <p>
-            Each row spans the minimum-to-maximum monthly{" "}
+            Each row spans the minimum-to-maximum{" "}
             <GlossaryTerm slug="honorarium">honorarium</GlossaryTerm> among BHWs who receive one
             from that level; the shaded box covers the 25th-75th percentile (the middle half of
             recipients), and the tick marks the median. Unlike a single average, this shows how much
             amounts actually vary — a few high payers can pull an average up without most recipients
-            seeing anywhere near that amount.
+            seeing anywhere near that amount. Values are per month; quarterly and annual views scale
+            them by 3 and 12.
           </p>
           <p>
-            Amounts under ₱100/month are shown as &quot;&lt;₱100&quot; rather than an exact figure —
+            Amounts under ₱100 are shown as &quot;&lt;₱100&quot; rather than an exact figure —
             these are genuine reported values, not suppressed, just too small a token amount to
             usefully compare down to the peso.
           </p>
@@ -89,10 +110,13 @@ export function HonorariumDistributionFigure({
         </>
       }
     >
+      <div className="mb-3 flex items-center justify-end">
+        <PeriodToggle value={period} onChange={setPeriod} />
+      </div>
       {chartData.length > 0 ? (
         <RangeChartClient
           data={chartData}
-          xLabel="Monthly ₱"
+          xLabel={`${adjective} ₱`}
           yLabel="Paying level"
           valueFormat="pesoFloor100"
         />
@@ -121,12 +145,12 @@ export function HonorariumDistributionFigure({
                   className="border-b border-border last:border-0 hover:bg-surface"
                 >
                   <td className="px-3 py-2 sm:px-4 sm:py-3">{PAYER_LABEL[r.payerLevel] ?? r.payerLevel}</td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.minAmount)}</td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.p25Amount)}</td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.medianAmount)}</td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.p75Amount)}</td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.maxAmount)}</td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(r.avgMonthlyAmount)}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(scale(r.minAmount, multiplier))}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(scale(r.p25Amount, multiplier))}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(scale(r.medianAmount, multiplier))}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(scale(r.p75Amount, multiplier))}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(scale(r.maxAmount, multiplier))}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">{formatPesoFloor100(scale(r.avgMonthlyAmount, multiplier))}</td>
                 </tr>
               ))}
             </tbody>
