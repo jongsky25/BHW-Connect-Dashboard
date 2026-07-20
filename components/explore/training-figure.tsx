@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import type { TrainingRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -9,11 +10,13 @@ export function TrainingFigure({
   caption,
   geoLevel,
   citymunAncestor,
+  geoCode,
 }: {
   rows: TrainingRow[];
   caption: string;
   geoLevel: GeoLevel;
   citymunAncestor: { geoCode: string; geoName: string } | null;
+  geoCode?: string;
 }) {
   if (geoLevel === "barangay") {
     return (
@@ -52,7 +55,11 @@ export function TrainingFigure({
     .filter((r) => r.coveragePct !== null)
     .sort((a, b) => (a.coveragePct as number) - (b.coveragePct as number))
     .slice(0, 8)
-    .map((r) => ({ label: r.topicLabel ?? r.topicSlug, value: r.coveragePct as number, count: r.nTrained ?? undefined }));
+    .map((r) => ({
+      label: r.topicLabel ?? r.topicSlug,
+      value: r.coveragePct as number,
+      count: r.nTrained ?? undefined,
+    }));
 
   const biggestGap = topGaps[0];
 
@@ -60,6 +67,11 @@ export function TrainingFigure({
     <FigureCard
       title="Training coverage — biggest gaps"
       caption={caption}
+      exportMenu={
+        geoCode ? (
+          <ExportMenu geoCode={geoCode} geoLevel={geoLevel} indicator="training" />
+        ) : undefined
+      }
       headline={
         biggestGap
           ? `"${biggestGap.label}" has the lowest coverage here, at ${biggestGap.value}%.`

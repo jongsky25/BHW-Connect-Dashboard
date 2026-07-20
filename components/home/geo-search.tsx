@@ -30,6 +30,22 @@ const GEO_LEVEL_LABEL: Record<string, string> = {
  * province, and the hint that a barangay works too (typos tolerated). */
 const EXAMPLE_QUERIES = ["Cebu", "CALABARZON", "Quezon City"];
 
+const RECENTS_KEY = "bhw:recent-places";
+const RECENTS_MAX = 5;
+
+type RecentPlace = { geoCode: string; geoLevel: string; geoName: string };
+
+function loadRecents(): RecentPlace[] {
+  try {
+    const raw = window.localStorage.getItem(RECENTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed.slice(0, RECENTS_MAX) as RecentPlace[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Most-specific-first ancestor label, e.g. "Carcar City, Cebu" for a barangay.
  * Skips any ancestor equal to the place's own name (a region row lists itself as
  * its own region parent) and caps at two levels to stay on one line. */
@@ -54,11 +70,38 @@ export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }
   const [status, setStatus] = useState<Status>("idle");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [recents, setRecents] = useState<RecentPlace[]>([]);
   const requestId = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
   const trimmed = query.trim();
+
+  // Recent places are client-only (localStorage), loaded after mount so server
+  // and first client render match. The load is deferred to a timeout so the
+  // state update happens outside the effect body (react-hooks/set-state-in-effect).
+  useEffect(() => {
+    const t = setTimeout(() => setRecents(loadRecents()), 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  function rememberRecent(result: GeoSearchResult) {
+    const entry: RecentPlace = {
+      geoCode: result.geoCode,
+      geoLevel: result.geoLevel,
+      geoName: result.geoName,
+    };
+    const next = [entry, ...recents.filter((r) => r.geoCode !== entry.geoCode)].slice(
+      0,
+      RECENTS_MAX,
+    );
+    setRecents(next);
+    try {
+      window.localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+    } catch {
+      // localStorage unavailable (private mode / quota) — recents are best-effort.
+    }
+  }
 
   useEffect(() => {
     const currentRequest = ++requestId.current;
@@ -119,6 +162,7 @@ export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }
   const optionId = (i: number) => `${listId}-opt-${i}`;
 
   function navigateTo(result: GeoSearchResult) {
+    rememberRecent(result);
     setOpen(false);
     router.push(`/place/${result.geoLevel}/${result.geoCode}`);
   }
@@ -238,7 +282,10 @@ export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }
                     <Link
                       href={`/place/${result.geoLevel}/${result.geoCode}`}
                       onMouseEnter={() => setActiveIndex(i)}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        rememberRecent(result);
+                        setOpen(false);
+                      }}
                       className={`flex items-start justify-between gap-3 px-4 py-2.5 text-sm ${
                         i === activeIndex ? "bg-surface" : ""
                       }`}
@@ -268,6 +315,27 @@ export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }
 
       {hintsVisible && (
         <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-border bg-background p-3 text-left shadow-lg">
+          {recents.length > 0 && (
+            <div className="mb-3 border-b border-border pb-3">
+              <p className="text-xs text-muted">Recent places:</p>
+              <ul className="mt-1">
+                {recents.map((recent) => (
+                  <li key={recent.geoCode}>
+                    <Link
+                      href={`/place/${recent.geoLevel}/${recent.geoCode}`}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between gap-3 rounded px-1 py-1.5 text-sm hover:bg-surface"
+                    >
+                      <span className="truncate">{recent.geoName}</span>
+                      <span className="shrink-0 text-xs text-muted">
+                        {GEO_LEVEL_LABEL[recent.geoLevel] ?? recent.geoLevel}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="text-xs text-muted">Try searching for a place:</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {EXAMPLE_QUERIES.map((example) => (

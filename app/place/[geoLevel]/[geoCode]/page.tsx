@@ -254,6 +254,9 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         <FigureCard
           title="Average years of service"
           caption={caption}
+          exportMenu={
+            <ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="service_years" />
+          }
           headline={
             counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
               ? `BHWs here have served an average of ${counts.avgActiveYears} years.`
@@ -319,9 +322,15 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           caption={caption}
           geoLevel={geo.geoLevel}
           citymunAncestor={ancestors.citymun}
+          geoCode={geo.geoCode}
         />
 
-        <HonorariumFigure rows={honorarium} caption={caption} />
+        <HonorariumFigure
+          rows={honorarium}
+          caption={caption}
+          geoCode={geo.geoCode}
+          geoLevel={geo.geoLevel}
+        />
       </div>
 
       {childLevelLabel && childSummaries.length > 0 && (

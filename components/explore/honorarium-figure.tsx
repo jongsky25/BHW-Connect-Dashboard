@@ -1,7 +1,9 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
+import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { HonorariumRow } from "@/lib/db/indicators";
+import type { GeoLevel } from "@/lib/filters/schema";
 
 const PAYER_LABEL: Record<string, string> = {
   region: "Region",
@@ -10,7 +12,17 @@ const PAYER_LABEL: Record<string, string> = {
   barangay: "Barangay",
 };
 
-export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; caption: string }) {
+export function HonorariumFigure({
+  rows,
+  caption,
+  geoCode,
+  geoLevel,
+}: {
+  rows: HonorariumRow[];
+  caption: string;
+  geoCode?: string;
+  geoLevel?: GeoLevel;
+}) {
   const chartData = rows
     .filter((r) => r.pctReceiving !== null)
     .map((r) => ({
@@ -25,6 +37,11 @@ export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; cap
     <FigureCard
       title="Honorarium, by paying level"
       caption={caption}
+      exportMenu={
+        geoCode && geoLevel ? (
+          <ExportMenu geoCode={geoCode} geoLevel={geoLevel} indicator="honorarium" />
+        ) : undefined
+      }
       headline={
         topPayer
           ? `Most honorarium here is paid at the ${topPayer.label.toLowerCase()} level (${topPayer.value}% of BHWs).`
@@ -32,9 +49,8 @@ export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; cap
       }
       technicalDetails={
         <p>
-          A BHW may receive <GlossaryTerm slug="honorarium">honorarium</GlossaryTerm> from more
-          than one administrative level; percentages are independent per level, not mutually
-          exclusive.
+          A BHW may receive <GlossaryTerm slug="honorarium">honorarium</GlossaryTerm> from more than
+          one administrative level; percentages are independent per level, not mutually exclusive.
         </p>
       }
     >
