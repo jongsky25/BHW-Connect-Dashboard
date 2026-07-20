@@ -323,3 +323,90 @@ pipeline needed; this is a derived figure over data already in production.
   can't get past `generateStaticParams`' live SSG data collection for `/place/[geoLevel]/[geoCode]`
   to actually finish a full production build here; not a defect introduced by this change, since the
   failure is the pre-existing missing-env-vars point, not anything touched in this diff.
+
+## 2026-07-20 — StepZero provenance confirmed; root cause of the dim_geo gap found
+
+**Owner confirmation, resolving the open follow-up from the original StepZero entry.** StepZero
+and `bhw-2025` are the same 2025 profiling initiative, not two independently-collected datasets:
+the process was to ask each LGU how many BHWs they had (StepZero) *before* starting individual
+profiling, specifically so the profiling's denominators would be clear going in. `as_of_date`
+(`2025-01-01`) was already correct and is now confirmed rather than assumed. `license`/`source_url`
+remain unconfirmed and unchanged (null). Applied directly to the live project
+(`20260720090000_confirm_stepzero_provenance.sql`): `dim_dataset.status` for `bhw-stepzero-2026`
+moves from `'draft'` to `'published'` — a value distinct from `'active'` on purpose, since
+`getActiveDatasetId()` filters on `status = 'active'` for the sole per-person dataset and StepZero
+is always read by slug (`getDatasetIdBySlug`), never by that filter; `source_name` updated to state
+the relationship. `/methodology`'s "Two data sources" section gained a paragraph explaining this —
+genuinely useful context for why StepZero is a trustworthy denominator baseline, not just an
+internal bookkeeping fact.
+
+**This also reframes the ~2,689 barangay / 12 citymun `dim_geo` gap** the original StepZero entry
+attributed to "newer PSGC entries or renumbered barangays" — re-investigated using the same two
+source files (`ingestion/data/dataset.parquet`, `ingestion/data/bhw_connect_stepzero.xlsx`, both
+present in this sandbox) now that the provenance is understood:
+
+- **The 12 missing citymuns are real, currently-existing LGUs with zero rows in the `bhw-2025`
+  parquet at all** — not a coding/vintage mismatch. Confirmed by name: `CITY OF IMUS` and
+  `GEN. MARIANO ALVAREZ` (Cavite), six Quezon-province municipalities (`MULANAY`, `PADRE BURGOS`,
+  `PITOGO`, `QUEZON`, `SAN ANDRES`, `SAN FRANCISCO`), three Basilan municipalities (`SUMISIP`,
+  `TIPO-TIPO`, `AL-BARKA`), and `KAPATAGAN` (Lanao del Sur) — Cavite's parquet rows cover only 21 of
+  its 23 real municipalities, Quezon only 34 of 40, Basilan only 9 of 11 — real, verifiable
+  undercounts, not renamed duplicates. These carry 331 of the 2,689 unmatched barangays.
+- **The remaining 2,358 unmatched barangays sit under citymuns `dim_geo` already has** (e.g.
+  `SAMPALOC`, `TONDO I/II`, `PASAY CITY`, `CITY OF CALOOCAN`, several Iloilo/Samar towns) — checked
+  for name collisions against `dim_geo`'s existing barangays in the same citymun (which would mean
+  "same place, different code" rather than "actually missing"): only 7 of 2,358 collide by name:
+  the other 2,351 are barangays with no matching name at all under that citymun.
+- **Conclusion: this isn't a PSGC vintage problem, it's an individual-profiling-coverage gap.**
+  `dim_geo` is built purely from `df[...].drop_duplicates()` over the parquet (`build_dim_geo()` in
+  `ingest.py`) — a place with zero profiled BHW rows simply never appears in `dim_geo`, whole-LGU or
+  barangay-by-barangay. StepZero's LGU-reported headcount reached every barangay nationally
+  (confirmed in the earlier entry: all 39,276 `dim_geo` barangays are a subset of StepZero's 41,965);
+  individual profiling, as of the `bhw-2025` snapshot, had not yet reached these ~2,700 places. This
+  is consistent with — and now explained by — point 1 above: StepZero establishes the full universe
+  first, profiling fills in behind it.
+
+**Executed same-day, on owner go-ahead ("update psgc").** `ingestion/patch_dim_geo_stepzero_gap.py`
+builds the patch straight from `bhw_connect_stepzero.xlsx`'s own hierarchy columns (region/
+province/citymun/barangay code + name) for the 12 citymuns and 2,682 non-colliding barangays (331
+under the 12 new citymuns + 2,351 under already-known ones); `income_class` null (the sheet doesn't
+carry it); `psgc_vintage` tagged `'stepzero_only_v1: no bhw-2025 profile rows as of the 2025
+snapshot'` so the provenance is honest in the data itself, not just this log. The 7 name-collision
+barangays (`0506216039` Balogo/Sorsogon, `0631000198`/`0631000199`/`0631000155`/`0631000200`
+Luna/San Isidro/San Jose x2/San Pedro under City of Iloilo, `0931700028` Dulian/Zamboanga City) were
+excluded — same name already present in `dim_geo` under the same citymun, more likely a renumbering
+than a new place; flagged in `ingestion/_qa_report_patch_psgc_gap.json` for a manual PSGC check
+rather than guessed at.
+
+- **Loaded live** via the same temporary-`SECURITY DEFINER`-RPC-over-PostgREST pattern used for the
+  original `dim_geo`/StepZero loads (`ingestion/_load_psgc_patch_live.py`; this sandbox still has no
+  direct Postgres TCP) — two functions (`_patch_load_dim_geo`, `_patch_load_stepzero_counts`),
+  each gated by a random one-time secret, granted to `anon`, called in 200-row batches so the row
+  data never had to pass through the assistant's own context, then dropped immediately after (this
+  session does have working `execute_sql`/`apply_migration` access via the Supabase MCP tools for
+  the function-management statements themselves, unlike earlier sessions — only bulk row data used
+  the RPC workaround). Committed as `supabase/migrations/20260720100000_patch_stepzero_psgc_gap.sql`
+  for the record even though the live load went through the RPC path, consistent with how the
+  original StepZero load's migrations were committed separately from its RPC-based data push.
+- **Verified live:** `dim_geo` 41,052 → 43,746 rows (1,639→1,651 citymuns, 39,276→41,958 barangays,
+  exactly +12/+2,682); `agg_bhw_stepzero_counts` 41,052 → 43,746 (every `dim_geo` row now has a
+  matching StepZero row); spot-checked City of Imus (`0402109`, parent province `04021` Cavite,
+  n_total_bhw 39, population 19,320) and one of its barangays (`0402109001` Alapan I-A, population
+  10) — correct hierarchy and figures. Temporary RPC functions confirmed dropped (0 left in
+  `information_schema.routines`).
+- **Confirmed via code read, not just assumption: place pages/explore/compare degrade correctly.**
+  `app/place/[geoLevel]/[geoCode]/page.tsx` resolves the profile header via `getGeoByCode`/
+  `getGeoAncestors` (both read `dim_geo` directly) and figures via `getBhwOverview`/`getBhwCounts`,
+  which already null-degrade to "No accreditation data available" / em-dashes when a geo has no
+  `agg_bhw_counts` row — exactly these new geos' situation, and the mirror image of the "no StepZero
+  row" case `getBhwOverview` already handled. No code changes were needed for this to work.
+- **One real, honest gap surfaced by testing `search_geo` directly (not by reading the code alone):**
+  both of `search_geo`'s branches — full-text over `agg_geo_summary.search_text` and the
+  `word_similarity` trigram branch over `dim_geo.geo_name` — inner-join against `agg_geo_summary`,
+  which is built only from `fact_bhw_raw`-covered geos (0.5's `_agg_base`). So the new geos resolve
+  correctly by direct URL/cascading dropdowns but **do not appear in "find my barangay" search** —
+  confirmed empirically (`select * from search_geo('City of Imus', 5)` doesn't return it). Not fixed
+  here: doing so would mean either loosening `search_geo` to `LEFT JOIN` (works, but then `n_total`/
+  ranking need a null-population fallback) or giving these geos a minimal `agg_geo_summary` row,
+  which touches the same disk-budget-sensitive aggregate build flagged in 0.5. Left as a known,
+  documented gap rather than a silent one.

@@ -69,6 +69,16 @@ export default async function MethodologyPage() {
           total.
         </p>
         <p className="text-sm text-muted">
+          Both datasets come from the same 2025 BHW profiling initiative, not separate exercises:
+          StepZero is the LGU-reported headcount collected first — local government units were
+          asked how many BHWs they had before individual profiling began, so that denominators
+          would be clear going in. The validated-profiles dataset is the result of that individual
+          profiling. A small number of places (mostly whole cities/municipalities, plus individual
+          barangays elsewhere) appear in StepZero&apos;s total but have no validated profiles yet —
+          this reflects where individual profiling was still incomplete as of the 2025 snapshot,
+          not a data error.
+        </p>
+        <p className="text-sm text-muted">
           Note on the official figure: DOH cites approximately <strong>277,767</strong> registered
           &amp; accredited BHWs. The StepZero sheet used here sums to 278,240 registered BHWs — a
           difference of a few hundred that reflects ordinary drift between an official tally and this
