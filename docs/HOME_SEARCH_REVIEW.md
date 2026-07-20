@@ -4,10 +4,13 @@ A three-lens review (designer · lay person · epidemiologist) of the home page,
 
 **Status:** reviewed 2026-07-20 against `main` (`e9f4068`). Implementation is now underway, phase by phase; each phase lands with the usual verify steps.
 
-**Implementation progress:**
+**Implementation progress (all in this PR):**
 
-- **P0 — Search trust & mechanics: done** (items 1–6). Parent-chain disambiguation, ARIA combobox + keyboard navigation, overlaid dropdown with pending/error states, per-result data-availability, search on place pages, and empty-state hints are all implemented in this PR. Item 1 also ships migration `supabase/migrations/20260720130000_search_geo_parent_chain.sql`, which must be applied for the parent-locality line to appear (the UI degrades cleanly until then).
-- **P1, P2:** not started.
+- **P0 — Search trust & mechanics: done** (items 1–6). Parent-chain disambiguation, ARIA combobox + keyboard navigation, overlaid dropdown with pending/error states, per-result data-availability, search on place pages, and empty-state hints. Item 1 also ships migration `supabase/migrations/20260720130000_search_geo_parent_chain.sql`, which must be applied for the parent-locality line to appear (the UI degrades cleanly until then).
+- **P1 — Orientation & benchmarks: done** (items 7–11). "Places within" drill-down table on place pages (`components/place/children-table.tsx` + `getChildSummaries`); region/national benchmark comparators under the accreditation, average-years, and a new per-1,000 figure (`components/place/benchmark.tsx` + a `benchmark` slot on `FigureCard`); the misleading home per-1,000 gauge removed; the two-denominator caveat promoted from a footnote to a labelled funnel with glossary tooltips (`components/home/denominator-explainer.tsx`); and the place header restructured into labelled stat chips with a primary Compare action.
+- **P2 — Depth & polish: partial.**
+  - _Done:_ item 13 (export menus added to the Training, Honorarium, and Average-years figures on place pages) and item 15 (recent-searches, stored in `localStorage`, surfaced on focus).
+  - _Deferred, with reason:_ item 12 (locator map) depends on the Phase 1.6 boundary pipeline (`public/geo/*`), which isn't built yet. Item 14 (surface completeness) is deferred because `agg_data_completeness` is dataset-wide, not geo-scoped — showing it on a place page would present a national figure as if it were local, the exact anti-pattern this review flags; it needs per-geo completeness aggregation first. Item 16 (group the honorarium figures / rebalance the home grid) is a still-open UI refinement.
 
 ## 1. Scope & method
 
