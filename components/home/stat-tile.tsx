@@ -2,10 +2,12 @@
 
 import { type ReactNode, useState } from "react";
 import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { ColorSwatches } from "@/components/charts/color-swatches";
 import { FigureTable } from "@/components/charts/figure-table";
 import { Modal } from "@/components/ui/modal";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { BarDatum } from "@/lib/charts/bar-chart";
+import { accent } from "@/lib/charts/palette";
 import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
 export type StatTileDetail = {
@@ -37,12 +39,16 @@ export function StatEnlargeModal({
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<ViewMode>("chart");
+  const [color, setColor] = useState(accent);
   const format = formatterFor(enlarge.valueFormat);
+  const valueKind: "count" | "percent" | "amount" =
+    enlarge.valueFormat === "peso" ? "amount" : enlarge.valueFormat === "percent" ? "percent" : "count";
 
   return (
     <Modal open={open} onClose={onClose} title={enlarge.title}>
-      <div className="mb-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <ViewToggle value={mode} onChange={setMode} />
+        {mode === "chart" && <ColorSwatches value={color} onChange={setColor} />}
       </div>
       {mode === "chart" ? (
         <BarChartClient
@@ -50,6 +56,8 @@ export function StatEnlargeModal({
           xLabel={enlarge.xLabel}
           yLabel={enlarge.yLabel}
           valueFormat={format}
+          width={900}
+          fill={color}
         />
       ) : (
         <FigureTable
@@ -57,6 +65,7 @@ export function StatEnlargeModal({
           labelHeader={enlarge.yLabel ?? "Category"}
           valueHeader={enlarge.xLabel ?? "Value"}
           valueFormatter={format}
+          valueKind={valueKind}
         />
       )}
     </Modal>

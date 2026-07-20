@@ -52,7 +52,7 @@ export function TrainingFigure({
     .filter((r) => r.coveragePct !== null)
     .sort((a, b) => (a.coveragePct as number) - (b.coveragePct as number))
     .slice(0, 8)
-    .map((r) => ({ label: r.topicLabel ?? r.topicSlug, value: r.coveragePct as number }));
+    .map((r) => ({ label: r.topicLabel ?? r.topicSlug, value: r.coveragePct as number, count: r.nTrained ?? undefined }));
 
   const biggestGap = topGaps[0];
 

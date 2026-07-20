@@ -17,7 +17,7 @@ export function CertificationFigure({ rows, caption }: { rows: CertificationRow[
   const byType = new Map(rows.map((r) => [r.certType, r]));
   const chartData = CERT_ORDER.map((t) => byType.get(t))
     .filter((r): r is CertificationRow => !!r && r.pct !== null)
-    .map((r) => ({ label: CERT_LABEL[r.certType] ?? r.certType, value: r.pct as number }));
+    .map((r) => ({ label: CERT_LABEL[r.certType] ?? r.certType, value: r.pct as number, count: r.n ?? undefined }));
 
   const refManual = byType.get("ref_manual_trained");
   const certified = byType.get("tesda_certified");

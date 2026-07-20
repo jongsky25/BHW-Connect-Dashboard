@@ -93,7 +93,7 @@ export default async function Home() {
       : [];
 
   const edu = educationTile(education);
-  const educationChartData: BarDatum[] = edu.rows.map((r) => ({ label: r.label, value: r.pct }));
+  const educationChartData: BarDatum[] = edu.rows.map((r) => ({ label: r.label, value: r.pct, count: r.n }));
 
   const per1000ChartData: BarDatum[] =
     overview.totalBhw !== null && overview.population !== null

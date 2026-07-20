@@ -13,7 +13,11 @@ const PAYER_LABEL: Record<string, string> = {
 export function HonorariumFigure({ rows, caption }: { rows: HonorariumRow[]; caption: string }) {
   const chartData = rows
     .filter((r) => r.pctReceiving !== null)
-    .map((r) => ({ label: PAYER_LABEL[r.payerLevel] ?? r.payerLevel, value: r.pctReceiving as number }));
+    .map((r) => ({
+      label: PAYER_LABEL[r.payerLevel] ?? r.payerLevel,
+      value: r.pctReceiving as number,
+      count: r.nReceiving ?? undefined,
+    }));
 
   const topPayer = [...chartData].sort((a, b) => b.value - a.value)[0];
 

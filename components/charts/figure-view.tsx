@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { BarChartClient } from "@/components/charts/bar-chart-client";
+import { ColorSwatches } from "@/components/charts/color-swatches";
 import { FigureTable } from "@/components/charts/figure-table";
 import { Modal } from "@/components/ui/modal";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { BarDatum } from "@/lib/charts/bar-chart";
+import { accent } from "@/lib/charts/palette";
 import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
 /**
@@ -35,9 +37,15 @@ export function FigureView({
 }) {
   const [mode, setMode] = useState<ViewMode>("chart");
   const [enlarged, setEnlarged] = useState(false);
+  const [color, setColor] = useState(accent);
 
   const format = formatterFor(valueFormat);
   const tableFormat = (n: number) => `${format(n)}${valueSuffix ?? ""}`;
+  // "amount" (e.g. peso averages) can't be turned into a "% of total" — the
+  // honorarium-amount figure's averages aren't additive across payer levels —
+  // so that table keeps a single sortable value column instead of No./%.
+  const valueKind: "count" | "percent" | "amount" =
+    valueFormat === "peso" ? "amount" : valueFormat === "percent" || valueSuffix === "%" ? "percent" : "count";
 
   return (
     <div>
@@ -53,28 +61,46 @@ export function FigureView({
       </div>
 
       {mode === "chart" ? (
-        <BarChartClient data={data} xLabel={xLabel} yLabel={yLabel} valueSuffix={valueSuffix} valueFormat={format} />
+        <BarChartClient
+          data={data}
+          xLabel={xLabel}
+          yLabel={yLabel}
+          valueSuffix={valueSuffix}
+          valueFormat={format}
+          fill={color}
+        />
       ) : (
         <FigureTable
           data={data}
           labelHeader={yLabel ?? "Category"}
           valueHeader={xLabel ?? "Value"}
           valueFormatter={tableFormat}
+          valueKind={valueKind}
         />
       )}
 
       <Modal open={enlarged} onClose={() => setEnlarged(false)} title={title}>
-        <div className="mb-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <ViewToggle value={mode} onChange={setMode} />
+          {mode === "chart" && <ColorSwatches value={color} onChange={setColor} />}
         </div>
         {mode === "chart" ? (
-          <BarChartClient data={data} xLabel={xLabel} yLabel={yLabel} valueSuffix={valueSuffix} valueFormat={format} />
+          <BarChartClient
+            data={data}
+            xLabel={xLabel}
+            yLabel={yLabel}
+            valueSuffix={valueSuffix}
+            valueFormat={format}
+            width={900}
+            fill={color}
+          />
         ) : (
           <FigureTable
             data={data}
             labelHeader={yLabel ?? "Category"}
             valueHeader={xLabel ?? "Value"}
             valueFormatter={tableFormat}
+            valueKind={valueKind}
           />
         )}
       </Modal>

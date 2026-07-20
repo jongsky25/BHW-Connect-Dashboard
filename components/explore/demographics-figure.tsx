@@ -38,7 +38,7 @@ export function DemographicsFigure({
 
   const chartData = rows
     .filter((r) => !r.isSuppressed && r.pct !== null)
-    .map((r) => ({ label: formatCategory(dimension, r.category), value: r.pct as number }));
+    .map((r) => ({ label: formatCategory(dimension, r.category), value: r.pct as number, count: r.n ?? undefined }));
 
   const topCategory = [...chartData].sort((a, b) => b.value - a.value)[0];
 
