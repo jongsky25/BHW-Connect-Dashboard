@@ -133,10 +133,10 @@ export default async function ExplorePage({
               validated profiles{coverage !== null ? ` (${coverage}% of registered)` : ""}
             </span>
           </span>
-          {overview.bhwPer1000Residents !== null && (
+          {overview.householdsPerBhw !== null && (
             <span>
-              <span className="font-semibold">{overview.bhwPer1000Residents.toLocaleString()}</span>{" "}
-              <span className="text-muted">BHWs per 1,000 residents</span>
+              <span className="font-semibold">{overview.householdsPerBhw.toLocaleString()}</span>{" "}
+              <span className="text-muted">households per BHW</span>
             </span>
           )}
           {!overview.hasStepzero && (

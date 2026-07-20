@@ -99,11 +99,12 @@ export type BhwOverview = {
    * `agg_bhw_stepzero_counts`. Null wherever StepZero has no row for this geo. */
   population: number | null;
   households: number | null;
-  /** Total BHWs (the StepZero universe) per 1,000 residents — the per-capita
-   * framing docs/DATASET_SCOPING.md scoped as a separate PSA-population dataset,
-   * built here instead from StepZero's own population column since it already
-   * covers every geo level. Null when population is missing or zero. */
-  bhwPer1000Residents: number | null;
+  /** Households per BHW — households divided by Total BHWs (the StepZero
+   * universe). BHWs in the Philippines are assigned to households, so this
+   * ratio (not a per-capita rate) is the operative workload measure. Built from
+   * StepZero's own households column, which covers every geo level. Null when
+   * either input is missing or zero. */
+  householdsPerBhw: number | null;
 };
 
 /** Coverage percentage for display: capped at 100 when profiled counts exceed
@@ -116,11 +117,14 @@ export function coverageForDisplay(
   return o.coverageExceedsBase ? 100 : o.profilingCoveragePct;
 }
 
-/** BHWs per 1,000 residents, rounded to one decimal place. Null when either
- * input is missing or population is zero (nothing sane to divide by). */
-export function bhwPer1000ResidentsFor(totalBhw: number | null, population: number | null): number | null {
-  if (totalBhw === null || population === null || population <= 0) return null;
-  return Math.round((1000 * totalBhw * 10) / population) / 10;
+/** Households served per BHW, rounded. Null without both inputs positive
+ * (nothing sane to divide by). */
+export function householdsPerBhw(
+  households: number | null,
+  totalBhw: number | null,
+): number | null {
+  if (households === null || totalBhw === null || households <= 0 || totalBhw <= 0) return null;
+  return Math.round(households / totalBhw);
 }
 
 export async function getBhwOverview(
@@ -144,6 +148,7 @@ export async function getBhwOverview(
   }
 
   const population = stepzero?.population ?? null;
+  const households = stepzero?.households ?? null;
   const totalBhw = stepzero?.nTotalBhw ?? null;
 
   return {
@@ -159,7 +164,7 @@ export async function getBhwOverview(
     coverageExceedsBase,
     hasStepzero: stepzero !== null,
     population,
-    households: stepzero?.households ?? null,
-    bhwPer1000Residents: bhwPer1000ResidentsFor(totalBhw, population),
+    households,
+    householdsPerBhw: householdsPerBhw(households, totalBhw),
   };
 }

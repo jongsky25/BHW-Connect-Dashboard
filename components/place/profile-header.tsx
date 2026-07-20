@@ -39,7 +39,7 @@ export function ProfileHeader({
   totalBhw,
   validatedProfiles,
   coveragePct,
-  bhwPer1000Residents,
+  householdsPerBhw,
   incomeClass,
 }: {
   geoName: string;
@@ -51,8 +51,8 @@ export function ProfileHeader({
   validatedProfiles: number | null;
   /** Coverage % (already capped for display), or null. */
   coveragePct: number | null;
-  /** Total BHWs per 1,000 residents (null when population data is unavailable). */
-  bhwPer1000Residents: number | null;
+  /** Households per BHW (null when household data is unavailable). */
+  householdsPerBhw: number | null;
   incomeClass: number | null;
 }) {
   return (
@@ -96,10 +96,10 @@ export function ProfileHeader({
               }
             />
           )}
-          {bhwPer1000Residents !== null && (
+          {householdsPerBhw !== null && (
             <StatChip
-              label={<GlossaryTerm slug="bhw_per_1000">Per 1,000 residents</GlossaryTerm>}
-              value={bhwPer1000Residents.toLocaleString()}
+              label={<GlossaryTerm slug="households_per_bhw">Households per BHW</GlossaryTerm>}
+              value={householdsPerBhw.toLocaleString()}
             />
           )}
           {incomeClass !== null && INCOME_CLASS_LABEL[incomeClass] && (

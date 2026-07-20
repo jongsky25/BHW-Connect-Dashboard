@@ -186,7 +186,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
         totalBhw={overview.totalBhw}
         validatedProfiles={overview.validatedProfiles}
         coveragePct={coverageForDisplay(overview)}
-        bhwPer1000Residents={overview.bhwPer1000Residents}
+        householdsPerBhw={overview.householdsPerBhw}
         incomeClass={geo.incomeClass}
       />
 
@@ -280,29 +280,32 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           <p className="text-4xl font-semibold tracking-tight">{counts?.avgActiveYears ?? "—"}</p>
         </FigureCard>
 
-        {overview.bhwPer1000Residents !== null && (
+        {overview.householdsPerBhw !== null && (
           <FigureCard
-            title="BHWs per 1,000 residents"
-            caption={`Total BHWs per resident population · ${geo.geoName} · 2025`}
-            headline={`There are ${overview.bhwPer1000Residents} BHWs for every 1,000 residents here.`}
+            title="Households per BHW"
+            caption={`Households served per BHW · ${geo.geoName} · 2025`}
+            headline={`Each BHW here serves about ${overview.householdsPerBhw} households.`}
             technicalDetails={
-              <p>Total BHWs (StepZero headcount) divided by resident population, then ×1,000.</p>
+              <p>
+                StepZero household count divided by Total BHWs (the StepZero universe). A higher
+                figure means each BHW covers more households.
+              </p>
             }
             benchmark={
               showBenchmarks ? (
                 <BenchmarkBars
                   rows={benchmarkRows(
-                    overview.bhwPer1000Residents,
-                    regionOverview?.bhwPer1000Residents ?? null,
-                    nationalOverview?.bhwPer1000Residents ?? null,
+                    overview.householdsPerBhw,
+                    regionOverview?.householdsPerBhw ?? null,
+                    nationalOverview?.householdsPerBhw ?? null,
                   )}
                   format="count"
-                  unitSuffix="/1,000"
+                  unitSuffix="hh/BHW"
                 />
               ) : undefined
             }
           >
-            <p className="text-4xl font-semibold tracking-tight">{overview.bhwPer1000Residents}</p>
+            <p className="text-4xl font-semibold tracking-tight">{overview.householdsPerBhw}</p>
           </FigureCard>
         )}
 

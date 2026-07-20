@@ -410,3 +410,36 @@ rather than guessed at.
   ranking need a null-population fallback) or giving these geos a minimal `agg_geo_summary` row,
   which touches the same disk-budget-sensitive aggregate build flagged in 0.5. Left as a known,
   documented gap rather than a silent one.
+
+## 2026-07-20 — Households per BHW replaces BHWs per 1,000 residents as the headline ratio
+
+**Owner direction:** in the Philippines BHWs are assigned to *households*, so households per BHW —
+not a per-capita rate — is the ratio that actually matters for workload and coverage. Replaced the
+day-old per-1,000-residents figure with households per BHW everywhere it appeared, rather than
+showing both: two density ratios side-by-side would dilute the one that maps to how the workforce
+is actually organized, and StepZero's `households` column (already loaded and rolled up to every
+geo level) is exactly the needed denominator. No schema, migration, or ingestion change.
+
+- **`lib/db/stepzero.ts`**: `BhwOverview.bhwPer1000Residents` → `householdsPerBhw`. The pure
+  `householdsPerBhw(households, totalBhw)` helper *moved here* from `lib/db/insights.ts` (where the
+  barangay-level "household coverage" insight card had already introduced the identical computation)
+  so the overview and the insight generator share one definition; `insights.ts` now imports it.
+  Same semantics as the insight always had: rounded to a whole number of households, null unless
+  both inputs are positive. Numerator stays Total BHWs (the StepZero universe), matching the old
+  rate's reasoning: workload falls on the actual workforce, not the individually-profiled subset.
+- **Swapped in place at every surface the old rate occupied** (all already reading the same
+  `getBhwOverview()` call — zero new database round-trips): the fifth home-page `StatTile` (now
+  "Households per BHW", gauge and BHWs-vs-households enlarge chart), `ProfileHeader`'s meta line,
+  the `/explore` overview banner, and `CompareColumn` (prop renamed `bhwPer1000Residents` →
+  `householdsPerBhw`).
+- **AI grounding**: `getIndicatorByGeo`'s `base` object now carries `households` and
+  `householdsPerBhw` in place of `bhwPer1000Residents` (`population` kept — it's raw context worth
+  citing on its own).
+- **`lib/glossary/terms.ts`**: `bhw_per_1000` → `households_per_bhw`, with the assignment-based
+  rationale in the definition; `/methodology`'s StepZero section and `/roadmap`'s "Live now" bullet
+  rewritten to match. (Deliberately did not cite a specific DOH ideal ratio such as 1:20 — no
+  owner-confirmed source for which target applies; the UI states the observed ratio only.)
+- **Verify:** `householdsPerBhw` tests moved from `insights.test.ts` to `stepzero.test.ts`
+  alongside the helper (replacing the deleted `bhwPer1000ResidentsFor` tests); lint, typecheck, and
+  the full test suite pass. Same sandbox caveat as yesterday's entry: `next build` can't complete
+  live SSG here without `.env.local` Supabase credentials.

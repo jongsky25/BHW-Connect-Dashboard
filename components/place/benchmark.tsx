@@ -15,8 +15,8 @@ export type BenchmarkRow = {
  * "versus what?" — which the place pages otherwise left unanswered. Purely
  * presentational; all values come from the same `lib/db` indicator queries run
  * at the ancestor geos, so the comparison is internally consistent with the
- * figure it sits under. Also the honest replacement for the old per-1,000 gauge,
- * whose arbitrary max implied a benchmark that didn't exist.
+ * figure it sits under — e.g. this place's households-per-BHW load against its
+ * region's and the nation's, rather than an arbitrary gauge scale.
  */
 export function BenchmarkBars({
   rows,

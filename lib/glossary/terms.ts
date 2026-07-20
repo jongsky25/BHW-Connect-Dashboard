@@ -72,10 +72,10 @@ export const GLOSSARY = {
     definition:
       "A DOH barangay-level aggregate headcount of Barangay Health Workers (registered, accredited, and non-registered) with population and household context. It provides the total BHW universe; it is a coarser, self-reported tally distinct from the individually-validated per-person dataset.",
   },
-  bhw_per_1000: {
-    term: "BHWs per 1,000 residents",
+  households_per_bhw: {
+    term: "Households per BHW",
     definition:
-      "Total BHWs (the StepZero universe) divided by the area's population, scaled to a per-1,000-residents rate. Lets places of very different sizes be compared on workforce density rather than raw headcount. Population comes from the StepZero quick-count and is unavailable for areas with no StepZero row.",
+      "The area's household count divided by its Total BHWs (the StepZero universe) — roughly how many households each BHW serves. BHWs in the Philippines are assigned to households, so this ratio is the operative workload measure, and it lets places of very different sizes be compared. Household counts come from the StepZero quick-count and the ratio is unavailable for areas with no StepZero row.",
   },
   ref_manual_trained: {
     term: "BHW Reference Manual Training",
