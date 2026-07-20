@@ -132,6 +132,28 @@ export async function getDemographics(
   }));
 }
 
+/** Educational-attainment categories counted as "high school graduate or higher" —
+ * High School Graduate and everything above it (Vocational Degree is post-secondary,
+ * so it counts). Shared by the home page's education KPI tile and the insights grid
+ * so both report the same national figure from one definition. */
+export const HS_GRAD_AND_ABOVE = new Set([
+  "High School Graduate",
+  "Vocational Degree",
+  "College Level",
+  "College Graduate",
+  "Masteral Degree",
+]);
+
+/** Sums the pct of every non-suppressed row at or above "High school graduate",
+ * rounded. Null when there's no usable education data at all. */
+export function hsGradOrAbovePct(rows: DemographicRow[]): number | null {
+  const relevant = rows.filter(
+    (r) => !r.isSuppressed && HS_GRAD_AND_ABOVE.has(r.category) && r.pct !== null,
+  );
+  if (relevant.length === 0) return null;
+  return Math.round(relevant.reduce((sum, r) => sum + (r.pct as number), 0));
+}
+
 export type TrainingRow = {
   topicSlug: string;
   topicLabel: string | null;
