@@ -38,9 +38,15 @@ export function horizontalBarSpec(
   // most in the enlarged modal, which fills a ~96vw phone screen.
   const compact = width < 520;
   const longestLabel = Math.max(0, ...data.map((d) => d.label.length));
+  // Plot draws the (rotated) y-axis title in a fixed vertical strip at the far
+  // left, but sizes no margin for it — so reserve a ~22px gutter whenever a
+  // yLabel is set. Without it, short tick labels (e.g. "Paid"/"Unpaid") extend
+  // left to the frame edge and overlap the title.
+  const titleGutter = options.yLabel != null ? 22 : 0;
   // Reserve just enough of the left gutter for the longest y-axis label, but
-  // cap it so a narrow plot still leaves usable room for the bars.
-  const marginLeft = Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
+  // cap it so a narrow plot still leaves usable room for the bars. Add the
+  // title gutter on top so the tick labels always clear the axis title.
+  const marginLeft = titleGutter + Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
   const barHeight = Math.min(options.barHeight ?? 32, compact ? 40 : 200);
   return {
     marginLeft,
