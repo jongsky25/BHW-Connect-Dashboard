@@ -9,6 +9,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "server-only": fileURLToPath(new URL("./vitest.server-only-stub.ts", import.meta.url)),
+      // Mirror tsconfig's "@/*" path alias — value (non-type) imports like
+      // `import { NATIONAL_GEO_CODE } from "@/lib/filters/schema"` survive to
+      // runtime and need vitest to resolve them the way Next.js does.
+      "@": fileURLToPath(new URL(".", import.meta.url)),
     },
   },
   test: {

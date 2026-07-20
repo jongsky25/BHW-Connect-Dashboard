@@ -8,7 +8,7 @@ import { GeoSearch } from "@/components/home/geo-search";
 import { StatHero } from "@/components/home/stat-hero";
 import { StatTile } from "@/components/home/stat-tile";
 import { Donut, Gauge, LadderBars } from "@/components/home/mini-viz";
-import { InsightsGrid } from "@/components/home/insights-grid";
+import { InsightsGrid } from "@/components/insights/insights-grid";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";

@@ -10,11 +10,12 @@ const LEVEL_LABEL: Record<GeoLevel, string> = {
   barangay: "Barangay",
 };
 
-/** Per-category insight cards — one per area with data, replacing the single
- * rotating spotlight so patterns in every category are visible at once.
+/** Per-category insight cards — one per generator with data, replacing the
+ * single rotating spotlight so patterns in every category are visible at once.
  * Scoped to whichever geo level the caller passes (national on the home
- * page; region/province/etc. on place & explore pages), so the headline
- * reflects the level the user has filtered into. */
+ * page; region/province/etc. on place & explore pages); the generator set
+ * itself is level-aware (see lib/db/insights.ts), so each level gets the
+ * insights that are meaningful there. */
 export function InsightsGrid({
   insights,
   geoLevel = "national",
@@ -40,7 +41,9 @@ export function InsightsGrid({
         {insights.map((insight) => {
           const content = (
             <>
-              <p className="text-xs font-medium uppercase tracking-wide text-accent">{insight.category}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-accent">
+                {insight.category}
+              </p>
               <p className="mt-2 text-base font-medium">{insight.headline}</p>
               <p className="mt-1 text-xs text-muted">{insight.caption}</p>
             </>
@@ -49,11 +52,15 @@ export function InsightsGrid({
           const className = "rounded-lg border border-accent/30 bg-accent-subtle p-5 sm:p-6";
 
           return insight.href ? (
-            <Link key={insight.category} href={insight.href} className={`${className} transition-colors hover:border-accent`}>
+            <Link
+              key={insight.id}
+              href={insight.href}
+              className={`${className} transition-colors hover:border-accent`}
+            >
               {content}
             </Link>
           ) : (
-            <div key={insight.category} className={className}>
+            <div key={insight.id} className={className}>
               {content}
             </div>
           );

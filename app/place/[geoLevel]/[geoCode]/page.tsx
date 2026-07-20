@@ -12,7 +12,7 @@ import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profi
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
-import { InsightsGrid } from "@/components/home/insights-grid";
+import { InsightsGrid } from "@/components/insights/insights-grid";
 import { AiInsight } from "@/components/narrative/ai-insight";
 
 export const revalidate = 86_400; // ISR: refresh at most once a day (citymun/barangay; regions/provinces are SSG via generateStaticParams)
