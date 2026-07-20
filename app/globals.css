@@ -80,8 +80,27 @@
   --text-3xl: var(--font-size-3xl);
 }
 
+/* ---------------------------------------------------------------------------
+   Theme mode.
+
+   The theme is driven by the `data-theme` attribute on <html>, which the
+   no-flash inline script sets to "light" or "dark" before first paint
+   (resolving "system" against the OS preference). The @media fallback covers
+   the no-JS case, scoped so it never overrides an explicit choice.
+   --------------------------------------------------------------------------- */
+:root[data-theme="dark"] {
+  --background: #0f1314;
+  --foreground: #edf1f1;
+  --surface: #181d1e;
+  --border: #2d3436;
+  --muted: #9aa5ac;
+  --accent: #4aa39f;
+  --accent-foreground: #06201f;
+  --accent-subtle: #14302f;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --background: #0f1314;
     --foreground: #edf1f1;
     --surface: #181d1e;
@@ -91,6 +110,102 @@
     --accent-foreground: #06201f;
     --accent-subtle: #14302f;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Accent color palettes.
+
+   Selected via `data-palette` on <html>. Each palette overrides the accent
+   trio (with a dark-mode variant) and the colorblind-safe sequential ramp used
+   by charts. The default (teal) is defined in :root above, so no palette rule
+   is needed for it.
+   --------------------------------------------------------------------------- */
+:root[data-palette="blue"] {
+  --accent: #1d4ed8;
+  --accent-foreground: #ffffff;
+  --accent-subtle: #e6edfd;
+  --seq-1: #e6edfd;
+  --seq-2: #c3d3f9;
+  --seq-3: #9bb4f2;
+  --seq-4: #6d8fe8;
+  --seq-5: #4169d8;
+  --seq-6: #2b4cb8;
+  --seq-7: #1a2f7a;
+}
+:root[data-theme="dark"][data-palette="blue"] {
+  --accent: #7aa2f7;
+  --accent-foreground: #0b1220;
+  --accent-subtle: #16233d;
+}
+
+:root[data-palette="violet"] {
+  --accent: #6d28d9;
+  --accent-foreground: #ffffff;
+  --accent-subtle: #efe9fd;
+  --seq-1: #efe9fd;
+  --seq-2: #dcccfb;
+  --seq-3: #c0a6f6;
+  --seq-4: #a079ec;
+  --seq-5: #7e4fdb;
+  --seq-6: #5f2fb8;
+  --seq-7: #3f1d7a;
+}
+:root[data-theme="dark"][data-palette="violet"] {
+  --accent: #b794f6;
+  --accent-foreground: #1a1030;
+  --accent-subtle: #2a1e46;
+}
+
+:root[data-palette="rose"] {
+  --accent: #be123c;
+  --accent-foreground: #ffffff;
+  --accent-subtle: #fde7ec;
+  --seq-1: #fde7ec;
+  --seq-2: #f9c3d1;
+  --seq-3: #f293ac;
+  --seq-4: #e85f83;
+  --seq-5: #d5325c;
+  --seq-6: #b01d43;
+  --seq-7: #7a1330;
+}
+:root[data-theme="dark"][data-palette="rose"] {
+  --accent: #f2789f;
+  --accent-foreground: #2a0d18;
+  --accent-subtle: #3d1420;
+}
+
+:root[data-palette="amber"] {
+  --accent: #9a6700;
+  --accent-foreground: #ffffff;
+  --accent-subtle: #fbf0d9;
+  --seq-1: #fbf0d9;
+  --seq-2: #f5dca6;
+  --seq-3: #eec36a;
+  --seq-4: #e0a83a;
+  --seq-5: #c98a12;
+  --seq-6: #9a6700;
+  --seq-7: #6b4700;
+}
+:root[data-theme="dark"][data-palette="amber"] {
+  --accent: #e0b34d;
+  --accent-foreground: #251a00;
+  --accent-subtle: #332812;
+}
+
+/* ---------------------------------------------------------------------------
+   Font size.
+
+   Scales the root font-size, which cascades to the rem-based type scale and
+   spacing. Selected via `data-font-size` on <html>; "base" is the 100% default.
+   --------------------------------------------------------------------------- */
+:root[data-font-size="sm"] {
+  font-size: 93.75%; /* ~15px */
+}
+:root[data-font-size="lg"] {
+  font-size: 112.5%; /* ~18px */
+}
+:root[data-font-size="xl"] {
+  font-size: 125%; /* ~20px */
 }
 
 * {

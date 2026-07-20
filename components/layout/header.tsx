@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { aboutNavLinks, primaryNavLinks } from "./nav-links";
+import { SettingsMenu } from "@/components/settings/settings-menu";
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -59,29 +60,37 @@ export function Header() {
               ))}
             </div>
           </details>
+          <SettingsMenu />
         </nav>
 
-        <button
-          type="button"
-          className="rounded-md p-2 md:hidden"
-          aria-expanded={mobileOpen}
-          aria-controls="mobile-nav"
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          onClick={() => setMobileOpen((open) => !open)}
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
+        <div className="flex items-center gap-1 md:hidden">
+          <SettingsMenu />
+          <button
+            type="button"
+            className="rounded-md p-2"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMobileOpen((open) => !open)}
           >
-            {mobileOpen ? <path d="M6 6l12 12M6 18L18 6" /> : <path d="M4 6h16M4 12h16M4 18h16" />}
-          </svg>
-        </button>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              {mobileOpen ? (
+                <path d="M6 6l12 12M6 18L18 6" />
+              ) : (
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {mobileOpen && (
