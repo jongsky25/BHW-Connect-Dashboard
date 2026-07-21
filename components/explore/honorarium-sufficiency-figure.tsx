@@ -97,7 +97,9 @@ export function HonorariumSufficiencyFigure({
             <GlossaryTerm slug="honorarium">honorarium</GlossaryTerm> — this figure&apos;s
             denominator is every profiled BHW here, including those who receive none. Each BHW&apos;s
             honorarium is summed across every paying level (region, province, city/municipality,
-            barangay) into one cumulative monthly total, then grouped into the bands below.
+            barangay) into one{" "}
+            <GlossaryTerm slug="honorarium_sufficiency">cumulative monthly total</GlossaryTerm>,
+            then grouped into the bands below.
           </p>
           <p>
             The sufficiency cut is ₱{HONORARIUM_SUFFICIENCY_MONTHLY_PHP.toLocaleString()} a month
