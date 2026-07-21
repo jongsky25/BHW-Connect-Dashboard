@@ -1284,3 +1284,46 @@ MCP; full reconciliation in `docs/POVERTY_SAE.md`.
 **Verify.** `npm run lint`, `npm run typecheck`, targeted `vitest` (correlation/filters) clean;
 `database.types.ts` carries `agg_poverty` (surgical add, per the E4.3 regen-quirk note);
 `build_poverty.py --selftest`/`--verify` reproduce the join + reconciliation offline.
+
+## 2026-07-21 — Compare page enhancement: head-to-head summary, chips, quick-add
+
+Compare was the thinnest of the four pages (task model: *pit places against each other*) and had
+drifted behind Home/Explore. This increment builds it up strictly from patterns those pages already
+established — no new visual language.
+
+- **Head-to-head summary strip (`components/compare/compare-summary.tsx`).** The page's answer to
+  "who leads on what?", shown before the figure columns. One block per comparative headline metric
+  — the same six base indicators as Explore's map switcher — each rendering all compared places on
+  a single `BenchmarkBars` track with the leading place emphasized (`isPrimary`) and named in a
+  leader line ("Heaviest load: …"), plus a muted Philippines reference row (skipped when comparing
+  at national level). Metric defs live in client-safe `lib/analysis/compare-metrics.ts`, built on
+  `MAP_BASE_INDICATOR_META` so labels/suffixes stay identical to Explore; `leaderIndex()` names a
+  leader only for a strict maximum among ≥2 non-null values (ties and single-value metrics get no
+  leader — naming one would be arbitrary). Unit-tested. Leader wording is deliberately factual, not
+  evaluative ("Heaviest load", "Densest coverage") since a max isn't a merit ranking.
+  `BenchmarkBars` gained a `flush` prop (drop its under-figure top border) for embedding here.
+- **Small-N honesty (E0.5 carried over).** The strip lists places under `MIN_LEADER_N` validated
+  profiles in a "read with care" caveat and each affected column gets a small-sample banner; metrics
+  where fewer than two places carry data are named in a "not enough data" line, never silently
+  dropped.
+- **Selected-place chips (`selected-geo-chips.tsx`).** Removable chips + Clear all, present in every
+  state. This fixes a real dead end: in the mixed-level state the columns (and their Remove buttons)
+  don't render, so the guidance "remove places until only one level remains" previously had no
+  control to act on. Column Remove also no longer hides at exactly 2 places — removing down to one
+  now lands on the (useful) one-place state instead of being impossible.
+- **Quick-add suggestions (`quick-add-chips.tsx`).** The empty state offers all regions (the natural
+  entry comparison); the one-place state offers the selection's largest same-level peers (top 8 by
+  validated profiles via `getChildSummaries` on the parent — same-level by construction, so a
+  suggestion can never trip the mixed-level guard).
+- **Column parity with Home/Explore.** Columns add the certification figure and the honorarium
+  story told three ways as `FigureTabs` (who receives / how much / distribution), and now pass
+  `geoCode`/`geoLevel` through so every figure gets its per-place export menu. When a honorarium
+  focus is active the single matching figure renders instead of tabs — tab state is per column and
+  would misalign a focused side-by-side.
+- **Indicator picker fix.** `LABELS` covered 5 of the 8 `INDICATORS`, so certification and the two
+  honorarium sub-views rendered as *blank* options. Now typed `Record<Indicator, string>` so a
+  future enum addition without a label is a compile error, not an invisible option.
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (123 tests incl. new
+`compare-metrics.test.ts`) all clean; `next build` compiles (page-data collection needs live
+Supabase env, unavailable in the sandbox).
