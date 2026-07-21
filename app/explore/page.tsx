@@ -20,8 +20,9 @@ import {
   getTrainingCoverage,
   type ChildIndicatorRow,
 } from "@/lib/db/indicators";
-import { getDataCompleteness } from "@/lib/db/data-quality";
+import { getDataCompleteness, type CompletenessRow } from "@/lib/db/data-quality";
 import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
+import { computeDataQualityGrade } from "@/lib/analysis/data-quality-grade";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getInsights } from "@/lib/db/insights";
@@ -41,6 +42,7 @@ import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
 import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
 import { CompletenessFigure } from "@/components/place/completeness-figure";
+import { DataQualityBadge } from "@/components/explore/data-quality-badge";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
 import { RelationshipFigure } from "@/components/explore/relationship-figure";
@@ -121,6 +123,7 @@ export default async function ExplorePage({
     honorarium,
     certification,
     completeness,
+    citymunCompleteness,
     provinces,
     citymuns,
     barangays,
@@ -143,6 +146,11 @@ export default async function ExplorePage({
     getHonorarium(geo.geoCode, geo.geoLevel),
     getCertification(geo.geoCode, geo.geoLevel),
     getDataCompleteness(geo.geoCode, geo.geoLevel),
+    // Completeness is citymun-grain; a barangay has no rows, so fetch its
+    // citymun's for the data-quality grade (E2.5), mirroring CompletenessFigure.
+    geo.geoLevel === "barangay" && ancestors.citymun
+      ? getDataCompleteness(ancestors.citymun.geoCode, "citymun")
+      : Promise.resolve([] as CompletenessRow[]),
     ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
     ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
     ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
@@ -199,6 +207,15 @@ export default async function ExplorePage({
 
   const caption = captionFor(overview.validatedProfiles ?? null, geo.geoName);
   const coverage = coverageForDisplay(overview);
+
+  // Read-time data-quality grade (E2.5). At barangay (no completeness rows) it
+  // describes the citymun it falls back to, labeled as such.
+  const gradeRows = geo.geoLevel === "barangay" ? citymunCompleteness : completeness;
+  const dataQualityGrade = computeDataQualityGrade(gradeRows);
+  const gradeFallbackName =
+    geo.geoLevel === "barangay" && citymunCompleteness.length > 0
+      ? (ancestors.citymun?.geoName ?? null)
+      : null;
 
   // The children the comparison figure ranks. This goes one level deeper than the
   // *map* (E1.6): national→region, region→province, province→citymun, and
@@ -437,6 +454,10 @@ export default async function ExplorePage({
             </details>
           )}
         </section>
+
+        {/* Data-quality grade (E2.5) — one honest letter for how complete the
+            profiles behind these figures are, linking the full breakdown. */}
+        <DataQualityBadge grade={dataQualityGrade} fallbackCitymunName={gradeFallbackName} />
 
         {/* Benchmark context (E1.5): the strip's three headline figures vs this
             area's region and the nation — the "versus what?" the deleted big-

@@ -174,6 +174,17 @@ export default async function MethodologyPage() {
             different sources with different denominators, so they are shown side by side and never
             averaged; a gap between them is a data-quality signal, not an error.
           </li>
+          <li>
+            <strong>Data-completeness grade.</strong> A single letter summarizing how filled-in the
+            profiles are for an area:{" "}
+            <GlossaryTerm slug="data_completeness">data completeness</GlossaryTerm> is the average,
+            across every tracked field (age, sex, civil status, blood type, education, IP status,
+            household count, active-service years), of the share of records where that field is
+            present. Each field counts equally — no editorial weighting. The grade is A at 95% or
+            higher average completeness, B at 85% or higher, and C below that; the worst field is
+            named when it is missing for at least 10% of records. Completeness is computed down to
+            the city/municipality level, so a barangay shows its city/municipality&apos;s grade.
+          </li>
         </ul>
       </section>
 

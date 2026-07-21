@@ -835,3 +835,31 @@ base-indicator round-trip list gained it), `next build` compiles + type-checks c
 `/place/*` no-creds caveat). Live checks (median-year staleness flags on real data; triangulation
 numbers vs place-page accreditation; per-1,000 values; the new map indicator round-tripping through
 the URL) are **deferred to the Vercel preview**.
+
+## 2026-07-21 — Phase E2.5: Data-quality grade (S10)
+
+Second no-DB E2 increment (same branch/PR #39). Collapses the field-level completeness rows that
+already back `/data-quality` and the completeness figure into one explainable per-geo letter grade —
+computed at read time, no new column or aggregate.
+
+- **Grade.** New client-safe `lib/analysis/data-quality-grade.ts`: `computeDataQualityGrade(rows)` =
+  mean completeness (100 − pct_missing) across the tracked fields, **each weighted equally** (a
+  trust-first choice — no hidden editorial weighting, stated in `/methodology#derived-indicators`).
+  A ≥95%, B ≥85%, else C. Names the single worst field only when it's missing ≥10% of the time, so a
+  grade-A geo never gets a spurious "X is often missing". **6 unit tests** (null/empty, A/B/C bands,
+  null-field skipping, inclusive 95%/85% boundaries).
+- **UI.** New `DataQualityBadge` (server) renders a compact "Data completeness here: grade B — X% of
+  key fields filled; blood type is often missing · See data quality" beside the Explore figures
+  (right under the summary strip), colored by grade (accent/warning/danger). Glossary term
+  `data_completeness` added; links to `/data-quality` for the field-by-field view.
+- **Barangay fallback.** `agg_data_completeness` is citymun-grain (no barangay rows), so at barangay
+  the page fetches the citymun's completeness and the badge labels the grade "for {citymun}
+  (city/municipality)" — mirroring `CompletenessFigure`.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass, +6 grade tests),
+`next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks (grade
+matches the hand-computed average of the /data-quality field table for a sample geo; barangay shows
+its citymun's grade with the label) are **deferred to the Vercel preview**.
+
+E2.2 (Wilson CIs), E2.3 (percentile ranks), E2.4 (outlier flags) remain parked — they need
+`build_aggregates.sql` migrations + a live aggregate rebuild this sandbox can't run or verify.

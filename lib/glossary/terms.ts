@@ -107,4 +107,9 @@ export const GLOSSARY = {
     definition:
       "The share of all BHWs an area's own quick-count (StepZero) reports as accredited. It counts the whole BHW universe, unlike the verified accreditation rate, which counts only individually validated profiles. The two use different sources and denominators, so they're shown side by side, never averaged.",
   },
+  data_completeness: {
+    term: "Data completeness",
+    definition:
+      "How much of each BHW profile's information is actually filled in. The grade (A ≥95%, B ≥85%, C below) is the average completeness across the tracked fields, each counted equally; a low grade means figures that rely on the missing fields are less reliable here. See the data-quality page for the field-by-field breakdown.",
+  },
 } as const;
