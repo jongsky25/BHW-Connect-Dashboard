@@ -133,6 +133,68 @@ export async function getHonorariumInequality(
   };
 }
 
+/** Increment 2 — one banded cell of the honorarium sufficiency figure. */
+export type HonorariumSufficiencyBand = {
+  bandOrder: number;
+  bandLabel: string;
+  n: number | null;
+  pct: number | null;
+  isSuppressed: boolean;
+};
+
+export type HonorariumSufficiencyRow = {
+  nTotal: number;
+  medianCumulativeMonthly: number | null;
+  pctBelowSufficiency: number | null;
+  bands: HonorariumSufficiencyBand[];
+  isSuppressed: boolean;
+};
+
+/**
+ * Cumulative per-BHW honorarium, banded, among ALL profiled BHWs (not just
+ * recipients — contrast `getHonorariumInequality`, which is receiving-BHWs
+ * only). Built at national/region/province/citymun (barangay skipped — the
+ * UI falls back to the citymun ancestor). `isSuppressed` is true when the
+ * geo has fewer than 5 total profiled BHWs (median/pct nulled, every band
+ * row suppressed); individual band cells with 0 < n < 5 are separately
+ * nulled + flagged even when the geo overall is not suppressed.
+ */
+export async function getHonorariumSufficiency(
+  geoCode: string,
+  geoLevel: GeoLevel,
+): Promise<HonorariumSufficiencyRow | null> {
+  if (geoLevel === "barangay") return null;
+  const datasetId = await getActiveDatasetId();
+  if (datasetId === null) return null;
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("agg_honorarium_cumulative")
+    .select(
+      "band_order, band_label, n, pct, n_total, median_cumulative_monthly, pct_below_sufficiency, is_suppressed",
+    )
+    .eq("dataset_id", datasetId)
+    .eq("geo_code", geoCode)
+    .eq("geo_level", geoLevel)
+    .order("band_order", { ascending: true });
+
+  if (error || !data || data.length === 0) return null;
+  const [first] = data;
+  return {
+    nTotal: first.n_total,
+    medianCumulativeMonthly: first.median_cumulative_monthly,
+    pctBelowSufficiency: first.pct_below_sufficiency,
+    isSuppressed: data.every((r) => r.is_suppressed),
+    bands: data.map((r) => ({
+      bandOrder: r.band_order,
+      bandLabel: r.band_label,
+      n: r.n,
+      pct: r.pct,
+      isSuppressed: r.is_suppressed,
+    })),
+  };
+}
+
 /** E3.7 — one income-class row of national indicator summaries. */
 export type IncomeClassRow = {
   incomeClass: number;

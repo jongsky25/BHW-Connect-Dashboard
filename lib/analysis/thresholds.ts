@@ -35,13 +35,14 @@ export const DOH_INDICATIVE_HOUSEHOLDS_PER_BHW = 20;
  * (monthly ÷ 30) for the day-rate phrasing; both read from this single
  * constant so the threshold is never hard-coded a second time anywhere else.
  *
- * These are **provisional** values pending empirical resolution against the
- * live `agg_honorarium_cumulative` table built in the DB increment (Risk R5):
- * the scope doc's own arithmetic conflicts — "₱68/day" implies ≈₱2,040/month,
- * but its own parenthetical elsewhere reads "≈₱300/month" — and only running
- * the real cumulative-honorarium query against the dataset can say which cut
- * actually reproduces the deck's ≈59% nationally. Do not print a "≈59%"
- * headline anywhere until that increment confirms (or corrects) this value.
+ * **Resolved empirically (Risk R5)** against the live per-BHW cumulative
+ * honorarium CTE (all 270,917 profiled BHWs, national scope): pct below
+ * ₱300/month = 3.6%, pct below ₱2,040/month = 59.2%, national median =
+ * ₱1,750/month. 59.2% matches the deck's "59%" almost exactly, while 3.6% is
+ * nowhere close — so ₱2,040/month (₱68/day) is confirmed as the correct cut,
+ * not merely provisional. Full resolution record lives in the header comment
+ * of `supabase/migrations/20260721100000_honorarium_cumulative.sql`; a
+ * DECISIONS.md entry documenting this follows in a later increment (docs pass).
  */
 export const HONORARIUM_SUFFICIENCY_MONTHLY_PHP = 2040;
 export const HONORARIUM_SUFFICIENCY_DAILY_PHP = HONORARIUM_SUFFICIENCY_MONTHLY_PHP / 30;
