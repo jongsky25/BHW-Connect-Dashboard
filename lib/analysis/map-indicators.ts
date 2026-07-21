@@ -97,13 +97,14 @@ export function metaForIndicator(
 }
 
 /**
- * Format one indicator value for display. Percentages round to whole numbers
- * (matching the honest-bins convention); unit-less counts round to integers with
- * thousands separators, keeping one decimal only for small non-integers (e.g.
- * average years). Mirrors the map tooltip / legend `formatValue` behaviour.
+ * Format one indicator value for display: integers as-is (thousands-separated),
+ * non-integers to one decimal. Deliberately identical to the map tooltip
+ * (`choropleth-map.tsx` `formatValue`) and legend (`map-legend.tsx` `formatEdge`)
+ * so every rendering of the same value — map, legend, headline, mini-card,
+ * distribution marker, and the summary strip (which imports this) — shows the
+ * same number at the same precision.
  */
 export function formatIndicatorValue(value: number, suffix: string): string {
-  if (suffix === "%") return `${Math.round(value)}%`;
   const rounded = Number.isInteger(value) ? value : Math.round(value * 10) / 10;
   return `${rounded.toLocaleString()}${suffix}`;
 }

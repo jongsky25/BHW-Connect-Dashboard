@@ -18,7 +18,7 @@ import {
   getTrainingCoverage,
   type ChildIndicatorRow,
 } from "@/lib/db/indicators";
-import { metaForIndicator } from "@/lib/analysis/map-indicators";
+import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getInsights } from "@/lib/db/insights";
@@ -308,7 +308,7 @@ export default async function ExplorePage({
             <span>
               <span className="font-semibold">
                 {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-                  ? `${counts.pctAccredited}%`
+                  ? formatIndicatorValue(counts.pctAccredited, "%")
                   : "—"}
               </span>{" "}
               <span className="text-muted">
@@ -316,7 +316,11 @@ export default async function ExplorePage({
               </span>
             </span>
             <span>
-              <span className="font-semibold">{counts?.avgActiveYears ?? "—"}</span>{" "}
+              <span className="font-semibold">
+                {counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
+                  ? formatIndicatorValue(counts.avgActiveYears, "")
+                  : "—"}
+              </span>{" "}
               <span className="text-muted">avg years of service</span>
             </span>
             {overview.householdsPerBhw !== null && (

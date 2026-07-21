@@ -673,3 +673,15 @@ children — answering "is my province's 62% typical or an outlier?".
 increment), `next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks
 (parent marker visually matches the strip; small-N dots hollow; headline sanity per indicator across
 levels) are **deferred to the Vercel preview**.
+
+### E1.3 follow-up — unified value formatting (strip ⇄ map ⇄ distribution)
+
+Live smoke-check on the preview showed the distribution's parent marker and the summary strip
+displaying the same figure at different precision (avg years 10.5 vs 10.47; accreditation 72% vs
+71.57%) — the same number, but a reviewer would read it as a mismatch against the "parent marker
+matches the strip" gate. Fixed by making `formatIndicatorValue` the single formatter for all of
+them: dropped its whole-number special-case for percentages so it now rounds every non-integer to
+one decimal, identical to the map tooltip (`formatValue`) and legend (`formatEdge`); and the summary
+strip now imports `formatIndicatorValue` for accreditation % and avg years instead of printing the
+raw 2-decimal DB value. Result: strip, map tooltip/legend, headline, mini-card, and the distribution
+marker all render the same value identically (e.g. 71.6% everywhere, 10.5 everywhere).
