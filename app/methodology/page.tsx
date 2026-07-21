@@ -175,6 +175,15 @@ export default async function MethodologyPage() {
             averaged; a gap between them is a data-quality signal, not an error.
           </li>
           <li>
+            <strong>Peer rank &amp; outliers.</strong> Each area is ranked among its same-level
+            siblings — provinces within their region, cities/municipalities within their province,
+            regions nationally — for each base indicator, with a percentile (0 = lowest, 100 =
+            highest). An area is flagged as standing out when its value is more than 3× the median
+            absolute deviation from the group median, and only in groups of at least 8 siblings, so
+            small groups don&apos;t manufacture outliers. Ranks are hidden for areas with fewer than
+            30 profiled BHWs, where the underlying value is too unstable to rank fairly.
+          </li>
+          <li>
             <strong>Data-completeness grade.</strong> A single letter summarizing how filled-in the
             profiles are for an area:{" "}
             <GlossaryTerm slug="data_completeness">data completeness</GlossaryTerm> is the average,

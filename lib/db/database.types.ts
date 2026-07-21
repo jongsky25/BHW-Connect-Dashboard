@@ -413,6 +413,69 @@ export type Database = {
           },
         ];
       };
+      agg_peer_ranks: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          indicator: string;
+          is_outlier: boolean;
+          mad: number | null;
+          median: number | null;
+          n_siblings: number | null;
+          n_total: number | null;
+          percentile: number | null;
+          rank_position: number | null;
+          value: number | null;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator: string;
+          is_outlier?: boolean;
+          mad?: number | null;
+          median?: number | null;
+          n_siblings?: number | null;
+          n_total?: number | null;
+          percentile?: number | null;
+          rank_position?: number | null;
+          value?: number | null;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator?: string;
+          is_outlier?: boolean;
+          mad?: number | null;
+          median?: number | null;
+          n_siblings?: number | null;
+          n_total?: number | null;
+          percentile?: number | null;
+          rank_position?: number | null;
+          value?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_peer_ranks_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_peer_ranks_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_training: {
         Row: {
           ci_high: number | null;

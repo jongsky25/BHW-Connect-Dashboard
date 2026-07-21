@@ -25,6 +25,7 @@ import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indic
 import { computeDataQualityGrade } from "@/lib/analysis/data-quality-grade";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import { getPeerRank } from "@/lib/db/peer-ranks";
 import { getInsights } from "@/lib/db/insights";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
@@ -43,6 +44,7 @@ import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-f
 import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
 import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { DataQualityBadge } from "@/components/explore/data-quality-badge";
+import { PeerRankChip } from "@/components/explore/peer-rank-chip";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
 import { RelationshipFigure } from "@/components/explore/relationship-figure";
@@ -337,6 +339,30 @@ export default async function ExplorePage({
     }
   }
 
+  // Peer standing of the current geo among its same-level siblings for the active
+  // base indicator (E2.3). Only region/province/citymun are ranked; training
+  // indicators and national/barangay have no row.
+  const PEER_LEVEL_PLURAL: Partial<Record<GeoLevel, string>> = {
+    region: "regions",
+    province: "provinces",
+    citymun: "cities/municipalities",
+  };
+  const activeBaseIndicator: MapBaseIndicator | null = activeSlug
+    ? null
+    : (activeMapIndicator as MapBaseIndicator);
+  const peerRank =
+    activeBaseIndicator && PEER_LEVEL_PLURAL[geo.geoLevel]
+      ? await getPeerRank(geo.geoCode, geo.geoLevel, activeBaseIndicator)
+      : null;
+  const peerParentName =
+    geo.geoLevel === "region"
+      ? "the Philippines"
+      : geo.geoLevel === "province"
+        ? (ancestors.region?.geoName ?? null)
+        : geo.geoLevel === "citymun"
+          ? (ancestors.province?.geoName ?? null)
+          : null;
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
       <h1 className="sr-only">Explore BHW figures for {geo.geoName}</h1>
@@ -548,6 +574,16 @@ export default async function ExplorePage({
             trainingTopics={trainingTopics}
           />
         )}
+
+        {/* Peer-standing chip (E2.3): how this geo ranks among its siblings on
+            the active indicator. */}
+        <PeerRankChip
+          rank={peerRank}
+          geoName={geo.geoName}
+          parentName={peerParentName}
+          siblingPlural={PEER_LEVEL_PLURAL[geo.geoLevel] ?? ""}
+          indicatorLabel={mapMeta.label}
+        />
 
         {/* Distribution view (E1.3) — spread of the active indicator across
             children, reusing the map's data. */}

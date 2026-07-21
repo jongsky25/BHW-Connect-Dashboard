@@ -893,3 +893,31 @@ First DB-dependent E2 increment. Owner authorized applying migrations + rebuilds
 **Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass), `next build`
 compiles + type-checks clean (same `/place/*` no-creds caveat). Live figure rendering deferred to
 the Vercel preview.
+
+## 2026-07-21 — Phase E2.3: Peer percentile ranks (live DB)
+
+New thin `agg_peer_ranks` table (one row per geo × indicator) instead of sprawling rank columns on
+`agg_geo_summary`, per the plan's escape hatch. Ranks each geo among its **same-level siblings**
+(grouped by `dim_geo.parent_code` — provinces within a region, citymuns within a province, regions
+nationally) for all six base indicators, storing value, rank_position (1 = highest), n_siblings,
+percentile (percent_rank×100), plus median/mad and an `is_outlier` flag (E2.4). Region/province/
+citymun only — **barangay excluded**, same disk-budget cut as `agg_training` (≈10.6k rows total).
+Cross-dataset: the three main-dataset indicators from `agg_bhw_counts`, and households-per-BHW /
+BHWs-per-1,000 / coverage from `agg_bhw_stepzero_counts` (+ `agg_bhw_counts.n_total` for coverage's
+numerator).
+
+- **DB.** Migration `supabase/migrations/20260721010000_e2_3_peer_ranks.sql` (create table + populate
+  in one CTE). Applied live via MCP; idempotent (`create table if not exists` + delete-then-insert by
+  dataset). Mirrored in `build_aggregates.sql` §9c. Types: `agg_peer_ranks` block added to
+  `database.types.ts` by hand.
+- **Verified live**: region 07 ranks are internally consistent across all six indicators —
+  `percentile = (n_siblings − rank_position)/(n_siblings − 1)×100` holds (e.g. avg-years rank 17/18 →
+  5.9; any-honorarium rank 1/18 → 100).
+- **UI.** `getPeerRank` accessor + `PeerRankChip` (server) shown under the map: "On {indicator},
+  {geo} ranks {ordinal} of {n} {siblings} in {parent}." **Suppressed** when the geo has < 30 profiled
+  BHWs (E0.5 `MIN_LEADER_N`) or isn't ranked (national/barangay/training indicator). The chip already
+  carries the E2.4 "Stands out" outlier badge. `/methodology#derived-indicators` documents ranks +
+  the 3×MAD / min-8-siblings outlier rule.
+
+**Verify.** lint/typecheck clean, `npm test` 107 pass, `next build` compiles + type-checks clean
+(same `/place/*` caveat). Live chip rendering deferred to the preview.
