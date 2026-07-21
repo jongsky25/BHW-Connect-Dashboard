@@ -373,7 +373,7 @@ export function ChoroplethMap({
       <div
         ref={containerRef}
         aria-hidden="true"
-        className="h-80 w-full overflow-hidden rounded-md border border-border"
+        className="h-80 w-full overflow-hidden rounded-md border border-border presentation:h-[60vh]"
       />
       <div
         ref={tooltipRef}

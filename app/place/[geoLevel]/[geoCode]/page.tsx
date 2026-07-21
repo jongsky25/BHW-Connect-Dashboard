@@ -33,6 +33,10 @@ import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { AiInsight } from "@/components/narrative/ai-insight";
+import { DIMENSION_LABEL } from "@/components/explore/demographics-figure";
+import { PresentationProvider } from "@/components/present/presentation-context";
+import { PresentationSlide } from "@/components/present/presentation-slide";
+import { PresentButton } from "@/components/present/present-button";
 
 export const revalidate = 86_400; // ISR: refresh at most once a day (citymun/barangay; regions/provinces are SSG via generateStaticParams)
 
@@ -188,201 +192,250 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
 
   const caption = `N = ${overview.validatedProfiles?.toLocaleString() ?? "—"} validated profiles · ${geo.geoName} · 2025 snapshot`;
 
+  // Title-slide facts for presentation mode (serializable, server → client).
+  const deckMeta = {
+    pageLabel: "Place profile",
+    areaName: geo.geoName,
+    filterChips: [
+      ...breadcrumbAncestors.slice(1).map((a) => a.label),
+      ...(geo.incomeClass ? [`Income class ${geo.incomeClass}`] : []),
+    ],
+    captionLine: caption,
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <ProfileHeader
-        geoName={geo.geoName}
-        geoLevel={geo.geoLevel}
-        ancestors={breadcrumbAncestors}
-        totalBhw={overview.totalBhw}
-        validatedProfiles={overview.validatedProfiles}
-        coveragePct={coverageForDisplay(overview)}
-        householdsPerBhw={overview.householdsPerBhw}
-        incomeClass={geo.incomeClass}
-        locator={
-          locator ? (
-            <LocatorMapThumbnail
-              locator={locator}
-              geoLevel={geo.geoLevel}
-              geoCode={geo.geoCode}
-              placeName={geo.geoName}
-            />
-          ) : undefined
-        }
-      />
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href={`/compare?geos=${geo.geoCode}`}
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
-          >
-            Compare with other places
-          </Link>
-          <Link
-            href={`/explore?geoLevel=${geo.geoLevel}&geoCode=${geo.geoCode}`}
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
-          >
-            Explore full breakdowns
-          </Link>
-        </div>
-        <div className="sm:w-64">
-          <GeoSearch variant="compact" />
-        </div>
-      </div>
-
-      <AiInsight geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <FigureCard
-          title="Accreditation"
-          caption={caption}
-          exportMenu={
-            <ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />
-          }
-          headline={
-            counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-              ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
-              : "No accreditation data available."
-          }
-          technicalDetails={
-            <p>
-              {counts?.nAccredited?.toLocaleString() ?? "—"} of{" "}
-              {counts?.nTotal?.toLocaleString() ?? "—"} validated profiles are accredited (
-              {counts?.pctAccredited ?? "—"}%).
-              {counts?.ciLow !== null &&
-              counts?.ciLow !== undefined &&
-              counts?.ciHigh !== null &&
-              counts?.ciHigh !== undefined ? (
-                <>
-                  {" "}
-                  95% <GlossaryTerm slug="confidence_interval">confidence interval</GlossaryTerm>:{" "}
-                  {counts.ciLow}–{counts.ciHigh}%.
-                </>
-              ) : null}
-            </p>
-          }
-          benchmark={
-            showBenchmarks ? (
-              <BenchmarkBars
-                rows={benchmarkRows(
-                  counts?.pctAccredited ?? null,
-                  regionCounts?.pctAccredited ?? null,
-                  nationalCounts?.pctAccredited ?? null,
-                )}
-                format="percent"
+    <PresentationProvider meta={deckMeta}>
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+        <ProfileHeader
+          geoName={geo.geoName}
+          geoLevel={geo.geoLevel}
+          ancestors={breadcrumbAncestors}
+          totalBhw={overview.totalBhw}
+          validatedProfiles={overview.validatedProfiles}
+          coveragePct={coverageForDisplay(overview)}
+          householdsPerBhw={overview.householdsPerBhw}
+          incomeClass={geo.incomeClass}
+          locator={
+            locator ? (
+              <LocatorMapThumbnail
+                locator={locator}
+                geoLevel={geo.geoLevel}
+                geoCode={geo.geoCode}
+                placeName={geo.geoName}
               />
             ) : undefined
           }
-        >
-          <p className="text-4xl font-semibold tracking-tight">
-            {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-              ? `${counts.pctAccredited}%`
-              : "—"}
-          </p>
-        </FigureCard>
+        />
 
-        <FigureCard
-          title="Average years of service"
-          caption={caption}
-          exportMenu={
-            <ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="service_years" />
-          }
-          headline={
-            counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
-              ? `BHWs here have served an average of ${counts.avgActiveYears} years.`
-              : "No service-year data available."
-          }
-          technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
-          benchmark={
-            showBenchmarks ? (
-              <BenchmarkBars
-                rows={benchmarkRows(
-                  counts?.avgActiveYears ?? null,
-                  regionCounts?.avgActiveYears ?? null,
-                  nationalCounts?.avgActiveYears ?? null,
-                )}
-                format="count"
-                unitSuffix="yrs"
-              />
-            ) : undefined
-          }
-        >
-          <p className="text-4xl font-semibold tracking-tight">{counts?.avgActiveYears ?? "—"}</p>
-        </FigureCard>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/compare?geos=${geo.geoCode}`}
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
+            >
+              Compare with other places
+            </Link>
+            <Link
+              href={`/explore?geoLevel=${geo.geoLevel}&geoCode=${geo.geoCode}`}
+              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+            >
+              Explore full breakdowns
+            </Link>
+            <PresentButton variant="secondary" />
+          </div>
+          <div className="sm:w-64">
+            <GeoSearch variant="compact" />
+          </div>
+        </div>
 
-        {overview.householdsPerBhw !== null && (
-          <FigureCard
-            title="Households per BHW"
-            caption={`Households served per BHW · ${geo.geoName} · 2025`}
-            headline={`Each BHW here serves about ${overview.householdsPerBhw} households.`}
-            technicalDetails={
-              <p>
-                StepZero household count divided by Total BHWs (the StepZero universe). A higher
-                figure means each BHW covers more households.
-              </p>
-            }
-            benchmark={
-              showBenchmarks ? (
-                <BenchmarkBars
-                  rows={benchmarkRows(
-                    overview.householdsPerBhw,
-                    regionOverview?.householdsPerBhw ?? null,
-                    nationalOverview?.householdsPerBhw ?? null,
-                  )}
-                  format="count"
-                  unitSuffix="hh/BHW"
+        <PresentationSlide id="ai-insight" title="AI insight">
+          <AiInsight geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
+        </PresentationSlide>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <PresentationSlide id="accreditation" title="Accreditation">
+            <FigureCard
+              title="Accreditation"
+              caption={caption}
+              exportMenu={
+                <ExportMenu
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                  indicator="accreditation"
                 />
-              ) : undefined
-            }
-          >
-            <p className="text-4xl font-semibold tracking-tight">{overview.householdsPerBhw}</p>
-          </FigureCard>
+              }
+              headline={
+                counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
+                  ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
+                  : "No accreditation data available."
+              }
+              technicalDetails={
+                <p>
+                  {counts?.nAccredited?.toLocaleString() ?? "—"} of{" "}
+                  {counts?.nTotal?.toLocaleString() ?? "—"} validated profiles are accredited (
+                  {counts?.pctAccredited ?? "—"}%).
+                  {counts?.ciLow !== null &&
+                  counts?.ciLow !== undefined &&
+                  counts?.ciHigh !== null &&
+                  counts?.ciHigh !== undefined ? (
+                    <>
+                      {" "}
+                      95%{" "}
+                      <GlossaryTerm slug="confidence_interval">
+                        confidence interval
+                      </GlossaryTerm>: {counts.ciLow}–{counts.ciHigh}%.
+                    </>
+                  ) : null}
+                </p>
+              }
+              benchmark={
+                showBenchmarks ? (
+                  <BenchmarkBars
+                    rows={benchmarkRows(
+                      counts?.pctAccredited ?? null,
+                      regionCounts?.pctAccredited ?? null,
+                      nationalCounts?.pctAccredited ?? null,
+                    )}
+                    format="percent"
+                  />
+                ) : undefined
+              }
+            >
+              <p className="text-4xl font-semibold tracking-tight">
+                {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
+                  ? `${counts.pctAccredited}%`
+                  : "—"}
+              </p>
+            </FigureCard>
+          </PresentationSlide>
+
+          <PresentationSlide id="service-years" title="Average years of service">
+            <FigureCard
+              title="Average years of service"
+              caption={caption}
+              exportMenu={
+                <ExportMenu
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                  indicator="service_years"
+                />
+              }
+              headline={
+                counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
+                  ? `BHWs here have served an average of ${counts.avgActiveYears} years.`
+                  : "No service-year data available."
+              }
+              technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
+              benchmark={
+                showBenchmarks ? (
+                  <BenchmarkBars
+                    rows={benchmarkRows(
+                      counts?.avgActiveYears ?? null,
+                      regionCounts?.avgActiveYears ?? null,
+                      nationalCounts?.avgActiveYears ?? null,
+                    )}
+                    format="count"
+                    unitSuffix="yrs"
+                  />
+                ) : undefined
+              }
+            >
+              <p className="text-4xl font-semibold tracking-tight">
+                {counts?.avgActiveYears ?? "—"}
+              </p>
+            </FigureCard>
+          </PresentationSlide>
+
+          {overview.householdsPerBhw !== null && (
+            <PresentationSlide id="households-per-bhw" title="Households per BHW">
+              <FigureCard
+                title="Households per BHW"
+                caption={`Households served per BHW · ${geo.geoName} · 2025`}
+                headline={`Each BHW here serves about ${overview.householdsPerBhw} households.`}
+                technicalDetails={
+                  <p>
+                    StepZero household count divided by Total BHWs (the StepZero universe). A higher
+                    figure means each BHW covers more households.
+                  </p>
+                }
+                benchmark={
+                  showBenchmarks ? (
+                    <BenchmarkBars
+                      rows={benchmarkRows(
+                        overview.householdsPerBhw,
+                        regionOverview?.householdsPerBhw ?? null,
+                        nationalOverview?.householdsPerBhw ?? null,
+                      )}
+                      format="count"
+                      unitSuffix="hh/BHW"
+                    />
+                  ) : undefined
+                }
+              >
+                <p className="text-4xl font-semibold tracking-tight">{overview.householdsPerBhw}</p>
+              </FigureCard>
+            </PresentationSlide>
+          )}
+
+          {demographicsByDimension.map(({ dimension, rows }) => (
+            <PresentationSlide
+              key={dimension}
+              id={`demographics-${dimension}`}
+              title={`Demographics: ${DIMENSION_LABEL[dimension]}`}
+            >
+              <DemographicsFigure
+                dimension={dimension}
+                rows={rows}
+                caption={caption}
+                geoCode={geo.geoCode}
+                geoLevel={geo.geoLevel}
+              />
+            </PresentationSlide>
+          ))}
+
+          <PresentationSlide id="training" title="Training coverage">
+            <TrainingFigure
+              rows={training}
+              caption={caption}
+              geoLevel={geo.geoLevel}
+              citymunAncestor={ancestors.citymun}
+              geoCode={geo.geoCode}
+            />
+          </PresentationSlide>
+
+          <PresentationSlide id="honorarium" title="Honorarium">
+            <HonorariumFigure
+              rows={honorarium}
+              caption={caption}
+              geoCode={geo.geoCode}
+              geoLevel={geo.geoLevel}
+            />
+          </PresentationSlide>
+
+          <PresentationSlide id="completeness" title="Data completeness">
+            <CompletenessFigure
+              rows={completeness}
+              caption={caption}
+              geoLevel={geo.geoLevel}
+              citymunAncestor={ancestors.citymun}
+            />
+          </PresentationSlide>
+        </div>
+
+        {childLevelLabel && childSummaries.length > 0 && (
+          <PresentationSlide id="children-table" title={`Places within ${geo.geoName}`}>
+            <ChildrenTable
+              rows={childSummaries}
+              childLevelLabel={childLevelLabel}
+              showTrainingGap={geo.geoLevel !== "citymun"}
+            />
+          </PresentationSlide>
         )}
 
-        {demographicsByDimension.map(({ dimension, rows }) => (
-          <DemographicsFigure
-            key={dimension}
-            dimension={dimension}
-            rows={rows}
-            caption={caption}
-            geoCode={geo.geoCode}
-            geoLevel={geo.geoLevel}
-          />
-        ))}
-
-        <TrainingFigure
-          rows={training}
-          caption={caption}
-          geoLevel={geo.geoLevel}
-          citymunAncestor={ancestors.citymun}
-          geoCode={geo.geoCode}
-        />
-
-        <HonorariumFigure
-          rows={honorarium}
-          caption={caption}
-          geoCode={geo.geoCode}
-          geoLevel={geo.geoLevel}
-        />
-
-        <CompletenessFigure
-          rows={completeness}
-          caption={caption}
-          geoLevel={geo.geoLevel}
-          citymunAncestor={ancestors.citymun}
-        />
+        <PresentationSlide id="insights" title="Insights">
+          <InsightsGrid insights={insights} geoLevel={geo.geoLevel} geoName={geo.geoName} />
+        </PresentationSlide>
       </div>
-
-      {childLevelLabel && childSummaries.length > 0 && (
-        <ChildrenTable
-          rows={childSummaries}
-          childLevelLabel={childLevelLabel}
-          showTrainingGap={geo.geoLevel !== "citymun"}
-        />
-      )}
-
-      <InsightsGrid insights={insights} geoLevel={geo.geoLevel} geoName={geo.geoName} />
-    </div>
+    </PresentationProvider>
   );
 }

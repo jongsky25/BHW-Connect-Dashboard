@@ -208,6 +208,44 @@
   font-size: 125%; /* ~20px */
 }
 
+/* ---------------------------------------------------------------------------
+   Presentation mode.
+
+   `presentation:` utilities apply inside the currently promoted slide
+   (components/present/presentation-slide.tsx sets `data-slide-active` on the
+   wrapper), letting figures opt into bigger sizing on their slide, e.g. the
+   choropleth's `presentation:h-[60vh]`. The entry animation lives on the
+   attribute selector so it re-triggers on every slide change with zero JS.
+   --------------------------------------------------------------------------- */
+@custom-variant presentation ([data-slide-active] &);
+
+@keyframes present-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-slide-active] {
+  animation: present-slide-in 250ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slide-active] {
+    animation: none;
+  }
+}
+
+/* The floating feedback widget sits above the deck's backdrop (z-62/63) —
+   hide it while presenting (the provider sets data-presenting on <html>). */
+html[data-presenting] [data-feedback-ui] {
+  display: none;
+}
+
 * {
   border-color: var(--border);
 }
