@@ -284,9 +284,18 @@ export async function getHonorarium(geoCode: string, geoLevel: GeoLevel): Promis
   }));
 }
 
-export type ChildIndicatorRow = { geoCode: string; geoName: string; pctAccredited: number | null };
+export type ChildIndicatorRow = {
+  geoCode: string;
+  geoName: string;
+  pctAccredited: number | null;
+  nTotal: number | null;
+};
 
-/** Accreditation rate for a set of geos — backs the map + ranked-list comparison figure. */
+/**
+ * Accreditation rate for a set of geos — backs the map + ranked-list comparison
+ * figure. `n_total` rides along so the map/list can flag small-N children
+ * whose rate is unstable (E0.5, `MIN_LEADER_N` threshold).
+ */
 export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndicatorRow[]> {
   const datasetId = await getActiveDatasetId();
   if (datasetId === null || geoCodes.length === 0) return [];
@@ -294,7 +303,7 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_geo_summary")
-    .select("geo_code, geo_name, pct_accredited")
+    .select("geo_code, geo_name, pct_accredited, n_total")
     .eq("dataset_id", datasetId)
     .in("geo_code", geoCodes);
 
@@ -304,6 +313,7 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
     geoCode: row.geo_code,
     geoName: row.geo_name,
     pctAccredited: row.pct_accredited,
+    nTotal: row.n_total,
   }));
 }
 

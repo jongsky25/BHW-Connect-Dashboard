@@ -4,6 +4,7 @@ import { useQueryStates } from "nuqs";
 import { filterParsers } from "@/lib/filters/codec";
 import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { logEvent } from "@/lib/usage/log-client";
+import { useExploreNav } from "@/components/explore/explore-nav";
 
 type Option = { geoCode: string; geoName: string };
 
@@ -64,7 +65,12 @@ export type GeoCascadeProps = {
  * freshly fetched child lists. No client-side geo fetching needed.
  */
 export function GeoCascade({ regions, provinces, citymuns, barangays, selected }: GeoCascadeProps) {
-  const [, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
+  const { startTransition } = useExploreNav();
+  const [, setFilters] = useQueryStates(filterParsers, {
+    shallow: false,
+    history: "push",
+    startTransition,
+  });
 
   function navigateTo(geoLevel: GeoLevel, geoCode: string) {
     setFilters({ geoLevel, geoCode });
@@ -77,7 +83,9 @@ export function GeoCascade({ regions, provinces, citymuns, barangays, selected }
         label="Region"
         value={selected.regionCode ?? ""}
         options={regions}
-        onChange={(code) => (code ? navigateTo("region", code) : navigateTo("national", NATIONAL_GEO_CODE))}
+        onChange={(code) =>
+          code ? navigateTo("region", code) : navigateTo("national", NATIONAL_GEO_CODE)
+        }
       />
       <LevelSelect
         label="Province"

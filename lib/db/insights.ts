@@ -13,6 +13,7 @@ import {
 import { getStepzeroCounts, householdsPerBhw, type StepzeroCounts } from "./stepzero";
 import { getChildGeos, getGeoAncestors, type GeoAncestors, type GeoOption } from "./geo";
 import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
+import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
 
 export type InsightCard = {
   /** Stable per-generator identity — React key, and unique across the grid. */
@@ -38,8 +39,10 @@ const LEVEL_NOUN: Record<GeoLevel, string> = {
 /** Minimum profiled BHWs a child geo needs before it can be crowned a leader,
  * laggard, or spread endpoint — a 3-person barangay at "100% accredited" is
  * noise, not an insight. Mirrors (more conservatively) the n<5 suppression
- * convention used by agg_demographics/agg_honorarium. */
-export const MIN_LEADER_N = 30;
+ * convention used by agg_demographics/agg_honorarium. Defined in a client-safe
+ * module and re-exported here so the choropleth map's small-N signaling reads
+ * the identical floor without importing this `server-only` module. */
+export { MIN_LEADER_N };
 
 /** Minimum qualifying children before spread/laggard superlatives make sense —
  * "the widest gap among 2 provinces" or "the worst of 2" is a coin flip. */

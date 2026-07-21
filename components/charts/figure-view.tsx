@@ -27,6 +27,8 @@ export function FigureView({
   yLabel,
   valueSuffix,
   valueFormat,
+  hoveredGeoCode,
+  onHoverGeoCode,
 }: {
   data: BarDatum[];
   /** Modal title. */
@@ -38,6 +40,10 @@ export function FigureView({
   yLabel?: string;
   valueSuffix?: string;
   valueFormat?: ValueFormatKind;
+  /** Forwarded to the table view for the map <-> ranked-list linked hover
+   * (E0.4). Only the table half reflects it; the chart keeps its own hover. */
+  hoveredGeoCode?: string | null;
+  onHoverGeoCode?: (code: string | null) => void;
 }) {
   const [mode, setMode] = useState<ViewMode>("chart");
   const [enlarged, setEnlarged] = useState(false);
@@ -49,7 +55,11 @@ export function FigureView({
   // honorarium-amount figure's averages aren't additive across payer levels —
   // so that table keeps a single sortable value column instead of No./%.
   const valueKind: "count" | "percent" | "amount" =
-    valueFormat === "peso" ? "amount" : valueFormat === "percent" || valueSuffix === "%" ? "percent" : "count";
+    valueFormat === "peso"
+      ? "amount"
+      : valueFormat === "percent" || valueSuffix === "%"
+        ? "percent"
+        : "count";
 
   return (
     <div>
@@ -80,6 +90,8 @@ export function FigureView({
           valueHeader={xLabel ?? "Value"}
           valueFormatter={tableFormat}
           valueKind={valueKind}
+          hoveredGeoCode={hoveredGeoCode}
+          onHoverGeoCode={onHoverGeoCode}
         />
       )}
 

@@ -490,3 +490,63 @@ distribution across regions instead.
   regional averages run 45 to 519 (NCR) households per BHW around the national 91 — a spread no
   half-arc against `1.5×` could show. The Accredited tile keeps its gauge: percent-of-100 is a
   real scale, not an invented one.
+
+## 2026-07-21 — Phase E0: Map trust (EXPLORE_ENHANCEMENT_PLAN.md, ships as its own release)
+
+First release of the Explore enhancement plan (owner decision Q6: P0/E0 ships alone before E1).
+All six increments landed together as one PR-sized phase, no schema changes except E0.5's query
+widening. Everything lives in the Explore map figure and its supporting chart/color helpers.
+
+- **E0.1 Honest bins + legend.** `lib/charts/color-scale.ts` rewritten: `colorForValue(value, min,
+  max)`'s continuous min-max normalization (whose `floor(t*7)` sent the max value one bucket out
+  of range, silently clamped) is replaced by `computeQuantileBins(values, count=5)` →
+  `binIndexForValue`/`colorForValue(value, bins)`. Quintile breaks are linear-interpolated
+  quantiles, deduped ascending so ties collapse to fewer real bins instead of zero-width ones;
+  0 values → `[]` (all no-data), 1 distinct value → single mid-ramp bin, `<5` distinct → fewer
+  bins. New `components/maps/map-legend.tsx` renders one real-DOM swatch per bin with its value
+  range (the map canvas is `aria-hidden`, so the legend is the accessible encoding), plus no-data
+  and small-N markers. The figure caption gains the scale disclosure ("Color bins are quintiles
+  across the N regions shown"). Unit tests in `color-scale.test.ts` (7 cases: empty, single, five
+  contiguous quintiles, tie fallback, max-in-top-bin, min-in-bottom-bin, no-data).
+- **E0.2 Hover tooltips + select-then-drill.** `components/maps/choropleth-map.tsx` rewritten.
+  MapLibre `mousemove` on `geo-fill` shows a positioned, `aria-hidden` tooltip (name · value ·
+  N profiled, "No data — see ranked list" for grey polygons). Click no longer navigates: a single
+  map-level `click` handler selects on first click, drills on a second click of the same polygon,
+  and dismisses on a background click. Selection state lives in `GeoComparisonFigure`, which
+  renders a real-DOM mini-card (name/value/N + "Open {name} →" and dismiss buttons) — the
+  keyboard/touch-accessible drill path. Esc dismisses. One flow for mouse and touch.
+- **E0.3 Gestures + controls.** `cooperativeGestures: true` (Ctrl/Cmd+wheel zoom, two-finger pan —
+  kills the page-scroll trap), `NavigationControl` (zoom, no compass), and a custom "reset view"
+  control re-running the initial `fitBounds`. `attributionControl: false` kept. Every injected
+  control button is set `tabIndex = -1` (like the canvas) so the `aria-hidden` container has no
+  focusable descendant — keeping axe's `aria-hidden-focus` clean; keyboard users drill via the
+  mini-card and ranked list.
+- **E0.4 Map ↔ list linked highlighting.** `hoveredGeoCode` lifted into `GeoComparisonFigure`. Map
+  hover sets it (via `onHoverGeo`) and the ranked-list table highlights the matching row; hovering
+  a table row outlines the polygon. Implemented with MapLibre feature-state (`promoteId:
+  "geo_code"`) and a dedicated `geo-highlight` line-layer, and by threading optional
+  `geoCode`/`hoveredGeoCode`/`onHoverGeoCode` through `BarDatum` → `FigureView` → `FigureTable`
+  (all optional, so the chart's export-shared spec and every other figure are untouched — this is
+  the "smallest change that doesn't disturb `BarChartClient`" the plan asked for; the chart view
+  keeps its own Plot hover).
+- **E0.5 Small-N signaling.** `getChildIndicators` widened to also select `n_total`. Polygons with
+  `n_total < MIN_LEADER_N` render at 0.4 fill-opacity with a dashed slate outline; tooltip,
+  mini-card, and legend all carry "Only {n} BHWs profiled — rate is unstable." `MIN_LEADER_N` was
+  moved to a new client-safe module `lib/analysis/thresholds.ts` and re-exported from the
+  `server-only` `lib/db/insights.ts`, so the client map and server insight generator share the
+  identical floor (30) without the map importing `server-only` code.
+- **E0.6 Telemetry + pending feedback.** `logEvent` fires `map_select`, `map_drill`, and (sampled
+  once per pageview) `map_hover_tooltip`, meta `{ childLevel }`. A shared React transition
+  (`components/explore/explore-nav.tsx` + `app/explore/layout.tsx`) is threaded into every Explore
+  navigator (geo cascade, breadcrumb chips, map drill) via nuqs' `startTransition` option, driving
+  one thin top progress bar during the RSC re-render. Scoped to the Explore layout, not global.
+
+**Verify.** `npm run lint`, `npm run typecheck`, and `npm test` (86 tests, incl. the 7 new
+color-scale cases) all pass; `next build` compiles and type-checks clean. Live-DB checks — the
+Playwright map interactions (E0.2), axe on `/explore` at national/region/province, and the
+Lighthouse a11y=100 / JS-budget release gate — could **not** run in this sandbox (no `.env.local`
+Supabase credentials; `next build` fails only at static page-data collection for `/place/*`, the
+same caveat as prior entries), so they are deferred to a live pass on the deploy preview. Legend
+ranges are computed from the same `withData` values the ranked list renders, so they match by
+construction. The E0 **telemetry baseline** (XU3: two weeks of map/cascade events before E1) is a
+post-deploy measurement, not a code artifact; E1 development need not block on it.
