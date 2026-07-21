@@ -1,10 +1,5 @@
 {
-  "regions_missing_from_source": [
-    {
-      "geo_code": "18",
-      "name": "NEGROS ISLAND REGION (NIR)"
-    }
-  ],
+  "regions_missing_from_source": [],
   "source_region_features_unmatched": [],
   "provinces_missing_from_source": [
     {
@@ -477,66 +472,5 @@
       "province_code": "19999"
     }
   ],
-  "source_citymun_features_unmatched": [
-    {
-      "geo_code": "0402109",
-      "name": "City of Imus",
-      "province_code": "04021"
-    },
-    {
-      "geo_code": "0402123",
-      "name": "Gen. Mariano Alvarez",
-      "province_code": "04021"
-    },
-    {
-      "geo_code": "0405628",
-      "name": "Mulanay",
-      "province_code": "04056"
-    },
-    {
-      "geo_code": "0405629",
-      "name": "Padre Burgos",
-      "province_code": "04056"
-    },
-    {
-      "geo_code": "0405634",
-      "name": "Pitogo",
-      "province_code": "04056"
-    },
-    {
-      "geo_code": "0405637",
-      "name": "Quezon",
-      "province_code": "04056"
-    },
-    {
-      "geo_code": "0405640",
-      "name": "San Andres",
-      "province_code": "04056"
-    },
-    {
-      "geo_code": "0405642",
-      "name": "San Francisco",
-      "province_code": "04056"
-    },
-    {
-      "geo_code": "1900705",
-      "name": "Sumisip",
-      "province_code": "19007"
-    },
-    {
-      "geo_code": "1900706",
-      "name": "Tipo-Tipo",
-      "province_code": "19007"
-    },
-    {
-      "geo_code": "1900709",
-      "name": "Al-Barka",
-      "province_code": "19007"
-    },
-    {
-      "geo_code": "1903639",
-      "name": "Kapatagan",
-      "province_code": "19036"
-    }
-  ]
+  "source_citymun_features_unmatched": []
 }
