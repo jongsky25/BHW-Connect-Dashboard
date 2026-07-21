@@ -550,3 +550,63 @@ same caveat as prior entries), so they are deferred to a live pass on the deploy
 ranges are computed from the same `withData` values the ranked list renders, so they match by
 construction. The E0 **telemetry baseline** (XU3: two weeks of map/cascade events before E1) is a
 post-deploy measurement, not a code artifact; E1 development need not block on it.
+
+## 2026-07-21 — Phase E1.1: Explore map indicator switcher
+
+First increment of Phase E1 (EXPLORE_ENHANCEMENT_PLAN.md). Turns the Explore map from
+"a map of accreditation" into a switchable map of the dataset — the highest-value E1 change,
+and the data foundation E1.3 (distribution) / E1.4 (relationships) reuse. Branch off the merged
+E0 `main` (not the E0 branch).
+
+- **New `mapIndicator` URL param.** Added to `lib/filters/schema.ts` (`MAP_BASE_INDICATORS` =
+  `pct_accredited`, `any_honorarium_pct`, `households_per_bhw`, `avg_active_years`, `coverage_pct`;
+  plus `training:<topic_slug>` for per-topic training) and `lib/filters/codec.ts` via a custom
+  `createParser` (base values + a kebab-slug-validated `training:` prefix; everything else
+  `normalizeMapIndicator`s back to the default `pct_accredited` — permalinks degrade, never throw,
+  matching the rest of the codec). Default is omitted from serialized URLs by nuqs. `mapIndicator`
+  is its own param, separate from the per-theme `indicator`. Codec round-trip + `normalizeMapIndicator`
+  unit tests added (`lib/filters/index.test.ts`, now 11 cases).
+- **Data.** `getChildIndicators` widened from accreditation-only to all five base indicators,
+  merging three aggregates by geo_code in one round-trip each: `agg_geo_summary`
+  (pct_accredited, any_honorarium_pct, n_total), `agg_bhw_counts` (avg_active_years), and the
+  StepZero companion `agg_bhw_stepzero_counts` (registered/accredited universe + households +
+  total BHWs). `households_per_bhw` and `coverage_pct` are derived in-helper exactly as
+  `lib/db/stepzero.ts` does. New `getChildTrainingCoverage(codes, topicSlug)` queries `agg_training`
+  and is fetched (in parallel with the base query) only when a `training:` indicator is active.
+  Child counts per parent stay far under the PostgREST 1,000-row cap at every level the map renders
+  (national→region ≈18 … province→citymun ≤~50; national→citymun's 1,639 is never rendered here),
+  so single `.in()`s suffice — documented inline, consistent with `getChildSummaries`.
+- **Coverage denominator — deviation from the plan's literal text, logged per §1.** The plan wrote
+  `coverage_pct = validated / n_total_bhw`. Implemented as `validated / registered-universe`
+  (registered + registered-&-accredited), capped at 100 — i.e. the *exact* figure the summary
+  strip ("X% of registered") and place pages already show via `coverageForDisplay`. Chosen so the
+  E1.1 verify gate ("values spot-checked against place-page figures") holds by construction and the
+  map never contradicts the strip directly above it. Resolves under §1's ground rules (reuse
+  Home/place wording + denominator conventions) and identity rule Q1.
+- **Presentation.** New client-safe `lib/analysis/map-indicators.ts` (no `server-only`, like
+  `thresholds.ts`) holds per-indicator label / headline phrase / axis label / unit suffix /
+  caption denominator as plain strings (crosses the server→client boundary) plus a pure
+  `formatIndicatorValue`. Both the server page (value resolution, caption) and the client figure
+  (switcher, headline, legend) read it. Direction handling: headlines always say "highest
+  {phrase}", never "best/worst" — so `households_per_bhw` (higher = heavier load) carries no valence.
+- **UI.** `GeoComparisonFigure` gained a labeled `<select>` (five base indicators + a "Training
+  coverage" option that reveals a topic `<select>`, disabled when the geo has no training topics).
+  Values/headline/caption/legend all bind to the server-resolved `activeIndicator` (not the
+  optimistic URL read), so the control, the colors, and the ranked list update together on the RSC
+  round-trip — the E0 top progress bar covers the in-between, and a stale `training:` permalink that
+  fell back to accreditation never shows a topic the map isn't rendering. Map recolors, bins
+  recompute (E0.1), ranked list re-sorts, and the caption swaps its denominator per indicator.
+  `logEvent("map_indicator_change", { indicator, childLevel })` fires on change.
+- **Page.** `app/explore/page.tsx` reads `filters.mapIndicator`, validates an active `training:`
+  topic against the parent's available topics (falling back to the default if absent), resolves each
+  child's value server-side, and passes resolved `items` + `activeIndicator` + `meta` + the topic
+  list to the figure. The two big-number cards are untouched here (their removal is E1.2).
+
+**Verify.** `npm run lint` (clean), `npm run typecheck` (clean), `npm test` (91 pass, incl. 5 new
+codec/normalizer cases), and `next build` all run; `next build` compiles + type-checks clean and
+fails only at `/place/[geoLevel]/[geoCode]` page-data collection for lack of `.env.local` Supabase
+credentials — the identical sandbox caveat as the E0 entry, unrelated to this change. The live
+checks the plan lists for E1.1 (each indicator round-tripping through the URL against real data;
+values spot-checked against place-page figures for two geos per indicator; suppressed/absent data
+rendering grey, never 0; `map_indicator_change` landing in `usage_events`; axe on the new switcher
+control) require live DB + browser and are **deferred to the Vercel preview** — not claimed here.

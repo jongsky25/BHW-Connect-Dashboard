@@ -1,11 +1,30 @@
 import {
   createLoader,
+  createParser,
   createSerializer,
   parseAsArrayOf,
   parseAsString,
   parseAsStringEnum,
 } from "nuqs/server";
-import { DEMOGRAPHIC_DIMENSIONS, GEO_LEVELS, INDICATORS, NATIONAL_GEO_CODE } from "./schema";
+import {
+  DEFAULT_MAP_INDICATOR,
+  DEMOGRAPHIC_DIMENSIONS,
+  GEO_LEVELS,
+  INDICATORS,
+  NATIONAL_GEO_CODE,
+  normalizeMapIndicator,
+} from "./schema";
+
+/**
+ * `mapIndicator` isn't a plain enum — it's the five base indicators plus
+ * `training:<topic_slug>` — so it needs a custom parser. Unrecognised values
+ * normalize back to the default accreditation view (never throw), matching the
+ * rest of the codec. The default is omitted from serialized URLs by nuqs.
+ */
+const parseAsMapIndicator = createParser({
+  parse: (v) => normalizeMapIndicator(v),
+  serialize: (v) => v,
+}).withDefault(DEFAULT_MAP_INDICATOR);
 
 /**
  * The single source of truth for filter state: URL search params, typed via nuqs.
@@ -18,6 +37,7 @@ export const filterParsers = {
   geoLevel: parseAsStringEnum([...GEO_LEVELS]).withDefault("national"),
   geoCode: parseAsString.withDefault(NATIONAL_GEO_CODE),
   indicator: parseAsStringEnum([...INDICATORS]),
+  mapIndicator: parseAsMapIndicator,
   compareGeos: parseAsArrayOf(parseAsString),
   breakdowns: parseAsArrayOf(parseAsStringEnum([...DEMOGRAPHIC_DIMENSIONS])),
 };

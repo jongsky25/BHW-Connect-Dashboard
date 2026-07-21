@@ -1,13 +1,25 @@
 import { loadFilterState } from "@/lib/filters/codec";
-import { DEFAULT_BREAKDOWNS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
+import {
+  DEFAULT_BREAKDOWNS,
+  DEFAULT_MAP_INDICATOR,
+  NATIONAL_GEO_CODE,
+  mapIndicatorTopicSlug,
+  type GeoLevel,
+  type MapBaseIndicator,
+  type MapIndicator,
+} from "@/lib/filters/schema";
 import { getChildGeos, getGeoAncestors, resolveGeoOrNational } from "@/lib/db/geo";
 import {
   getBhwCounts,
   getChildIndicators,
+  getChildTrainingCoverage,
   getDemographics,
   getHonorarium,
   getTrainingCoverage,
+  type ChildIndicatorRow,
 } from "@/lib/db/indicators";
+import { metaForIndicator } from "@/lib/analysis/map-indicators";
+import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getInsights } from "@/lib/db/insights";
 import { GeoCascade } from "@/components/filters/geo-cascade";
@@ -34,6 +46,22 @@ export const metadata = { title: "Explore" };
 
 function captionFor(nProfiles: number | null, geoName: string) {
   return `N = ${nProfiles !== null ? nProfiles.toLocaleString() : "—"} validated profiles · ${geoName} · 2025 snapshot`;
+}
+
+/** Pick a child's value for one base map indicator (E1.1). */
+function mapBaseValue(row: ChildIndicatorRow, indicator: MapBaseIndicator): number | null {
+  switch (indicator) {
+    case "pct_accredited":
+      return row.pctAccredited;
+    case "any_honorarium_pct":
+      return row.anyHonorariumPct;
+    case "households_per_bhw":
+      return row.householdsPerBhw;
+    case "avg_active_years":
+      return row.avgActiveYears;
+    case "coverage_pct":
+      return row.coveragePct;
+  }
 }
 
 export default async function ExplorePage({
@@ -147,9 +175,50 @@ export default async function ExplorePage({
         : geo.geoLevel === "province"
           ? `/geo/citymun/${geo.geoCode}.json`
           : null;
-  const childIndicators = mapChildLevel
-    ? await getChildIndicators(mapChildren.map((c) => c.geoCode))
-    : [];
+  // Indicator switcher (E1.1). Topics come from the parent's training rows; an
+  // active `training:` indicator whose topic isn't available here falls back to
+  // the default accreditation view so a stale permalink never shows all-grey.
+  const trainingTopics = training
+    .filter((r) => r.topicSlug)
+    .map((r) => ({ slug: r.topicSlug, label: r.topicLabel ?? r.topicSlug }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const requestedSlug = mapIndicatorTopicSlug(filters.mapIndicator);
+  const activeMapIndicator: MapIndicator =
+    requestedSlug !== null && !trainingTopics.some((t) => t.slug === requestedSlug)
+      ? DEFAULT_MAP_INDICATOR
+      : filters.mapIndicator;
+  const activeSlug = mapIndicatorTopicSlug(activeMapIndicator);
+  const activeTopicLabel = activeSlug
+    ? (trainingTopics.find((t) => t.slug === activeSlug)?.label ?? activeSlug)
+    : null;
+  const mapMeta = metaForIndicator(activeMapIndicator, activeTopicLabel);
+
+  let mapItems: ChildIndicator[] = [];
+  if (mapChildLevel) {
+    const childCodes = mapChildren.map((c) => c.geoCode);
+    const [childIndicators, trainingCoverage] = await Promise.all([
+      getChildIndicators(childCodes),
+      activeSlug ? getChildTrainingCoverage(childCodes, activeSlug) : Promise.resolve(null),
+    ]);
+    mapItems = childIndicators.map((c) => {
+      if (trainingCoverage) {
+        const t = trainingCoverage.get(c.geoCode);
+        return {
+          geoCode: c.geoCode,
+          geoName: c.geoName,
+          value: t?.coveragePct ?? null,
+          nTotal: t?.nTotal ?? c.nTotal,
+        };
+      }
+      return {
+        geoCode: c.geoCode,
+        geoName: c.geoName,
+        value: mapBaseValue(c, activeMapIndicator as MapBaseIndicator),
+        nTotal: c.nTotal,
+      };
+    });
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
@@ -246,8 +315,11 @@ export default async function ExplorePage({
                 geojsonUrl={mapGeojsonUrl}
                 childLevel={mapChildLevel}
                 childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
-                items={childIndicators}
+                items={mapItems}
                 caption={caption}
+                activeIndicator={activeMapIndicator}
+                meta={mapMeta}
+                trainingTopics={trainingTopics}
               />
             </div>
           )}
