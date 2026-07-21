@@ -165,6 +165,9 @@ export type TrainingRow = {
   nTrained: number | null;
   nTotal: number | null;
   coveragePct: number | null;
+  /** Median of the last-trained year across trained BHWs (E2.1) — a recency
+   * signal orthogonal to coverage. Null when unrecorded. */
+  medianTrainingYear: number | null;
 };
 
 /**
@@ -185,7 +188,7 @@ export async function getTrainingCoverage(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_training")
-    .select("topic_slug, topic_label, n_trained, n_total, coverage_pct")
+    .select("topic_slug, topic_label, n_trained, n_total, coverage_pct, median_training_year")
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
     .eq("geo_level", geoLevel)
@@ -199,6 +202,7 @@ export async function getTrainingCoverage(
     nTrained: row.n_trained,
     nTotal: row.n_total,
     coveragePct: row.coverage_pct,
+    medianTrainingYear: row.median_training_year,
   }));
 }
 
@@ -297,6 +301,9 @@ export type ChildIndicatorRow = {
   /** Validated profiles ÷ StepZero registered universe, capped at 100 — matches
    * the place-page / summary-strip "profile coverage" figure. */
   coveragePct: number | null;
+  /** Total BHWs per 1,000 residents (E2.1). Population is StepZero self-reported.
+   * Higher = denser BHW coverage. */
+  bhwPer1000: number | null;
 };
 
 /**
@@ -337,7 +344,9 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
       ? Promise.resolve({ data: null })
       : supabase
           .from("agg_bhw_stepzero_counts")
-          .select("geo_code, n_registered, n_registered_accredited, n_total_bhw, households")
+          .select(
+            "geo_code, n_registered, n_registered_accredited, n_total_bhw, households, population",
+          )
           .eq("dataset_id", stepzeroId)
           .in("geo_code", geoCodes),
   ]);
@@ -353,9 +362,14 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
     const sz = stepzeroByCode.get(row.geo_code);
     const households = sz?.households ?? null;
     const totalBhw = sz?.n_total_bhw ?? null;
+    const population = sz?.population ?? null;
     const householdsPerBhw =
       households !== null && totalBhw !== null && households > 0 && totalBhw > 0
         ? Math.round(households / totalBhw)
+        : null;
+    const bhwPer1000 =
+      totalBhw !== null && population !== null && totalBhw > 0 && population > 0
+        ? Math.round((1000 * totalBhw) / population * 10) / 10
         : null;
 
     const registeredUniverse =
@@ -377,6 +391,7 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
       avgActiveYears: avgByCode.get(row.geo_code) ?? null,
       householdsPerBhw,
       coveragePct,
+      bhwPer1000,
     };
   });
 }

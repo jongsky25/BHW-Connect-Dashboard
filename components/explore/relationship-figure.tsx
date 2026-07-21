@@ -25,6 +25,7 @@ export type RelationshipPoint = {
   householdsPerBhw: number | null;
   avgActiveYears: number | null;
   coveragePct: number | null;
+  bhwPer1000: number | null;
 };
 
 function pick(p: RelationshipPoint, indicator: MapBaseIndicator): number | null {
@@ -39,6 +40,8 @@ function pick(p: RelationshipPoint, indicator: MapBaseIndicator): number | null 
       return p.avgActiveYears;
     case "coverage_pct":
       return p.coveragePct;
+    case "bhw_per_1000":
+      return p.bhwPer1000;
   }
 }
 

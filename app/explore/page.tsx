@@ -34,6 +34,7 @@ import { DenominatorExplainer } from "@/components/home/denominator-explainer";
 import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
 import { FigureTabs } from "@/components/ui/figure-tabs";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
+import { AccreditationSourcesFigure } from "@/components/explore/accreditation-sources-figure";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
@@ -81,6 +82,8 @@ function mapBaseValue(row: ChildIndicatorRow, indicator: MapBaseIndicator): numb
       return row.avgActiveYears;
     case "coverage_pct":
       return row.coveragePct;
+    case "bhw_per_1000":
+      return row.bhwPer1000;
   }
 }
 
@@ -311,6 +314,9 @@ export default async function ExplorePage({
       case "coverage_pct":
         parentValue = coverage;
         break;
+      case "bhw_per_1000":
+        parentValue = overview.bhwPer1000;
+        break;
     }
   }
 
@@ -398,6 +404,14 @@ export default async function ExplorePage({
                 </span>{" "}
                 <span className="text-muted">
                   <GlossaryTerm slug="households_per_bhw">households per BHW</GlossaryTerm>
+                </span>
+              </span>
+            )}
+            {overview.bhwPer1000 !== null && (
+              <span>
+                <span className="font-semibold">{formatIndicatorValue(overview.bhwPer1000, "")}</span>{" "}
+                <span className="text-muted">
+                  <GlossaryTerm slug="bhw_per_1000">BHWs per 1,000 residents</GlossaryTerm>
                 </span>
               </span>
             )}
@@ -545,6 +559,12 @@ export default async function ExplorePage({
             training, and completeness — each now responding to the geo filter,
             with exports, matching what the place page shows for one geo. */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <AccreditationSourcesFigure
+            lguReported={overview.pctRegisteredAccredited}
+            verified={counts?.pctAccredited ?? null}
+            caption={caption}
+          />
+
           <CertificationFigure
             rows={certification}
             caption={caption}

@@ -795,3 +795,43 @@ full-cascade Playwright pass (national→barangay exercising switcher/distributi
 figures), the Lighthouse budget re-check, and the telemetry comparison vs the E0 baseline are
 live/deploy-time activities (no Supabase creds or browser here) and remain **deferred to the preview
 + post-deploy** — called out rather than claimed.
+
+## 2026-07-21 — Phase E2.1: Surface computed-but-unread fields
+
+First increment of Phase E2 (EXPLORE_ENHANCEMENT_PLAN.md), on a fresh branch off `main` after
+Phase E1 merged (PR #38). Owner decisions this session: **merge E1 first**, and **start with the
+no-DB work only** — so E2 opens with E2.1 (and later E2.5), both pure read + UI. The DB-dependent
+increments (E2.2 Wilson CIs, E2.3 percentile ranks, E2.4 outlier flags) need `build_aggregates.sql`
+migrations + an aggregate rebuild against the live free-tier project and are **parked** until that
+access exists — not shipped as unverifiable migrations.
+
+All three E2.1 fields were confirmed already computed in the aggregate build before any UI was
+written (`agg_training.median_training_year` in `build_aggregates.sql`;
+`agg_bhw_stepzero_counts.pct_registered_accredited` + `population` in `ingest_stepzero.py`), so this
+increment is purely surfacing them — zero ingestion/schema change.
+
+- **Training recency.** `getTrainingCoverage`/`TrainingRow` now select `median_training_year`.
+  `TrainingFigure` gains a "median last-trained year" explanation in technical details and a
+  **staleness flag**: topics whose median is ≥5 years before the 2025 snapshot (≤2020) render a
+  warning note ("Refresher may be due: {topic} (median last trained {year})…"), stalest first.
+  Recency is computed across *all* topics, not just the 8 lowest-coverage ones charted, since a
+  topic can be widely trained yet long ago. Threshold documented at `/methodology#derived-indicators`.
+- **Accreditation triangulation.** `getStepzeroCounts`/`getBhwOverview` now expose
+  `pct_registered_accredited`. New `AccreditationSourcesFigure` shows the quick-count's accredited
+  share of the *whole* BHW universe beside the verified per-person rate (validated profiles) — two
+  sources, two denominators, **shown side by side and never averaged** (review R8.2). Headline
+  calls out a ≥5-point gap as "worth a closer look"; renders only where StepZero data exists.
+  Glossary term `lgu_reported_accreditation` added.
+- **BHWs per 1,000 residents.** New `bhwPer1000` helper + `BhwOverview.bhwPer1000`; added as a
+  summary-strip stat (glossary `bhw_per_1000`) **and** a sixth base map indicator `bhw_per_1000`
+  (extends `MAP_BASE_INDICATORS`, so the switcher, distribution, and relationships axes all pick it
+  up automatically). `getChildIndicators` now also selects `population` and derives per-child
+  `bhwPer1000`. Caption/denominator note that population is StepZero self-reported (census swap is a
+  later E4 item). Direction is valence-neutral ("highest", never "best").
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass; the codec test's
+example "unknown" value was updated since `bhw_per_1000` is now a real indicator, and the
+base-indicator round-trip list gained it), `next build` compiles + type-checks clean (same
+`/place/*` no-creds caveat). Live checks (median-year staleness flags on real data; triangulation
+numbers vs place-page accreditation; per-1,000 values; the new map indicator round-tripping through
+the URL) are **deferred to the Vercel preview**.

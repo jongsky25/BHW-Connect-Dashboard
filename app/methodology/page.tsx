@@ -152,6 +152,31 @@ export default async function MethodologyPage() {
         </p>
       </section>
 
+      <section id="derived-indicators" className="flex flex-col gap-2 scroll-mt-6">
+        <h2 className="text-lg font-semibold">Recency, per-capita, and accreditation sources</h2>
+        <ul className="list-inside list-disc">
+          <li>
+            <strong>Median last-trained year.</strong> For each training topic, the middle year
+            among the BHWs recorded as trained. A topic whose median is 5 or more years before the
+            snapshot (2020 or earlier for the 2025 snapshot) is flagged as possibly due for a
+            refresher. This is a recency signal, separate from how many BHWs are trained.
+          </li>
+          <li>
+            <strong>BHWs per 1,000 residents.</strong> Total BHWs divided by population, times
+            1,000. Population is self-reported in the StepZero barangay sheets and is approximate;
+            it will be replaced by census figures in a later release.
+          </li>
+          <li>
+            <strong>Accreditation, two sources.</strong> The StepZero quick-count reports an
+            accredited share of the whole BHW universe (
+            <GlossaryTerm slug="lgu_reported_accreditation">LGU-reported accreditation</GlossaryTerm>
+            ), while the verified rate counts only individually validated profiles. These come from
+            different sources with different denominators, so they are shown side by side and never
+            averaged; a gap between them is a data-quality signal, not an error.
+          </li>
+        </ul>
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Privacy &amp; suppression</h2>
         <p>

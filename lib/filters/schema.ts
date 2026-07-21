@@ -28,6 +28,7 @@ export const MAP_BASE_INDICATORS = [
   "households_per_bhw",
   "avg_active_years",
   "coverage_pct",
+  "bhw_per_1000",
 ] as const;
 export type MapBaseIndicator = (typeof MAP_BASE_INDICATORS)[number];
 

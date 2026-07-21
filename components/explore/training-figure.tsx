@@ -5,6 +5,12 @@ import { ExportMenu } from "@/components/narrative/export-menu";
 import type { TrainingRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 
+/** The dataset is a 2025 snapshot; a topic whose median last-trained year is
+ * this many years or more before it is flagged as possibly due for a refresher
+ * (E2.1). Threshold documented in /methodology. */
+const SNAPSHOT_YEAR = 2025;
+const STALE_AFTER_YEARS = 5;
+
 export function TrainingFigure({
   rows,
   caption,
@@ -63,6 +69,15 @@ export function TrainingFigure({
 
   const biggestGap = topGaps[0];
 
+  // Recency, orthogonal to coverage (E2.1): a topic can be widely trained yet
+  // long ago. Flag topics whose median last-trained year is >= STALE_AFTER_YEARS
+  // before the snapshot, stalest first.
+  const staleYear = SNAPSHOT_YEAR - STALE_AFTER_YEARS;
+  const staleTopics = rows
+    .filter((r) => r.medianTrainingYear !== null && r.medianTrainingYear <= staleYear)
+    .sort((a, b) => (a.medianTrainingYear as number) - (b.medianTrainingYear as number))
+    .map((r) => ({ label: r.topicLabel ?? r.topicSlug, year: r.medianTrainingYear as number }));
+
   return (
     <FigureCard
       title="Training coverage — biggest gaps"
@@ -77,7 +92,14 @@ export function TrainingFigure({
           ? `"${biggestGap.label}" has the lowest coverage here, at ${biggestGap.value}%.`
           : "No training data available."
       }
-      technicalDetails={<p>Showing the 8 topics with the lowest coverage percentage.</p>}
+      technicalDetails={
+        <p>
+          Showing the 8 topics with the lowest coverage percentage. &ldquo;Median last-trained
+          year&rdquo; is the middle year among trained BHWs; a topic whose median is{" "}
+          {STALE_AFTER_YEARS}+ years before the {SNAPSHOT_YEAR} snapshot ({staleYear} or earlier) is
+          flagged as possibly due for a refresher.
+        </p>
+      }
     >
       {topGaps.length > 0 ? (
         <FigureView
@@ -89,6 +111,16 @@ export function TrainingFigure({
         />
       ) : (
         <p className="text-sm text-muted">No data available.</p>
+      )}
+      {staleTopics.length > 0 && (
+        <p className="mt-3 rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-xs text-warning">
+          Refresher may be due:{" "}
+          {staleTopics
+            .slice(0, 3)
+            .map((t) => `${t.label} (median last trained ${t.year})`)
+            .join(", ")}
+          {staleTopics.length > 3 ? `, and ${staleTopics.length - 3} more` : ""}.
+        </p>
       )}
     </FigureCard>
   );
