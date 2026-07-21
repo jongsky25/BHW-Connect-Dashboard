@@ -2,3 +2,6 @@ pandas
 pyarrow
 openpyxl
 psycopg2-binary
+# E4.3 income-reclassification loader (build_income_reclass.py)
+pymupdf
+rapidfuzz

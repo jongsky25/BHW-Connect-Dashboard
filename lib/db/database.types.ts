@@ -875,6 +875,7 @@ export type Database = {
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
           geo_name: string;
           income_class: number | null;
+          income_class_prior: number | null;
           parent_code: string | null;
           province_code: string | null;
           psgc_vintage: string | null;
@@ -886,6 +887,7 @@ export type Database = {
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
           geo_name: string;
           income_class?: number | null;
+          income_class_prior?: number | null;
           parent_code?: string | null;
           province_code?: string | null;
           psgc_vintage?: string | null;
@@ -897,6 +899,7 @@ export type Database = {
           geo_level?: Database["public"]["Enums"]["geo_level_enum"];
           geo_name?: string;
           income_class?: number | null;
+          income_class_prior?: number | null;
           parent_code?: string | null;
           province_code?: string | null;
           psgc_vintage?: string | null;
@@ -906,6 +909,60 @@ export type Database = {
           {
             foreignKeyName: "dim_geo_parent_code_fkey";
             columns: ["parent_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      dim_lgu_income_reclass: {
+        Row: {
+          converted: boolean;
+          dataset_id: number | null;
+          dof_kind: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          match_method: string;
+          match_score: number | null;
+          new_class: number | null;
+          old_class_dof: number | null;
+          reclass_id: number;
+        };
+        Insert: {
+          converted?: boolean;
+          dataset_id?: number | null;
+          dof_kind: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          match_method: string;
+          match_score?: number | null;
+          new_class?: number | null;
+          old_class_dof?: number | null;
+          reclass_id?: never;
+        };
+        Update: {
+          converted?: boolean;
+          dataset_id?: number | null;
+          dof_kind?: string;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          match_method?: string;
+          match_score?: number | null;
+          new_class?: number | null;
+          old_class_dof?: number | null;
+          reclass_id?: never;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "dim_lgu_income_reclass_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "dim_lgu_income_reclass_geo_code_fkey";
+            columns: ["geo_code"];
             isOneToOne: false;
             referencedRelation: "dim_geo";
             referencedColumns: ["geo_code"];

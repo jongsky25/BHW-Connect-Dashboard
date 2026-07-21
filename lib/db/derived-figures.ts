@@ -144,9 +144,10 @@ export type IncomeClassRow = {
 };
 
 /**
- * National-scope indicator summaries by LGU income class (E3.7). Six rows
- * (1st–6th class), used only at the national view. Income classes come from
- * `dim_geo.income_class`.
+ * National-scope indicator summaries by LGU income class (E3.7), used only at the
+ * national view. Income classes come from `dim_geo.income_class`, refreshed by E4.3
+ * to the DOF DO 074-2024 (RA 11964) 5-class reclassification; a handful of LGUs the
+ * source leaves unclassified retain a prior class, so a small 6th-class row may appear.
  */
 export async function getIncomeClassEquity(): Promise<IncomeClassRow[]> {
   const datasetId = await getActiveDatasetId();
