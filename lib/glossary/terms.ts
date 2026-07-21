@@ -125,7 +125,7 @@ export const GLOSSARY = {
   income_class: {
     term: "LGU income class",
     definition:
-      "The government's ranking of a city or municipality by its yearly income, from 1st class (highest income) to 6th class (lowest). It's a rough proxy for how much a local government can afford to spend — including on supporting its BHWs.",
+      "The government's ranking of a province, city, or municipality by its yearly income, from 1st class (highest income) to 5th class (lowest). It's a rough proxy for how much a local government can afford to spend — including on supporting its BHWs. The values here are the DOF's 2024 reclassification (Department Order 074-2024 under RA 11964, effective 2025), which replaced the older six-class system.",
   },
   adjusted_rate: {
     term: "Adjusted rate",

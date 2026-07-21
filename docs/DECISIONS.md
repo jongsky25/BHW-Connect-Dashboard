@@ -1101,3 +1101,55 @@ enabled with exactly one SELECT policy, 10,668 rows intact; anon REST read still
 unaffected), anon INSERT now rejected with `42501` (row-level security policy violation). No
 `database.types.ts` change — RLS/policies aren't reflected in generated types. `build_aggregates.sql`
 needs no change (it defers table DDL to migrations and writes as service role).
+
+## 2026-07-21 — Phase E4.3: DOF/BLGF 2024 LGU income reclassification (EXPLORE_ENHANCEMENT_PLAN.md §E4.3)
+
+First external **data** load of Phase E4 (E4.1 was infrastructure). RA 11964 (Automatic Income
+Classification of LGUs Act) replaced the old six-class income ladder with **five** classes and
+recomputed every province/city/municipality from FY2021–2023 regular income; **DOF Department Order
+No. 074-2024** (Annex A) is the schedule, effective **2025-01-01**. `dim_geo.income_class` had
+carried the StepZero-reported (≈DO 23-08, 2008 vintage) class; this refreshes it to DO 074-2024 and
+E3.7's equity figure re-runs on the new classes. Migration `20260721080000_e4_3_income_reclass.sql`,
+applied live via the Supabase MCP; full reconciliation in `docs/INCOME_RECLASS.md`.
+
+- **Source is name-keyed, not code-keyed.** The Annex lists `REGION · [PROVINCE ·] LGU · old · new`
+  with **no PSGC codes** and **pre-NIR** region labels (Negros under VI/VII). So the join is a
+  province-scoped, NIR-aware fuzzy name-match (`ingestion/build_income_reclass.py`, `rapidfuzz`),
+  not a code join — this is the "name-match + manual fixups file" the plan called for, and where
+  E4.1's NIR awareness is exercised (Negros disambiguated by pre-NIR region VI→Occidental /
+  VII→Oriental). The public file is an **OCR'd mirror**, so ~45 rows need eyeball-verified
+  `OVERRIDES` (OCR names like "Sais"→Bais, HUCs listed under a mother province, renamed LGUs like
+  Datu Montawal←Pagagawan). Auto-accept threshold 88; 0 duplicate targets.
+- **Tables.** `dim_lgu_income_reclass` (`geo_code` FK→dim_geo, `geo_level`, `dof_kind`,
+  `old_class_dof`, `new_class` CHECK 1–5, `converted`, `match_method`/`match_score`, `dataset_id`;
+  `unique(geo_code,dataset_id)`; RLS public-read) is the queryable geo_code→class link; the source
+  LGU **names** live in the reviewed CSV `ingestion/data/income_reclass_2024.csv`, not duplicated in
+  the DB. New `dim_geo.income_class_prior` preserves the superseded value.
+- **Coverage (verified live):** 1637/1651 city/municipalities and 81/82 provinces classified; 1724
+  mapping rows, distinct codes, 0 collisions. Provinces gained a class for the first time (were all
+  null). Spot-checks: Quezon City/Makati/Davao = 1st; Adams (Ilocos Norte) 5th→4th matches the PDF.
+- **Honest gaps (retain prior / stay null, never guessed — the 1.6 discipline):** 6 LGUs the Annex
+  itself leaves unclassified — Ubay, Bohol (literal dash) and 5 BARMM munis printed "New"
+  (newly-created); 8 BARMM Special Geographic Areas (not LGUs to DOF); Eastern Samar **province** is
+  absent from the source Annex. All enumerated in `docs/INCOME_RECLASS.md`.
+- **Documented source fix-ups:** the single "Manila City" Annex row fans out to all 10 dim_geo
+  City-of-Manila districts (class 1); "Buenavista" mislabeled under Sultan Kudarat (which has none)
+  is mapped to Agusan del Norte's Buenavista — it sits in the Agusan alphabetical block and is the
+  only otherwise-unmatched Buenavista of the country's five.
+- **Validation of the join:** the Annex's *old* (DO 23-08) column vs dim_geo's prior class — names
+  align across the board (correct joins), classes differ systematically (dim_geo higher, consistent
+  with real post-2008 income growth incl. Mandanas NTA), so the disagreement is vintage, not
+  mismatch. New-vs-prior delta is mostly "unchanged" (1,422) then ±1–2.
+- **Downstream.** `dim_geo.income_class` now 1–5 (+ a 5-LGU 6th-class remnant = the unclassified
+  that kept prior); `agg_by_income_class` rebuilt in the same migration. E3.7 figure + glossary +
+  `/methodology` copy updated from "will be refreshed" to the DO 074-2024 vintage (1st highest, 5th
+  lowest; 6th labeled "prior class, not reclassified"). `dim_dataset.dof-blgf-income-2024`
+  (`status=active`, `as_of_date=2024-11-05`). Types: `dim_lgu_income_reclass` + `income_class_prior`
+  added to `lib/db/database.types.ts` (surgical edit, not a full regen — a wholesale regen dropped
+  the `search_geo.parent_chain` return column, a generator quirk). `typecheck` + `eslint` clean.
+
+**Verify.** Migration applied clean; coverage/spot-checks above pass live; `build_income_reclass.py`
+reproduces the mapping + reconciliation offline from the PDF + a dim_geo export. RLS:
+`dim_lgu_income_reclass` public-read, service-write — same posture as every `dim_*`; it holds public
+LGU classifications, no individuals. `build_aggregates.sql` unchanged (its E3.7 block rebuilds
+`agg_by_income_class` from whatever `dim_geo.income_class` currently holds — now the DOF values).

@@ -232,9 +232,13 @@ export default async function MethodologyPage() {
             <strong>Support by LGU income class.</strong> Accreditation, any-honorarium share, and
             median honorarium grouped by the{" "}
             <GlossaryTerm slug="income_class">income class</GlossaryTerm> of each BHW&apos;s
-            city/municipality (1st highest, 6th lowest) — a national-scope equity lens. Income
-            classes are the values currently in the dataset and will be refreshed from the 2024
-            DOF/BLGF reclassification in a later release.
+            city/municipality (1st highest, 5th lowest) — a national-scope equity lens. Income
+            classes are the DOF Department Order No. 074-2024 reclassification under RA 11964 (the
+            Automatic Income Classification of LGUs Act, effective 1 January 2025), which replaced
+            the older six-class ladder with five classes. The DOF schedule lists no PSGC codes, so it
+            is name-matched to each LGU (province-scoped and NIR-aware); the mapping, the handful of
+            LGUs the source leaves unclassified, and every reconciliation note are recorded in{" "}
+            <code>docs/INCOME_RECLASS.md</code>. Cite: DOF DO 074-2024.
           </li>
           <li>
             <strong>Adjusted accreditation rate.</strong> A raw percentage from a place with only a

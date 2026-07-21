@@ -1,0 +1,1725 @@
+geo_code,geo_level,dof_kind,dof_region,dof_name,old_class_dof,new_class,converted,method,score
+01028,province,province,I,Ilocos Norte,1,1,0,province,100
+0102801,citymun,municipality,I,Adams,5,4,0,fuzzy,100
+0102802,citymun,municipality,I,Bacarra,3,2,0,fuzzy,100
+0102803,citymun,municipality,I,Badoc,3,1,0,fuzzy,100
+0102804,citymun,municipality,I,Bangui,4,2,0,fuzzy,100
+0102805,citymun,city,I,Batac City,5,3,0,fuzzy,100
+0102806,citymun,municipality,I,Burgos,5,3,0,fuzzy,100
+0102807,citymun,municipality,I,Carasi,5,5,0,fuzzy,100
+0102808,citymun,municipality,I,Currimao,4,3,0,fuzzy,100
+0102809,citymun,municipality,I,Dingras,2,1,0,fuzzy,100
+0102810,citymun,municipality,I,Dumalneg,5,4,0,fuzzy,100
+0102811,citymun,municipality,I,Sanna,4,1,0,override,100
+0102812,citymun,city,I,Laoag City,3,3,0,fuzzy,100
+0102813,citymun,municipality,I,Marcos,4,2,0,fuzzy,100
+0102814,citymun,municipality,I,Nueva Era,3,1,0,fuzzy,100
+0102815,citymun,municipality,I,Pagudpud,4,1,0,fuzzy,100
+0102816,citymun,municipality,I,Paoay,4,2,0,fuzzy,100
+0102817,citymun,municipality,I,Pasuquin,3,1,0,fuzzy,100
+0102818,citymun,municipality,I,Piddig,3,1,0,fuzzy,100
+0102819,citymun,municipality,I,Pinili,3,1,0,fuzzy,100
+0102820,citymun,municipality,I,San Nicolas,2,1,0,fuzzy,100
+0102821,citymun,municipality,I,Sarrat,4,2,0,fuzzy,100
+0102822,citymun,municipality,I,Solsona,3,2,0,fuzzy,100
+0102823,citymun,municipality,I,Vintar,1,1,0,fuzzy,100
+01029,province,province,I,Ilocos Sur,1,1,0,province,100
+0102901,citymun,municipality,I,Alilem,4,1,0,fuzzy,100
+0102902,citymun,municipality,I,Banayoyo,4,1,0,fuzzy,100
+0102903,citymun,municipality,I,Bantay,3,1,0,fuzzy,100
+0102904,citymun,municipality,I,Burgos,4,1,0,fuzzy,100
+0102905,citymun,municipality,I,Cabugao,1,1,0,fuzzy,100
+0102906,citymun,city,I,Candon City,4,1,0,fuzzy,100
+0102907,citymun,municipality,I,Caoayan,4,2,0,fuzzy,100
+0102908,citymun,municipality,I,Cervantes,4,1,0,fuzzy,100
+0102909,citymun,municipality,I,Galimuyod,4,1,0,fuzzy,100
+0102910,citymun,municipality,I,Gregorio Del Pilar,5,1,0,fuzzy,100
+0102911,citymun,municipality,I,Lidlidda,5,1,0,fuzzy,100
+0102912,citymun,municipality,I,Magsingal,3,1,0,fuzzy,100
+0102913,citymun,municipality,I,Nagbukel,5,1,0,fuzzy,100
+0102914,citymun,municipality,I,Narvacan,2,1,0,fuzzy,100
+0102915,citymun,municipality,I,Quirino,4,1,0,fuzzy,100
+0102916,citymun,municipality,I,Salcedo,4,1,0,fuzzy,100
+0102917,citymun,municipality,I,San Emilio,4,1,0,fuzzy,100
+0102918,citymun,municipality,I,San Esteban,5,1,0,fuzzy,100
+0102919,citymun,municipality,I,Ilocos Sur San Ildefonso,5,2,0,fuzzy,100
+0102920,citymun,municipality,I,Ilocos Sur San Juan,3,1,0,fuzzy,100
+0102921,citymun,municipality,I,Ilocos Sur San Vicente,5,3,0,fuzzy,100
+0102922,citymun,municipality,I,Ilocos Sur Santa,4,2,0,fuzzy,100
+0102923,citymun,municipality,I,Ilocos Sur Santa Catalina,5,2,0,fuzzy,100
+0102924,citymun,municipality,I,Ilocos Sur Santa Cruz,1,1,0,fuzzy,100
+0102925,citymun,municipality,I,Ilocos Sur Santa Lucia,3,1,0,fuzzy,100
+0102926,citymun,municipality,I,Ilocos Sur Santa Maria,3,1,0,fuzzy,100
+0102927,citymun,municipality,I,Ilocos Sur Santiago,4,1,0,fuzzy,100
+0102928,citymun,municipality,I,Ilocos Sur Santo Domingo,3,1,0,fuzzy,100
+0102929,citymun,municipality,I,Ilocos Sur Sigay,5,1,0,fuzzy,100
+0102930,citymun,municipality,I,Ilocos Sur Sinait,3,1,0,fuzzy,100
+0102931,citymun,municipality,I,Ilocos Sur Sugpon,5,3,0,fuzzy,100
+0102932,citymun,municipality,I,Ilocos Sur Suyo,4,1,0,fuzzy,100
+0102933,citymun,municipality,I,Ilocos Sur Tagudin,2,1,0,fuzzy,100
+0102934,citymun,city,I,Vigan City,4,4,0,fuzzy,100
+01033,province,province,I,La Union,1,1,0,province,100
+0103301,citymun,municipality,I,Agoo,1,1,0,fuzzy,100
+0103302,citymun,municipality,I,Aringay,2,1,0,fuzzy,100
+0103303,citymun,municipality,I,Bacnotan,1,1,0,fuzzy,100
+0103304,citymun,municipality,I,Bagulin,5,4,0,fuzzy,100
+0103305,citymun,municipality,I,Balaoan,1,1,0,fuzzy,100
+0103306,citymun,municipality,I,Bangar,3,1,0,fuzzy,100
+0103307,citymun,municipality,I,Bauang,1,1,0,fuzzy,100
+0103308,citymun,municipality,I,Burgos,5,4,0,fuzzy,100
+0103309,citymun,municipality,I,Caba,4,1,0,fuzzy,100
+0103310,citymun,municipality,I,Luna,3,2,0,fuzzy,100
+0103311,citymun,municipality,I,Naguilian,1,1,0,fuzzy,100
+0103312,citymun,municipality,I,Pugo,5,3,0,fuzzy,100
+0103313,citymun,municipality,I,Rosario,1,1,0,fuzzy,100
+0103314,citymun,city,,San Fernando City,3,2,0,fuzzy,100
+0103315,citymun,municipality,I,San Gabriel,4,3,0,fuzzy,100
+0103316,citymun,municipality,I,San Juan,2,1,0,fuzzy,100
+0103317,citymun,municipality,I,Santo Tomas,4,1,0,fuzzy,100
+0103318,citymun,municipality,I,Santol,4,1,0,fuzzy,100
+0103319,citymun,municipality,I,Sudipen,4,1,0,fuzzy,100
+0103320,citymun,municipality,I,Tubao,4,2,0,fuzzy,100
+01055,province,province,I,Pangasinan,1,1,0,province,100
+0105501,citymun,municipality,I,Agno,3,2,0,fuzzy,100
+0105502,citymun,municipality,I,Aguilar,3,1,0,fuzzy,100
+0105503,citymun,city,,Alaminos City,4,3,0,fuzzy,100
+0105504,citymun,municipality,I,Alcala,3,1,0,fuzzy,100
+0105505,citymun,municipality,I,Anda,3,2,0,fuzzy,100
+0105506,citymun,municipality,I,Asingan,2,1,0,fuzzy,100
+0105507,citymun,municipality,I,Balungao,4,1,0,fuzzy,100
+0105508,citymun,municipality,I,Bani,2,1,0,fuzzy,100
+0105509,citymun,municipality,I,Basista,4,3,0,fuzzy,100
+0105510,citymun,municipality,I,Bautista,4,3,0,fuzzy,100
+0105511,citymun,municipality,I,Bayambang,1,1,0,fuzzy,100
+0105512,citymun,municipality,I,Binalonan,1,1,0,fuzzy,100
+0105513,citymun,municipality,I,Binmaley,1,1,0,fuzzy,100
+0105514,citymun,municipality,I,Bolinao,1,1,0,fuzzy,100
+0105515,citymun,municipality,I,Bugallon,2,1,0,fuzzy,100
+0105516,citymun,municipality,I,Burgos,4,3,0,fuzzy,100
+0105517,citymun,municipality,I,Calasiao,1,1,0,fuzzy,100
+0105518,citymun,city,,Dagupan City,2,2,0,fuzzy,100
+0105519,citymun,municipality,I,Dasol,3,2,0,fuzzy,100
+0105520,citymun,municipality,I,Infanta,3,2,0,fuzzy,100
+0105521,citymun,municipality,I,Labrador,4,3,0,fuzzy,100
+0105522,citymun,municipality,I,Lingayen,1,1,0,fuzzy,100
+0105523,citymun,municipality,I,Mabini,3,2,0,fuzzy,100
+0105524,citymun,municipality,I,Malasiqui,1,1,0,fuzzy,100
+0105525,citymun,municipality,I,Manaoag,1,1,0,fuzzy,100
+0105526,citymun,municipality,I,Mangaldan,1,1,0,fuzzy,100
+0105527,citymun,municipality,I,Mangatarem,1,1,0,fuzzy,100
+0105528,citymun,municipality,I,Mapandan,3,3,0,fuzzy,100
+0105529,citymun,municipality,I,Natividad,4,3,0,fuzzy,100
+0105530,citymun,municipality,I,Pozorrubio,1,1,0,fuzzy,100
+0105531,citymun,municipality,I,Rosales,1,1,0,fuzzy,100
+0105532,citymun,city,,San Carlos City,3,2,0,fuzzy,100
+0105533,citymun,municipality,I,San Fabian,1,1,0,fuzzy,100
+0105534,citymun,municipality,I,San Jacinto,3,1,0,fuzzy,100
+0105535,citymun,municipality,I,San Manuel,1,1,0,fuzzy,100
+0105536,citymun,municipality,I,San Nicolas,1,1,0,fuzzy,100
+0105537,citymun,municipality,I,San Quintin,3,2,0,fuzzy,100
+0105538,citymun,municipality,I,Santa Barbara,1,1,0,fuzzy,100
+0105539,citymun,municipality,I,Santa Maria,4,2,0,fuzzy,100
+0105540,citymun,municipality,I,Santo Tomas,5,4,0,fuzzy,100
+0105541,citymun,municipality,I,Sison,3,1,0,fuzzy,100
+0105542,citymun,municipality,I,Sual,1,1,0,fuzzy,100
+0105543,citymun,municipality,I,Tayug,3,1,0,fuzzy,100
+0105544,citymun,municipality,I,Umingan,1,1,0,fuzzy,100
+0105545,citymun,municipality,I,Urbiztondo,3,1,0,fuzzy,100
+0105546,citymun,city,,Urdaneta City,2,1,0,fuzzy,100
+0105547,citymun,municipality,I,Villasis,1,1,0,fuzzy,100
+0105548,citymun,municipality,I,Laoac,4,2,0,fuzzy,100
+02009,province,province,II,Batanes,5,5,0,province,100
+0200901,citymun,municipality,II,Basco,5,4,0,fuzzy,100
+0200902,citymun,municipality,II,Itbayat,5,5,0,fuzzy,100
+0200903,citymun,municipality,II,Ivana,6,5,0,fuzzy,100
+0200904,citymun,municipality,II,Mahatao,6,5,0,fuzzy,100
+0200905,citymun,municipality,II,Sabtang,6,5,0,fuzzy,100
+0200906,citymun,municipality,II,Uyugan,6,5,0,fuzzy,100
+02015,province,province,II,Cagayan,1,1,0,province,100
+0201501,citymun,municipality,II,Abulug,3,2,0,fuzzy,100
+0201502,citymun,municipality,II,Alcala,3,1,0,fuzzy,100
+0201503,citymun,municipality,II,Allacapan,3,1,0,fuzzy,100
+0201504,citymun,municipality,II,Amulung,2,1,0,fuzzy,100
+0201505,citymun,municipality,II,Aparri,1,1,0,fuzzy,100
+0201506,citymun,municipality,II,Baggao,1,1,0,fuzzy,100
+0201507,citymun,municipality,II,Ballesteros,4,2,0,fuzzy,100
+0201508,citymun,municipality,II,Buguey,3,2,0,fuzzy,100
+0201509,citymun,municipality,II,Calayan,3,1,0,fuzzy,100
+0201510,citymun,municipality,II,Camalaniugan,4,3,0,fuzzy,100
+0201511,citymun,municipality,II,Claveria,3,2,0,fuzzy,100
+0201512,citymun,municipality,II,Enrile,3,1,0,fuzzy,100
+0201513,citymun,municipality,II,Gattaran,1,1,0,fuzzy,100
+0201514,citymun,municipality,II,Gonzaga,1,1,0,fuzzy,100
+0201515,citymun,municipality,II,Iguig,4,2,0,fuzzy,100
+0201516,citymun,municipality,II,Lal-Lo,1,1,0,fuzzy,100
+0201517,citymun,municipality,II,Lasam,3,1,0,fuzzy,100
+0201518,citymun,municipality,II,Pamplona,4,3,0,fuzzy,100
+0201519,citymun,municipality,II,Penablanca,1,1,0,fuzzy,100
+0201520,citymun,municipality,II,Piat,4,3,0,fuzzy,100
+0201521,citymun,municipality,II,Rizal,5,4,0,fuzzy,100
+0201522,citymun,municipality,II,Sanchez Mira,3,2,0,fuzzy,100
+0201523,citymun,municipality,II,Santa Ana,2,1,0,fuzzy,100
+0201524,citymun,municipality,II,Santa Praxedes,5,5,0,fuzzy,100
+0201525,citymun,municipality,II,Santa Teresita,4,3,0,fuzzy,100
+0201526,citymun,municipality,II,Santo Nino,2,1,0,fuzzy,100
+0201527,citymun,municipality,II,Solana,1,1,0,fuzzy,100
+0201528,citymun,municipality,II,Tuao,1,1,0,fuzzy,100
+0201529,citymun,city,,Tuguegarao City,3,2,0,fuzzy,100
+02031,province,province,II,Isabela,1,1,0,province,100
+0203101,citymun,municipality,II,Alicia,1,1,0,fuzzy,100
+0203102,citymun,municipality,II,Angadanan,3,1,0,fuzzy,100
+0203103,citymun,municipality,II,Aurora,3,1,0,fuzzy,100
+0203104,citymun,municipality,II,Benito Soliven,4,2,0,fuzzy,100
+0203105,citymun,municipality,II,Burgos,4,3,0,fuzzy,100
+0203106,citymun,municipality,II,Cabagan,1,1,0,fuzzy,100
+0203107,citymun,municipality,II,Cabatuan,3,1,0,fuzzy,100
+0203108,citymun,city,,Cauayan City,3,2,0,override,100
+0203109,citymun,municipality,II,Cordon,3,1,0,fuzzy,100
+0203110,citymun,municipality,II,Dinapigue,1,1,0,fuzzy,100
+0203111,citymun,municipality,II,Divilacan,2,1,0,fuzzy,100
+0203112,citymun,municipality,II,Echague,1,1,0,fuzzy,100
+0203113,citymun,municipality,II,Gamu,4,2,0,fuzzy,100
+0203114,citymun,city,,Ilagan City,1,1,1,fuzzy,100
+0203115,citymun,municipality,II,Jones,1,1,0,fuzzy,100
+0203116,citymun,municipality,II,Luna,5,1,0,fuzzy,100
+0203117,citymun,municipality,II,Maconacon,3,2,0,fuzzy,100
+0203118,citymun,municipality,II,Delfin Albano,4,1,0,fuzzy,100
+0203119,citymun,municipality,II,Mallig,4,1,0,fuzzy,100
+0203120,citymun,municipality,II,Naguilian,4,1,0,fuzzy,100
+0203121,citymun,municipality,II,Palanan,1,1,0,fuzzy,100
+0203122,citymun,municipality,II,Quezon,4,1,0,fuzzy,100
+0203123,citymun,municipality,II,Quirino,4,1,0,fuzzy,100
+0203124,citymun,municipality,II,Ramon,2,1,0,fuzzy,100
+0203125,citymun,municipality,II,Reina Mercedes,4,1,0,fuzzy,100
+0203126,citymun,municipality,II,Roxas,1,1,0,fuzzy,100
+0203127,citymun,municipality,II,San Agustin,3,2,0,fuzzy,100
+0203128,citymun,municipality,II,San Guillermo,4,2,0,fuzzy,100
+0203129,citymun,municipality,II,San Isidro,5,3,0,fuzzy,100
+0203130,citymun,municipality,II,San Manuel,4,2,0,fuzzy,100
+0203131,citymun,municipality,II,San Mariano,1,1,0,fuzzy,100
+0203132,citymun,municipality,II,San Mateo,1,1,0,fuzzy,100
+0203133,citymun,municipality,II,San Pablo,2,1,0,fuzzy,100
+0203134,citymun,municipality,II,Santa Maria,4,3,0,fuzzy,100
+0203135,citymun,city,,Santiago City,1,1,0,fuzzy,100
+0203136,citymun,municipality,II,Santo Tomas,4,3,0,fuzzy,100
+0203137,citymun,municipality,II,Tumauini,1,1,0,fuzzy,100
+02050,province,province,II,Nueva Vizcaya,2,2,0,province,100
+0205001,citymun,municipality,II,Ambaguio,5,4,0,fuzzy,100
+0205002,citymun,municipality,II,Aritao,2,1,0,fuzzy,100
+0205003,citymun,municipality,II,Bagabag,2,1,0,fuzzy,100
+0205004,citymun,municipality,II,Bambang,1,1,0,fuzzy,100
+0205005,citymun,municipality,II,Bayombong,1,1,0,fuzzy,100
+0205006,citymun,municipality,II,Diadi,4,3,0,fuzzy,100
+0205007,citymun,municipality,II,Dupax Del Norte,3,1,0,fuzzy,100
+0205008,citymun,municipality,II,Dupax Del Sur,2,1,0,fuzzy,100
+0205009,citymun,municipality,II,Kasibu,3,1,0,fuzzy,100
+0205010,citymun,municipality,II,Kayapa,3,1,0,fuzzy,100
+0205011,citymun,municipality,II,Quezon,4,1,0,fuzzy,100
+0205012,citymun,municipality,II,Santa Fe,3,2,0,fuzzy,100
+0205013,citymun,municipality,II,Solano,1,1,0,fuzzy,100
+0205014,citymun,municipality,II,Villaverde,5,4,0,fuzzy,100
+0205015,citymun,municipality,II,Alfonso Castaneda,1,2,0,fuzzy,100
+02057,province,province,II,Quirino,3,3,0,province,100
+0205701,citymun,municipality,II,Aglipay,3,2,0,fuzzy,100
+0205702,citymun,municipality,II,Cabarroguis,3,1,0,fuzzy,100
+0205703,citymun,municipality,II,Diffun,2,1,0,fuzzy,100
+0205704,citymun,municipality,II,Maddela,1,1,0,fuzzy,100
+0205705,citymun,municipality,II,Saguday,5,4,0,fuzzy,100
+0205706,citymun,municipality,II,Nagtipunan,1,1,0,fuzzy,100
+03008,province,province,III,Bataan,1,1,0,province,100
+0300801,citymun,municipality,III,Abucay,3,2,0,fuzzy,100
+0300802,citymun,municipality,III,Bagac,3,2,0,fuzzy,100
+0300803,citymun,city,II,Balanga City,4,2,0,fuzzy,100
+0300804,citymun,municipality,III,Dinalupihan,1,1,0,fuzzy,100
+0300805,citymun,municipality,III,Hermosa,1,1,0,fuzzy,100
+0300806,citymun,municipality,III,Limay,1,1,0,fuzzy,100
+0300807,citymun,municipality,III,Mariveles,1,1,0,fuzzy,100
+0300808,citymun,municipality,II,Morong,3,1,0,fuzzy,100
+0300809,citymun,municipality,III,Orani,1,1,0,fuzzy,100
+0300810,citymun,municipality,III,Orion,2,1,0,fuzzy,100
+0300811,citymun,municipality,III,Pilar,3,2,0,fuzzy,100
+0300812,citymun,municipality,III,Samal,4,2,0,fuzzy,100
+03014,province,province,III,Bulacan,1,1,0,province,100
+0301401,citymun,municipality,III,Angat,1,1,0,fuzzy,100
+0301402,citymun,municipality,III,Balagtas,1,1,0,fuzzy,100
+0301403,citymun,city,I,Baliwag City,1,3,1,fuzzy,100
+0301404,citymun,municipality,III,Bocaue,1,1,0,fuzzy,100
+0301405,citymun,municipality,III,Bulacan,1,1,0,fuzzy,100
+0301406,citymun,municipality,I,Bustos,2,1,0,fuzzy,100
+0301407,citymun,municipality,III,Calumpit,1,1,0,fuzzy,100
+0301408,citymun,municipality,III,Guiguinto,1,1,0,fuzzy,100
+0301409,citymun,municipality,III,Hagonoy,1,1,0,fuzzy,100
+0301410,citymun,city,I,Malolos City,3,1,0,fuzzy,100
+0301411,citymun,municipality,III,Marilao,1,1,0,fuzzy,100
+0301412,citymun,city,,Meycauayan City,3,1,0,fuzzy,100
+0301413,citymun,municipality,III,Norzagaray,1,1,0,fuzzy,100
+0301414,citymun,municipality,I,Obando,2,1,0,fuzzy,100
+0301415,citymun,municipality,III,Pandi,2,1,0,fuzzy,100
+0301416,citymun,municipality,III,Paombong,3,2,0,fuzzy,100
+0301417,citymun,municipality,III,Plaridel,1,1,0,fuzzy,100
+0301418,citymun,municipality,I,Pulilan,1,1,0,fuzzy,100
+0301419,citymun,municipality,III,San Ildefonso,1,1,0,fuzzy,100
+0301420,citymun,city,I,San Jose Del Monte City,1,1,0,fuzzy,100
+0301421,citymun,municipality,III,San Miguel,1,1,0,fuzzy,100
+0301422,citymun,municipality,III,San Rafael,1,1,0,fuzzy,100
+0301423,citymun,municipality,III,Santa Maria,1,1,0,fuzzy,100
+0301424,citymun,municipality,III,Trinidad,1,1,0,fuzzy,100
+03049,province,province,III,Nueva Ecija,1,1,0,province,100
+0304901,citymun,municipality,III,Aliaga,2,1,0,fuzzy,100
+0304902,citymun,municipality,III,Bongabon,2,1,0,fuzzy,100
+0304903,citymun,city,I,Cabanatuan City,1,1,0,fuzzy,100
+0304904,citymun,municipality,III,Cabiao,1,1,0,fuzzy,100
+0304905,citymun,municipality,II,Carranglan,1,1,0,fuzzy,100
+0304906,citymun,municipality,II,Cuyapo,1,1,0,fuzzy,100
+0304907,citymun,municipality,III,Gabaldon,3,1,0,fuzzy,100
+0304908,citymun,city,,Gapan City,4,3,0,fuzzy,100
+0304909,citymun,municipality,III,General Mamerto,4,2,0,override,100
+0304910,citymun,municipality,III,General Tinio,1,1,0,fuzzy,100
+0304911,citymun,municipality,III,Guimba,1,1,0,fuzzy,100
+0304912,citymun,municipality,III,Jaen,2,1,0,fuzzy,100
+0304913,citymun,municipality,III,Laur,3,1,0,fuzzy,100
+0304914,citymun,municipality,III,Licab,4,3,0,fuzzy,100
+0304915,citymun,municipality,III,Llanera,4,2,0,fuzzy,100
+0304916,citymun,municipality,III,Lupao,3,2,0,fuzzy,100
+0304917,citymun,city,,Science City Of Munoz,4,4,0,fuzzy,100
+0304918,citymun,municipality,I,Nampicuan,5,4,0,fuzzy,100
+0304919,citymun,city,,Palayan City,5,4,0,fuzzy,100
+0304920,citymun,municipality,III,Pantabangan,1,1,0,fuzzy,100
+0304921,citymun,municipality,III,Penaranda,4,2,0,fuzzy,100
+0304922,citymun,municipality,III,Quezon,4,2,0,fuzzy,100
+0304923,citymun,municipality,III,Rizal,2,1,0,fuzzy,100
+0304924,citymun,municipality,III,San Antonio,1,1,0,fuzzy,100
+0304925,citymun,municipality,III,San Isidro,2,1,0,fuzzy,100
+0304926,citymun,city,,San Jose City,3,2,0,fuzzy,100
+0304927,citymun,municipality,III,San Leonardo,1,1,0,fuzzy,100
+0304928,citymun,municipality,III,Santa Rosa,1,1,0,fuzzy,100
+0304929,citymun,municipality,III,Santo Domingo,3,1,0,fuzzy,100
+0304930,citymun,municipality,III,Talavera,1,1,0,fuzzy,100
+0304931,citymun,municipality,III,Talugtug,4,3,0,fuzzy,100
+0304932,citymun,municipality,III,Zaragoza,3,1,0,fuzzy,100
+03054,province,province,III,Pampanga,1,1,0,province,100
+0305402,citymun,municipality,III,Apalit,1,1,0,fuzzy,100
+0305403,citymun,municipality,III,Arayat,1,1,0,fuzzy,100
+0305404,citymun,municipality,III,Bacolor,3,1,0,fuzzy,100
+0305405,citymun,municipality,II,Candaba,1,1,0,fuzzy,100
+0305406,citymun,municipality,III,Floridablanca,1,1,0,fuzzy,100
+0305407,citymun,municipality,III,Guagua,1,1,0,fuzzy,100
+0305408,citymun,municipality,III,Lubao,1,1,0,fuzzy,100
+0305409,citymun,city,,Mabalacat City,3,1,0,fuzzy,100
+0305410,citymun,municipality,III,Macabebe,1,1,0,fuzzy,100
+0305411,citymun,municipality,III,Magalang,1,1,0,fuzzy,100
+0305412,citymun,municipality,III,Masantol,2,1,0,fuzzy,100
+0305413,citymun,municipality,III,Mexico,1,1,0,fuzzy,100
+0305414,citymun,municipality,III,Minalin,4,2,0,fuzzy,100
+0305415,citymun,municipality,III,Porac,1,1,0,fuzzy,100
+0305416,citymun,city,,San Fernando City,1,1,0,fuzzy,100
+0305417,citymun,municipality,I,San Luis,3,2,0,fuzzy,100
+0305418,citymun,municipality,III,San Simon,3,1,0,fuzzy,100
+0305419,citymun,municipality,III,Santa Ana,3,1,0,fuzzy,100
+0305420,citymun,municipality,III,Santa Rita,4,2,0,fuzzy,100
+0305421,citymun,municipality,III,Santo Tomas,4,2,0,fuzzy,90
+0305422,citymun,municipality,III,Sasmuan,4,3,0,fuzzy,100
+03069,province,province,III,Tarlac,1,1,0,province,100
+0306901,citymun,municipality,III,Anao,5,4,0,fuzzy,100
+0306902,citymun,municipality,III,Bamban,2,1,0,fuzzy,100
+0306903,citymun,municipality,III,Camiling,1,1,0,fuzzy,100
+0306904,citymun,municipality,III,Capas,1,1,0,fuzzy,100
+0306905,citymun,municipality,III,Concepcion,1,1,0,fuzzy,100
+0306906,citymun,municipality,III,Gerona,1,1,0,fuzzy,100
+0306907,citymun,municipality,III,La Paz,2,1,0,fuzzy,100
+0306908,citymun,municipality,III,Mayantoc,3,1,0,fuzzy,100
+0306909,citymun,municipality,III,Moncada,1,1,0,fuzzy,100
+0306910,citymun,municipality,III,Paniqui,1,1,0,fuzzy,100
+0306911,citymun,municipality,III,Pura,4,3,0,fuzzy,100
+0306912,citymun,municipality,III,Ramos,5,4,0,fuzzy,100
+0306913,citymun,municipality,III,San Clemente,5,4,0,fuzzy,100
+0306914,citymun,municipality,III,San Manuel,4,1,0,fuzzy,100
+0306915,citymun,municipality,III,Santa Ignacia,2,1,0,fuzzy,100
+0306916,citymun,city,,Tarlac City,1,1,0,fuzzy,100
+0306917,citymun,municipality,III,Victoria,2,1,0,fuzzy,100
+0306918,citymun,municipality,III,San Jose,3,1,0,fuzzy,100
+03071,province,province,III,Zambales,1,1,0,province,100
+0307101,citymun,municipality,III,Botolan,1,1,0,fuzzy,100
+0307102,citymun,municipality,III,Cabangan,4,2,0,fuzzy,100
+0307103,citymun,municipality,III,Candelaria,3,1,0,fuzzy,100
+0307104,citymun,municipality,III,Castillejos,3,1,0,fuzzy,100
+0307105,citymun,municipality,III,Iba,2,1,0,fuzzy,100
+0307106,citymun,municipality,III,Masinloc,1,1,0,fuzzy,100
+0307108,citymun,municipality,III,Palauig,3,1,0,fuzzy,100
+0307109,citymun,municipality,III,San Antonio,2,1,0,fuzzy,100
+0307110,citymun,municipality,III,San Felipe,4,3,0,fuzzy,100
+0307111,citymun,municipality,III,San Marcelino,1,1,0,fuzzy,100
+0307112,citymun,municipality,III,San Narciso,4,3,0,fuzzy,100
+0307113,citymun,municipality,III,Santa Cruz,1,1,0,fuzzy,100
+0307114,citymun,municipality,III,Subic,1,1,0,fuzzy,100
+03077,province,province,III,Aurora,3,3,0,province,100
+0307701,citymun,municipality,III,Baler,3,1,0,fuzzy,100
+0307702,citymun,municipality,I,Casiguran,2,1,0,fuzzy,100
+0307703,citymun,municipality,III,Dilasag,3,2,0,fuzzy,100
+0307704,citymun,municipality,III,Dinalungan,4,3,0,fuzzy,100
+0307705,citymun,municipality,III,Dingalan,3,2,0,fuzzy,100
+0307706,citymun,municipality,III,Dipaculao,3,1,0,fuzzy,100
+0307707,citymun,municipality,III,Maria Aurora,2,1,0,fuzzy,100
+0307708,citymun,municipality,III,San Luis,2,1,0,fuzzy,100
+0330100,citymun,city,,Angeles City,1,1,0,fuzzy,100
+0331400,citymun,city,,Olongapo City,1,1,0,fuzzy,100
+04010,province,province,IVA,Batangas,1,1,0,province,100
+0401001,citymun,municipality,IVA,Agoncillo,4,2,0,fuzzy,100
+0401002,citymun,municipality,IVA,Alitagtag,4,4,0,fuzzy,100
+0401003,citymun,municipality,IVA,Balayan,1,1,0,fuzzy,100
+0401004,citymun,municipality,IVA,Balete,5,4,0,fuzzy,100
+0401005,citymun,city,IVA,Batangas City,1,1,0,fuzzy,100
+0401006,citymun,municipality,IVA,Bauan,1,1,0,fuzzy,100
+0401007,citymun,city,IVA,Calaca City,1,3,1,fuzzy,100
+0401008,citymun,municipality,IVA,Calatagan,2,1,0,fuzzy,100
+0401009,citymun,municipality,IVA,Cuenca,4,2,0,fuzzy,100
+0401010,citymun,municipality,IVA,Ibaan,2,1,0,fuzzy,100
+0401011,citymun,municipality,IVA,Laurel,3,2,0,fuzzy,100
+0401012,citymun,municipality,IVA,Lemery,1,1,0,fuzzy,100
+0401013,citymun,municipality,IVA,Lian,3,1,0,fuzzy,100
+0401014,citymun,city,IVA,Lipa City,1,1,0,fuzzy,100
+0401015,citymun,municipality,IVA,Lobo,3,1,0,fuzzy,100
+0401016,citymun,municipality,IVA,Mabini,1,1,0,fuzzy,100
+0401017,citymun,municipality,IVA,Malvar,2,1,0,fuzzy,100
+0401018,citymun,municipality,IVA,Mataasnakahoy,4,3,0,fuzzy,100
+0401019,citymun,municipality,IVA,Nasugbu,1,1,0,fuzzy,100
+0401020,citymun,municipality,IVA,Padre Garcia,2,1,0,fuzzy,100
+0401021,citymun,municipality,IVA,Rosario,1,1,0,fuzzy,100
+0401022,citymun,municipality,IVA,San Jose,1,1,0,fuzzy,100
+0401023,citymun,municipality,IVA,San Juan,1,1,0,fuzzy,100
+0401024,citymun,municipality,IVA,San Luis,4,3,0,fuzzy,100
+0401025,citymun,municipality,IVA,San Nicolas,5,4,0,fuzzy,100
+0401026,citymun,municipality,IVA,San Pascual,1,1,0,fuzzy,100
+0401027,citymun,municipality,IVA,Santa Teresita,5,4,0,fuzzy,100
+0401028,citymun,city,IVA,Santo Tomas City,1,1,1,fuzzy,90
+0401029,citymun,municipality,IVA,Taal,3,1,0,fuzzy,100
+0401030,citymun,municipality,IVA,Talisay,3,1,0,fuzzy,100
+0401031,citymun,city,IVA,Tanauan City,2,1,0,fuzzy,100
+0401032,citymun,municipality,IVA,Taysan,2,1,0,fuzzy,100
+0401033,citymun,municipality,IVA,Tingloy,5,4,0,fuzzy,100
+0401034,citymun,municipality,IVA,Tuy,3,2,0,fuzzy,100
+04021,province,province,IVA,Cavite,1,1,0,province,100
+0402101,citymun,municipality,IVA,Alfonso,1,1,0,fuzzy,100
+0402102,citymun,municipality,IVA,Amadeo,4,2,0,fuzzy,100
+0402103,citymun,city,IVA,Bacoor City,1,1,1,fuzzy,100
+0402104,citymun,city,IVA,Carmona City,1,2,1,fuzzy,100
+0402105,citymun,city,IVA,Cavite City,4,4,0,fuzzy,100
+0402106,citymun,city,IVA,Dasmariñas City,1,1,1,fuzzy,100
+0402107,citymun,municipality,IVA,General Emilio Aguinaldo,5,4,0,fuzzy,100
+0402108,citymun,city,IVA,Trias City,1,1,1,fuzzy,100
+0402109,citymun,city,IVA,Imus City,3,1,0,fuzzy,100
+0402110,citymun,municipality,IVA,Indang,1,1,0,fuzzy,100
+0402111,citymun,municipality,IVA,Kawit,1,1,0,fuzzy,100
+0402112,citymun,municipality,IVA,Magallanes,4,3,0,fuzzy,100
+0402113,citymun,municipality,IVA,Maragondon,3,2,0,fuzzy,100
+0402114,citymun,municipality,IVA,Mendez,4,2,0,fuzzy,100
+0402115,citymun,municipality,IVA,Naic,1,1,0,fuzzy,100
+0402116,citymun,municipality,IVA,Noveleta,3,1,0,fuzzy,100
+0402117,citymun,municipality,IVA,Rosario,1,1,0,fuzzy,100
+0402118,citymun,municipality,IVA,Silang,1,1,0,fuzzy,100
+0402119,citymun,city,IVA,Tagaytay City,2,1,0,fuzzy,100
+0402120,citymun,municipality,IVA,Tanza,1,1,0,fuzzy,100
+0402121,citymun,municipality,IVA,Ternate,4,3,0,fuzzy,100
+0402122,citymun,city,IVA,Trece Martires City,4,2,0,fuzzy,100
+0402123,citymun,municipality,IVA,General Mariano Alvarez,1,1,0,fuzzy,90
+04034,province,province,IVA,Laguna,1,1,0,province,100
+0403401,citymun,municipality,IVA,Alaminos,3,1,0,fuzzy,100
+0403402,citymun,municipality,IVA,Bay,2,1,0,fuzzy,100
+0403403,citymun,city,IVA,Biñan City,1,1,1,fuzzy,100
+0403404,citymun,city,IVA,Cabuyao City,1,1,1,fuzzy,100
+0403405,citymun,city,IVA,Calamba City,1,1,0,fuzzy,100
+0403406,citymun,municipality,IVA,Calauan,2,1,0,fuzzy,100
+0403407,citymun,municipality,IVA,Cavinti,3,2,0,fuzzy,100
+0403408,citymun,municipality,IVA,Famy,5,4,0,fuzzy,100
+0403409,citymun,municipality,IVA,Kalayaan,3,3,0,fuzzy,100
+0403410,citymun,municipality,IVA,Liliw,4,3,0,fuzzy,100
+0403411,citymun,municipality,IVA,Los Baños,1,1,0,fuzzy,100
+0403412,citymun,municipality,IVA,Luisiana,4,4,0,fuzzy,100
+0403413,citymun,municipality,IVA,Lumban,3,3,0,fuzzy,100
+0403414,citymun,municipality,IVA,Mabitac,5,4,0,fuzzy,100
+0403415,citymun,municipality,IVA,Magdalena,4,3,0,fuzzy,100
+0403416,citymun,municipality,IVA,Majayjay,4,3,0,fuzzy,100
+0403417,citymun,municipality,IVA,Nagcarlan,2,1,0,fuzzy,100
+0403418,citymun,municipality,IVA,Paete,4,4,0,fuzzy,100
+0403419,citymun,municipality,IVA,Pagsanjan,3,2,0,fuzzy,100
+0403420,citymun,municipality,IVA,Pakil,5,3,0,fuzzy,100
+0403421,citymun,municipality,IVA,Pangil,4,3,0,fuzzy,100
+0403422,citymun,municipality,IVA,Pila,3,1,0,fuzzy,100
+0403423,citymun,municipality,IVA,Rizal,5,4,0,fuzzy,100
+0403424,citymun,city,IVA,San Pablo City,1,1,0,fuzzy,100
+0403425,citymun,city,IVA,San Pedro City,3,1,0,fuzzy,100
+0403426,citymun,municipality,IVA,Santa Cruz,1,1,0,fuzzy,100
+0403427,citymun,municipality,IVA,Santa Maria,4,2,0,fuzzy,100
+0403428,citymun,city,IVA,Santa Rosa City,1,1,0,fuzzy,100
+0403429,citymun,municipality,IVA,Siniloan,2,1,0,fuzzy,100
+0403430,citymun,municipality,IVA,Victoria,4,2,0,fuzzy,100
+04056,province,province,IVA,Quezon,1,1,0,province,100
+0405601,citymun,municipality,IVA,Agdangan,5,5,0,fuzzy,100
+0405602,citymun,municipality,IVA,Alabat,5,4,0,fuzzy,100
+0405603,citymun,municipality,IVA,Atimonan,1,1,0,fuzzy,100
+0405605,citymun,municipality,IVA,Buenavista,4,2,0,fuzzy,100
+0405606,citymun,municipality,IVA,Burdeos,4,3,0,fuzzy,100
+0405607,citymun,municipality,IVA,Calauag,1,1,0,fuzzy,100
+0405608,citymun,municipality,IVA,Candelaria,1,1,0,fuzzy,100
+0405610,citymun,municipality,IVA,Catanauan,1,1,0,fuzzy,100
+0405615,citymun,municipality,IVA,Dolores,4,3,0,fuzzy,100
+0405616,citymun,municipality,IVA,General Luna,4,3,0,fuzzy,100
+0405617,citymun,municipality,IVA,General Nakar,1,1,0,fuzzy,100
+0405618,citymun,municipality,IVA,Guinayangan,3,1,0,fuzzy,100
+0405619,citymun,municipality,IVA,Gumaca,1,1,0,fuzzy,100
+0405620,citymun,municipality,IVA,Infanta,1,1,0,fuzzy,100
+0405621,citymun,municipality,IVA,Jomalig,5,5,0,fuzzy,100
+0405622,citymun,municipality,IVA,Lopez,1,1,0,fuzzy,100
+0405623,citymun,municipality,IVA,Lucban,2,1,0,fuzzy,100
+0405625,citymun,municipality,IVA,Macalelon,4,3,0,fuzzy,100
+0405627,citymun,municipality,IVA,Mauban,1,1,0,fuzzy,100
+0405628,citymun,municipality,IVA,Mulanay,1,1,0,fuzzy,100
+0405629,citymun,municipality,IVA,Padre Burgos,4,4,0,fuzzy,100
+0405630,citymun,municipality,IVA,Pagbilao,1,1,0,fuzzy,100
+0405631,citymun,municipality,IVA,Panukulan,4,3,0,fuzzy,100
+0405632,citymun,municipality,IVA,Patnanungan,5,4,0,fuzzy,100
+0405633,citymun,municipality,IVA,Perez,5,4,0,fuzzy,100
+0405634,citymun,municipality,IVA,Pitogo,4,4,0,fuzzy,100
+0405635,citymun,municipality,IVA,Plaridel,5,5,0,fuzzy,100
+0405636,citymun,municipality,IVA,Polillo,3,1,0,fuzzy,100
+0405637,citymun,municipality,IVA,Quezon,5,4,0,fuzzy,100
+0405638,citymun,municipality,IVA,Real,1,1,0,fuzzy,100
+0405639,citymun,municipality,IVA,Sampaloc,5,4,0,fuzzy,100
+0405640,citymun,municipality,IVA,San Andres,4,2,0,fuzzy,100
+0405641,citymun,municipality,IVA,San Antonio,4,3,0,fuzzy,100
+0405642,citymun,municipality,IVA,San Francisco,2,1,0,fuzzy,100
+0405644,citymun,municipality,IVA,San Narciso,3,1,0,fuzzy,100
+0405645,citymun,municipality,IVA,Sariaya,1,1,0,fuzzy,100
+0405646,citymun,municipality,IVA,Tagkawayan,1,1,0,fuzzy,100
+0405647,citymun,city,IVA,Tayabas City,6,3,0,fuzzy,100
+0405648,citymun,municipality,IVA,Tiaong,1,1,0,fuzzy,100
+0405649,citymun,municipality,IVA,Unisan,4,3,0,fuzzy,100
+04058,province,province,IVA,Rizal,1,1,0,province,100
+0405801,citymun,municipality,IVA,Angono,1,1,0,fuzzy,100
+0405802,citymun,city,IVA,Antipolo City,1,1,0,fuzzy,100
+0405803,citymun,municipality,IVA,Baras,4,1,0,fuzzy,100
+0405804,citymun,municipality,IVA,Binangonan,1,1,0,fuzzy,100
+0405805,citymun,municipality,IVA,Cainta,1,1,0,fuzzy,100
+0405806,citymun,municipality,IVA,Cardona,3,2,0,fuzzy,100
+0405807,citymun,municipality,IVA,Jala-Jala,4,3,0,fuzzy,100
+0405808,citymun,municipality,IVA,Rodriguez,1,1,0,fuzzy,100
+0405809,citymun,municipality,IVA,Morong,2,1,0,fuzzy,100
+0405810,citymun,municipality,IVA,Pililia,1,1,0,override,100
+0405811,citymun,municipality,IVA,San Mateo,1,1,0,fuzzy,100
+0405812,citymun,municipality,IVA,Tanay,1,1,0,fuzzy,100
+0405813,citymun,municipality,IVA,Taytay,1,1,0,fuzzy,100
+0405814,citymun,municipality,IVA,Teresa,2,1,0,fuzzy,100
+0431200,citymun,city,IVA,Lucena City,2,1,0,fuzzy,100
+05005,province,province,V,Albay,1,1,0,province,100
+0500501,citymun,municipality,V,Bacacay,2,1,0,fuzzy,100
+0500502,citymun,municipality,V,Camalig,1,1,0,fuzzy,100
+0500503,citymun,municipality,V,Daraga,1,1,0,fuzzy,100
+0500504,citymun,municipality,V,Guinobatan,1,1,0,fuzzy,100
+0500505,citymun,municipality,V,Jovellar,4,1,0,fuzzy,100
+0500506,citymun,city,V,Legazpi City,2,1,0,fuzzy,100
+0500507,citymun,municipality,V,Libon,1,1,0,fuzzy,100
+0500508,citymun,city,V,Ligao City,4,3,0,fuzzy,100
+0500509,citymun,municipality,V,Malilipot,4,1,0,fuzzy,100
+0500510,citymun,municipality,V,Malinao,3,2,0,fuzzy,100
+0500511,citymun,municipality,V,Manito,4,2,0,fuzzy,100
+0500512,citymun,municipality,V,Oas,1,1,0,fuzzy,100
+0500513,citymun,municipality,V,Pio Duran,3,1,0,fuzzy,100
+0500514,citymun,municipality,V,Polangui,1,1,0,fuzzy,100
+0500515,citymun,municipality,V,Rapu-Rapu,3,2,0,fuzzy,100
+0500516,citymun,municipality,V,Santo Domingo,4,2,0,fuzzy,100
+0500517,citymun,city,V,Tabaco City,4,3,0,fuzzy,100
+0500518,citymun,municipality,V,Tiwi,1,1,0,fuzzy,100
+05016,province,province,V,Norte,2,2,0,province,100
+0501601,citymun,municipality,V,Camarines Norte Basud,3,1,0,fuzzy,100
+0501602,citymun,municipality,V,Camarines Norte Capalonga,3,1,0,fuzzy,100
+0501603,citymun,municipality,V,Camarines Norte Daet,1,1,0,fuzzy,100
+0501604,citymun,municipality,V,Camarines Norte San Lorenzo Ruiz,5,5,0,fuzzy,100
+0501605,citymun,municipality,V,Camarines Norte Jose Panganiban,2,1,0,fuzzy,100
+0501606,citymun,municipality,V,Camarines Norte Labo,1,1,0,fuzzy,100
+0501607,citymun,municipality,V,Camarines Norte Mercedes,2,1,0,fuzzy,100
+0501608,citymun,municipality,V,Camarines Norte Paracale,3,1,0,fuzzy,100
+0501609,citymun,municipality,V,Camarines Norte San Vicente,5,4,0,fuzzy,100
+0501610,citymun,municipality,V,Camarines Norte Santa Elena,3,1,0,fuzzy,100
+0501611,citymun,municipality,V,Camarines Norte Talisay,4,4,0,fuzzy,100
+0501612,citymun,municipality,V,Camarines Norte Vinzons,3,2,0,fuzzy,100
+05017,province,province,V,Sur,1,1,0,province,100
+0501701,citymun,municipality,V,Camarines Sur Baao,3,1,0,fuzzy,100
+0501702,citymun,municipality,V,Camarines Sur Balatan,4,3,0,fuzzy,100
+0501703,citymun,municipality,V,Camarines Sur Bato,3,2,0,fuzzy,100
+0501704,citymun,municipality,V,Camarines Sur Bombon,5,4,0,fuzzy,100
+0501705,citymun,municipality,V,Camarines Sur Buhi,1,1,0,fuzzy,100
+0501706,citymun,municipality,V,Camarines Sur Bula,2,1,0,fuzzy,100
+0501707,citymun,municipality,V,Camarines Sur Cabusao,5,4,0,fuzzy,100
+0501708,citymun,municipality,V,Camarines Sur Calabanga,1,1,0,fuzzy,100
+0501709,citymun,municipality,V,Camarines Sur Camaligan,5,4,0,fuzzy,100
+0501710,citymun,municipality,V,Camarines Sur Canaman,4,3,0,fuzzy,100
+0501711,citymun,municipality,V,Camarines Sur Caramoan,2,1,0,fuzzy,100
+0501712,citymun,municipality,V,Camarines Sur Del Gallego,4,3,0,fuzzy,100
+0501713,citymun,municipality,V,Camarines Sur Gainza,5,5,0,fuzzy,100
+0501714,citymun,municipality,V,Garchitorena,4,2,0,fuzzy,100
+0501715,citymun,municipality,V,Goa,2,1,0,fuzzy,100
+0501716,citymun,city,V,Sur Iriga City,4,3,0,fuzzy,100
+0501717,citymun,municipality,V,Lagonoy,2,1,0,fuzzy,100
+0501718,citymun,municipality,V,Libmanan,1,1,0,fuzzy,100
+0501719,citymun,municipality,V,Lupi,3,2,0,fuzzy,100
+0501720,citymun,municipality,V,Magarao,4,4,0,fuzzy,100
+0501721,citymun,municipality,V,Milaor,4,3,0,fuzzy,100
+0501722,citymun,municipality,V,Minalabac,3,1,0,fuzzy,100
+0501723,citymun,municipality,V,Nabua,1,1,0,fuzzy,100
+0501724,citymun,city,V,Sur Naga City,2,1,0,fuzzy,100
+0501725,citymun,municipality,V,Ocampo,3,2,0,fuzzy,100
+0501726,citymun,municipality,V,Pamplona,4,3,0,fuzzy,100
+0501727,citymun,municipality,V,Pasacao,3,1,0,fuzzy,100
+0501728,citymun,municipality,V,Pili,1,1,0,fuzzy,100
+0501729,citymun,municipality,V,Presentacion,4,3,0,fuzzy,100
+0501730,citymun,municipality,V,Ragay,1,1,0,fuzzy,100
+0501731,citymun,municipality,V,Sagñay,4,2,0,fuzzy,100
+0501732,citymun,municipality,V,San Fernando,4,2,0,fuzzy,100
+0501733,citymun,municipality,V,San Jose,4,3,0,fuzzy,100
+0501734,citymun,municipality,V,Sipocot,1,1,0,fuzzy,100
+0501735,citymun,municipality,V,Siruma,4,4,0,fuzzy,100
+0501736,citymun,municipality,V,Tigaon,3,1,0,fuzzy,100
+0501737,citymun,municipality,V,Tinambac,1,1,0,fuzzy,100
+05020,province,province,V,Catanduanes,3,3,0,province,100
+0502001,citymun,municipality,V,Bagamanoc,5,4,0,fuzzy,100
+0502002,citymun,municipality,V,Baras,5,4,0,fuzzy,100
+0502003,citymun,municipality,V,Bato,5,4,0,fuzzy,100
+0502004,citymun,municipality,V,Caramoran,3,2,0,fuzzy,100
+0502005,citymun,municipality,V,Gigmoto,5,4,0,fuzzy,100
+0502006,citymun,municipality,V,Pandan,4,4,0,fuzzy,100
+0502007,citymun,municipality,V,Panganiban,5,4,0,fuzzy,100
+0502008,citymun,municipality,V,San Andres,3,2,0,fuzzy,100
+0502009,citymun,municipality,V,San Miguel,5,4,0,fuzzy,100
+0502010,citymun,municipality,V,Viga,4,3,0,fuzzy,100
+0502011,citymun,municipality,V,Virac,1,1,0,fuzzy,100
+05041,province,province,V,Masbate,2,2,0,province,100
+0504101,citymun,municipality,V,Aroroy,1,1,0,fuzzy,100
+0504102,citymun,municipality,V,Baleno,4,2,0,fuzzy,100
+0504103,citymun,municipality,V,Balud,4,2,0,fuzzy,100
+0504104,citymun,municipality,V,Batuan,5,4,0,fuzzy,100
+0504105,citymun,municipality,V,Cataingan,2,1,0,fuzzy,100
+0504106,citymun,municipality,V,Cawayan,2,1,0,fuzzy,100
+0504107,citymun,municipality,V,Claveria,3,1,0,fuzzy,100
+0504108,citymun,municipality,V,Dimasalang,4,3,0,fuzzy,100
+0504109,citymun,municipality,V,Esperanza,5,4,0,fuzzy,100
+0504110,citymun,municipality,V,Mandaon,3,1,0,fuzzy,100
+0504111,citymun,city,V,Masbate City,4,3,0,fuzzy,100
+0504112,citymun,municipality,V,Milagros,1,1,0,fuzzy,100
+0504113,citymun,municipality,V,Mobo,4,2,0,fuzzy,100
+0504114,citymun,municipality,V,Monreal,4,3,0,fuzzy,100
+0504115,citymun,municipality,V,Palanas,4,3,0,fuzzy,100
+0504116,citymun,municipality,V,Pio V. Corpuz,4,4,0,fuzzy,91
+0504117,citymun,municipality,V,Placer,2,1,0,fuzzy,100
+0504118,citymun,municipality,V,San Fernando,5,4,0,fuzzy,100
+0504119,citymun,municipality,V,San Jacinto,4,3,0,fuzzy,100
+0504120,citymun,municipality,V,San Pascual,3,1,0,fuzzy,100
+0504121,citymun,municipality,V,Uson,3,1,0,fuzzy,100
+05062,province,province,V,Sorsogon,2,2,0,province,100
+0506202,citymun,municipality,V,Barcelona,5,4,0,fuzzy,100
+0506203,citymun,municipality,V,Bulan,1,1,0,fuzzy,100
+0506204,citymun,municipality,V,Bulusan,4,3,0,fuzzy,100
+0506205,citymun,municipality,V,Casiguran,4,3,0,fuzzy,100
+0506206,citymun,municipality,V,Castilla,3,1,0,fuzzy,100
+0506207,citymun,municipality,V,Donsol,3,1,0,fuzzy,100
+0506208,citymun,municipality,V,Gubat,2,1,0,fuzzy,100
+0506209,citymun,municipality,V,Irosin,2,1,0,fuzzy,100
+0506210,citymun,municipality,V,Juban,4,2,0,fuzzy,100
+0506211,citymun,municipality,V,Magallanes,3,2,0,fuzzy,100
+0506212,citymun,municipality,V,Matnog,3,1,0,fuzzy,100
+0506213,citymun,municipality,V,Pilar,1,1,0,fuzzy,100
+0506214,citymun,municipality,V,Prieto Diaz,5,4,0,fuzzy,100
+0506215,citymun,municipality,V,Santa Magdalena,5,4,0,fuzzy,100
+0506216,citymun,city,V,Sorsogon City,3,2,0,fuzzy,100
+06004,province,province,VI,Aklan,2,2,0,province,100
+0600401,citymun,municipality,,Altavas,4,3,0,fuzzy,100
+0600402,citymun,municipality,,Balete,4,3,0,fuzzy,100
+0600403,citymun,municipality,,Banga,3,2,0,fuzzy,100
+0600404,citymun,municipality,,Batan,4,3,0,fuzzy,100
+0600405,citymun,municipality,,Buruanga,5,4,0,fuzzy,100
+0600406,citymun,municipality,,Ibajay,3,1,0,fuzzy,100
+0600407,citymun,municipality,,Kalibo,1,1,0,fuzzy,100
+0600408,citymun,municipality,,Lezo,5,4,0,fuzzy,100
+0600409,citymun,municipality,,Libacao,3,2,0,fuzzy,100
+0600410,citymun,municipality,,Madalag,4,3,0,fuzzy,100
+0600411,citymun,municipality,,Makato,4,3,0,fuzzy,100
+0600412,citymun,municipality,,Malay,1,1,0,fuzzy,100
+0600413,citymun,municipality,,Malinao,4,3,0,fuzzy,100
+0600414,citymun,municipality,,Nabas,4,2,0,fuzzy,100
+0600415,citymun,municipality,,New Washington,3,2,0,fuzzy,100
+0600416,citymun,municipality,,Numancia,4,3,0,fuzzy,100
+0600417,citymun,municipality,,Tangalan,5,4,0,fuzzy,100
+06006,province,province,VI,Antique,2,2,0,province,100
+0600601,citymun,municipality,,Anini-y,4,4,0,override,100
+0600602,citymun,municipality,,Barbaza,4,3,0,fuzzy,100
+0600603,citymun,municipality,,Belison,5,5,0,fuzzy,100
+0600604,citymun,municipality,,Bugasong,3,2,0,fuzzy,100
+0600605,citymun,municipality,,Caluya,1,1,0,fuzzy,100
+0600606,citymun,municipality,,Culasi,3,1,0,fuzzy,100
+0600607,citymun,municipality,,Tobias Fornier,4,3,0,fuzzy,100
+0600608,citymun,municipality,,Hamtic,3,2,0,fuzzy,100
+0600609,citymun,municipality,,Laua-an,4,3,0,fuzzy,100
+0600610,citymun,municipality,,Libertad,5,4,0,fuzzy,100
+0600611,citymun,municipality,,Pandan,4,2,0,fuzzy,100
+0600612,citymun,municipality,,Patnongon,3,2,0,fuzzy,100
+0600613,citymun,municipality,,San Jose,1,1,0,fuzzy,100
+0600614,citymun,municipality,,San Remigio,3,1,0,fuzzy,100
+0600615,citymun,municipality,,Sebaste,4,3,0,fuzzy,100
+0600616,citymun,municipality,,Sibalom,2,1,0,fuzzy,100
+0600617,citymun,municipality,,Tibiao,4,2,0,fuzzy,100
+0600618,citymun,municipality,,Valderrama,4,2,0,fuzzy,100
+06019,province,province,VI,Capiz,2,2,0,province,100
+0601901,citymun,municipality,,Cuartero,4,3,0,fuzzy,100
+0601902,citymun,municipality,,Dao,4,3,0,fuzzy,100
+0601903,citymun,municipality,,Dumalag,4,3,0,fuzzy,100
+0601904,citymun,municipality,,Dumarao,2,1,0,fuzzy,100
+0601905,citymun,municipality,,Ivisan,4,3,0,fuzzy,100
+0601906,citymun,municipality,,Jamindan,2,1,0,fuzzy,100
+0601907,citymun,municipality,,Ma-ayon,3,2,0,fuzzy,100
+0601908,citymun,municipality,,Mambusao,3,2,0,fuzzy,100
+0601909,citymun,municipality,,Panay,3,2,0,fuzzy,100
+0601910,citymun,municipality,,Panitan,3,2,0,fuzzy,100
+0601911,citymun,municipality,,Pilar,3,2,0,fuzzy,100
+0601912,citymun,municipality,,Pontevedra,3,1,0,fuzzy,100
+0601913,citymun,municipality,VI,President Roxas,4,3,0,fuzzy,100
+0601914,citymun,city,VI,Roxas City,3,2,0,fuzzy,100
+0601915,citymun,municipality,VI,Sapi-an,4,3,0,fuzzy,100
+0601916,citymun,municipality,VI,Sigma,4,3,0,fuzzy,100
+0601917,citymun,municipality,VI,Tapaz,1,1,0,fuzzy,100
+06030,province,province,VI,Iloilo,1,1,0,province,100
+0603001,citymun,municipality,VI,Ajuy,2,1,0,fuzzy,100
+0603002,citymun,municipality,VI,Alimodian,3,2,0,fuzzy,100
+0603003,citymun,municipality,VI,Anilao,4,3,0,fuzzy,100
+0603004,citymun,municipality,VI,Badiangan,4,4,0,fuzzy,100
+0603005,citymun,municipality,VI,Balasan,4,2,0,fuzzy,100
+0603006,citymun,municipality,VI,Banate,4,2,0,fuzzy,100
+0603007,citymun,municipality,VI,Barotac Nuevo,2,1,0,fuzzy,100
+0603008,citymun,municipality,VI,Barotac Viejo,3,1,0,fuzzy,100
+0603009,citymun,municipality,VI,Batad,5,4,0,fuzzy,100
+0603010,citymun,municipality,VI,Bingawan,5,4,0,fuzzy,100
+0603012,citymun,municipality,VI,Cabatuan,2,1,0,fuzzy,100
+0603013,citymun,municipality,VI,Calinog,1,1,0,fuzzy,100
+0603014,citymun,municipality,VI,Carles,2,1,0,fuzzy,100
+0603015,citymun,municipality,VI,Concepcion,3,1,0,fuzzy,100
+0603016,citymun,municipality,VI,Dingle,3,1,0,fuzzy,100
+0603017,citymun,municipality,VI,Duenas,4,3,0,fuzzy,100
+0603018,citymun,municipality,VI,Dumangas,1,1,0,fuzzy,100
+0603019,citymun,municipality,VI,Estancia,2,1,0,fuzzy,100
+0603020,citymun,municipality,VI,Guimbal,4,3,0,fuzzy,100
+0603021,citymun,municipality,VI,Igbaras,3,2,0,fuzzy,100
+0603023,citymun,municipality,VI,Janiuay,1,1,0,fuzzy,100
+0603025,citymun,municipality,VI,Lambunao,1,1,0,fuzzy,100
+0603026,citymun,municipality,VI,Leganes,4,2,0,fuzzy,100
+0603027,citymun,municipality,VI,Lemery,4,3,0,fuzzy,100
+0603028,citymun,municipality,VI,Leon,2,1,0,fuzzy,100
+0603029,citymun,municipality,VI,Maasin,3,2,0,fuzzy,100
+0603030,citymun,municipality,VI,Miagao,1,1,0,fuzzy,100
+0603031,citymun,municipality,VI,Mina,5,4,0,fuzzy,100
+0603032,citymun,municipality,VI,New Lucena,4,4,0,fuzzy,100
+0603034,citymun,municipality,VI,Oton,1,1,0,fuzzy,100
+0603035,citymun,city,VI,Passi City,4,3,0,fuzzy,100
+0603036,citymun,municipality,VI,Pavia,2,1,0,fuzzy,100
+0603037,citymun,municipality,VI,Pototan,1,1,0,fuzzy,100
+0603038,citymun,municipality,VI,San Dionisio,4,2,0,fuzzy,100
+0603039,citymun,municipality,VI,San Enrique,3,2,0,fuzzy,100
+0603040,citymun,municipality,VI,San Joaquin,2,1,0,fuzzy,100
+0603041,citymun,municipality,VI,San Miguel,4,3,0,fuzzy,100
+0603042,citymun,municipality,VI,San Rafael,5,4,0,fuzzy,100
+0603043,citymun,municipality,VI,Santa Barbara,2,1,0,fuzzy,100
+0603044,citymun,municipality,VI,Sara,2,1,0,fuzzy,100
+0603045,citymun,municipality,VI,Tigbauan,2,1,0,fuzzy,100
+0603046,citymun,municipality,VI,Tubungan,4,4,0,fuzzy,100
+0603047,citymun,municipality,VI,Zarraga,4,3,0,fuzzy,100
+06079,province,province,VI,Guimaras,3,3,0,province,100
+0607901,citymun,municipality,VI,Buenavista,2,1,0,fuzzy,100
+0607902,citymun,municipality,VI,Jordan,3,2,0,fuzzy,100
+0607903,citymun,municipality,VI,Nueva Valencia,3,2,0,fuzzy,100
+0607904,citymun,municipality,VI,San Lorenzo,5,3,0,fuzzy,100
+0607905,citymun,municipality,VI,Sibunag,4,3,0,fuzzy,100
+0631000,citymun,city,VI,Iloilo City,1,1,0,fuzzy,100
+07012,province,province,VII,Bohol,1,1,0,province,100
+0701201,citymun,municipality,VII,Alburquerque,5,4,0,fuzzy,100
+0701202,citymun,municipality,VII,Alicia,4,3,0,fuzzy,100
+0701203,citymun,municipality,VII,Anda,5,4,0,fuzzy,100
+0701204,citymun,municipality,VII,Antequera,4,4,0,fuzzy,100
+0701205,citymun,municipality,VII,Baclayon,4,4,0,fuzzy,100
+0701206,citymun,municipality,VII,Balilihan,4,3,0,fuzzy,100
+0701207,citymun,municipality,VII,Batuan,4,4,0,fuzzy,100
+0701208,citymun,municipality,VII,Bilar,4,4,0,fuzzy,100
+0701209,citymun,municipality,VII,Buenavista,4,2,0,fuzzy,100
+0701210,citymun,municipality,VII,Calape,3,2,0,fuzzy,100
+0701211,citymun,municipality,VII,Candijay,4,3,0,fuzzy,100
+0701212,citymun,municipality,VII,Carmen,1,1,0,fuzzy,100
+0701213,citymun,municipality,VII,Catigbian,4,3,0,fuzzy,100
+0701214,citymun,municipality,VII,Clarin,5,4,0,fuzzy,100
+0701215,citymun,municipality,VII,Corella,5,4,0,fuzzy,100
+0701216,citymun,municipality,VII,Cortes,5,4,0,fuzzy,100
+0701217,citymun,municipality,VII,Dagohoy,5,4,0,fuzzy,100
+0701218,citymun,municipality,VII,Danao,4,3,0,fuzzy,100
+0701219,citymun,municipality,VII,Dauis,4,1,0,fuzzy,100
+0701220,citymun,municipality,VII,Dimiao,4,4,0,fuzzy,100
+0701221,citymun,municipality,VII,Duero,4,4,0,fuzzy,100
+0701222,citymun,municipality,VII,Garcia Hernandez,4,3,0,fuzzy,100
+0701223,citymun,municipality,VII,Guindulman,4,2,0,fuzzy,100
+0701224,citymun,municipality,VII,Inabanga,3,1,0,fuzzy,100
+0701225,citymun,municipality,VII,Jagna,3,2,0,fuzzy,100
+0701226,citymun,municipality,VII,Getafe,3,2,0,fuzzy,100
+0701227,citymun,municipality,VII,Lila,5,4,0,fuzzy,100
+0701228,citymun,municipality,VII,Loay,5,4,0,fuzzy,100
+0701229,citymun,municipality,VII,Loboc,4,3,0,fuzzy,100
+0701230,citymun,municipality,VII,Loon,2,1,0,fuzzy,100
+0701231,citymun,municipality,VII,Mabini,4,3,0,fuzzy,100
+0701232,citymun,municipality,VII,Maribojoc,4,3,0,fuzzy,100
+0701233,citymun,municipality,VII,Panglao,4,1,0,fuzzy,100
+0701234,citymun,municipality,VII,Pilar,4,3,0,fuzzy,100
+0701235,citymun,municipality,VII,Pres. Carlos P. Garcia,4,3,0,override,100
+0701236,citymun,municipality,VII,Sagbayan,4,3,0,fuzzy,100
+0701237,citymun,municipality,VII,San Isidro,5,5,0,fuzzy,100
+0701238,citymun,municipality,VII,San Miguel,4,2,0,fuzzy,100
+0701239,citymun,municipality,VII,Sevilla,5,4,0,fuzzy,100
+0701240,citymun,municipality,VII,Sierra Bullones,3,2,0,fuzzy,100
+0701241,citymun,municipality,VII,Sikatuna,5,5,0,fuzzy,100
+0701242,citymun,city,VII,Based on,3,2,1,override,100
+0701243,citymun,municipality,VII,Talibon,1,1,0,fuzzy,100
+0701244,citymun,municipality,VII,Trinidad,3,1,0,fuzzy,100
+0701245,citymun,municipality,VII,Tubigon,1,1,0,fuzzy,100
+0701246,citymun,municipality,VII,Ubay,1,,0,fuzzy,100
+0701247,citymun,municipality,VII,Valencia,4,3,0,fuzzy,100
+0701248,citymun,municipality,VII,Bien Unido,4,4,0,fuzzy,100
+07022,province,province,VII,Cebu,1,1,0,province,100
+0702201,citymun,municipality,VII,Alcantara,5,4,0,fuzzy,100
+0702202,citymun,municipality,VII,Alcoy,5,4,0,fuzzy,100
+0702203,citymun,municipality,VII,Alegria,4,3,0,fuzzy,100
+0702204,citymun,municipality,VII,Aloguinsan,4,3,0,fuzzy,100
+0702205,citymun,municipality,VII,Argao,1,1,0,fuzzy,100
+0702206,citymun,municipality,VII,Asturias,3,1,0,fuzzy,100
+0702207,citymun,municipality,VII,Badian,3,1,0,fuzzy,100
+0702208,citymun,municipality,VII,Balamban,1,1,0,fuzzy,100
+0702209,citymun,municipality,VII,Bantayan,1,1,0,fuzzy,100
+0702210,citymun,municipality,VII,Barili,2,1,0,fuzzy,100
+0702211,citymun,city,VII,Bogo City,6,4,0,fuzzy,100
+0702212,citymun,municipality,VII,Boljoon,5,4,0,fuzzy,100
+0702213,citymun,municipality,VII,Borbon,4,2,0,fuzzy,100
+0702214,citymun,city,VII,Carcar City,5,3,0,fuzzy,100
+0702215,citymun,municipality,VII,Carmen,3,1,0,fuzzy,100
+0702216,citymun,municipality,VII,Catmon,4,2,0,fuzzy,100
+0702218,citymun,municipality,VII,Compostela,3,1,0,fuzzy,100
+0702219,citymun,municipality,VII,Consolacion,1,1,0,fuzzy,100
+0702220,citymun,municipality,VII,Cordova,3,1,0,fuzzy,100
+0702221,citymun,municipality,VII,Daanbantayan,1,1,0,fuzzy,100
+0702222,citymun,municipality,VII,Dalaguete,1,1,0,fuzzy,100
+0702223,citymun,city,VII,Danao City,3,2,0,fuzzy,100
+0702224,citymun,municipality,VII,Dumanjug,3,1,0,fuzzy,100
+0702225,citymun,municipality,VII,Ginatilan,5,4,0,fuzzy,100
+0702227,citymun,municipality,VII,Liloan,1,1,0,fuzzy,100
+0702228,citymun,municipality,VII,Madridejos,4,1,0,fuzzy,100
+0702229,citymun,municipality,VII,Malabuyoc,5,4,0,fuzzy,100
+0702231,citymun,municipality,VII,Medellin,2,1,0,fuzzy,100
+0702232,citymun,municipality,VII,Minglanilla,1,1,0,fuzzy,100
+0702233,citymun,municipality,VII,Moalboal,4,1,0,fuzzy,100
+0702234,citymun,city,VII,Naga City,5,3,0,fuzzy,100
+0702235,citymun,municipality,VII,Oslob,4,1,0,fuzzy,100
+0702236,citymun,municipality,VII,Pilar,5,5,0,fuzzy,100
+0702237,citymun,municipality,VII,Pinamungajan,2,1,0,fuzzy,100
+0702238,citymun,municipality,VII,Poro,4,3,0,fuzzy,100
+0702239,citymun,municipality,VII,Ronda,5,4,0,fuzzy,100
+0702240,citymun,municipality,VII,Samboan,5,4,0,fuzzy,100
+0702241,citymun,municipality,VII,San Fernando,2,1,0,fuzzy,100
+0702242,citymun,municipality,VII,San Francisco,3,1,0,fuzzy,100
+0702243,citymun,municipality,VII,San Remigio,3,1,0,fuzzy,100
+0702244,citymun,municipality,VII,Santa Fe,4,3,0,fuzzy,100
+0702245,citymun,municipality,VII,Santander,4,4,0,fuzzy,100
+0702246,citymun,municipality,VII,Sibonga,3,1,0,fuzzy,100
+0702247,citymun,municipality,VII,Sogod,4,2,0,fuzzy,100
+0702248,citymun,municipality,VII,Tabogon,3,2,0,fuzzy,100
+0702249,citymun,municipality,VII,Tabuelan,4,2,0,fuzzy,100
+0702250,citymun,city,VII,Talisay City,3,1,0,fuzzy,100
+0702251,citymun,city,VII,Toledo City,3,1,0,fuzzy,100
+0702252,citymun,municipality,VII,Tuburan,2,1,0,fuzzy,100
+0702253,citymun,municipality,VII,Tudela,5,4,0,fuzzy,100
+0730600,citymun,city,VII,Cebu City,1,1,0,fuzzy,100
+0731100,citymun,city,VII,Lapu-Lapu City,1,1,0,fuzzy,100
+0731300,citymun,city,VII,Mandaue City,1,1,0,fuzzy,100
+0802601,citymun,municipality,VIII,Arteche,3,4,0,fuzzy,100
+0802602,citymun,municipality,VIII,Balangiga,4,3,0,fuzzy,100
+0802603,citymun,municipality,VIII,Balangkayan,5,4,0,fuzzy,100
+0802604,citymun,city,VIII,Borongan City,1,2,1,fuzzy,100
+0802605,citymun,municipality,VIII,Can-Avid,4,2,0,fuzzy,100
+0802606,citymun,municipality,VIII,Dolores,3,1,0,fuzzy,100
+0802607,citymun,municipality,VIII,Macarthur,5,4,0,fuzzy,100
+0802608,citymun,municipality,VIII,Giporlos,5,4,0,fuzzy,100
+0802609,citymun,municipality,VIII,Guiuan,2,1,0,fuzzy,100
+0802610,citymun,municipality,VIII,Hernani,5,5,0,fuzzy,100
+0802611,citymun,municipality,VIII,Jipapad,5,4,0,fuzzy,100
+0802612,citymun,municipality,VIII,Lawaan,5,4,0,fuzzy,100
+0802613,citymun,municipality,VIII,Llorente,3,1,0,fuzzy,100
+0802614,citymun,municipality,VIII,Maslog,5,4,0,fuzzy,100
+0802615,citymun,municipality,VIII,Maydolong,4,2,0,fuzzy,100
+0802616,citymun,municipality,VIII,Mercedes,5,5,0,fuzzy,100
+0802617,citymun,municipality,VIII,Oras,3,2,0,fuzzy,100
+0802618,citymun,municipality,VIII,Quinapondan,5,4,0,fuzzy,100
+0802619,citymun,municipality,VIII,Salcedo,5,3,0,fuzzy,100
+0802620,citymun,municipality,VIII,San Julian,5,4,0,fuzzy,100
+0802621,citymun,municipality,VIII,San Policarpo,5,4,0,fuzzy,100
+0802622,citymun,municipality,VIII,Sulat,4,4,0,fuzzy,100
+0802623,citymun,municipality,VIII,Taft,4,3,0,fuzzy,100
+08037,province,province,VIII,Leyte,1,1,0,province,100
+0803701,citymun,municipality,VIII,Abuyog,1,1,0,fuzzy,100
+0803702,citymun,municipality,VIII,Alangalang,2,1,0,fuzzy,100
+0803703,citymun,municipality,VIII,Albuera,3,1,0,fuzzy,100
+0803705,citymun,municipality,VIII,Babatngon,4,3,0,fuzzy,100
+0803706,citymun,municipality,VIII,Barugo,4,3,0,fuzzy,100
+0803707,citymun,municipality,VIII,Bato,4,2,0,fuzzy,100
+0803708,citymun,city,VIII,Baybay City,1,1,1,fuzzy,100
+0803710,citymun,municipality,VIII,Burauen,1,1,0,fuzzy,100
+0803713,citymun,municipality,VIII,Calubian,4,3,0,fuzzy,100
+0803714,citymun,municipality,VIII,Capoocan,4,2,0,fuzzy,100
+0803715,citymun,municipality,VIII,Carigara,2,1,0,fuzzy,100
+0803717,citymun,municipality,VIII,Dagami,3,2,0,fuzzy,100
+0803718,citymun,municipality,VIII,Dulag,3,2,0,fuzzy,100
+0803719,citymun,municipality,VIII,Hilongos,2,1,0,fuzzy,100
+0803720,citymun,municipality,VIII,Hindang,5,4,0,fuzzy,100
+0803721,citymun,municipality,VIII,Inopacan,4,4,0,fuzzy,100
+0803722,citymun,municipality,VIII,Isabel,1,1,0,fuzzy,100
+0803723,citymun,municipality,VIII,Jaro,3,1,0,fuzzy,100
+0803724,citymun,municipality,VIII,Javier,4,3,0,fuzzy,100
+0803725,citymun,municipality,VIII,Julita,5,4,0,fuzzy,100
+0803726,citymun,municipality,VIII,Kananga,1,1,0,fuzzy,100
+0803728,citymun,municipality,VIII,La Paz,5,4,0,fuzzy,100
+0803729,citymun,municipality,VIII,Leyte,4,2,0,fuzzy,100
+0803730,citymun,municipality,VIII,Macarthur,5,4,0,fuzzy,100
+0803731,citymun,municipality,VIII,Mahaplag,4,3,0,fuzzy,100
+0803733,citymun,municipality,VIII,Matag-Ob,4,4,0,fuzzy,100
+0803734,citymun,municipality,VIII,Matalom,3,2,0,fuzzy,100
+0803735,citymun,municipality,VIII,Mayorga,5,4,0,fuzzy,100
+0803736,citymun,municipality,VIII,Merida,5,3,0,fuzzy,100
+0803738,citymun,city,VIII,Ormoc City,1,1,0,fuzzy,100
+0803739,citymun,municipality,VIII,Palo,3,1,0,fuzzy,100
+0803740,citymun,municipality,VIII,Palompon,2,1,0,fuzzy,100
+0803741,citymun,municipality,VIII,Pastrana,5,4,0,fuzzy,100
+0803742,citymun,municipality,VIII,San Isidro,4,3,0,fuzzy,100
+0803743,citymun,municipality,VIII,San Miguel,4,3,0,fuzzy,100
+0803744,citymun,municipality,VIII,Santa Fe,5,4,0,fuzzy,100
+0803745,citymun,municipality,VIII,Tabango,4,3,0,fuzzy,100
+0803746,citymun,municipality,VIII,Tabontabon,5,5,0,fuzzy,100
+0803748,citymun,municipality,VIII,Tanauan,2,1,0,fuzzy,100
+0803749,citymun,municipality,VIII,Tolosa,5,4,0,fuzzy,100
+0803750,citymun,municipality,VIII,Tunga,6,5,0,fuzzy,100
+0803751,citymun,municipality,VIII,Villaba,3,2,0,fuzzy,100
+08048,province,province,VIII,Samar,2,1,0,province,100
+0804801,citymun,municipality,VIII,Allen,5,4,0,fuzzy,100
+0804802,citymun,municipality,VIII,Biri,5,5,0,fuzzy,100
+0804803,citymun,municipality,VIII,Boben,4,3,0,override,100
+0804804,citymun,municipality,VIII,Capul,5,5,0,fuzzy,100
+0804805,citymun,municipality,VIII,Catarman,1,1,0,fuzzy,100
+0804806,citymun,municipality,VIII,Catubig,3,2,0,fuzzy,100
+0804807,citymun,municipality,VIII,Gamay,4,3,0,fuzzy,100
+0804808,citymun,municipality,VIII,Laoang,2,1,0,fuzzy,100
+0804809,citymun,municipality,VIII,Lapinig,5,5,0,fuzzy,100
+0804810,citymun,municipality,VIII,Las Navas,3,2,0,fuzzy,100
+0804811,citymun,municipality,VIII,Lavezares,4,3,0,fuzzy,100
+0804812,citymun,municipality,VIII,Mapanas,5,4,0,fuzzy,100
+0804813,citymun,municipality,VIII,Mondragon,3,1,0,fuzzy,100
+0804814,citymun,municipality,VIII,Palapag,3,2,0,fuzzy,100
+0804815,citymun,municipality,VIII,Pambujan,4,2,0,fuzzy,100
+0804816,citymun,municipality,VIII,Rosario,5,5,0,fuzzy,100
+0804817,citymun,municipality,VIII,San Antonio,5,5,0,fuzzy,100
+0804818,citymun,municipality,VIII,San Isidro,4,2,0,fuzzy,100
+0804819,citymun,municipality,VIII,San Jose,5,4,0,fuzzy,100
+0804820,citymun,municipality,VIII,San Roque,4,3,0,fuzzy,100
+0804821,citymun,municipality,VIII,San Vicente,6,5,0,fuzzy,100
+0804822,citymun,municipality,VIII,Silvino Lobos,4,3,0,fuzzy,100
+0804823,citymun,municipality,VIII,Victoria,5,4,0,fuzzy,100
+0804824,citymun,municipality,VIII,Lope De Vega,4,3,0,fuzzy,100
+08060,province,province,VIII,Samar,1,1,0,province,100
+0806001,citymun,municipality,VIII,Almagro,5,5,0,fuzzy,100
+0806002,citymun,municipality,VIII,Basey,1,1,0,fuzzy,100
+0806003,citymun,city,VIII,Calbayog City,1,1,0,fuzzy,100
+0806004,citymun,municipality,VIII,Calbiga,4,2,0,fuzzy,100
+0806005,citymun,city,VIII,Catbalogan City,5,3,0,fuzzy,100
+0806006,citymun,municipality,VIII,Daram,3,2,0,fuzzy,100
+0806007,citymun,municipality,VIII,Gandara,2,1,0,fuzzy,100
+0806008,citymun,municipality,VIII,Hinabangan,4,2,0,fuzzy,100
+0806009,citymun,municipality,VIII,Jiabong,5,4,0,fuzzy,100
+0806010,citymun,municipality,VIII,Marabut,5,4,0,fuzzy,100
+0806011,citymun,municipality,VIII,Matuguinao,5,4,0,fuzzy,100
+0806012,citymun,municipality,VIII,Motiong,4,4,0,fuzzy,100
+0806013,citymun,municipality,VIII,Pinabacdao,4,3,0,fuzzy,100
+0806014,citymun,municipality,VIII,San Jose De Buan,4,3,0,fuzzy,100
+0806015,citymun,municipality,VIII,San Sebastian,6,5,0,fuzzy,100
+0806016,citymun,municipality,VIII,Santa Margarita,4,3,0,fuzzy,100
+0806017,citymun,municipality,VIII,Santa Rita,3,1,0,fuzzy,100
+0806018,citymun,municipality,VIII,Santo Niño,5,5,0,fuzzy,100
+0806019,citymun,municipality,VIII,Talalora,6,5,0,fuzzy,100
+0806020,citymun,municipality,VIII,Tarangnan,4,3,0,fuzzy,100
+0806021,citymun,municipality,VIII,Villareal,4,3,0,fuzzy,100
+0806022,citymun,municipality,VIII,Paranas,2,1,0,fuzzy,100
+0806023,citymun,municipality,VIII,Zumarraga,5,4,0,fuzzy,100
+0806024,citymun,municipality,VIII,Tagapul-An,5,5,0,fuzzy,100
+0806025,citymun,municipality,VIII,San Jorge,4,3,0,fuzzy,100
+0806026,citymun,municipality,VIII,Pagsanghan,5,5,0,fuzzy,100
+08064,province,province,VIII,Leyte,3,1,0,province,100
+0806401,citymun,municipality,VIII,Anahawan,5,5,0,fuzzy,100
+0806402,citymun,municipality,VIII,Bontoc,4,3,0,fuzzy,100
+0806403,citymun,municipality,VIII,Hinunangan,3,2,0,fuzzy,100
+0806404,citymun,municipality,VIII,Hinundayan,5,4,0,fuzzy,100
+0806405,citymun,municipality,VIII,Libagon,5,4,0,fuzzy,100
+0806406,citymun,municipality,VIII,Liloan,4,3,0,fuzzy,100
+0806407,citymun,city,VIII,Maasin City,4,3,0,fuzzy,100
+0806408,citymun,municipality,VIII,Macrohon,4,3,0,fuzzy,100
+0806409,citymun,municipality,VIII,Malitbog,4,4,0,fuzzy,100
+0806410,citymun,municipality,VIII,Padre Burgos,5,5,0,fuzzy,100
+0806411,citymun,municipality,VIII,Pintuyan,5,5,0,fuzzy,100
+0806412,citymun,municipality,VIII,Saint Bernard,4,3,0,fuzzy,100
+0806413,citymun,municipality,VIII,San Francisco,5,4,0,fuzzy,100
+0806414,citymun,municipality,VIII,San Juan,5,4,0,fuzzy,100
+0806415,citymun,municipality,VIII,San Ricardo,5,5,0,fuzzy,100
+0806416,citymun,municipality,VIII,Silago,4,4,0,fuzzy,100
+0806417,citymun,municipality,VIII,Sogod,2,1,0,fuzzy,100
+0806418,citymun,municipality,VIII,Tomas Oppus,5,4,0,fuzzy,100
+0806419,citymun,municipality,VIII,Limasawa,6,5,0,fuzzy,100
+08078,province,province,VIII,Biliran,4,2,0,province,100
+0807801,citymun,municipality,VIII,Almeria,5,4,0,fuzzy,100
+0807802,citymun,municipality,VIII,Biliran,5,4,0,fuzzy,100
+0807803,citymun,municipality,VIII,Cabucgayan,5,4,0,fuzzy,100
+0807804,citymun,municipality,VIII,Caibiran,5,4,0,fuzzy,100
+0807805,citymun,municipality,VIII,Culaba,5,4,0,fuzzy,100
+0807806,citymun,municipality,VIII,Kawayan,5,4,0,fuzzy,100
+0807807,citymun,municipality,VIII,Maripipi,5,5,0,fuzzy,100
+0807808,citymun,municipality,VIII,Naval,2,1,0,fuzzy,100
+0831600,citymun,city,VIII,Tacloban City,1,1,0,fuzzy,100
+09072,province,province,IX,Del Norte,1,1,0,province,100
+0907201,citymun,city,IX,Dapitan City,3,2,0,fuzzy,100
+0907202,citymun,city,IX,Dipolog City,3,2,0,fuzzy,100
+0907203,citymun,municipality,IX,Del Norte Katipunan,2,1,0,fuzzy,100
+0907204,citymun,municipality,IX,Del Norte La Libertad,5,5,0,fuzzy,100
+0907205,citymun,municipality,IX,Del Norte Labason,3,2,0,fuzzy,100
+0907206,citymun,municipality,IX,Del Norte Liloy,3,2,0,fuzzy,100
+0907207,citymun,municipality,IX,Del Norte Manukan,3,1,0,fuzzy,100
+0907208,citymun,municipality,IX,Del Norte Mutia,5,4,0,fuzzy,100
+0907209,citymun,municipality,IX,Del Norte Pinan,4,3,0,fuzzy,100
+0907210,citymun,municipality,IX,Del Norte Polanco,3,1,0,fuzzy,100
+0907211,citymun,municipality,IX,Del Norte Pres. Manuel A. Roxas,2,1,0,fuzzy,94
+0907212,citymun,municipality,IX,Del Norte Rizal,5,4,0,fuzzy,100
+0907213,citymun,municipality,IX,Del Norte Salug,3,2,0,fuzzy,100
+0907214,citymun,municipality,IX,Del Norte Sergio Osmeña Sr.,2,1,0,fuzzy,100
+0907215,citymun,municipality,IX,Del Norte Siayan,2,1,0,fuzzy,100
+0907216,citymun,municipality,IX,Del Norte Sibucao,1,1,0,fuzzy,92
+0907217,citymun,municipality,IX,Sibutad,5,4,0,fuzzy,100
+0907218,citymun,municipality,IX,Sindangan,1,1,0,fuzzy,100
+0907219,citymun,municipality,IX,Siocon,1,1,0,fuzzy,100
+0907220,citymun,municipality,IX,Sirawai,4,2,0,fuzzy,100
+0907221,citymun,municipality,IX,Tampilisan,4,3,0,fuzzy,100
+0907222,citymun,municipality,IX,Del Norte Jose Dalman,4,3,0,fuzzy,100
+0907223,citymun,municipality,IX,Del Norte Gutalac,2,1,0,fuzzy,100
+0907224,citymun,municipality,IX,Del Norte Baliguian,3,1,0,fuzzy,100
+0907225,citymun,municipality,IX,Del Norte Godod,4,3,0,fuzzy,100
+0907226,citymun,municipality,IX,Del Norte Bacungan,4,2,0,fuzzy,100
+0907227,citymun,municipality,IX,Del Norte Kalawit,4,3,0,fuzzy,100
+09073,province,province,IX,Del Sur,1,1,0,province,100
+0907302,citymun,municipality,IX,Aurora,2,1,0,fuzzy,100
+0907303,citymun,municipality,IX,Bayog,3,1,0,fuzzy,100
+0907305,citymun,municipality,IX,Dimataling,4,3,0,fuzzy,100
+0907306,citymun,municipality,IX,Dinas,4,2,0,fuzzy,100
+0907307,citymun,municipality,IX,Dumalinao,4,2,0,fuzzy,100
+0907308,citymun,municipality,IX,Dumingag,2,1,0,fuzzy,100
+0907311,citymun,municipality,IX,Kumalarang,4,2,0,fuzzy,100
+0907312,citymun,municipality,IX,Labangan,3,2,0,fuzzy,100
+0907313,citymun,municipality,IX,Lapuyan,3,2,0,fuzzy,100
+0907315,citymun,municipality,IX,Mahayag,3,1,0,fuzzy,100
+0907317,citymun,municipality,IX,Margosatubig,3,2,0,fuzzy,100
+0907318,citymun,municipality,IX,Midsalip,4,2,0,fuzzy,100
+0907319,citymun,municipality,IX,Malave,1,1,0,override,100
+0907322,citymun,city,IX,Pagadian City,2,1,0,fuzzy,100
+0907323,citymun,municipality,IX,Ramon Magsaysay,4,3,0,fuzzy,100
+0907324,citymun,municipality,IX,San Miguel,4,3,0,fuzzy,100
+0907325,citymun,municipality,IX,San Pablo,4,3,0,fuzzy,100
+0907327,citymun,municipality,IX,Tabina,4,3,0,fuzzy,100
+0907328,citymun,municipality,IX,Tambulig,4,2,0,fuzzy,100
+0907330,citymun,municipality,IX,Tukuran,4,2,0,fuzzy,100
+0907333,citymun,municipality,IX,Lakewood,4,3,0,fuzzy,100
+0907337,citymun,municipality,IX,Josefina,5,4,0,fuzzy,100
+0907338,citymun,municipality,IX,Pitogo,4,3,0,fuzzy,100
+0907340,citymun,municipality,IX,Sominot,5,4,0,fuzzy,100
+0907341,citymun,municipality,IX,A. Sagun,5,4,0,fuzzy,93
+0907343,citymun,municipality,IX,Guipos,4,4,0,fuzzy,100
+0907344,citymun,municipality,IX,Tigbao,5,4,0,fuzzy,100
+09083,province,province,IX,Sibugay,2,1,0,province,100
+0908301,citymun,municipality,IX,Alicia,3,2,0,fuzzy,100
+0908302,citymun,municipality,IX,Buug,3,2,0,fuzzy,100
+0908303,citymun,municipality,IX,Diplahan,3,1,0,fuzzy,100
+0908304,citymun,municipality,IX,Imelda,4,3,0,fuzzy,100
+0908305,citymun,municipality,IX,Ipil,1,1,0,fuzzy,100
+0908306,citymun,municipality,IX,Kabasalan,2,1,0,fuzzy,100
+0908307,citymun,municipality,IX,Mabuhay,4,3,0,fuzzy,100
+0908308,citymun,municipality,IX,Malangas,3,1,0,fuzzy,100
+0908309,citymun,municipality,IX,Naga,3,1,0,fuzzy,100
+0908310,citymun,municipality,IX,Olutanga,4,2,0,fuzzy,100
+0908311,citymun,municipality,IX,Payao,3,2,0,fuzzy,100
+0908312,citymun,municipality,IX,Roseller T. Lim,3,1,0,fuzzy,100
+0908313,citymun,municipality,IX,Siay,2,1,0,fuzzy,100
+0908314,citymun,municipality,IX,Talusan,5,4,0,fuzzy,100
+0908315,citymun,municipality,IX,Titay,2,1,0,fuzzy,100
+0908316,citymun,municipality,IX,Tungawan,2,1,0,fuzzy,100
+0931700,citymun,city,IX,Zamboanga City,1,1,0,fuzzy,100
+0990101,citymun,city,IX,Isabela City,4,3,0,fuzzy,100
+10013,province,province,X,Bukidnon,1,1,0,province,100
+1001301,citymun,municipality,X,Baungon,2,1,0,fuzzy,100
+1001302,citymun,municipality,X,Damulog,4,2,0,fuzzy,100
+1001303,citymun,municipality,X,Dangcagan,3,1,0,fuzzy,100
+1001304,citymun,municipality,X,Don Carlos,1,1,0,fuzzy,100
+1001305,citymun,municipality,X,Impasug-Ong,1,1,0,fuzzy,100
+1001306,citymun,municipality,X,Kadingilan,3,2,0,fuzzy,100
+1001307,citymun,municipality,X,Kalilangan,2,1,0,fuzzy,100
+1001308,citymun,municipality,X,Kibawe,2,1,0,fuzzy,100
+1001309,citymun,municipality,X,Kitaotao,1,1,0,fuzzy,100
+1001310,citymun,municipality,X,Lantapan,1,1,0,fuzzy,100
+1001311,citymun,municipality,X,Libona,1,1,0,fuzzy,100
+1001312,citymun,city,X,Malaybalay City,1,1,0,fuzzy,100
+1001313,citymun,municipality,X,Malitbog,2,1,0,fuzzy,100
+1001314,citymun,municipality,X,Manolo Fortich,1,1,0,fuzzy,100
+1001315,citymun,municipality,X,Maramag,1,1,0,fuzzy,100
+1001316,citymun,municipality,X,Pangantucan,1,1,0,fuzzy,100
+1001317,citymun,municipality,X,Quezon,1,1,0,fuzzy,100
+1001318,citymun,municipality,X,San Fernando,1,1,0,fuzzy,100
+1001319,citymun,municipality,X,Sumilao,4,2,0,fuzzy,100
+1001320,citymun,municipality,X,Talakag,1,1,0,fuzzy,100
+1001321,citymun,city,X,Valencia City,2,1,0,fuzzy,100
+1001322,citymun,municipality,X,Cabanglasan,3,2,0,fuzzy,100
+10018,province,province,X,Camiguin,5,3,0,province,100
+1001801,citymun,municipality,X,Catarman,5,4,0,fuzzy,100
+1001802,citymun,municipality,X,Guinsiliban,6,5,0,fuzzy,100
+1001803,citymun,municipality,X,Mahinog,5,4,0,fuzzy,100
+1001804,citymun,municipality,X,Mambajao,3,2,0,fuzzy,100
+1001805,citymun,municipality,X,Sagay,5,5,0,fuzzy,100
+10035,province,province,X,Lanao Del Norte,2,1,0,province,100
+1003501,citymun,municipality,X,Bacolod,4,3,0,fuzzy,100
+1003502,citymun,municipality,X,Baloi,3,1,0,fuzzy,100
+1003503,citymun,municipality,X,Baroy,4,4,0,fuzzy,100
+1003505,citymun,municipality,X,Kapatagan,2,1,0,fuzzy,100
+1003506,citymun,municipality,X,Sultan Naga Dimaporo,3,1,0,fuzzy,100
+1003507,citymun,municipality,X,Kauswagan,5,1,0,fuzzy,100
+1003508,citymun,municipality,X,Kolambugan,4,3,0,fuzzy,100
+1003509,citymun,municipality,X,Lala,1,1,0,fuzzy,100
+1003510,citymun,municipality,X,Linamon,5,4,0,fuzzy,100
+1003511,citymun,municipality,X,Magsaysay,5,3,0,fuzzy,100
+1003512,citymun,municipality,X,Maigo,4,3,0,fuzzy,100
+1003513,citymun,municipality,X,Matungao,5,4,0,fuzzy,100
+1003514,citymun,municipality,X,Munai,4,2,0,fuzzy,100
+1003515,citymun,municipality,X,Nunungan,3,1,0,fuzzy,100
+1003516,citymun,municipality,X,Pantao Ragat,4,3,0,fuzzy,100
+1003517,citymun,municipality,X,Poona Piagapo,4,2,0,fuzzy,100
+1003518,citymun,municipality,X,Salvador,5,3,0,fuzzy,100
+1003519,citymun,municipality,X,Sapad,5,4,0,fuzzy,100
+1003520,citymun,municipality,X,Tagoloan,5,4,0,fuzzy,100
+1003521,citymun,municipality,X,Tangcal,5,4,0,fuzzy,100
+1003522,citymun,municipality,X,Tubod,2,1,0,fuzzy,100
+1003523,citymun,municipality,X,Pantar,5,4,0,fuzzy,100
+10042,province,province,X,Occidental,2,1,0,province,100
+1004201,citymun,municipality,X,Aloran,4,3,0,fuzzy,100
+1004202,citymun,municipality,X,Baliangao,5,4,0,fuzzy,100
+1004203,citymun,municipality,X,Bonifacio,4,2,0,fuzzy,100
+1004204,citymun,municipality,X,Calamba,4,3,0,fuzzy,100
+1004205,citymun,municipality,X,Clarin,4,2,0,fuzzy,100
+1004206,citymun,municipality,X,Concepcion,6,5,0,fuzzy,100
+1004207,citymun,municipality,X,Jimenez,3,2,0,fuzzy,100
+1004208,citymun,municipality,X,Lopez Jaena,4,3,0,fuzzy,100
+1004209,citymun,city,X,Oroquieta City,4,3,0,fuzzy,100
+1004210,citymun,city,X,Ozamis City,3,2,0,override,100
+1004211,citymun,municipality,X,Panaon,5,4,0,fuzzy,100
+1004212,citymun,municipality,X,Plaridel,3,1,0,fuzzy,100
+1004213,citymun,municipality,X,Sapang Dalaga,5,4,0,fuzzy,100
+1004214,citymun,municipality,X,Sinacaban,5,4,0,fuzzy,100
+1004215,citymun,city,X,Tangub City,4,3,0,fuzzy,100
+1004216,citymun,municipality,X,Tudela,4,3,0,fuzzy,100
+1004217,citymun,municipality,X,Don Victoriano Chiongbian,4,3,0,fuzzy,100
+10043,province,province,X,Oriental,1,1,0,province,100
+1004301,citymun,municipality,X,Alubijid,4,1,0,fuzzy,100
+1004302,citymun,municipality,X,Balingasag,2,1,0,fuzzy,100
+1004303,citymun,municipality,X,Balingoan,5,4,0,fuzzy,100
+1004304,citymun,municipality,X,Binuangan,6,5,0,fuzzy,100
+1004306,citymun,municipality,X,Claveria,1,1,0,fuzzy,100
+1004307,citymun,city,X,El Salvador City,6,4,0,fuzzy,100
+1004308,citymun,city,X,Gingoog City,2,1,0,fuzzy,100
+1004309,citymun,municipality,X,Gitagum,5,2,0,fuzzy,100
+1004310,citymun,municipality,X,Initao,3,1,0,fuzzy,100
+1004311,citymun,municipality,X,Jasaan,2,1,0,fuzzy,100
+1004312,citymun,municipality,X,Kinoguitan,5,4,0,fuzzy,100
+1004313,citymun,municipality,X,Lagonglong,5,4,0,fuzzy,100
+1004314,citymun,municipality,X,Laguindingan,4,2,0,fuzzy,100
+1004315,citymun,municipality,X,Libertad,5,4,0,fuzzy,100
+1004316,citymun,municipality,X,Lugait,2,3,0,fuzzy,100
+1004317,citymun,municipality,X,Magsaysay,4,2,0,fuzzy,100
+1004318,citymun,municipality,X,Manticao,4,2,0,fuzzy,100
+1004319,citymun,municipality,X,Medina,4,2,0,fuzzy,100
+1004320,citymun,municipality,X,Naawan,4,3,0,fuzzy,100
+1004321,citymun,municipality,X,Opol,2,1,0,fuzzy,100
+1004322,citymun,municipality,X,Salay,4,2,0,fuzzy,100
+1004323,citymun,municipality,X,Sugbongcogon,5,5,0,fuzzy,100
+1004324,citymun,municipality,X,Tagoloan,1,1,0,fuzzy,100
+1004325,citymun,municipality,X,Talisayan,4,3,0,fuzzy,100
+1004326,citymun,municipality,X,Villanueva,2,1,0,fuzzy,100
+1030500,citymun,city,X,De Oro City,1,1,0,override,100
+1030900,citymun,city,X,Iligan City,1,1,0,fuzzy,100
+11023,province,province,XI,Davao Del Norte,1,1,0,province,100
+1102301,citymun,municipality,XI,Asuncion,1,1,0,fuzzy,100
+1102303,citymun,municipality,XI,Carmen,1,1,0,fuzzy,100
+1102305,citymun,municipality,XI,Kapalong,1,1,0,fuzzy,100
+1102314,citymun,municipality,XI,New Corella,2,1,0,fuzzy,100
+1102315,citymun,city,XI,Panabo City,3,1,0,fuzzy,100
+1102317,citymun,city,XI,Island Garden City of,4,2,0,override,100
+1102318,citymun,municipality,XI,Santo Tomas,1,1,0,fuzzy,100
+1102319,citymun,city,XI,Tagum City,1,1,0,fuzzy,100
+1102322,citymun,municipality,XI,Talaingod,2,1,0,fuzzy,100
+1102323,citymun,municipality,XI,Braulio E. Dujali,4,3,0,fuzzy,93
+1102324,citymun,municipality,XI,San Isidro,5,3,0,fuzzy,100
+11024,province,province,XI,Davao Del Sur,1,1,0,province,100
+1102401,citymun,municipality,XI,Bansalan,1,1,0,fuzzy,100
+1102403,citymun,city,XI,Digos City,2,1,0,fuzzy,100
+1102404,citymun,municipality,XI,Hagonoy,2,1,0,fuzzy,100
+1102406,citymun,municipality,XI,Kiblawan,2,1,0,fuzzy,100
+1102407,citymun,municipality,XI,Magsaysay,3,1,0,fuzzy,100
+1102408,citymun,municipality,XI,Malalag,2,1,0,fuzzy,100
+1102410,citymun,municipality,XI,Matanao,2,1,0,fuzzy,100
+1102411,citymun,municipality,XI,Padada,3,2,0,fuzzy,100
+1102412,citymun,municipality,XI,Santa Cruz,1,1,0,fuzzy,100
+1102414,citymun,municipality,XI,Sulop,3,2,0,fuzzy,100
+11025,province,province,XI,Davao Oriental,1,1,0,province,100
+1102501,citymun,municipality,XI,Baganga,1,1,0,fuzzy,100
+1102502,citymun,municipality,XI,Banaybanay,2,1,0,fuzzy,100
+1102503,citymun,municipality,XI,Boston,3,1,0,fuzzy,100
+1102504,citymun,municipality,XI,Caraga,1,1,0,fuzzy,100
+1102505,citymun,municipality,XI,Cateel,2,1,0,fuzzy,100
+1102506,citymun,municipality,XI,Generoso,2,1,0,fuzzy,100
+1102507,citymun,municipality,XI,Lupon,1,1,0,fuzzy,100
+1102508,citymun,municipality,XI,Manay,2,1,0,fuzzy,100
+1102509,citymun,city,XI,Mati City,5,1,0,fuzzy,100
+1102510,citymun,municipality,XI,San Isidro,3,2,0,fuzzy,100
+1102511,citymun,municipality,XI,Tarragona,3,2,0,fuzzy,100
+11082,province,province,XI,Davao De Oro,1,1,0,province,100
+1108201,citymun,municipality,XI,Compostela,1,1,0,fuzzy,100
+1108202,citymun,municipality,XI,Laak,1,1,0,fuzzy,100
+1108203,citymun,municipality,XI,Mabini,2,1,0,fuzzy,100
+1108204,citymun,municipality,XI,Maco,1,1,0,fuzzy,100
+1108205,citymun,municipality,XI,Maragusan,1,1,0,fuzzy,100
+1108206,citymun,municipality,XI,Mawab,3,1,0,fuzzy,100
+1108207,citymun,municipality,XI,Monkayo,1,1,0,fuzzy,100
+1108208,citymun,municipality,XI,Montevista,3,1,0,fuzzy,100
+1108209,citymun,municipality,XI,Nabunturan,1,1,0,fuzzy,100
+1108210,citymun,municipality,XI,New Bataan,1,1,0,fuzzy,100
+1108211,citymun,municipality,XI,Pantukan,1,1,0,fuzzy,100
+11086,province,province,XI,Davao Occidental,4,2,0,province,100
+1108601,citymun,municipality,XI,Don Marcelino,3,1,0,fuzzy,100
+1108602,citymun,municipality,XI,Jose Abad Santos,1,1,0,fuzzy,100
+1108603,citymun,municipality,XI,Malita,1,1,0,fuzzy,100
+1108604,citymun,municipality,XI,Santa Maria,2,1,0,fuzzy,100
+1108605,citymun,municipality,XI,Sarangani,4,4,0,fuzzy,100
+1130700,citymun,city,XI,Davao City,1,1,0,fuzzy,100
+12047,province,province,XII,North Cotabato,1,1,0,province,100
+1204701,citymun,municipality,XII,Alamada,1,1,0,fuzzy,100
+1204702,citymun,municipality,XII,Carmen,1,1,0,fuzzy,100
+1204703,citymun,municipality,XII,Kabacan,1,1,0,fuzzy,100
+1204704,citymun,city,XII,Kidapawan City,3,1,0,fuzzy,100
+1204705,citymun,municipality,XII,Libungan,2,1,0,fuzzy,100
+1204706,citymun,municipality,XII,Magpet,1,1,0,fuzzy,100
+1204707,citymun,municipality,XII,Makilala,1,1,0,fuzzy,100
+1204708,citymun,municipality,XII,Matalam,1,1,0,fuzzy,100
+1204709,citymun,municipality,XII,Midsayap,1,1,0,fuzzy,100
+1204710,citymun,municipality,XII,M'Lang,1,1,0,override,100
+1204711,citymun,municipality,XII,Pigkawayan,1,1,0,fuzzy,100
+1204712,citymun,municipality,XII,Pikit,1,1,0,fuzzy,100
+1204713,citymun,municipality,XII,President Roxas,2,1,0,fuzzy,100
+1204714,citymun,municipality,XII,Tulunan,1,1,0,fuzzy,100
+1204715,citymun,municipality,XII,Antipas,2,1,0,fuzzy,100
+1204716,citymun,municipality,XII,Banisilan,2,1,0,fuzzy,100
+1204717,citymun,municipality,XII,Aleosan,3,1,0,fuzzy,100
+1204718,citymun,municipality,XII,Arakan,1,1,0,fuzzy,100
+12063,province,province,XII,South Cotabato,1,1,0,province,100
+1206302,citymun,municipality,XII,Banga,1,1,0,fuzzy,100
+1206306,citymun,city,XII,Koronadal City,3,1,0,fuzzy,100
+1206311,citymun,municipality,XII,Norala,3,2,0,fuzzy,100
+1206312,citymun,municipality,XII,Polomolok,1,1,0,fuzzy,100
+1206313,citymun,municipality,XII,Surallah,1,1,0,fuzzy,100
+1206314,citymun,municipality,XII,Tampakan,2,1,0,fuzzy,100
+1206315,citymun,municipality,XII,Tantangan,3,1,0,fuzzy,100
+1206316,citymun,municipality,XII,T'Boli,1,1,0,override,100
+1206317,citymun,municipality,XII,Tupi,1,1,0,fuzzy,100
+1206318,citymun,municipality,XII,Santo Nino,3,2,0,fuzzy,100
+1206319,citymun,municipality,XII,Lake Sebu,1,1,0,fuzzy,100
+12065,province,province,XII,Sultan Kudarat,1,1,0,province,100
+1206501,citymun,municipality,XII,Bagumbayan,1,1,0,fuzzy,100
+1206502,citymun,municipality,XII,Columbia,1,1,0,override,100
+1206503,citymun,municipality,XII,Esperanza,2,2,0,fuzzy,100
+1206504,citymun,municipality,XII,Isulan,1,1,0,fuzzy,100
+1206505,citymun,municipality,XII,Kalamansig,2,2,0,fuzzy,100
+1206506,citymun,municipality,XII,Lebak,1,1,0,fuzzy,100
+1206507,citymun,municipality,XII,Lutayan,2,2,0,fuzzy,100
+1206508,citymun,municipality,XII,Lambayong,1,1,0,fuzzy,100
+1206509,citymun,municipality,XII,Palimbang,1,1,0,fuzzy,100
+1206510,citymun,municipality,XII,President Quirino,1,1,0,fuzzy,100
+1206511,citymun,city,XII,Tacurong City,4,3,0,fuzzy,100
+1206512,citymun,municipality,XII,Sen. Ninoy Aquino,1,1,0,fuzzy,100
+12080,province,province,XII,Sarangani,2,1,0,province,100
+1208001,citymun,municipality,XII,Alabel,1,1,0,fuzzy,100
+1208002,citymun,municipality,XII,Gian,1,1,0,override,100
+1208003,citymun,municipality,XII,Kiamba,1,1,0,fuzzy,100
+1208004,citymun,municipality,XII,Maasim,1,1,0,fuzzy,100
+1208005,citymun,municipality,XII,Maitum,2,1,0,fuzzy,100
+1208006,citymun,municipality,XII,Malapatan,1,1,0,fuzzy,100
+1208007,citymun,municipality,XII,Malungon,1,1,0,fuzzy,100
+1230800,citymun,city,XII,Santos City,1,1,0,fuzzy,100
+1380100,citymun,city,NCR,Caloocan City,1,1,0,fuzzy,100
+1380200,citymun,city,NCR,Las Piiias City,1,1,0,override,100
+1380300,citymun,city,NCR,Makati City,1,1,0,fuzzy,100
+1380400,citymun,city,NCR,Malabon City,1,1,0,fuzzy,100
+1380500,citymun,city,NCR,Mandaluyong City,1,1,0,fuzzy,100
+1380601,citymun,city,NCR,Manila City,,1,0,override,100
+1380603,citymun,city,NCR,Manila City,,1,0,override,100
+1380604,citymun,city,NCR,Manila City,,1,0,override,100
+1380605,citymun,city,NCR,Manila City,,1,0,override,100
+1380606,citymun,city,NCR,Manila City,,1,0,override,100
+1380610,citymun,city,NCR,Manila City,,1,0,override,100
+1380611,citymun,city,NCR,Manila City,,1,0,override,100
+1380612,citymun,city,NCR,Manila City,,1,0,override,100
+1380613,citymun,city,NCR,Manila City,,1,0,override,100
+1380614,citymun,city,NCR,Manila City,,1,0,override,100
+1380700,citymun,city,NCR,Marikina City,1,1,0,fuzzy,100
+1380800,citymun,city,NCR,Muntinlupa City,1,1,0,fuzzy,100
+1380900,citymun,city,NCR,Navotas City,2,1,0,fuzzy,100
+1381000,citymun,city,NCR,Paraiiaque City,1,1,0,override,100
+1381100,citymun,city,NCR,Pasay City,1,1,0,fuzzy,100
+1381200,citymun,city,NCR,Pasig City,1,1,0,fuzzy,100
+1381300,citymun,city,NCR,Quezon City,,1,0,fuzzy,100
+1381400,citymun,city,NCR,San Juan City,1,1,0,fuzzy,100
+1381500,citymun,city,NCR,Taguig City,1,1,0,fuzzy,100
+1381600,citymun,city,NCR,Valenzuela City,1,1,0,fuzzy,100
+1381701,citymun,municipality,NCR,Pateros,1,1,0,override,100
+14001,province,province,CAR,Abra,3,2,0,province,100
+1400101,citymun,municipality,CAR,Bangued,1,1,0,fuzzy,100
+1400102,citymun,municipality,CAR,Boliney,5,3,0,fuzzy,100
+1400103,citymun,municipality,CAR,Bucay,5,3,0,fuzzy,100
+1400104,citymun,municipality,CAR,Bucloc,6,4,0,fuzzy,100
+1400105,citymun,municipality,CAR,Daguioman,5,4,0,fuzzy,100
+1400106,citymun,municipality,CAR,Danglas,5,3,0,fuzzy,100
+1400107,citymun,municipality,CAR,Dolores,5,3,0,fuzzy,100
+1400108,citymun,municipality,CAR,La Paz,5,4,0,fuzzy,100
+1400109,citymun,municipality,CAR,Lacub,5,2,0,fuzzy,100
+1400110,citymun,municipality,CAR,Lagangilang,5,3,0,fuzzy,100
+1400111,citymun,municipality,CAR,Lagayan,5,4,0,fuzzy,100
+1400112,citymun,municipality,CAR,Langiden,5,4,0,fuzzy,100
+1400113,citymun,municipality,CAR,Licuan-Baay,5,3,0,fuzzy,100
+1400114,citymun,municipality,CAR,Luba,5,1,0,fuzzy,100
+1400115,citymun,municipality,CAR,Malibcong,5,3,0,fuzzy,100
+1400116,citymun,municipality,CAR,Manabo,5,3,0,fuzzy,100
+1400117,citymun,municipality,CAR,Peñarrubia,6,4,0,fuzzy,100
+1400118,citymun,municipality,CAR,Pidigan,5,3,0,fuzzy,100
+1400119,citymun,municipality,CAR,Pilar,5,1,0,fuzzy,100
+1400120,citymun,municipality,CAR,Sallapadan,5,4,0,fuzzy,100
+1400121,citymun,municipality,CAR,San Isidro,5,2,0,fuzzy,100
+1400122,citymun,municipality,CAR,San Juan,5,4,0,fuzzy,100
+1400123,citymun,municipality,CAR,San Quintin,5,3,0,fuzzy,100
+1400124,citymun,municipality,CAR,Tayum,5,1,0,fuzzy,100
+1400125,citymun,municipality,CAR,Tineg,2,1,0,fuzzy,100
+1400126,citymun,municipality,CAR,Tuba,4,2,0,override,100
+1400127,citymun,municipality,CAR,Villaviciosa,5,1,0,fuzzy,100
+14011,province,province,CAR,Benguet,2,2,0,province,100
+1401101,citymun,municipality,CAR,Atok,4,3,0,fuzzy,100
+1401103,citymun,municipality,CAR,Bakun,3,3,0,fuzzy,100
+1401104,citymun,municipality,CAR,Bokod,4,2,0,fuzzy,100
+1401105,citymun,municipality,CAR,Buguias,3,1,0,fuzzy,100
+1401106,citymun,municipality,CAR,Itogon,1,1,0,fuzzy,100
+1401107,citymun,municipality,CAR,Kabayan,4,3,0,fuzzy,100
+1401108,citymun,municipality,CAR,Kapangan,4,3,0,fuzzy,100
+1401109,citymun,municipality,CAR,Kibungan,4,3,0,fuzzy,100
+1401110,citymun,municipality,CAR,La Trinidad,1,1,0,fuzzy,100
+1401111,citymun,municipality,CAR,Mankayan,1,2,0,fuzzy,100
+1401112,citymun,municipality,CAR,Sablan,5,4,0,fuzzy,100
+1401113,citymun,municipality,CAR,Tuba,1,1,0,fuzzy,100
+1401114,citymun,municipality,CAR,Tublay,5,4,0,fuzzy,100
+14027,province,province,CAR,Ifugao,3,3,0,province,100
+1402701,citymun,municipality,CAR,Banaue,4,3,0,fuzzy,100
+1402702,citymun,municipality,CAR,Hungduan,4,3,0,fuzzy,100
+1402703,citymun,municipality,CAR,Kiangan,4,3,0,fuzzy,100
+1402704,citymun,municipality,CAR,Lagawe,4,3,0,fuzzy,100
+1402705,citymun,municipality,CAR,Lamut,4,2,0,fuzzy,100
+1402706,citymun,municipality,CAR,Mayoyao,4,3,0,fuzzy,100
+1402707,citymun,municipality,CAR,Alfonso Lista,3,1,0,fuzzy,100
+1402708,citymun,municipality,CAR,Aguinaldo,2,1,0,fuzzy,100
+1402709,citymun,municipality,CAR,Hingyon,5,5,0,fuzzy,100
+1402710,citymun,municipality,CAR,Tinoc,4,3,0,fuzzy,100
+1402711,citymun,municipality,CAR,Asipulo,5,4,0,fuzzy,100
+14032,province,province,CAR,Kalinga,3,3,0,province,100
+1403201,citymun,municipality,CAR,Balbalan,3,1,0,fuzzy,100
+1403206,citymun,municipality,CAR,Lubuagan,4,4,0,fuzzy,100
+1403208,citymun,municipality,CAR,Pasil,5,4,0,fuzzy,100
+1403209,citymun,municipality,CAR,Pinukpuk,1,1,0,fuzzy,100
+1403211,citymun,municipality,CAR,Rizal,4,3,0,fuzzy,100
+1403213,citymun,city,CAR,Tabuk City,5,1,0,fuzzy,100
+1403214,citymun,municipality,CAR,Tanudan,4,3,0,fuzzy,100
+1403215,citymun,municipality,CAR,Tinglayan,4,3,0,fuzzy,100
+14044,province,province,CAR,Province,4,4,0,province,100
+1404401,citymun,municipality,CAR,Barlig,5,4,0,fuzzy,100
+1404402,citymun,municipality,CAR,Bauko,4,2,0,fuzzy,100
+1404403,citymun,municipality,CAR,Besao,5,4,0,fuzzy,100
+1404404,citymun,municipality,CAR,Bontoc,2,1,0,fuzzy,100
+1404405,citymun,municipality,CAR,Natonin,4,3,0,fuzzy,100
+1404406,citymun,municipality,CAR,Paracelis,2,1,0,fuzzy,100
+1404407,citymun,municipality,CAR,Sabangan,5,4,0,fuzzy,100
+1404408,citymun,municipality,CAR,Sadanga,5,5,0,fuzzy,100
+1404409,citymun,municipality,CAR,Sagada,5,4,0,fuzzy,100
+1404410,citymun,municipality,CAR,Tadian,4,3,0,fuzzy,100
+14081,province,province,CAR,Apayao,3,3,0,province,100
+1408101,citymun,municipality,CAR,Calanasan,1,1,0,fuzzy,100
+1408102,citymun,municipality,CAR,Conner,2,1,0,fuzzy,100
+1408103,citymun,municipality,CAR,Flora,3,2,0,fuzzy,100
+1408104,citymun,municipality,CAR,Kabugao,1,1,0,fuzzy,100
+1408105,citymun,municipality,CAR,Luna,2,1,0,fuzzy,100
+1408106,citymun,municipality,CAR,Pudtol,4,2,0,fuzzy,100
+1408107,citymun,municipality,CAR,Santa Marcela,4,4,0,fuzzy,100
+1430300,citymun,city,CAR,Baguio City,1,1,0,fuzzy,100
+16002,province,province,XIII,Agusan Del Norte,3,1,0,province,100
+1600201,citymun,municipality,XII,Buenavista,1,1,0,override,100
+1600203,citymun,city,XIII,Cabadbaran City,6,3,0,fuzzy,100
+1600204,citymun,municipality,XIII,Carmen,4,3,0,fuzzy,100
+1600205,citymun,municipality,XIII,Jabonga,3,2,0,fuzzy,100
+1600206,citymun,municipality,XIII,Kitcharao,4,3,0,fuzzy,100
+1600207,citymun,municipality,XIII,Las Nieves,2,1,0,fuzzy,100
+1600208,citymun,municipality,XIII,Magallanes,4,3,0,fuzzy,100
+1600209,citymun,municipality,XIII,Nasipit,3,2,0,fuzzy,100
+1600210,citymun,municipality,XIII,Santiago,4,1,0,fuzzy,100
+1600211,citymun,municipality,XIII,Tubay,4,1,0,fuzzy,100
+1600212,citymun,municipality,XIII,Remedios T. Romualdez,5,4,0,fuzzy,95
+16003,province,province,XIII,Agusan Del Sur,1,1,0,province,100
+1600301,citymun,city,XIII,Bayugan City,5,1,0,fuzzy,100
+1600302,citymun,municipality,XIII,Bunawan,1,1,0,fuzzy,100
+1600303,citymun,municipality,XIII,Esperanza,1,1,0,fuzzy,100
+1600304,citymun,municipality,XIII,La Paz,1,1,0,fuzzy,100
+1600305,citymun,municipality,XIII,Loreto,1,1,0,fuzzy,100
+1600306,citymun,municipality,XIII,Prosperidad,1,1,0,fuzzy,100
+1600307,citymun,municipality,XIII,Rosario,2,1,0,fuzzy,100
+1600308,citymun,municipality,XIII,San Francisco,1,1,0,fuzzy,100
+1600309,citymun,municipality,XIII,San Luis,1,1,0,fuzzy,100
+1600310,citymun,municipality,XIII,Santa Josefa,3,1,0,fuzzy,100
+1600311,citymun,municipality,XIII,Talacogon,2,1,0,fuzzy,100
+1600312,citymun,municipality,XIII,Trento,1,1,0,fuzzy,100
+1600313,citymun,municipality,XIII,Veruela,2,1,0,fuzzy,100
+1600314,citymun,municipality,XIII,Sibagat,1,1,0,fuzzy,100
+16067,province,province,X,Surigao Del Norte,2,1,0,override,100
+1606701,citymun,municipality,XIII,Alegria,5,4,0,fuzzy,100
+1606702,citymun,municipality,XIII,Bacuag,5,4,0,fuzzy,100
+1606704,citymun,municipality,XIII,Burgos,6,5,0,fuzzy,100
+1606706,citymun,municipality,XIII,Claver,2,1,0,fuzzy,100
+1606707,citymun,municipality,XIII,Dapa,4,2,0,fuzzy,100
+1606708,citymun,municipality,XIII,Del Carmen,5,3,0,fuzzy,100
+1606710,citymun,municipality,XIII,General Luna,5,3,0,fuzzy,100
+1606711,citymun,municipality,XIII,Gigaquit,4,3,0,fuzzy,100
+1606714,citymun,municipality,XIII,Mainit,5,3,0,fuzzy,100
+1606715,citymun,municipality,XIII,Malimono,5,4,0,fuzzy,100
+1606716,citymun,municipality,XIII,Pilar,5,4,0,fuzzy,100
+1606717,citymun,municipality,XIII,Placer,4,3,0,fuzzy,100
+1606718,citymun,municipality,XIII,San Benito,6,5,0,fuzzy,100
+1606719,citymun,municipality,XIII,San Francisco,5,4,0,fuzzy,100
+1606720,citymun,municipality,XIII,San Isidro,5,5,0,fuzzy,100
+1606721,citymun,municipality,XIII,Santa Monica,5,5,0,fuzzy,100
+1606722,citymun,municipality,XIII,Sison,5,4,0,fuzzy,100
+1606723,citymun,municipality,XIII,Socorro,4,3,0,fuzzy,100
+1606724,citymun,city,XIII,Surigao City,3,2,0,fuzzy,100
+1606725,citymun,municipality,XIII,Tagana-An,5,3,0,fuzzy,100
+1606727,citymun,municipality,XIII,Tubod,5,4,0,fuzzy,100
+16068,province,province,XIII,Surigao Del Sur,1,1,0,province,100
+1606801,citymun,municipality,XIII,Barobo,3,1,0,fuzzy,100
+1606802,citymun,municipality,XIII,Bayabas,5,4,0,fuzzy,100
+1606803,citymun,city,XIII,Bislig City,3,2,0,fuzzy,100
+1606804,citymun,municipality,XIII,Cagwait,4,2,0,fuzzy,100
+1606805,citymun,municipality,XIII,Cantilan,2,1,0,fuzzy,100
+1606806,citymun,municipality,XIII,Carmen,5,4,0,fuzzy,100
+1606807,citymun,municipality,XIII,Carrascal,4,1,0,fuzzy,100
+1606808,citymun,municipality,XIII,Cortes,4,4,0,fuzzy,100
+1606809,citymun,municipality,XIII,Hinatuan,2,1,0,fuzzy,100
+1606810,citymun,municipality,XIII,Lanuza,4,3,0,fuzzy,100
+1606811,citymun,municipality,XIII,Lianga,4,2,0,fuzzy,100
+1606812,citymun,municipality,XIII,Lingig,2,1,0,fuzzy,100
+1606813,citymun,municipality,XIII,Madrid,4,3,0,fuzzy,100
+1606814,citymun,municipality,XIII,Marihatag,3,2,0,fuzzy,100
+1606815,citymun,municipality,XIII,San Agustin,4,2,0,fuzzy,100
+1606816,citymun,municipality,XIII,San Miguel,1,1,0,fuzzy,100
+1606817,citymun,municipality,XIII,Tagbina,2,1,0,fuzzy,100
+1606818,citymun,municipality,XIII,Tago,2,1,0,fuzzy,100
+1606819,citymun,city,XIII,Tandag City,6,3,0,fuzzy,100
+16085,province,province,XIII,Islands,4,2,0,province,100
+1608501,citymun,municipality,XIII,Basilisa,4,3,0,fuzzy,100
+1608502,citymun,municipality,XIII,Cagdianao,3,1,0,fuzzy,100
+1608503,citymun,municipality,XIII,Dinagat,5,4,0,fuzzy,100
+1608504,citymun,municipality,XIII,Libjo,5,3,0,fuzzy,100
+1608505,citymun,municipality,XIII,Loreto,4,2,0,fuzzy,100
+1608506,citymun,municipality,XIII,San Jose,4,4,0,fuzzy,100
+1608507,citymun,municipality,XIII,Tubajon,5,4,0,fuzzy,100
+1630400,citymun,city,XIII,Butuan City,1,1,0,fuzzy,100
+17040,province,province,MIMAROPA,Marinduque,4,4,0,province,100
+1704001,citymun,municipality,MIMAROPA,Boac,1,1,0,fuzzy,100
+1704002,citymun,municipality,MIMAROPA,Buenavista,4,4,0,fuzzy,100
+1704003,citymun,municipality,MIMAROPA,Gasan,3,2,0,fuzzy,100
+1704004,citymun,municipality,MIMAROPA,Mogpog,3,2,0,fuzzy,100
+1704005,citymun,municipality,MIMAROPA,Santa Cruz,1,1,0,fuzzy,100
+1704006,citymun,municipality,MIMAROPA,Torrijos,3,2,0,fuzzy,100
+17051,province,province,MIMAROPA,Mindoro,3,3,0,province,100
+1705101,citymun,municipality,MIMAROPA,Abra De Ilog,2,1,0,override,100
+1705102,citymun,municipality,MIMAROPA,Calintaan,3,1,0,fuzzy,100
+1705103,citymun,municipality,MIMAROPA,Looc,5,4,0,fuzzy,100
+1705104,citymun,municipality,MIMAROPA,Lubang,4,4,0,fuzzy,100
+1705105,citymun,municipality,MIMAROPA,Magsaysay,3,1,0,fuzzy,100
+1705106,citymun,municipality,MIMAROPA,Mamburao,2,1,0,fuzzy,100
+1705107,citymun,municipality,MIMAROPA,Paluan,3,1,0,fuzzy,100
+1705108,citymun,municipality,MIMAROPA,Rizal,3,2,0,fuzzy,100
+1705109,citymun,municipality,MIMAROPA,Sablayan,1,1,0,fuzzy,100
+1705110,citymun,municipality,MIMAROPA,San Jose,1,1,0,fuzzy,100
+1705111,citymun,municipality,MIMAROPA,Santa Cruz,1,1,0,fuzzy,100
+17052,province,province,MIMAROPA,Oriental Mindoro,2,2,0,province,100
+1705201,citymun,municipality,MIMAROPA,Baco,3,1,0,fuzzy,100
+1705202,citymun,municipality,MIMAROPA,Bansud,2,1,0,fuzzy,100
+1705203,citymun,municipality,MIMAROPA,Bongabong,1,1,0,fuzzy,100
+1705204,citymun,municipality,MIMAROPA,Bulalacao,3,1,0,fuzzy,100
+1705205,citymun,city,MIMAROPA,Calapan City,3,2,0,fuzzy,100
+1705206,citymun,municipality,MIMAROPA,Gloria,3,1,0,fuzzy,100
+1705207,citymun,municipality,MIMAROPA,Mansalay,2,1,0,fuzzy,100
+1705208,citymun,municipality,MIMAROPA,Naujan,1,1,0,fuzzy,100
+1705209,citymun,municipality,MIMAROPA,Pinamalayan,1,1,0,fuzzy,100
+1705210,citymun,municipality,MIMAROPA,Pola,3,2,0,fuzzy,100
+1705211,citymun,municipality,MIMAROPA,Puerto Galera,1,1,0,fuzzy,100
+1705212,citymun,municipality,MIMAROPA,Roxas,2,1,0,fuzzy,100
+1705213,citymun,municipality,MIMAROPA,San Teodoro,4,2,0,fuzzy,100
+1705214,citymun,municipality,MIMAROPA,Socorro,3,2,0,fuzzy,100
+1705215,citymun,municipality,MIMAROPA,Victoria,2,1,0,fuzzy,100
+17053,province,province,MIMAROPA,Palawan,1,1,0,province,100
+1705301,citymun,municipality,MIMAROPA,Aborlan,1,1,0,fuzzy,100
+1705302,citymun,municipality,MIMAROPA,Agutaya,5,5,0,fuzzy,100
+1705303,citymun,municipality,MIMAROPA,Araceli,4,3,0,fuzzy,100
+1705304,citymun,municipality,MIMAROPA,Balabac,2,1,0,fuzzy,100
+1705305,citymun,municipality,MIMAROPA,Bataraza,1,1,0,fuzzy,100
+1705306,citymun,municipality,MIMAROPA,Point,1,1,0,fuzzy,89
+1705307,citymun,municipality,MIMAROPA,Busuanga,3,1,0,fuzzy,100
+1705308,citymun,municipality,MIMAROPA,Cagayancillo,6,5,0,fuzzy,100
+1705309,citymun,municipality,MIMAROPA,Coron,1,1,0,fuzzy,100
+1705310,citymun,municipality,MIMAROPA,Cuyo,4,3,0,fuzzy,100
+1705311,citymun,municipality,MIMAROPA,Dumaran,3,1,0,fuzzy,100
+1705312,citymun,municipality,MIMAROPA,El Nido,1,1,0,fuzzy,100
+1705313,citymun,municipality,MIMAROPA,Linapacan,5,3,0,fuzzy,100
+1705314,citymun,municipality,MIMAROPA,Magsaysay,5,4,0,fuzzy,100
+1705315,citymun,municipality,MIMAROPA,Narra,1,1,0,fuzzy,100
+1705317,citymun,municipality,MIMAROPA,Quezon,1,1,0,fuzzy,100
+1705318,citymun,municipality,MIMAROPA,Roxas,1,1,0,fuzzy,100
+1705319,citymun,municipality,MIMAROPA,San Vicente,1,1,0,fuzzy,100
+1705320,citymun,municipality,MIMAROPA,Taytay,1,1,0,fuzzy,100
+1705321,citymun,municipality,MIMAROPA,Kalayaan,5,4,0,fuzzy,100
+1705322,citymun,municipality,MIMAROPA,Culion,3,1,0,fuzzy,100
+1705323,citymun,municipality,MIMAROPA,Rizal,1,1,0,fuzzy,100
+1705324,citymun,municipality,MIMAROPA,Española,2,1,0,fuzzy,100
+17059,province,province,MIMAROPA,Romblon,3,3,0,province,100
+1705901,citymun,municipality,MIMAROPA,Alcantara,5,4,0,fuzzy,100
+1705902,citymun,municipality,MIMAROPA,Banton,5,5,0,fuzzy,100
+1705903,citymun,municipality,MIMAROPA,Cajidiocan,4,3,0,fuzzy,100
+1705904,citymun,municipality,MIMAROPA,Calatrava,5,4,0,fuzzy,100
+1705905,citymun,municipality,MIMAROPA,Concepcion,6,5,0,fuzzy,100
+1705906,citymun,municipality,MIMAROPA,Corcuera,5,5,0,fuzzy,100
+1705907,citymun,municipality,MIMAROPA,Looc,4,3,0,fuzzy,100
+1705908,citymun,municipality,MIMAROPA,Magdiwang,5,4,0,fuzzy,100
+1705909,citymun,municipality,MIMAROPA,Odiongan,2,1,0,fuzzy,100
+1705910,citymun,municipality,MIMAROPA,Romblon,3,2,0,fuzzy,100
+1705911,citymun,municipality,MIMAROPA,San Agustin,4,3,0,fuzzy,100
+1705912,citymun,municipality,MIMAROPA,San Andres,5,4,0,fuzzy,100
+1705913,citymun,municipality,MIMAROPA,San Fernando,4,3,0,fuzzy,100
+1705914,citymun,municipality,MIMAROPA,San Jose,5,5,0,fuzzy,100
+1705915,citymun,municipality,MIMAROPA,Santa Fe,5,4,0,fuzzy,100
+1705916,citymun,municipality,MIMAROPA,Ferrol,6,5,0,fuzzy,100
+1705917,citymun,municipality,MIMAROPA,Santa Maria,5,5,0,fuzzy,100
+1731500,citymun,city,MIMAROPA,Puerto Princesa City,1,1,0,fuzzy,100
+18045,province,province,VI,Negros Occidental,1,1,0,province,100
+1804502,citymun,city,VI,Bago City,2,1,0,fuzzy,100
+1804503,citymun,municipality,VI,Binalbagan,1,1,0,fuzzy,100
+1804504,citymun,city,VI,Cadiz City,2,1,0,fuzzy,100
+1804505,citymun,municipality,VI,Calatrava,1,1,0,fuzzy,100
+1804506,citymun,municipality,VI,Candoni,4,3,0,fuzzy,100
+1804507,citymun,municipality,VI,Cauayan,1,1,0,fuzzy,100
+1804508,citymun,municipality,VI,Enrique B. Magalona,2,1,0,fuzzy,94
+1804509,citymun,city,VI,Escalante City,4,3,0,fuzzy,100
+1804510,citymun,city,VI,Himamaylan City,3,2,0,fuzzy,100
+1804511,citymun,municipality,VI,Hinigaran,1,1,0,fuzzy,100
+1804512,citymun,municipality,VI,Hinoba-an,1,1,0,fuzzy,100
+1804513,citymun,municipality,VI,Ilog,2,1,0,fuzzy,100
+1804514,citymun,municipality,VI,Isabela,2,1,0,fuzzy,100
+1804515,citymun,city,VI,Kabankalan City,1,1,0,fuzzy,100
+1804516,citymun,city,VI,La Carlota City,4,4,0,fuzzy,100
+1804517,citymun,municipality,VI,La Castellana,1,1,0,fuzzy,100
+1804518,citymun,municipality,VI,Manapla,2,1,0,fuzzy,100
+1804519,citymun,municipality,VI,Moises Padilla,3,2,0,fuzzy,100
+1804520,citymun,municipality,VI,Murcia,1,1,0,fuzzy,100
+1804521,citymun,municipality,VI,Pontevedra,3,1,0,fuzzy,100
+1804522,citymun,municipality,VI,Pulupandan,3,3,0,fuzzy,100
+1804523,citymun,city,VI,Sagay City,3,2,0,fuzzy,100
+1804524,citymun,city,VI,San Carlos City,2,1,0,fuzzy,100
+1804525,citymun,municipality,VI,San Enrique,4,4,0,fuzzy,100
+1804526,citymun,city,VI,Silay City,3,3,0,fuzzy,100
+1804527,citymun,city,VI,Sipalay City,4,3,0,fuzzy,100
+1804528,citymun,city,VI,Talisay City,4,3,0,fuzzy,100
+1804529,citymun,municipality,VI,Toboso,3,2,0,fuzzy,100
+1804530,citymun,municipality,VI,Valladolid,4,2,0,fuzzy,100
+1804531,citymun,city,VI,Victorias City,4,4,0,fuzzy,100
+1804532,citymun,municipality,VI,Salvador Benedicto,4,3,0,fuzzy,100
+18046,province,province,VII,Negros Oriental,2,2,0,province,100
+1804601,citymun,municipality,VII,Amlan,4,3,0,fuzzy,100
+1804602,citymun,municipality,VII,Ayungon,2,1,0,fuzzy,100
+1804603,citymun,municipality,VII,Bacong,4,2,0,fuzzy,100
+1804604,citymun,city,VII,Sais City,3,3,0,override,100
+1804605,citymun,municipality,VII,Basay,4,3,0,fuzzy,100
+1804606,citymun,city,VII,Bayawan City,2,1,0,fuzzy,100
+1804607,citymun,municipality,VII,Bindoy,3,2,0,fuzzy,100
+1804608,citymun,city,VII,Canlaon City,4,4,0,fuzzy,100
+1804609,citymun,municipality,VII,Dauin,4,2,0,fuzzy,100
+1804610,citymun,city,VII,Dumaguete City,3,2,0,fuzzy,100
+1804611,citymun,city,VII,Guihulngan City,5,2,0,fuzzy,100
+1804612,citymun,municipality,VII,Jimalalud,4,3,0,fuzzy,100
+1804613,citymun,municipality,VII,La Libertad,2,2,0,fuzzy,100
+1804614,citymun,municipality,VII,Mabinay,1,1,0,fuzzy,100
+1804615,citymun,municipality,VII,Manjuyod,2,1,0,fuzzy,100
+1804616,citymun,municipality,VII,Pamplona,3,2,0,fuzzy,100
+1804617,citymun,municipality,VII,San Jose,5,4,0,fuzzy,100
+1804618,citymun,municipality,VII,Santa Catalina,1,1,0,fuzzy,100
+1804619,citymun,municipality,VII,Siaton,1,1,0,fuzzy,100
+1804620,citymun,municipality,VII,Sibulan,2,1,0,fuzzy,100
+1804621,citymun,city,VII,Tanjay City,4,3,0,fuzzy,100
+1804622,citymun,municipality,VII,Tayasan,3,2,0,fuzzy,100
+1804623,citymun,municipality,VII,Valencia,1,1,0,fuzzy,100
+1804624,citymun,municipality,VII,Vallehermoso,3,2,0,fuzzy,100
+1804625,citymun,municipality,VII,Zamboanguita,4,3,0,fuzzy,100
+18061,province,province,VII,Siquijor,4,4,0,province,100
+1806101,citymun,municipality,VII,Villanueva,5,5,0,fuzzy,100
+1806102,citymun,municipality,VII,Larena,5,4,0,fuzzy,100
+1806103,citymun,municipality,VII,Lazi,4,4,0,fuzzy,100
+1806104,citymun,municipality,VII,Maria,5,4,0,fuzzy,100
+1806105,citymun,municipality,VII,San Juan,5,4,0,fuzzy,100
+1806106,citymun,municipality,VII,Siquijor,4,3,0,fuzzy,100
+1830200,citymun,city,VI,Bacolod City,1,1,0,fuzzy,100
+19007,province,province,BARMM,Basilan,3,1,0,province,100
+1900702,citymun,city,BARMM,Lamitan City,6,3,0,fuzzy,100
+1900703,citymun,municipality,BARMM,Lantawan,3,2,0,fuzzy,100
+1900704,citymun,municipality,BARMM,Maluso,4,2,0,fuzzy,100
+1900705,citymun,municipality,BARMM,Sumisip,1,1,0,fuzzy,100
+1900706,citymun,municipality,BARMM,Tipo-Tipo,3,4,0,fuzzy,100
+1900707,citymun,municipality,BARMM,Tuburan,2,2,0,fuzzy,100
+1900708,citymun,municipality,BARMM,Akbar,,4,0,fuzzy,100
+1900709,citymun,municipality,BARMM,Al-Barka,,4,0,fuzzy,100
+1900710,citymun,municipality,BARMM,Ajul,,4,0,fuzzy,100
+1900711,citymun,municipality,BARMM,Pukan,,,0,fuzzy,100
+1900712,citymun,municipality,BARMM,Hadji Muhtamad,,5,0,fuzzy,100
+1900713,citymun,municipality,BARMM,Tabuan-Lasa,,4,0,fuzzy,100
+19036,province,province,BARMM,Lanao Del Sur,1,1,0,province,100
+1903601,citymun,municipality,BARMM,Bacolod-Kalawi,3,1,0,fuzzy,100
+1903602,citymun,municipality,BARMM,Balabagan,4,2,0,fuzzy,100
+1903603,citymun,municipality,BARMM,Balindong,4,2,0,fuzzy,100
+1903604,citymun,municipality,BARMM,Bayang,5,3,0,fuzzy,100
+1903605,citymun,municipality,BARMM,Binidayan,4,3,0,fuzzy,100
+1903606,citymun,municipality,BARMM,Bubong,2,1,0,fuzzy,100
+1903607,citymun,municipality,BARMM,Butig,6,,0,fuzzy,100
+1903609,citymun,municipality,BARMM,Ganassi,4,2,0,fuzzy,100
+1903610,citymun,municipality,BARMM,Kapai,4,2,0,fuzzy,100
+1903611,citymun,municipality,BARMM,Lumba-Bayabao,2,1,0,fuzzy,100
+1903612,citymun,municipality,BARMM,Lumbatan,5,4,0,fuzzy,100
+1903613,citymun,municipality,BARMM,Madalum,3,1,0,fuzzy,100
+1903614,citymun,municipality,BARMM,Madamba,4,3,0,fuzzy,100
+1903615,citymun,municipality,BARMM,Malabang,3,,0,fuzzy,100
+1903616,citymun,municipality,BARMM,Marantao,2,,0,fuzzy,100
+1903617,citymun,city,BARMM,Marawi City,4,3,0,fuzzy,100
+1903618,citymun,municipality,BARMM,Masiu,5,3,0,fuzzy,100
+1903619,citymun,municipality,BARMM,Mulondo,3,2,0,fuzzy,100
+1903620,citymun,municipality,BARMM,Pagayawan,5,3,0,fuzzy,100
+1903621,citymun,municipality,BARMM,Piagapo,4,2,0,fuzzy,100
+1903622,citymun,municipality,BARMM,Poona Bayabao,4,2,0,fuzzy,100
+1903623,citymun,municipality,BARMM,Pualas,5,3,0,fuzzy,100
+1903624,citymun,municipality,BARMM,Ditsaan-Ramain,3,2,0,fuzzy,100
+1903625,citymun,municipality,BARMM,Saguiaran,4,3,0,fuzzy,100
+1903626,citymun,municipality,BARMM,Tamparan,5,3,0,fuzzy,100
+1903627,citymun,municipality,BARMM,Taraka,4,2,0,fuzzy,100
+1903628,citymun,municipality,BARMM,Tubaran,4,2,0,fuzzy,100
+1903629,citymun,municipality,BARMM,Tugaya,5,3,0,fuzzy,100
+1903630,citymun,municipality,BARMM,Wao,,1,0,fuzzy,100
+1903631,citymun,municipality,BARMM,Marogong,4,2,0,fuzzy,100
+1903632,citymun,municipality,BARMM,Calanogas,5,4,0,fuzzy,100
+1903633,citymun,municipality,BARMM,Buadiposo-Buntong,4,3,0,fuzzy,100
+1903634,citymun,municipality,BARMM,Maguing,2,1,0,fuzzy,100
+1903635,citymun,municipality,BARMM,Picong,4,3,0,fuzzy,100
+1903636,citymun,municipality,BARMM,Lumbayanague,4,3,0,fuzzy,100
+1903637,citymun,municipality,BARMM,Amai Manabilang,3,,0,fuzzy,100
+1903638,citymun,municipality,BARMM,II,4,3,0,override,100
+1903639,citymun,municipality,BARMM,Kapatagan,4,2,0,fuzzy,100
+1903640,citymun,municipality,BARMM,Sultan Dumalondong,6,5,0,fuzzy,100
+1903641,citymun,municipality,BARMM,Lumbaca-Unayan,,5,0,fuzzy,100
+19066,province,province,BARMM,Sulu,2,1,0,province,100
+1906601,citymun,municipality,BARMM,Indanan,3,1,0,fuzzy,100
+1906602,citymun,municipality,BARMM,Jolo,1,1,0,fuzzy,100
+1906603,citymun,municipality,BARMM,Kalingalan,5,3,0,override,100
+1906604,citymun,municipality,BARMM,Luuk,3,3,0,fuzzy,100
+1906605,citymun,municipality,BARMM,Maimbung,5,2,0,fuzzy,100
+1906606,citymun,municipality,BARMM,Hadji Panglima,6,5,0,override,100
+1906607,citymun,municipality,BARMM,Old Panamao,4,2,0,fuzzy,100
+1906608,citymun,municipality,BARMM,Pangutaran,4,2,0,fuzzy,100
+1906609,citymun,municipality,BARMM,Parang,2,1,0,fuzzy,100
+1906610,citymun,municipality,BARMM,Pata,5,4,0,fuzzy,100
+1906611,citymun,municipality,BARMM,Patikul,3,1,0,fuzzy,100
+1906612,citymun,municipality,BARMM,Siasi,2,1,0,fuzzy,100
+1906613,citymun,municipality,BARMM,Talipao,1,1,0,fuzzy,100
+1906614,citymun,municipality,BARMM,Tapul,5,4,0,fuzzy,100
+1906615,citymun,municipality,BARMM,Tongkil,4,2,0,fuzzy,100
+1906616,citymun,municipality,BARMM,Estino,5,3,0,fuzzy,100
+1906617,citymun,municipality,BARMM,Lugus,5,4,0,fuzzy,100
+1906618,citymun,municipality,BARMM,Pandami,4,3,0,fuzzy,100
+1906619,citymun,municipality,BARMM,Omar,,4,0,fuzzy,100
+19070,province,province,BARMM,Tawi-Tawi,3,1,0,province,100
+1907001,citymun,municipality,BARMM,Sugala,3,1,0,fuzzy,100
+1907002,citymun,municipality,BARMM,Bongao,2,1,0,fuzzy,100
+1907003,citymun,municipality,BARMM,Mapun,4,3,0,fuzzy,100
+1907004,citymun,municipality,BARMM,Simunul,4,2,0,fuzzy,100
+1907005,citymun,municipality,BARMM,Sitangkai,1,1,0,fuzzy,100
+1907006,citymun,municipality,BARMM,South Ubian,3,2,0,fuzzy,100
+1907007,citymun,municipality,BARMM,Tandubas,2,1,0,fuzzy,100
+1907008,citymun,municipality,BARMM,Turtle Islands,5,5,0,fuzzy,100
+1907009,citymun,municipality,BARMM,Languyan,1,1,0,fuzzy,100
+1907010,citymun,municipality,BARMM,Sapa-Sapa,3,2,0,fuzzy,100
+1907011,citymun,municipality,BARMM,Sibutu,,3,0,fuzzy,100
+19087,province,province,BARMM,Del Norte,,4,0,province,100
+1908701,citymun,municipality,BARMM,Barira,4,2,0,fuzzy,100
+1908702,citymun,municipality,BARMM,Buldon,4,1,0,fuzzy,100
+1908703,citymun,city,BARMM,Cotabato City,3,1,0,fuzzy,100
+1908704,citymun,municipality,BARMM,Datu Blah T. Sinsuat,,3,0,fuzzy,94
+1908705,citymun,municipality,BARMM,Datu Odin Sinsuat,1,1,0,fuzzy,100
+1908706,citymun,municipality,BARMM,Kabuntalan,5,4,0,fuzzy,100
+1908707,citymun,municipality,BARMM,Matanog,4,3,0,fuzzy,100
+1908708,citymun,municipality,BARMM,Northern,5,4,0,override,100
+1908709,citymun,municipality,BARMM,Parang,1,1,0,fuzzy,100
+1908710,citymun,municipality,BARMM,Sultan Kudarat,1,1,0,fuzzy,100
+1908711,citymun,municipality,BARMM,Sultan Mastura,5,3,0,fuzzy,100
+1908712,citymun,municipality,BARMM,Talitay,,4,0,fuzzy,100
+1908713,citymun,municipality,BARMM,Upi,1,1,0,fuzzy,100
+19088,province,province,BARMM,Del Sur,1,1,0,province,100
+1908801,citymun,municipality,BARMM,Ampatuan,4,2,0,fuzzy,100
+1908802,citymun,municipality,BARMM,Buluan,4,1,0,fuzzy,100
+1908803,citymun,municipality,BARMM,Datu Abdullah,,2,0,override,100
+1908804,citymun,municipality,BARMM,Datu Anggal,,4,0,override,100
+1908805,citymun,municipality,BARMM,Datu Hoffer,,4,0,override,100
+1908806,citymun,municipality,BARMM,Datu Paglas,4,3,0,fuzzy,100
+1908807,citymun,municipality,BARMM,Datu Piang,2,2,0,fuzzy,100
+1908808,citymun,municipality,BARMM,Datu Saliba,,4,0,fuzzy,91
+1908809,citymun,municipality,BARMM,Datu Saudi-,4,4,0,override,100
+1908810,citymun,municipality,BARMM,Datu Unsay,5,4,0,fuzzy,100
+1908811,citymun,municipality,BARMM,Gen. S. K.,4,2,0,override,100
+1908812,citymun,municipality,BARMM,Guindulungan,,4,0,fuzzy,100
+1908813,citymun,municipality,BARMM,Mamasapano,5,4,0,fuzzy,100
+1908814,citymun,municipality,BARMM,Mangudadatu,,3,0,fuzzy,100
+1908815,citymun,municipality,BARMM,Datu Montawal,5,2,0,override,100
+1908816,citymun,municipality,BARMM,Pagalungan,1,1,0,fuzzy,100
+1908817,citymun,municipality,BARMM,Paglat,,4,0,fuzzy,100
+1908818,citymun,municipality,BARMM,Pandag,,4,0,fuzzy,100
+1908819,citymun,municipality,BARMM,Rajah Buayan,,4,0,fuzzy,100
+1908820,citymun,municipality,BARMM,Shariff Aguak,2,2,0,fuzzy,100
+1908821,citymun,municipality,BARMM,Shariff Saydona,,4,0,override,100
+1908822,citymun,municipality,BARMM,South Upi,4,2,0,fuzzy,100
+1908823,citymun,municipality,BARMM,Sultan sa Barongis,2,3,0,fuzzy,100
+1908824,citymun,municipality,BARMM,Talayan,4,3,0,fuzzy,100
