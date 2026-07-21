@@ -721,3 +721,38 @@ and states the link between them in plain words.
 `next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks (ρ sign/
 strength against hand cases on real data — the unit tests already cover the math; URL round-trip;
 place-page links; axe on the SVG links + selects) are **deferred to the Vercel preview**.
+
+## 2026-07-21 — Phase E1.5: Figure parity + exports
+
+Fifth E1 increment (same branch/PR). Brings the figures Explore was inexplicably shallower on up to
+parity with the place page — but now responding to the geo filter, which the place page (one fixed
+geo) and Home (national only) can't do.
+
+- **Certification.** `CertificationFigure` (training & certification coverage) added to the figure
+  grid, fetched via `getCertification` — built at all five geo levels, so no fallback needed.
+- **Honorarium as one tabbed card.** Replaced the lone by-payer-level `HonorariumFigure` with a
+  `FigureTabs` "Honorarium" card — **Who receives · How much · Distribution** — the exact composition
+  Home uses, reusing `HonorariumFigure` / `HonorariumAmountFigure` / `HonorariumDistributionFigure`
+  unchanged, scoped to the selected geo. Rendered full-width below the grid, as on Home.
+- **Completeness.** `CompletenessFigure` at the current geo (`getDataCompleteness`), with the same
+  barangay→citymun pointer fallback it uses on place pages.
+- **Exports.** `TrainingFigure` and the honorarium figures now receive `geoCode`/`geoLevel` on
+  Explore, so their built-in `ExportMenu`s appear (they were previously omitted here); certification
+  carries its export too. Demographics already had exports. The map/distribution/relationship
+  figures get exports in E5, per the plan — not here.
+- **Benchmarks — re-homed vs the plan's literal placement (logged, per §1 + identity rule Q1).**
+  The plan said "BenchmarkBars vs region/national on accreditation, avg-years, training, honorarium."
+  The place page actually attaches benchmarks to the **accreditation, avg-years, and households-per-
+  BHW scalar cards** — which E1.2 *deleted* from Explore. Rather than reintroduce those cards or
+  invent training/honorarium benchmarks the place page doesn't have, I added one compact "How {geo}
+  compares" section under the summary strip with three `BenchmarkBars` (accreditation %, avg years,
+  households/BHW) vs region + nation — the same three metrics, same `benchmarkRows` shape, and the
+  same ancestor queries (`getBhwCounts`/`getBhwOverview` at national/region) as the place page, so
+  "benchmark values match the place page for the same geo" holds by construction. Hidden at national
+  level (nothing above to compare against); region level compares vs nation only.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass — this increment is
+composition/parity, no new logic to unit-test beyond what E1.1–E1.4 added), `next build` compiles +
+type-checks clean (same `/place/*` no-creds caveat). Live checks (benchmark values match the place
+page for a sample geo; export links resolve for 2 geos; barangay training/completeness show their
+citymun pointers; axe on the tabbed honorarium card) are **deferred to the Vercel preview**.

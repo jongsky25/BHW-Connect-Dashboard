@@ -11,6 +11,7 @@ import {
 import { getChildGeos, getGeoAncestors, resolveGeoOrNational } from "@/lib/db/geo";
 import {
   getBhwCounts,
+  getCertification,
   getChildIndicators,
   getChildTrainingCoverage,
   getDemographics,
@@ -18,6 +19,7 @@ import {
   getTrainingCoverage,
   type ChildIndicatorRow,
 } from "@/lib/db/indicators";
+import { getDataCompleteness } from "@/lib/db/data-quality";
 import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
@@ -27,9 +29,15 @@ import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { DenominatorExplainer } from "@/components/home/denominator-explainer";
+import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
+import { FigureTabs } from "@/components/ui/figure-tabs";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
+import { CertificationFigure } from "@/components/explore/certification-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
+import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
+import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
 import { RelationshipFigure } from "@/components/explore/relationship-figure";
@@ -92,6 +100,13 @@ export default async function ExplorePage({
   // before batch two's three queries could even start.
   const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
 
+  // Benchmark context (E1.5, mirroring the place page): this place vs its region
+  // and the nation. National is fetched only below the national level; the region
+  // only below region level, so a region page never benchmarks against itself.
+  const showBenchmarks = geo.geoLevel !== "national";
+  const regionBenchmark =
+    geo.geoLevel !== "national" && geo.geoLevel !== "region" ? ancestors.region : null;
+
   const [
     regions,
     overview,
@@ -99,10 +114,16 @@ export default async function ExplorePage({
     demographicsByDimension,
     training,
     honorarium,
+    certification,
+    completeness,
     provinces,
     citymuns,
     barangays,
     insights,
+    nationalOverview,
+    nationalCounts,
+    regionOverview,
+    regionCounts,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
     getBhwOverview(geo.geoCode, geo.geoLevel),
@@ -115,11 +136,27 @@ export default async function ExplorePage({
     ),
     getTrainingCoverage(geo.geoCode, geo.geoLevel),
     getHonorarium(geo.geoCode, geo.geoLevel),
+    getCertification(geo.geoCode, geo.geoLevel),
+    getDataCompleteness(geo.geoCode, geo.geoLevel),
     ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
     ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
     ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
     getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
+    showBenchmarks ? getBhwOverview(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+    showBenchmarks ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+    regionBenchmark ? getBhwOverview(regionBenchmark.geoCode, "region") : Promise.resolve(null),
+    regionBenchmark ? getBhwCounts(regionBenchmark.geoCode, "region") : Promise.resolve(null),
   ]);
+
+  const benchmarkRows = (
+    place: number | null,
+    region: number | null,
+    national: number | null,
+  ): BenchmarkRow[] => [
+    { label: "This place", value: place, isPrimary: true },
+    ...(regionBenchmark ? [{ label: regionBenchmark.geoName, value: region }] : []),
+    { label: "Philippines", value: national },
+  ];
 
   const breadcrumbSteps: BreadcrumbStep[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
@@ -362,6 +399,61 @@ export default async function ExplorePage({
           )}
         </section>
 
+        {/* Benchmark context (E1.5): the strip's three headline figures vs this
+            area's region and the nation — the "versus what?" the deleted big-
+            number cards used to answer, re-homed here since Explore is geo-first.
+            Hidden at the national level (nothing above it to compare against). */}
+        {showBenchmarks && (
+          <section
+            aria-labelledby="benchmark-heading"
+            className="rounded-lg border border-border bg-surface px-4 py-3"
+          >
+            <h2
+              id="benchmark-heading"
+              className="text-xs font-semibold uppercase tracking-wide text-muted"
+            >
+              How {geo.geoName} compares
+            </h2>
+            <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
+              <div>
+                <p className="mb-1 text-xs font-medium">% accredited</p>
+                <BenchmarkBars
+                  rows={benchmarkRows(
+                    counts?.pctAccredited ?? null,
+                    regionCounts?.pctAccredited ?? null,
+                    nationalCounts?.pctAccredited ?? null,
+                  )}
+                  format="percent"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium">Avg years of service</p>
+                <BenchmarkBars
+                  rows={benchmarkRows(
+                    counts?.avgActiveYears ?? null,
+                    regionCounts?.avgActiveYears ?? null,
+                    nationalCounts?.avgActiveYears ?? null,
+                  )}
+                  format="count"
+                  unitSuffix="yrs"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium">Households per BHW</p>
+                <BenchmarkBars
+                  rows={benchmarkRows(
+                    overview.householdsPerBhw,
+                    regionOverview?.householdsPerBhw ?? null,
+                    nationalOverview?.householdsPerBhw ?? null,
+                  )}
+                  format="count"
+                  unitSuffix="hh/BHW"
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Map figure (E1.2 hero) — the indicator switcher is the page's
             centerpiece, full-width above the per-theme figure groups. */}
         {mapChildLevel && (
@@ -405,7 +497,17 @@ export default async function ExplorePage({
           />
         )}
 
+        {/* Per-theme figure groups (E1.5 parity): certification, demographics,
+            training, and completeness — each now responding to the geo filter,
+            with exports, matching what the place page shows for one geo. */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <CertificationFigure
+            rows={certification}
+            caption={caption}
+            geoCode={geo.geoCode}
+            geoLevel={geo.geoLevel}
+          />
+
           {demographicsByDimension.map(({ dimension, rows }) => (
             <DemographicsFigure
               key={dimension}
@@ -422,10 +524,60 @@ export default async function ExplorePage({
             caption={caption}
             geoLevel={geo.geoLevel}
             citymunAncestor={ancestors.citymun}
+            geoCode={geo.geoCode}
           />
 
-          <HonorariumFigure rows={honorarium} caption={caption} />
+          <CompletenessFigure
+            rows={completeness}
+            caption={caption}
+            geoLevel={geo.geoLevel}
+            citymunAncestor={ancestors.citymun}
+          />
         </div>
+
+        {/* One honorarium story told three ways — tabbed, exactly as Home does
+            it, but scoped to the selected geo (E1.5). */}
+        <FigureTabs
+          heading="Honorarium"
+          tabs={[
+            {
+              id: "who",
+              label: "Who receives",
+              content: (
+                <HonorariumFigure
+                  rows={honorarium}
+                  caption={caption}
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                />
+              ),
+            },
+            {
+              id: "amount",
+              label: "How much",
+              content: (
+                <HonorariumAmountFigure
+                  rows={honorarium}
+                  caption={caption}
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                />
+              ),
+            },
+            {
+              id: "distribution",
+              label: "Distribution",
+              content: (
+                <HonorariumDistributionFigure
+                  rows={honorarium}
+                  caption={caption}
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                />
+              ),
+            },
+          ]}
+        />
 
         <InsightsGrid insights={insights} geoLevel={geo.geoLevel} geoName={geo.geoName} />
       </div>
