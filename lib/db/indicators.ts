@@ -12,6 +12,9 @@ export type BhwCounts = {
   pctAccredited: number | null;
   avgActiveYears: number | null;
   anyHonorariumPct: number | null;
+  /** Wilson 95% interval (percentage points) around pctAccredited (E2.2). */
+  ciLow: number | null;
+  ciHigh: number | null;
 };
 
 /**
@@ -28,7 +31,7 @@ export async function getBhwCounts(geoCode: string, geoLevel: GeoLevel): Promise
   const { data, error } = await supabase
     .from("agg_bhw_counts")
     .select(
-      "geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct",
+      "geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct, ci_low, ci_high",
     )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
@@ -45,6 +48,8 @@ export async function getBhwCounts(geoCode: string, geoLevel: GeoLevel): Promise
     pctAccredited: data.pct_accredited,
     avgActiveYears: data.avg_active_years,
     anyHonorariumPct: data.any_honorarium_pct,
+    ciLow: data.ci_low,
+    ciHigh: data.ci_high,
   };
 }
 
@@ -165,6 +170,12 @@ export type TrainingRow = {
   nTrained: number | null;
   nTotal: number | null;
   coveragePct: number | null;
+  /** Median of the last-trained year across trained BHWs (E2.1) — a recency
+   * signal orthogonal to coverage. Null when unrecorded. */
+  medianTrainingYear: number | null;
+  /** Wilson 95% interval (percentage points) around coveragePct (E2.2). */
+  ciLow: number | null;
+  ciHigh: number | null;
 };
 
 /**
@@ -185,7 +196,9 @@ export async function getTrainingCoverage(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_training")
-    .select("topic_slug, topic_label, n_trained, n_total, coverage_pct")
+    .select(
+      "topic_slug, topic_label, n_trained, n_total, coverage_pct, median_training_year, ci_low, ci_high",
+    )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
     .eq("geo_level", geoLevel)
@@ -199,6 +212,9 @@ export async function getTrainingCoverage(
     nTrained: row.n_trained,
     nTotal: row.n_total,
     coveragePct: row.coverage_pct,
+    medianTrainingYear: row.median_training_year,
+    ciLow: row.ci_low,
+    ciHigh: row.ci_high,
   }));
 }
 
@@ -250,6 +266,9 @@ export type HonorariumRow = {
   p75Amount: number | null;
   maxAmount: number | null;
   isSuppressed: boolean;
+  /** Wilson 95% interval (percentage points) around pctReceiving (E2.2). */
+  ciLow: number | null;
+  ciHigh: number | null;
 };
 
 /** Honorarium receipt broken down by which administrative level pays it. */
@@ -261,7 +280,7 @@ export async function getHonorarium(geoCode: string, geoLevel: GeoLevel): Promis
   const { data, error } = await supabase
     .from("agg_honorarium")
     .select(
-      "payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency, min_amount, p25_amount, median_amount, p75_amount, max_amount, is_suppressed",
+      "payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency, min_amount, p25_amount, median_amount, p75_amount, max_amount, is_suppressed, ci_low, ci_high",
     )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
@@ -281,6 +300,8 @@ export async function getHonorarium(geoCode: string, geoLevel: GeoLevel): Promis
     p75Amount: row.p75_amount,
     maxAmount: row.max_amount,
     isSuppressed: row.is_suppressed,
+    ciLow: row.ci_low,
+    ciHigh: row.ci_high,
   }));
 }
 
@@ -297,6 +318,9 @@ export type ChildIndicatorRow = {
   /** Validated profiles ÷ StepZero registered universe, capped at 100 — matches
    * the place-page / summary-strip "profile coverage" figure. */
   coveragePct: number | null;
+  /** Total BHWs per 1,000 residents (E2.1). Population is StepZero self-reported.
+   * Higher = denser BHW coverage. */
+  bhwPer1000: number | null;
 };
 
 /**
@@ -337,7 +361,9 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
       ? Promise.resolve({ data: null })
       : supabase
           .from("agg_bhw_stepzero_counts")
-          .select("geo_code, n_registered, n_registered_accredited, n_total_bhw, households")
+          .select(
+            "geo_code, n_registered, n_registered_accredited, n_total_bhw, households, population",
+          )
           .eq("dataset_id", stepzeroId)
           .in("geo_code", geoCodes),
   ]);
@@ -353,9 +379,14 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
     const sz = stepzeroByCode.get(row.geo_code);
     const households = sz?.households ?? null;
     const totalBhw = sz?.n_total_bhw ?? null;
+    const population = sz?.population ?? null;
     const householdsPerBhw =
       households !== null && totalBhw !== null && households > 0 && totalBhw > 0
         ? Math.round(households / totalBhw)
+        : null;
+    const bhwPer1000 =
+      totalBhw !== null && population !== null && totalBhw > 0 && population > 0
+        ? Math.round((1000 * totalBhw) / population * 10) / 10
         : null;
 
     const registeredUniverse =
@@ -377,6 +408,7 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
       avgActiveYears: avgByCode.get(row.geo_code) ?? null,
       householdsPerBhw,
       coveragePct,
+      bhwPer1000,
     };
   });
 }

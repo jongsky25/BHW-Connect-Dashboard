@@ -65,6 +65,13 @@ export const MAP_BASE_INDICATOR_META: Record<MapBaseIndicator, MapIndicatorMeta>
     suffix: "%",
     denominator: "validated profiles as a share of the StepZero registered universe",
   },
+  bhw_per_1000: {
+    label: "BHWs per 1,000 residents",
+    headlinePhrase: "BHWs per 1,000 residents",
+    axisLabel: "BHWs per 1,000 residents",
+    suffix: "",
+    denominator: "total BHWs per 1,000 residents (population self-reported in StepZero)",
+  },
 };
 
 /** Ordered base-indicator options for the switcher. */

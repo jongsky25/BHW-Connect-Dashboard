@@ -152,6 +152,51 @@ export default async function MethodologyPage() {
         </p>
       </section>
 
+      <section id="derived-indicators" className="flex flex-col gap-2 scroll-mt-6">
+        <h2 className="text-lg font-semibold">Recency, per-capita, and accreditation sources</h2>
+        <ul className="list-inside list-disc">
+          <li>
+            <strong>Median last-trained year.</strong> For each training topic, the middle year
+            among the BHWs recorded as trained. A topic whose median is 5 or more years before the
+            snapshot (2020 or earlier for the 2025 snapshot) is flagged as possibly due for a
+            refresher. This is a recency signal, separate from how many BHWs are trained.
+          </li>
+          <li>
+            <strong>BHWs per 1,000 residents.</strong> Total BHWs divided by population, times
+            1,000. Population is self-reported in the StepZero barangay sheets and is approximate;
+            it will be replaced by census figures in a later release.
+          </li>
+          <li>
+            <strong>Accreditation, two sources.</strong> The StepZero quick-count reports an
+            accredited share of the whole BHW universe (
+            <GlossaryTerm slug="lgu_reported_accreditation">LGU-reported accreditation</GlossaryTerm>
+            ), while the verified rate counts only individually validated profiles. These come from
+            different sources with different denominators, so they are shown side by side and never
+            averaged; a gap between them is a data-quality signal, not an error.
+          </li>
+          <li>
+            <strong>Peer rank &amp; outliers.</strong> Each area is ranked among its same-level
+            siblings — provinces within their region, cities/municipalities within their province,
+            regions nationally — for each base indicator, with a percentile (0 = lowest, 100 =
+            highest). An area is flagged as standing out when its value is more than 3× the median
+            absolute deviation from the group median, and only in groups of at least 8 siblings, so
+            small groups don&apos;t manufacture outliers. Ranks are hidden for areas with fewer than
+            30 profiled BHWs, where the underlying value is too unstable to rank fairly.
+          </li>
+          <li>
+            <strong>Data-completeness grade.</strong> A single letter summarizing how filled-in the
+            profiles are for an area:{" "}
+            <GlossaryTerm slug="data_completeness">data completeness</GlossaryTerm> is the average,
+            across every tracked field (age, sex, civil status, blood type, education, IP status,
+            household count, active-service years), of the share of records where that field is
+            present. Each field counts equally — no editorial weighting. The grade is A at 95% or
+            higher average completeness, B at 85% or higher, and C below that; the worst field is
+            named when it is missing for at least 10% of records. Completeness is computed down to
+            the city/municipality level, so a barangay shows its city/municipality&apos;s grade.
+          </li>
+        </ul>
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Privacy &amp; suppression</h2>
         <p>

@@ -21,6 +21,7 @@ import {
 } from "@/lib/filters/schema";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { ExportMenu } from "@/components/narrative/export-menu";
+import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
 import { LocatorMapThumbnail } from "@/components/place/locator-map";
 import { ChildrenTable } from "@/components/place/children-table";
@@ -249,6 +250,16 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               {counts?.nAccredited?.toLocaleString() ?? "—"} of{" "}
               {counts?.nTotal?.toLocaleString() ?? "—"} validated profiles are accredited (
               {counts?.pctAccredited ?? "—"}%).
+              {counts?.ciLow !== null &&
+              counts?.ciLow !== undefined &&
+              counts?.ciHigh !== null &&
+              counts?.ciHigh !== undefined ? (
+                <>
+                  {" "}
+                  95% <GlossaryTerm slug="confidence_interval">confidence interval</GlossaryTerm>:{" "}
+                  {counts.ciLow}–{counts.ciHigh}%.
+                </>
+              ) : null}
             </p>
           }
           benchmark={

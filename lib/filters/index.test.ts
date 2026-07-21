@@ -99,6 +99,7 @@ describe("normalizeMapIndicator", () => {
       "households_per_bhw",
       "avg_active_years",
       "coverage_pct",
+      "bhw_per_1000",
     ]) {
       expect(normalizeMapIndicator(v)).toBe(v);
     }
@@ -113,7 +114,7 @@ describe("normalizeMapIndicator", () => {
     expect(normalizeMapIndicator(null)).toBe("pct_accredited");
     expect(normalizeMapIndicator(undefined)).toBe("pct_accredited");
     expect(normalizeMapIndicator("")).toBe("pct_accredited");
-    expect(normalizeMapIndicator("bhw_per_1000")).toBe("pct_accredited");
+    expect(normalizeMapIndicator("not_a_real_indicator")).toBe("pct_accredited");
     expect(normalizeMapIndicator("training:")).toBe("pct_accredited");
     expect(normalizeMapIndicator("training:Bad Slug")).toBe("pct_accredited");
     expect(normalizeMapIndicator("training:-leading")).toBe("pct_accredited");

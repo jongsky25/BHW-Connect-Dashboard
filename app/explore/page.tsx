@@ -20,10 +20,12 @@ import {
   getTrainingCoverage,
   type ChildIndicatorRow,
 } from "@/lib/db/indicators";
-import { getDataCompleteness } from "@/lib/db/data-quality";
+import { getDataCompleteness, type CompletenessRow } from "@/lib/db/data-quality";
 import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
+import { computeDataQualityGrade } from "@/lib/analysis/data-quality-grade";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import { getPeerRank } from "@/lib/db/peer-ranks";
 import { getInsights } from "@/lib/db/insights";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
@@ -34,12 +36,15 @@ import { DenominatorExplainer } from "@/components/home/denominator-explainer";
 import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
 import { FigureTabs } from "@/components/ui/figure-tabs";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
+import { AccreditationSourcesFigure } from "@/components/explore/accreditation-sources-figure";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
 import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
 import { CompletenessFigure } from "@/components/place/completeness-figure";
+import { DataQualityBadge } from "@/components/explore/data-quality-badge";
+import { PeerRankChip } from "@/components/explore/peer-rank-chip";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
 import { RelationshipFigure } from "@/components/explore/relationship-figure";
@@ -81,6 +86,8 @@ function mapBaseValue(row: ChildIndicatorRow, indicator: MapBaseIndicator): numb
       return row.avgActiveYears;
     case "coverage_pct":
       return row.coveragePct;
+    case "bhw_per_1000":
+      return row.bhwPer1000;
   }
 }
 
@@ -118,6 +125,7 @@ export default async function ExplorePage({
     honorarium,
     certification,
     completeness,
+    citymunCompleteness,
     provinces,
     citymuns,
     barangays,
@@ -140,6 +148,11 @@ export default async function ExplorePage({
     getHonorarium(geo.geoCode, geo.geoLevel),
     getCertification(geo.geoCode, geo.geoLevel),
     getDataCompleteness(geo.geoCode, geo.geoLevel),
+    // Completeness is citymun-grain; a barangay has no rows, so fetch its
+    // citymun's for the data-quality grade (E2.5), mirroring CompletenessFigure.
+    geo.geoLevel === "barangay" && ancestors.citymun
+      ? getDataCompleteness(ancestors.citymun.geoCode, "citymun")
+      : Promise.resolve([] as CompletenessRow[]),
     ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
     ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
     ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
@@ -196,6 +209,15 @@ export default async function ExplorePage({
 
   const caption = captionFor(overview.validatedProfiles ?? null, geo.geoName);
   const coverage = coverageForDisplay(overview);
+
+  // Read-time data-quality grade (E2.5). At barangay (no completeness rows) it
+  // describes the citymun it falls back to, labeled as such.
+  const gradeRows = geo.geoLevel === "barangay" ? citymunCompleteness : completeness;
+  const dataQualityGrade = computeDataQualityGrade(gradeRows);
+  const gradeFallbackName =
+    geo.geoLevel === "barangay" && citymunCompleteness.length > 0
+      ? (ancestors.citymun?.geoName ?? null)
+      : null;
 
   // The children the comparison figure ranks. This goes one level deeper than the
   // *map* (E1.6): national→region, region→province, province→citymun, and
@@ -311,8 +333,35 @@ export default async function ExplorePage({
       case "coverage_pct":
         parentValue = coverage;
         break;
+      case "bhw_per_1000":
+        parentValue = overview.bhwPer1000;
+        break;
     }
   }
+
+  // Peer standing of the current geo among its same-level siblings for the active
+  // base indicator (E2.3). Only region/province/citymun are ranked; training
+  // indicators and national/barangay have no row.
+  const PEER_LEVEL_PLURAL: Partial<Record<GeoLevel, string>> = {
+    region: "regions",
+    province: "provinces",
+    citymun: "cities/municipalities",
+  };
+  const activeBaseIndicator: MapBaseIndicator | null = activeSlug
+    ? null
+    : (activeMapIndicator as MapBaseIndicator);
+  const peerRank =
+    activeBaseIndicator && PEER_LEVEL_PLURAL[geo.geoLevel]
+      ? await getPeerRank(geo.geoCode, geo.geoLevel, activeBaseIndicator)
+      : null;
+  const peerParentName =
+    geo.geoLevel === "region"
+      ? "the Philippines"
+      : geo.geoLevel === "province"
+        ? (ancestors.region?.geoName ?? null)
+        : geo.geoLevel === "citymun"
+          ? (ancestors.province?.geoName ?? null)
+          : null;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
@@ -401,6 +450,14 @@ export default async function ExplorePage({
                 </span>
               </span>
             )}
+            {overview.bhwPer1000 !== null && (
+              <span>
+                <span className="font-semibold">{formatIndicatorValue(overview.bhwPer1000, "")}</span>{" "}
+                <span className="text-muted">
+                  <GlossaryTerm slug="bhw_per_1000">BHWs per 1,000 residents</GlossaryTerm>
+                </span>
+              </span>
+            )}
             {!overview.hasStepzero && (
               <span className="text-xs text-muted">
                 Quick-count total not available for this area.
@@ -423,6 +480,10 @@ export default async function ExplorePage({
             </details>
           )}
         </section>
+
+        {/* Data-quality grade (E2.5) — one honest letter for how complete the
+            profiles behind these figures are, linking the full breakdown. */}
+        <DataQualityBadge grade={dataQualityGrade} fallbackCitymunName={gradeFallbackName} />
 
         {/* Benchmark context (E1.5): the strip's three headline figures vs this
             area's region and the nation — the "versus what?" the deleted big-
@@ -514,6 +575,16 @@ export default async function ExplorePage({
           />
         )}
 
+        {/* Peer-standing chip (E2.3): how this geo ranks among its siblings on
+            the active indicator. */}
+        <PeerRankChip
+          rank={peerRank}
+          geoName={geo.geoName}
+          parentName={peerParentName}
+          siblingPlural={PEER_LEVEL_PLURAL[geo.geoLevel] ?? ""}
+          indicatorLabel={mapMeta.label}
+        />
+
         {/* Distribution view (E1.3) — spread of the active indicator across
             children, reusing the map's data. */}
         {compareChildLevel && mapItems.length > 0 && (
@@ -545,6 +616,13 @@ export default async function ExplorePage({
             training, and completeness — each now responding to the geo filter,
             with exports, matching what the place page shows for one geo. */}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <AccreditationSourcesFigure
+            lguReported={overview.pctRegisteredAccredited}
+            verified={counts?.pctAccredited ?? null}
+            verifiedCi={counts ? { low: counts.ciLow, high: counts.ciHigh } : null}
+            caption={caption}
+          />
+
           <CertificationFigure
             rows={certification}
             caption={caption}

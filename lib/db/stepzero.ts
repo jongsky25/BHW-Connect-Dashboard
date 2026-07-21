@@ -21,6 +21,10 @@ export type StepzeroCounts = {
   /** Registered + registered & accredited — the profiling-eligible base
    * (non-registered BHWs are never individually profiled). */
   registeredUniverse: number | null;
+  /** LGU/quick-count-reported accreditation as a share of the whole BHW universe
+   * (n_registered_accredited ÷ n_total_bhw). A different measure from the
+   * per-person `agg_bhw_counts.pct_accredited` — see `getBhwOverview` (E2.1). */
+  pctRegisteredAccredited: number | null;
   population: number | null;
   households: number | null;
 };
@@ -36,7 +40,7 @@ export async function getStepzeroCounts(
   const { data, error } = await supabase
     .from("agg_bhw_stepzero_counts")
     .select(
-      "geo_code, geo_level, n_registered, n_registered_accredited, n_non_registered, n_total_bhw, population, households",
+      "geo_code, geo_level, n_registered, n_registered_accredited, n_non_registered, n_total_bhw, pct_registered_accredited, population, households",
     )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
@@ -58,6 +62,7 @@ export async function getStepzeroCounts(
     nNonRegistered: data.n_non_registered,
     nTotalBhw: data.n_total_bhw,
     registeredUniverse,
+    pctRegisteredAccredited: data.pct_registered_accredited,
     population: data.population,
     households: data.households,
   };
@@ -105,7 +110,20 @@ export type BhwOverview = {
    * StepZero's own households column, which covers every geo level. Null when
    * either input is missing or zero. */
   householdsPerBhw: number | null;
+  /** LGU/quick-count-reported accreditation share of the whole BHW universe
+   * (E2.1). Surfaced alongside — never averaged with — the verified per-person
+   * `pctAccredited`, as a data-quality triangulation. Null without StepZero. */
+  pctRegisteredAccredited: number | null;
+  /** Total BHWs per 1,000 residents (E2.1); population is StepZero
+   * self-reported. Null when either input is missing or zero. */
+  bhwPer1000: number | null;
 };
+
+/** BHWs per 1,000 residents, one decimal. Null without both inputs positive. */
+export function bhwPer1000(totalBhw: number | null, population: number | null): number | null {
+  if (totalBhw === null || population === null || totalBhw <= 0 || population <= 0) return null;
+  return Math.round((1000 * totalBhw) / population * 10) / 10;
+}
 
 /** Coverage percentage for display: capped at 100 when profiled counts exceed
  * the StepZero registered base (two independently-collected datasets can drift
@@ -166,6 +184,8 @@ export async function getBhwOverview(
     population,
     households,
     householdsPerBhw: householdsPerBhw(households, totalBhw),
+    pctRegisteredAccredited: stepzero?.pctRegisteredAccredited ?? null,
+    bhwPer1000: bhwPer1000(totalBhw, population),
   };
 }
 

@@ -97,4 +97,24 @@ export const GLOSSARY = {
     definition:
       "Written by an AI model, not a person — but every number in it is looked up from this site's own database at the moment it was written, then automatically checked and stripped if it can't be traced back to that lookup. See the methodology page for how this works.",
   },
+  bhw_per_1000: {
+    term: "BHWs per 1,000 residents",
+    definition:
+      "Total BHWs divided by the area's population, times 1,000 — how many health workers serve each 1,000 people. Population is self-reported in the StepZero barangay sheets, so treat it as approximate until census data replaces it. Higher means denser BHW coverage.",
+  },
+  lgu_reported_accreditation: {
+    term: "LGU-reported accreditation",
+    definition:
+      "The share of all BHWs an area's own quick-count (StepZero) reports as accredited. It counts the whole BHW universe, unlike the verified accreditation rate, which counts only individually validated profiles. The two use different sources and denominators, so they're shown side by side, never averaged.",
+  },
+  confidence_interval: {
+    term: "confidence interval",
+    definition:
+      "The range the true rate is very likely to fall in, given how few people were counted. A wide interval means the percentage is based on so few BHWs that it could really be quite different; a narrow one means it's well-pinned-down. Shown here as a 95% Wilson interval.",
+  },
+  data_completeness: {
+    term: "Data completeness",
+    definition:
+      "How much of each BHW profile's information is actually filled in. The grade (A ≥95%, B ≥85%, C below) is the average completeness across the tracked fields, each counted equally; a low grade means figures that rely on the missing fields are less reliable here. See the data-quality page for the field-by-field breakdown.",
+  },
 } as const;

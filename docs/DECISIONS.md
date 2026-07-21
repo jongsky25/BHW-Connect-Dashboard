@@ -795,3 +795,160 @@ full-cascade Playwright pass (national→barangay exercising switcher/distributi
 figures), the Lighthouse budget re-check, and the telemetry comparison vs the E0 baseline are
 live/deploy-time activities (no Supabase creds or browser here) and remain **deferred to the preview
 + post-deploy** — called out rather than claimed.
+
+## 2026-07-21 — Phase E2.1: Surface computed-but-unread fields
+
+First increment of Phase E2 (EXPLORE_ENHANCEMENT_PLAN.md), on a fresh branch off `main` after
+Phase E1 merged (PR #38). Owner decisions this session: **merge E1 first**, and **start with the
+no-DB work only** — so E2 opens with E2.1 (and later E2.5), both pure read + UI. The DB-dependent
+increments (E2.2 Wilson CIs, E2.3 percentile ranks, E2.4 outlier flags) need `build_aggregates.sql`
+migrations + an aggregate rebuild against the live free-tier project and are **parked** until that
+access exists — not shipped as unverifiable migrations.
+
+All three E2.1 fields were confirmed already computed in the aggregate build before any UI was
+written (`agg_training.median_training_year` in `build_aggregates.sql`;
+`agg_bhw_stepzero_counts.pct_registered_accredited` + `population` in `ingest_stepzero.py`), so this
+increment is purely surfacing them — zero ingestion/schema change.
+
+- **Training recency.** `getTrainingCoverage`/`TrainingRow` now select `median_training_year`.
+  `TrainingFigure` gains a "median last-trained year" explanation in technical details and a
+  **staleness flag**: topics whose median is ≥5 years before the 2025 snapshot (≤2020) render a
+  warning note ("Refresher may be due: {topic} (median last trained {year})…"), stalest first.
+  Recency is computed across *all* topics, not just the 8 lowest-coverage ones charted, since a
+  topic can be widely trained yet long ago. Threshold documented at `/methodology#derived-indicators`.
+- **Accreditation triangulation.** `getStepzeroCounts`/`getBhwOverview` now expose
+  `pct_registered_accredited`. New `AccreditationSourcesFigure` shows the quick-count's accredited
+  share of the *whole* BHW universe beside the verified per-person rate (validated profiles) — two
+  sources, two denominators, **shown side by side and never averaged** (review R8.2). Headline
+  calls out a ≥5-point gap as "worth a closer look"; renders only where StepZero data exists.
+  Glossary term `lgu_reported_accreditation` added.
+- **BHWs per 1,000 residents.** New `bhwPer1000` helper + `BhwOverview.bhwPer1000`; added as a
+  summary-strip stat (glossary `bhw_per_1000`) **and** a sixth base map indicator `bhw_per_1000`
+  (extends `MAP_BASE_INDICATORS`, so the switcher, distribution, and relationships axes all pick it
+  up automatically). `getChildIndicators` now also selects `population` and derives per-child
+  `bhwPer1000`. Caption/denominator note that population is StepZero self-reported (census swap is a
+  later E4 item). Direction is valence-neutral ("highest", never "best").
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass; the codec test's
+example "unknown" value was updated since `bhw_per_1000` is now a real indicator, and the
+base-indicator round-trip list gained it), `next build` compiles + type-checks clean (same
+`/place/*` no-creds caveat). Live checks (median-year staleness flags on real data; triangulation
+numbers vs place-page accreditation; per-1,000 values; the new map indicator round-tripping through
+the URL) are **deferred to the Vercel preview**.
+
+## 2026-07-21 — Phase E2.5: Data-quality grade (S10)
+
+Second no-DB E2 increment (same branch/PR #39). Collapses the field-level completeness rows that
+already back `/data-quality` and the completeness figure into one explainable per-geo letter grade —
+computed at read time, no new column or aggregate.
+
+- **Grade.** New client-safe `lib/analysis/data-quality-grade.ts`: `computeDataQualityGrade(rows)` =
+  mean completeness (100 − pct_missing) across the tracked fields, **each weighted equally** (a
+  trust-first choice — no hidden editorial weighting, stated in `/methodology#derived-indicators`).
+  A ≥95%, B ≥85%, else C. Names the single worst field only when it's missing ≥10% of the time, so a
+  grade-A geo never gets a spurious "X is often missing". **6 unit tests** (null/empty, A/B/C bands,
+  null-field skipping, inclusive 95%/85% boundaries).
+- **UI.** New `DataQualityBadge` (server) renders a compact "Data completeness here: grade B — X% of
+  key fields filled; blood type is often missing · See data quality" beside the Explore figures
+  (right under the summary strip), colored by grade (accent/warning/danger). Glossary term
+  `data_completeness` added; links to `/data-quality` for the field-by-field view.
+- **Barangay fallback.** `agg_data_completeness` is citymun-grain (no barangay rows), so at barangay
+  the page fetches the citymun's completeness and the badge labels the grade "for {citymun}
+  (city/municipality)" — mirroring `CompletenessFigure`.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass, +6 grade tests),
+`next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks (grade
+matches the hand-computed average of the /data-quality field table for a sample geo; barangay shows
+its citymun's grade with the label) are **deferred to the Vercel preview**.
+
+E2.2 (Wilson CIs), E2.3 (percentile ranks), E2.4 (outlier flags) remain parked — they need
+`build_aggregates.sql` migrations + a live aggregate rebuild this sandbox can't run or verify.
+
+## 2026-07-21 — Phase E2.2: Wilson 95% confidence intervals (live DB)
+
+First DB-dependent E2 increment. Owner authorized applying migrations + rebuilds to the live
+`bhw-connect` project (ref ejcuwrnxngdwvecxwrhy) via the connected Supabase MCP.
+
+- **DB.** Migration `supabase/migrations/20260721000000_e2_2_wilson_ci.sql` adds immutable
+  `wilson_low(k,n)`/`wilson_high(k,n)` helpers (closed-form 95% Wilson score interval, z=1.96) and
+  `ci_low`/`ci_high` columns (percentage points) to `agg_bhw_counts` (accreditation), `agg_training`
+  (coverage), and `agg_honorarium` (pct receiving — denominator joined from `agg_bhw_counts.n_total`,
+  confirmed against the build's own definition). Populated in place from the stored success/total
+  counts. **Applied live via MCP `apply_migration`; idempotent** (create-or-replace / add-column-if-
+  not-exists / recompute), so re-running through normal tooling is harmless. Mirrored into
+  `ingestion/build_aggregates.sql` (§9b) so full rebuilds stay in sync. Types regenerated
+  (`lib/db/database.types.ts`) — surgically, to preserve the committed `search_geo.parent_chain`
+  the generator currently omits.
+- **Verified live** (plan's "spot-check 3 geos by hand"): large-n narrow (region 01 15704/23185 →
+  [67.13, 68.33]); small-n wide (barangay 0/1 → [0, 79.35]; 1/1 → [20.65, 100]) — matches textbook
+  Wilson exactly.
+- **UI.** `ciLow`/`ciHigh` surfaced on `BhwCounts`, `TrainingRow`, `HonorariumRow`. The interval is
+  stated in technical details of the place-page Accreditation card, the Explore
+  `AccreditationSourcesFigure` (verified rate), `TrainingFigure` (lowest-coverage topic), and
+  `HonorariumFigure` (top paying level). New glossary term `confidence_interval` in plain language.
+  **Note:** the plan's "enlarged-view interval whiskers" are deferred — stating the interval in
+  technical details satisfies the "technical details state the interval" gate; drawing error bars on
+  the Plot charts is a follow-up refinement, not yet done.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass), `next build`
+compiles + type-checks clean (same `/place/*` no-creds caveat). Live figure rendering deferred to
+the Vercel preview.
+
+## 2026-07-21 — Phase E2.3: Peer percentile ranks (live DB)
+
+New thin `agg_peer_ranks` table (one row per geo × indicator) instead of sprawling rank columns on
+`agg_geo_summary`, per the plan's escape hatch. Ranks each geo among its **same-level siblings**
+(grouped by `dim_geo.parent_code` — provinces within a region, citymuns within a province, regions
+nationally) for all six base indicators, storing value, rank_position (1 = highest), n_siblings,
+percentile (percent_rank×100), plus median/mad and an `is_outlier` flag (E2.4). Region/province/
+citymun only — **barangay excluded**, same disk-budget cut as `agg_training` (≈10.6k rows total).
+Cross-dataset: the three main-dataset indicators from `agg_bhw_counts`, and households-per-BHW /
+BHWs-per-1,000 / coverage from `agg_bhw_stepzero_counts` (+ `agg_bhw_counts.n_total` for coverage's
+numerator).
+
+- **DB.** Migration `supabase/migrations/20260721010000_e2_3_peer_ranks.sql` (create table + populate
+  in one CTE). Applied live via MCP; idempotent (`create table if not exists` + delete-then-insert by
+  dataset). Mirrored in `build_aggregates.sql` §9c. Types: `agg_peer_ranks` block added to
+  `database.types.ts` by hand.
+- **Verified live**: region 07 ranks are internally consistent across all six indicators —
+  `percentile = (n_siblings − rank_position)/(n_siblings − 1)×100` holds (e.g. avg-years rank 17/18 →
+  5.9; any-honorarium rank 1/18 → 100).
+- **UI.** `getPeerRank` accessor + `PeerRankChip` (server) shown under the map: "On {indicator},
+  {geo} ranks {ordinal} of {n} {siblings} in {parent}." **Suppressed** when the geo has < 30 profiled
+  BHWs (E0.5 `MIN_LEADER_N`) or isn't ranked (national/barangay/training indicator). The chip already
+  carries the E2.4 "Stands out" outlier badge. `/methodology#derived-indicators` documents ranks +
+  the 3×MAD / min-8-siblings outlier rule.
+
+**Verify.** lint/typecheck clean, `npm test` 107 pass, `next build` compiles + type-checks clean
+(same `/place/*` caveat). Live chip rendering deferred to the preview.
+
+## 2026-07-21 — Phase E2.4: Outlier flags + insight generator (live DB)
+
+Completes the DB-dependent E2 work. The MAD outlier flag ships in `agg_peer_ranks.is_outlier`
+(computed in E2.3's migration: |value − median| > 3×MAD, only in groups of ≥8 siblings). This
+increment surfaces it.
+
+- **Peer chip badge.** `PeerRankChip` (E2.3) shows a "Stands out" badge when the current geo is a
+  flagged outlier for the active indicator.
+- **Insight generator.** New `peerOutlier` generator in `lib/db/insights.ts`, following the existing
+  score/curation conventions: at national/region/province it reads the outlier flags for the current
+  geo's children (their sibling group is exactly those children), skips any whose own profiled count
+  is below `MIN_LEADER_N` (so a tiny-N place isn't crowned an outlier on an unstable rate), and picks
+  the single most extreme (largest deviation in MAD units) across all six indicators — "{Name} stands
+  out from other {level}s in {parent} on {indicator} — {value}, well above/below the typical
+  {median}." Labels/units come from the shared `MAP_BASE_INDICATOR_META`/`formatIndicatorValue`.
+- **Verified live**: real, honest outliers surface, e.g. City of Olongapo any-honorarium 0% vs a
+  regional-typical 99% (n=80), Quezon City coverage 37% vs 98%.
+- **Deferred** (noted, not shipped): the plan's optional "map outline" for outlier geos on the
+  choropleth — the chip badge + insight card already surface outliers; a map stroke is a cosmetic
+  add-on left for later.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass), `next build`
+compiles + type-checks clean (same `/place/*` caveat).
+
+### Phase E2 status
+E2.1, E2.5 (no-DB) and E2.2, E2.3, E2.4 (live DB) are all done. Suppression audit note (plan's
+phase verify): the new barangay-grain columns are `agg_bhw_counts`/`agg_training`/`agg_honorarium`
+`ci_low`/`ci_high` (Wilson) — these are intervals, not counts, and reveal nothing an existing
+suppressed count doesn't; `agg_peer_ranks` deliberately excludes barangay. Live axe/Lighthouse/
+figure-render checks remain deferred to the Vercel preview.

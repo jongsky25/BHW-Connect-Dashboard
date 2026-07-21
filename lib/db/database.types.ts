@@ -27,6 +27,8 @@ export type Database = {
         Row: {
           any_honorarium_pct: number | null;
           avg_active_years: number | null;
+          ci_high: number | null;
+          ci_low: number | null;
           dataset_id: number;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
@@ -38,6 +40,8 @@ export type Database = {
         Insert: {
           any_honorarium_pct?: number | null;
           avg_active_years?: number | null;
+          ci_high?: number | null;
+          ci_low?: number | null;
           dataset_id: number;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
@@ -49,6 +53,8 @@ export type Database = {
         Update: {
           any_honorarium_pct?: number | null;
           avg_active_years?: number | null;
+          ci_high?: number | null;
+          ci_low?: number | null;
           dataset_id?: number;
           geo_code?: string;
           geo_level?: Database["public"]["Enums"]["geo_level_enum"];
@@ -335,6 +341,8 @@ export type Database = {
       agg_honorarium: {
         Row: {
           avg_monthly_amount: number | null;
+          ci_high: number | null;
+          ci_low: number | null;
           dataset_id: number;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
@@ -352,6 +360,8 @@ export type Database = {
         };
         Insert: {
           avg_monthly_amount?: number | null;
+          ci_high?: number | null;
+          ci_low?: number | null;
           dataset_id: number;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
@@ -369,6 +379,8 @@ export type Database = {
         };
         Update: {
           avg_monthly_amount?: number | null;
+          ci_high?: number | null;
+          ci_low?: number | null;
           dataset_id?: number;
           geo_code?: string;
           geo_level?: Database["public"]["Enums"]["geo_level_enum"];
@@ -401,8 +413,73 @@ export type Database = {
           },
         ];
       };
+      agg_peer_ranks: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          indicator: string;
+          is_outlier: boolean;
+          mad: number | null;
+          median: number | null;
+          n_siblings: number | null;
+          n_total: number | null;
+          percentile: number | null;
+          rank_position: number | null;
+          value: number | null;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator: string;
+          is_outlier?: boolean;
+          mad?: number | null;
+          median?: number | null;
+          n_siblings?: number | null;
+          n_total?: number | null;
+          percentile?: number | null;
+          rank_position?: number | null;
+          value?: number | null;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator?: string;
+          is_outlier?: boolean;
+          mad?: number | null;
+          median?: number | null;
+          n_siblings?: number | null;
+          n_total?: number | null;
+          percentile?: number | null;
+          rank_position?: number | null;
+          value?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_peer_ranks_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_peer_ranks_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_training: {
         Row: {
+          ci_high: number | null;
+          ci_low: number | null;
           coverage_pct: number | null;
           dataset_id: number;
           geo_code: string;
@@ -415,6 +492,8 @@ export type Database = {
           topic_slug: string;
         };
         Insert: {
+          ci_high?: number | null;
+          ci_low?: number | null;
           coverage_pct?: number | null;
           dataset_id: number;
           geo_code: string;
@@ -427,6 +506,8 @@ export type Database = {
           topic_slug: string;
         };
         Update: {
+          ci_high?: number | null;
+          ci_low?: number | null;
           coverage_pct?: number | null;
           dataset_id?: number;
           geo_code?: string;
@@ -897,6 +978,8 @@ export type Database = {
           parent_chain: Json | null;
         }[];
       };
+      wilson_high: { Args: { k: number; n: number }; Returns: number };
+      wilson_low: { Args: { k: number; n: number }; Returns: number };
     };
     Enums: {
       admin_role_enum: "admin" | "editor";
