@@ -5,7 +5,10 @@ import { useQueryStates } from "nuqs";
 import { filterParsers } from "@/lib/filters/codec";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
+import { PEER_LEVEL_PLURAL, toFigurePeer } from "@/lib/analysis/peer-labels";
+import { MAP_BASE_INDICATOR_META } from "@/lib/analysis/map-indicators";
 import { FigureCard } from "@/components/narrative/figure-card";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import { FigureTabs } from "@/components/ui/figure-tabs";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
@@ -22,7 +25,25 @@ import type {
   TrainingRow,
 } from "@/lib/db/indicators";
 import type { HonorariumSufficiencyRow } from "@/lib/db/derived-figures";
+import type { PeerRank } from "@/lib/db/peer-ranks";
 import type { Indicator } from "@/lib/filters/schema";
+
+/** This column's place vs. the Philippines only — no region row (Increment 4
+ * §4.4: four places' regions would be noise; the head-to-head strip above
+ * already covers across-places comparison). Built once on the server from the
+ * already-fetched national values and reused by every column (Risk R8: plain,
+ * serializable data — no functions/ReactNode). */
+export type CompareNationalReference = {
+  counts: {
+    pctAccredited: number | null;
+    avgActiveYears: number | null;
+    anyHonorariumPct: number | null;
+    nTotal: number | null;
+  } | null;
+  certification: CertificationRow[];
+  honorarium: HonorariumRow[];
+  honorariumSufficiency: HonorariumSufficiencyRow | null;
+};
 
 export type CompareColumnData = {
   geoCode: string;
@@ -42,7 +63,55 @@ export type CompareColumnData = {
   certification: CertificationRow[];
   honorarium: HonorariumRow[];
   honorariumSufficiency: HonorariumSufficiencyRow | null;
+  /** This geo's standing among its same-level siblings, for the 4
+   * `agg_peer_ranks`-covered indicators with a column figure — keyed by
+   * indicator, absent (or null) when unranked (Risk R1: never faked). */
+  peerRanks: Record<string, PeerRank | null>;
+  /** Place-vs-nation reference for every column figure's benchmark rows. */
+  nationalReference: CompareNationalReference | null;
 };
+
+const tesdaCertifiedPct = (rows: CertificationRow[]): number | null =>
+  rows.find((r) => r.certType === "tesda_certified")?.pct ?? null;
+
+const barangayAvgMonthlyAmount = (rows: HonorariumRow[]): number | null =>
+  rows.find((r) => r.payerLevel === "barangay")?.avgMonthlyAmount ?? null;
+
+const barangayMedianAmount = (rows: HonorariumRow[]): number | null =>
+  rows.find((r) => r.payerLevel === "barangay")?.medianAmount ?? null;
+
+function maxNReceiving(rows: HonorariumRow[]): number | null {
+  const values = rows.map((r) => r.nReceiving).filter((v): v is number => v !== null);
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
+/** This place / Philippines only (no region row — Increment 4 §4.4). The
+ * Philippines row is included whenever `nationalReference` was fetched at
+ * all, even if the specific value inside it is null, matching how
+ * `rowsFromAncestorValues` treats a present-but-null ancestor value. */
+function placeVsNationRows(
+  data: CompareColumnData,
+  selfValue: number | null,
+  nationalValue: number | null,
+): FigureBenchmarkProps["rows"] {
+  return [
+    { label: data.geoName, value: selfValue, isPrimary: true },
+    ...(data.nationalReference ? [{ label: "Philippines", value: nationalValue }] : []),
+  ];
+}
+
+/** Flattens this column's batched peer-rank map into the shape
+ * `FigureBenchmark` renders — parentName is omitted (null) here: Compare's
+ * columns don't carry ancestor data (place-vs-nation only), so the sentence
+ * reads "Ranks 3rd of 17 provinces on % accredited" without the "in {region}"
+ * clause, still accurate and never fabricated (Risk R1). */
+function peerFor(
+  data: CompareColumnData,
+  indicatorKey: string,
+  meta: { label: string },
+) {
+  return toFigurePeer(data.peerRanks[indicatorKey] ?? null, null, PEER_LEVEL_PLURAL[data.geoLevel] ?? "", meta.label);
+}
 
 export function CompareColumn({
   data,
@@ -61,6 +130,48 @@ export function CompareColumn({
 
   const showAll = indicator === null;
   const isSmallSample = data.validatedProfiles !== null && data.validatedProfiles < MIN_LEADER_N;
+
+  // Built once and shared by both the tabbed (showAll) and single-focus
+  // render paths below, so the two can never disagree on a benchmark.
+  const sufficiencyBenchmark: FigureBenchmarkProps = {
+    rows: placeVsNationRows(
+      data,
+      data.honorariumSufficiency?.pctBelowSufficiency ?? null,
+      data.nationalReference?.honorariumSufficiency?.pctBelowSufficiency ?? null,
+    ),
+    format: "percent",
+    n: data.honorariumSufficiency?.nTotal ?? null,
+  };
+  const whoBenchmark: FigureBenchmarkProps = {
+    rows: placeVsNationRows(
+      data,
+      data.counts?.anyHonorariumPct ?? null,
+      data.nationalReference?.counts?.anyHonorariumPct ?? null,
+    ),
+    format: "percent",
+    peer: peerFor(data, "any_honorarium_pct", MAP_BASE_INDICATOR_META.any_honorarium_pct),
+    n: data.counts?.nTotal ?? null,
+  };
+  const amountBenchmark: FigureBenchmarkProps = {
+    rows: placeVsNationRows(
+      data,
+      barangayAvgMonthlyAmount(data.honorarium),
+      barangayAvgMonthlyAmount(data.nationalReference?.honorarium ?? []),
+    ),
+    format: "peso",
+    n: maxNReceiving(data.honorarium),
+    nLabel: "recipients",
+  };
+  const distributionBenchmark: FigureBenchmarkProps = {
+    rows: placeVsNationRows(
+      data,
+      barangayMedianAmount(data.honorarium),
+      barangayMedianAmount(data.nationalReference?.honorarium ?? []),
+    ),
+    format: "peso",
+    n: maxNReceiving(data.honorarium),
+    nLabel: "recipients",
+  };
 
   return (
     <div className="flex min-w-72 flex-1 flex-col gap-4">
@@ -105,6 +216,18 @@ export function CompareColumn({
               ? `About ${Math.round(data.counts.pctAccredited)}% of profiled BHWs here are accredited.`
               : "No accreditation data available."
           }
+          benchmark={
+            <FigureBenchmark
+              rows={placeVsNationRows(
+                data,
+                data.counts?.pctAccredited ?? null,
+                data.nationalReference?.counts?.pctAccredited ?? null,
+              )}
+              format="percent"
+              peer={peerFor(data, "pct_accredited", MAP_BASE_INDICATOR_META.pct_accredited)}
+              n={data.counts?.nTotal ?? null}
+            />
+          }
         >
           <p className="text-4xl font-semibold tracking-tight">
             {data.counts?.pctAccredited ?? "—"}
@@ -122,6 +245,19 @@ export function CompareColumn({
               ? `Average of ${data.counts.avgActiveYears} years.`
               : "No service-year data available."
           }
+          benchmark={
+            <FigureBenchmark
+              rows={placeVsNationRows(
+                data,
+                data.counts?.avgActiveYears ?? null,
+                data.nationalReference?.counts?.avgActiveYears ?? null,
+              )}
+              format="count"
+              unitSuffix="yrs"
+              peer={peerFor(data, "avg_active_years", MAP_BASE_INDICATOR_META.avg_active_years)}
+              n={data.counts?.nTotal ?? null}
+            />
+          }
         >
           <p className="text-4xl font-semibold tracking-tight">{data.counts?.avgActiveYears ?? "—"}</p>
         </FigureCard>
@@ -136,6 +272,7 @@ export function CompareColumn({
             caption={caption}
             geoCode={data.geoCode}
             geoLevel={data.geoLevel}
+            benchmark={{ n: data.counts?.nTotal ?? null }}
           />
         ))}
 
@@ -146,6 +283,7 @@ export function CompareColumn({
           geoLevel={data.geoLevel}
           citymunAncestor={null}
           geoCode={data.geoCode}
+          benchmark={{ n: data.counts?.nTotal ?? null }}
         />
       )}
 
@@ -155,6 +293,15 @@ export function CompareColumn({
           caption={caption}
           geoCode={data.geoCode}
           geoLevel={data.geoLevel}
+          benchmark={{
+            rows: placeVsNationRows(
+              data,
+              tesdaCertifiedPct(data.certification),
+              tesdaCertifiedPct(data.nationalReference?.certification ?? []),
+            ),
+            format: "percent",
+            n: data.counts?.nTotal ?? null,
+          }}
         />
       )}
 
@@ -176,6 +323,7 @@ export function CompareColumn({
                   caption={caption}
                   geoCode={data.geoCode}
                   geoLevel={data.geoLevel}
+                  benchmark={sufficiencyBenchmark}
                 />
               ),
             },
@@ -188,6 +336,7 @@ export function CompareColumn({
                   caption={caption}
                   geoCode={data.geoCode}
                   geoLevel={data.geoLevel}
+                  benchmark={whoBenchmark}
                 />
               ),
             },
@@ -200,6 +349,7 @@ export function CompareColumn({
                   caption={caption}
                   geoCode={data.geoCode}
                   geoLevel={data.geoLevel}
+                  benchmark={amountBenchmark}
                 />
               ),
             },
@@ -212,6 +362,7 @@ export function CompareColumn({
                   caption={caption}
                   geoCode={data.geoCode}
                   geoLevel={data.geoLevel}
+                  benchmark={distributionBenchmark}
                 />
               ),
             },
@@ -225,6 +376,7 @@ export function CompareColumn({
               caption={caption}
               geoCode={data.geoCode}
               geoLevel={data.geoLevel}
+              benchmark={sufficiencyBenchmark}
             />
           )}
           {indicator === "honorarium" && (
@@ -233,6 +385,7 @@ export function CompareColumn({
               caption={caption}
               geoCode={data.geoCode}
               geoLevel={data.geoLevel}
+              benchmark={whoBenchmark}
             />
           )}
           {indicator === "honorarium_amount" && (
@@ -241,6 +394,7 @@ export function CompareColumn({
               caption={caption}
               geoCode={data.geoCode}
               geoLevel={data.geoLevel}
+              benchmark={amountBenchmark}
             />
           )}
           {indicator === "honorarium_distribution" && (
@@ -249,6 +403,7 @@ export function CompareColumn({
               caption={caption}
               geoCode={data.geoCode}
               geoLevel={data.geoLevel}
+              benchmark={distributionBenchmark}
             />
           )}
         </>

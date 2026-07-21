@@ -11,13 +11,16 @@ import {
 } from "@/lib/filters/schema";
 import { getChildGeos, getGeoAncestors, resolveGeoOrNational } from "@/lib/db/geo";
 import {
+  getBhwCounts,
   getCertification,
   getChildIndicators,
   getChildTrainingCoverage,
   getDemographics,
   getHonorarium,
   getTrainingCoverage,
+  type CertificationRow,
   type ChildIndicatorRow,
+  type HonorariumRow,
 } from "@/lib/db/indicators";
 import { getDataCompleteness, type CompletenessRow } from "@/lib/db/data-quality";
 import {
@@ -27,14 +30,23 @@ import {
   getHonorariumSufficiency,
   getIncomeClassEquity,
 } from "@/lib/db/derived-figures";
-import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
+import {
+  MAP_BASE_INDICATOR_META,
+  formatIndicatorValue,
+  metaForIndicator,
+} from "@/lib/analysis/map-indicators";
 import { computeDataQualityGrade } from "@/lib/analysis/data-quality-grade";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { coverageForDisplay } from "@/lib/db/stepzero";
-import { getPeerRank } from "@/lib/db/peer-ranks";
+import { getPeerRank, getPeerRanks } from "@/lib/db/peer-ranks";
 import { getInsights } from "@/lib/db/insights";
-import { getBenchmarkContext, benchmarkRowsFor } from "@/lib/db/benchmark-context";
-import { PEER_LEVEL_PLURAL, peerParentName } from "@/lib/analysis/peer-labels";
+import {
+  getBenchmarkContext,
+  benchmarkRowsFor,
+  rowsFromAncestorValues,
+} from "@/lib/db/benchmark-context";
+import { PEER_LEVEL_PLURAL, peerParentName, toFigurePeer } from "@/lib/analysis/peer-labels";
+import { DOH_INDICATIVE_NOTE } from "@/lib/analysis/thresholds";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { GeoSearch } from "@/components/home/geo-search";
@@ -94,6 +106,46 @@ function captionFor(nProfiles: number | null, geoName: string) {
   return `N = ${nProfiles !== null ? nProfiles.toLocaleString() : "—"} validated profiles · ${geoName} · 2025 snapshot`;
 }
 
+/** The 4 indicators `agg_peer_ranks` covers that also have a standalone figure
+ * card here (Increment 4) — batched into one `getPeerRanks` call instead of
+ * one round trip per figure. */
+const FIGURE_PEER_INDICATORS = [
+  "pct_accredited",
+  "avg_active_years",
+  "any_honorarium_pct",
+  "households_per_bhw",
+] as const;
+
+/** R3: at barangay, a figure that renders the barangay's own data (not an
+ * ancestor fallback) still has no peer row — `agg_peer_ranks` stops at
+ * citymun — so the absence needs an explanation rather than silence. */
+const BARANGAY_PEER_NOTE = "Peer ranking is available down to city/municipality level.";
+
+/** R3: a figure built only down to citymun shows its citymun ancestor's data
+ * at a barangay page — this note says so explicitly, alongside the figure's
+ * own "(shown for X)" title suffix. */
+function fallbackNote(fallbackCitymunName: string | null): string | undefined {
+  return fallbackCitymunName
+    ? `Shown for ${fallbackCitymunName}; barangay-level data is not built for this figure.`
+    : undefined;
+}
+
+const tesdaCertifiedPct = (rows: CertificationRow[]): number | null =>
+  rows.find((r) => r.certType === "tesda_certified")?.pct ?? null;
+
+const barangayAvgMonthlyAmount = (rows: HonorariumRow[]): number | null =>
+  rows.find((r) => r.payerLevel === "barangay")?.avgMonthlyAmount ?? null;
+
+const barangayMedianAmount = (rows: HonorariumRow[]): number | null =>
+  rows.find((r) => r.payerLevel === "barangay")?.medianAmount ?? null;
+
+/** Adequacy n for the honorarium amount/distribution figures: the largest
+ * recipient count across paying levels (contract table: "max nReceiving"). */
+function maxNReceiving(rows: HonorariumRow[]): number | null {
+  const values = rows.map((r) => r.nReceiving).filter((v): v is number => v !== null);
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
 /** Pick a child's value for one base map indicator (E1.1). */
 function mapBaseValue(row: ChildIndicatorRow, indicator: MapBaseIndicator): number | null {
   switch (indicator) {
@@ -140,6 +192,14 @@ export default async function ExplorePage({
   const figureLevel: GeoLevel = figureFallback ? "citymun" : geo.geoLevel;
   const figureFallbackName = figureFallback ? figureFallback.geoName : null;
 
+  // Ancestor-presence gating for Increment 4's benchmark rows — a pure function
+  // of geoLevel, so it's known before `benchmarkCtx` resolves (which computes
+  // the identical rule internally) and every ancestor fetch below can join the
+  // same Promise.all rather than waiting on a second round trip.
+  const wantRegionRow = geo.geoLevel !== "national" && geo.geoLevel !== "region";
+  const wantNationalRow = geo.geoLevel !== "national";
+  const regionCode = ancestors.region?.geoCode ?? null;
+
   const [
     regions,
     benchmarkCtx,
@@ -158,6 +218,19 @@ export default async function ExplorePage({
     honorariumInequality,
     honorariumSufficiency,
     incomeClassEquity,
+    peerRanks,
+    figureCounts,
+    workloadFallbackPeer,
+    honorariumRegion,
+    honorariumNational,
+    honorariumInequalityRegion,
+    honorariumInequalityNational,
+    workloadRegion,
+    workloadNational,
+    honorariumSufficiencyRegion,
+    honorariumSufficiencyNational,
+    certificationRegion,
+    certificationNational,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
     // Benchmark context (E1.2): this place vs. its region and the nation, so
@@ -188,11 +261,52 @@ export default async function ExplorePage({
     getHonorariumInequality(figureCode, figureLevel),
     getHonorariumSufficiency(figureCode, figureLevel),
     geo.geoLevel === "national" ? getIncomeClassEquity() : Promise.resolve([]),
+    // Peer standing (E2.3/E1.5) for the 4 `agg_peer_ranks`-covered indicators
+    // that also have a standalone figure card here, batched into one query.
+    getPeerRanks(geo.geoCode, geo.geoLevel, FIGURE_PEER_INDICATORS),
+    // Cohorts/Training/Completeness have no scalar headline value of their own
+    // to benchmark, but still need an adequacy n scoped to whichever geo their
+    // rows actually describe (the citymun fallback at barangay, same as
+    // `figureCode`/`figureLevel` above) — `getBhwCounts` is `cache()`d, so this
+    // is free when there's no fallback (figureCode === geo.geoCode).
+    getBhwCounts(figureCode, figureLevel),
+    // Workload is peer-covered (households_per_bhw) but, at barangay, describes
+    // its citymun ancestor (Risk R3) — the citymun itself is genuinely ranked,
+    // so its real rank is shown (never the barangay's, which doesn't exist).
+    figureFallback
+      ? getPeerRank(figureCode, figureLevel, "households_per_bhw")
+      : Promise.resolve(null),
+    // Ancestor fetches for the figures whose vertical rows don't live on
+    // `BenchmarkContext` (Increment 4's contract table) — honorarium
+    // amount/distribution, inequality, sufficiency, workload, and
+    // certification each read a different `lib/db` query fn at the same
+    // region/national geos used everywhere else on this page.
+    wantRegionRow && regionCode ? getHonorarium(regionCode, "region") : Promise.resolve([]),
+    wantNationalRow ? getHonorarium(NATIONAL_GEO_CODE, "national") : Promise.resolve([]),
+    wantRegionRow && regionCode
+      ? getHonorariumInequality(regionCode, "region")
+      : Promise.resolve(null),
+    wantNationalRow
+      ? getHonorariumInequality(NATIONAL_GEO_CODE, "national")
+      : Promise.resolve(null),
+    wantRegionRow && regionCode ? getWorkload(regionCode, "region") : Promise.resolve(null),
+    wantNationalRow ? getWorkload(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+    wantRegionRow && regionCode
+      ? getHonorariumSufficiency(regionCode, "region")
+      : Promise.resolve(null),
+    wantNationalRow
+      ? getHonorariumSufficiency(NATIONAL_GEO_CODE, "national")
+      : Promise.resolve(null),
+    wantRegionRow && regionCode ? getCertification(regionCode, "region") : Promise.resolve([]),
+    wantNationalRow ? getCertification(NATIONAL_GEO_CODE, "national") : Promise.resolve([]),
   ]);
 
   const overview = benchmarkCtx.self.overview;
   const counts = benchmarkCtx.self.counts;
   const showBenchmarks = benchmarkCtx.showBenchmarks;
+  const workloadPeerRank = figureFallback
+    ? workloadFallbackPeer
+    : (peerRanks.get("households_per_bhw") ?? null);
 
   const breadcrumbSteps: BreadcrumbStep[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
@@ -552,6 +666,7 @@ export default async function ExplorePage({
                         : "—"}
                     </p>
                   )}
+                  <p className="mt-2 text-xs text-muted">{DOH_INDICATIVE_NOTE}</p>
                 </div>
               </div>
 
@@ -614,18 +729,19 @@ export default async function ExplorePage({
                 meta={mapMeta}
                 trainingTopics={trainingTopics}
               />
+              {/* Peer-standing chip (E2.3): how this geo ranks among its siblings
+                on the active indicator — moved inside this slide (E1.5/E4.2) so
+                it presents alongside the map instead of floating outside any
+                slide's coverage. */}
+              <PeerRankChip
+                rank={peerRank}
+                geoName={geo.geoName}
+                parentName={peerParentName(geo.geoLevel, ancestors)}
+                siblingPlural={PEER_LEVEL_PLURAL[geo.geoLevel] ?? ""}
+                indicatorLabel={mapMeta.label}
+              />
             </PresentationSlide>
           )}
-
-          {/* Peer-standing chip (E2.3): how this geo ranks among its siblings on
-            the active indicator. */}
-          <PeerRankChip
-            rank={peerRank}
-            geoName={geo.geoName}
-            parentName={peerParentName(geo.geoLevel, ancestors)}
-            siblingPlural={PEER_LEVEL_PLURAL[geo.geoLevel] ?? ""}
-            indicatorLabel={mapMeta.label}
-          />
 
           {/* Distribution view (E1.3) — spread of the active indicator across
             children, reusing the map's data. */}
@@ -668,6 +784,20 @@ export default async function ExplorePage({
                 verified={counts?.pctAccredited ?? null}
                 verifiedCi={counts ? { low: counts.ciLow, high: counts.ciHigh } : null}
                 caption={caption}
+                benchmark={{
+                  rows: showBenchmarks
+                    ? benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.pctAccredited ?? null)
+                    : undefined,
+                  format: "percent",
+                  peer: toFigurePeer(
+                    peerRanks.get("pct_accredited"),
+                    peerParentName(geo.geoLevel, ancestors),
+                    PEER_LEVEL_PLURAL[geo.geoLevel] ?? "",
+                    MAP_BASE_INDICATOR_META.pct_accredited.label,
+                  ),
+                  n: counts?.nTotal ?? null,
+                  note: geo.geoLevel === "barangay" ? BARANGAY_PEER_NOTE : undefined,
+                }}
               />
             </PresentationSlide>
 
@@ -677,6 +807,18 @@ export default async function ExplorePage({
                 caption={caption}
                 geoCode={geo.geoCode}
                 geoLevel={geo.geoLevel}
+                benchmark={{
+                  rows: showBenchmarks
+                    ? rowsFromAncestorValues(
+                        benchmarkCtx,
+                        tesdaCertifiedPct(certification),
+                        tesdaCertifiedPct(certificationRegion),
+                        tesdaCertifiedPct(certificationNational),
+                      )
+                    : undefined,
+                  format: "percent",
+                  n: counts?.nTotal ?? null,
+                }}
               />
             </PresentationSlide>
 
@@ -692,6 +834,7 @@ export default async function ExplorePage({
                   caption={caption}
                   geoCode={geo.geoCode}
                   geoLevel={geo.geoLevel}
+                  benchmark={{ n: counts?.nTotal ?? null }}
                 />
               </PresentationSlide>
             ))}
@@ -702,6 +845,7 @@ export default async function ExplorePage({
                 caption={caption}
                 geoLevel={geo.geoLevel}
                 citymunAncestor={ancestors.citymun}
+                benchmark={{ n: figureCounts?.nTotal ?? null }}
                 geoCode={geo.geoCode}
               />
             </PresentationSlide>
@@ -712,6 +856,7 @@ export default async function ExplorePage({
                 caption={caption}
                 geoLevel={geo.geoLevel}
                 citymunAncestor={ancestors.citymun}
+                benchmark={{ n: counts?.nTotal ?? null }}
               />
             </PresentationSlide>
 
@@ -722,6 +867,28 @@ export default async function ExplorePage({
                 caption={caption}
                 geoLevel={geo.geoLevel}
                 fallbackCitymunName={figureFallbackName}
+                benchmark={{
+                  rows: showBenchmarks
+                    ? rowsFromAncestorValues(
+                        benchmarkCtx,
+                        workload?.median ?? null,
+                        workloadRegion?.median ?? null,
+                        workloadNational?.median ?? null,
+                        figureFallbackName ?? "This place",
+                      )
+                    : undefined,
+                  peer: toFigurePeer(
+                    workloadPeerRank,
+                    peerParentName(figureLevel, ancestors),
+                    PEER_LEVEL_PLURAL[figureLevel] ?? "",
+                    MAP_BASE_INDICATOR_META.households_per_bhw.label,
+                  ),
+                  n: workload?.nBhw ?? null,
+                  nLabel: "BHWs reporting a household count",
+                  note: [fallbackNote(figureFallbackName), DOH_INDICATIVE_NOTE]
+                    .filter((s): s is string => Boolean(s))
+                    .join(" "),
+                }}
               />
             </PresentationSlide>
           </div>
@@ -733,13 +900,18 @@ export default async function ExplorePage({
               caption={caption}
               geoLevel={geo.geoLevel}
               fallbackCitymunName={figureFallbackName}
+              benchmark={{ n: figureCounts?.nTotal ?? null, note: fallbackNote(figureFallbackName) }}
             />
           </PresentationSlide>
 
           {/* Income-class equity (E3.7) — national scope only. */}
           {geo.geoLevel === "national" && incomeClassEquity.length > 0 && (
             <PresentationSlide id="income-class" title="Income-class equity">
-              <IncomeClassFigure rows={incomeClassEquity} caption={caption} />
+              <IncomeClassFigure
+                rows={incomeClassEquity}
+                caption={caption}
+                benchmark={{ n: overview.validatedProfiles ?? null }}
+              />
             </PresentationSlide>
           )}
 
@@ -759,6 +931,20 @@ export default async function ExplorePage({
                       geoCode={geo.geoCode}
                       geoLevel={geo.geoLevel}
                       fallbackCitymunName={figureFallbackName}
+                      benchmark={{
+                        rows: showBenchmarks
+                          ? rowsFromAncestorValues(
+                              benchmarkCtx,
+                              honorariumSufficiency?.pctBelowSufficiency ?? null,
+                              honorariumSufficiencyRegion?.pctBelowSufficiency ?? null,
+                              honorariumSufficiencyNational?.pctBelowSufficiency ?? null,
+                              figureFallbackName ?? "This place",
+                            )
+                          : undefined,
+                        format: "percent",
+                        n: honorariumSufficiency?.nTotal ?? null,
+                        note: fallbackNote(figureFallbackName),
+                      }}
                     />
                   ),
                 },
@@ -771,6 +957,20 @@ export default async function ExplorePage({
                       caption={caption}
                       geoCode={geo.geoCode}
                       geoLevel={geo.geoLevel}
+                      benchmark={{
+                        rows: showBenchmarks
+                          ? benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.anyHonorariumPct ?? null)
+                          : undefined,
+                        format: "percent",
+                        peer: toFigurePeer(
+                          peerRanks.get("any_honorarium_pct"),
+                          peerParentName(geo.geoLevel, ancestors),
+                          PEER_LEVEL_PLURAL[geo.geoLevel] ?? "",
+                          MAP_BASE_INDICATOR_META.any_honorarium_pct.label,
+                        ),
+                        n: counts?.nTotal ?? null,
+                        note: geo.geoLevel === "barangay" ? BARANGAY_PEER_NOTE : undefined,
+                      }}
                     />
                   ),
                 },
@@ -783,6 +983,19 @@ export default async function ExplorePage({
                       caption={caption}
                       geoCode={geo.geoCode}
                       geoLevel={geo.geoLevel}
+                      benchmark={{
+                        rows: showBenchmarks
+                          ? rowsFromAncestorValues(
+                              benchmarkCtx,
+                              barangayAvgMonthlyAmount(honorarium),
+                              barangayAvgMonthlyAmount(honorariumRegion),
+                              barangayAvgMonthlyAmount(honorariumNational),
+                            )
+                          : undefined,
+                        format: "peso",
+                        n: maxNReceiving(honorarium),
+                        nLabel: "recipients",
+                      }}
                     />
                   ),
                 },
@@ -795,6 +1008,19 @@ export default async function ExplorePage({
                       caption={caption}
                       geoCode={geo.geoCode}
                       geoLevel={geo.geoLevel}
+                      benchmark={{
+                        rows: showBenchmarks
+                          ? rowsFromAncestorValues(
+                              benchmarkCtx,
+                              barangayMedianAmount(honorarium),
+                              barangayMedianAmount(honorariumRegion),
+                              barangayMedianAmount(honorariumNational),
+                            )
+                          : undefined,
+                        format: "peso",
+                        n: maxNReceiving(honorarium),
+                        nLabel: "recipients",
+                      }}
                     />
                   ),
                 },
@@ -807,6 +1033,20 @@ export default async function ExplorePage({
                       caption={caption}
                       geoLevel={geo.geoLevel}
                       fallbackCitymunName={figureFallbackName}
+                      benchmark={{
+                        rows: showBenchmarks
+                          ? rowsFromAncestorValues(
+                              benchmarkCtx,
+                              honorariumInequality?.gini ?? null,
+                              honorariumInequalityRegion?.gini ?? null,
+                              honorariumInequalityNational?.gini ?? null,
+                              figureFallbackName ?? "This place",
+                            )
+                          : undefined,
+                        n: honorariumInequality?.nReceiving ?? null,
+                        nLabel: "receiving BHWs",
+                        note: fallbackNote(figureFallbackName),
+                      }}
                     />
                   ),
                 },

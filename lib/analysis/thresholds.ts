@@ -29,6 +29,15 @@ export const MIN_LEADER_N = 30;
 export const DOH_INDICATIVE_HOUSEHOLDS_PER_BHW = 20;
 
 /**
+ * The DOH indicative-ratio caveat, verbatim, wherever a households-per-BHW
+ * figure appears (Increment 4) — a footnote, never a chart marker/gauge. Kept
+ * as one exported string so the wording can't drift between `/bhw`, `/explore`,
+ * and `/place`, and the household count reads from the constant above rather
+ * than being retyped.
+ */
+export const DOH_INDICATIVE_NOTE = `Indicative reference: DOH planning guidance suggests 1 BHW per ${DOH_INDICATIVE_HOUSEHOLDS_PER_BHW} households — a planning ratio, not a performance target.`;
+
+/**
  * The honorarium-sufficiency cut used by the "is it enough?" figure (deck
  * headline: "59% receive less than ₱68/day" in cumulative, per-BHW, all-levels
  * honorarium). `HONORARIUM_SUFFICIENCY_DAILY_PHP` is a derived convenience

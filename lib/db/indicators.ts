@@ -241,30 +241,34 @@ export type CertificationRow = {
  * TESDA BHS NC2 training, and TESDA BHS NC II certification. Unlike
  * `agg_training`, `agg_certification` is built at all 5 geo levels including
  * barangay (see ingestion/build_aggregates.sql), so no barangay fallback needed.
+ *
+ * Wrapped in React's per-request `cache()` (string args are safe keys;
+ * precedent: `getActiveDataset`, `lib/db/dataset.ts:35`) — Increment 4's
+ * benchmark rows call this a second time at a region/national ancestor geo
+ * within the same render as the page's own self-geo call.
  */
-export async function getCertification(
-  geoCode: string,
-  geoLevel: GeoLevel,
-): Promise<CertificationRow[]> {
-  const datasetId = await getActiveDatasetId();
-  if (datasetId === null) return [];
+export const getCertification = cache(
+  async (geoCode: string, geoLevel: GeoLevel): Promise<CertificationRow[]> => {
+    const datasetId = await getActiveDatasetId();
+    if (datasetId === null) return [];
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("agg_certification")
-    .select("cert_type, n, pct")
-    .eq("dataset_id", datasetId)
-    .eq("geo_code", geoCode)
-    .eq("geo_level", geoLevel);
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("agg_certification")
+      .select("cert_type, n, pct")
+      .eq("dataset_id", datasetId)
+      .eq("geo_code", geoCode)
+      .eq("geo_level", geoLevel);
 
-  if (error || !data) return [];
+    if (error || !data) return [];
 
-  return data.map((row) => ({
-    certType: row.cert_type,
-    n: row.n,
-    pct: row.pct,
-  }));
-}
+    return data.map((row) => ({
+      certType: row.cert_type,
+      n: row.n,
+      pct: row.pct,
+    }));
+  },
+);
 
 export type HonorariumRow = {
   payerLevel: string;
@@ -283,39 +287,49 @@ export type HonorariumRow = {
   ciHigh: number | null;
 };
 
-/** Honorarium receipt broken down by which administrative level pays it. */
-export async function getHonorarium(geoCode: string, geoLevel: GeoLevel): Promise<HonorariumRow[]> {
-  const datasetId = await getActiveDatasetId();
-  if (datasetId === null) return [];
+/**
+ * Honorarium receipt broken down by which administrative level pays it.
+ *
+ * Wrapped in React's per-request `cache()` (string args are safe keys;
+ * precedent: `getActiveDataset`, `lib/db/dataset.ts:35`) — Increment 4's
+ * honorarium-amount/distribution benchmark rows call this a second time at a
+ * region/national ancestor geo within the same render as the page's own
+ * self-geo call.
+ */
+export const getHonorarium = cache(
+  async (geoCode: string, geoLevel: GeoLevel): Promise<HonorariumRow[]> => {
+    const datasetId = await getActiveDatasetId();
+    if (datasetId === null) return [];
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("agg_honorarium")
-    .select(
-      "payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency, min_amount, p25_amount, median_amount, p75_amount, max_amount, is_suppressed, ci_low, ci_high",
-    )
-    .eq("dataset_id", datasetId)
-    .eq("geo_code", geoCode)
-    .eq("geo_level", geoLevel);
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("agg_honorarium")
+      .select(
+        "payer_level, n_receiving, pct_receiving, avg_monthly_amount, modal_frequency, min_amount, p25_amount, median_amount, p75_amount, max_amount, is_suppressed, ci_low, ci_high",
+      )
+      .eq("dataset_id", datasetId)
+      .eq("geo_code", geoCode)
+      .eq("geo_level", geoLevel);
 
-  if (error || !data) return [];
+    if (error || !data) return [];
 
-  return data.map((row) => ({
-    payerLevel: row.payer_level,
-    nReceiving: row.n_receiving,
-    pctReceiving: row.pct_receiving,
-    avgMonthlyAmount: row.avg_monthly_amount,
-    modalFrequency: row.modal_frequency,
-    minAmount: row.min_amount,
-    p25Amount: row.p25_amount,
-    medianAmount: row.median_amount,
-    p75Amount: row.p75_amount,
-    maxAmount: row.max_amount,
-    isSuppressed: row.is_suppressed,
-    ciLow: row.ci_low,
-    ciHigh: row.ci_high,
-  }));
-}
+    return data.map((row) => ({
+      payerLevel: row.payer_level,
+      nReceiving: row.n_receiving,
+      pctReceiving: row.pct_receiving,
+      avgMonthlyAmount: row.avg_monthly_amount,
+      modalFrequency: row.modal_frequency,
+      minAmount: row.min_amount,
+      p25Amount: row.p25_amount,
+      medianAmount: row.median_amount,
+      p75Amount: row.p75_amount,
+      maxAmount: row.max_amount,
+      isSuppressed: row.is_suppressed,
+      ciLow: row.ci_low,
+      ciHigh: row.ci_high,
+    }));
+  },
+);
 
 export type ChildIndicatorRow = {
   geoCode: string;

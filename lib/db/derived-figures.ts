@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createSupabaseServerClient } from "./supabase";
 import { getActiveDatasetId } from "./dataset";
 import type { GeoLevel } from "@/lib/filters/schema";
@@ -57,37 +58,41 @@ export type WorkloadRow = {
  * national/region/province/citymun (barangay skipped — the UI falls back to the
  * citymun ancestor). Distribution columns are null + `isSuppressed` for geos with
  * fewer than 5 BHWs reporting a household count.
+ *
+ * Wrapped in React's per-request `cache()` (string args are safe keys;
+ * precedent: `getActiveDataset`, `lib/db/dataset.ts:35`) — Increment 4's
+ * benchmark rows call this a second time at a region/national ancestor geo
+ * within the same render as the page's own self-geo call.
  */
-export async function getWorkload(
-  geoCode: string,
-  geoLevel: GeoLevel,
-): Promise<WorkloadRow | null> {
-  if (geoLevel === "barangay") return null;
-  const datasetId = await getActiveDatasetId();
-  if (datasetId === null) return null;
+export const getWorkload = cache(
+  async (geoCode: string, geoLevel: GeoLevel): Promise<WorkloadRow | null> => {
+    if (geoLevel === "barangay") return null;
+    const datasetId = await getActiveDatasetId();
+    if (datasetId === null) return null;
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("agg_workload")
-    .select("n_bhw, p10, p25, median, p75, p90, mean, busiest_decile_share, is_suppressed")
-    .eq("dataset_id", datasetId)
-    .eq("geo_code", geoCode)
-    .eq("geo_level", geoLevel)
-    .maybeSingle();
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("agg_workload")
+      .select("n_bhw, p10, p25, median, p75, p90, mean, busiest_decile_share, is_suppressed")
+      .eq("dataset_id", datasetId)
+      .eq("geo_code", geoCode)
+      .eq("geo_level", geoLevel)
+      .maybeSingle();
 
-  if (error || !data) return null;
-  return {
-    nBhw: data.n_bhw,
-    p10: data.p10,
-    p25: data.p25,
-    median: data.median,
-    p75: data.p75,
-    p90: data.p90,
-    mean: data.mean,
-    busiestDecileShare: data.busiest_decile_share,
-    isSuppressed: data.is_suppressed,
-  };
-}
+    if (error || !data) return null;
+    return {
+      nBhw: data.n_bhw,
+      p10: data.p10,
+      p25: data.p25,
+      median: data.median,
+      p75: data.p75,
+      p90: data.p90,
+      mean: data.mean,
+      busiestDecileShare: data.busiest_decile_share,
+      isSuppressed: data.is_suppressed,
+    };
+  },
+);
 
 /** E3.5 — honorarium inequality among receiving BHWs for one geo. */
 export type HonorariumInequalityRow = {
@@ -104,34 +109,38 @@ export type HonorariumInequalityRow = {
  * (E3.5). Built at national/region/province/citymun (barangay skipped — the UI
  * falls back to the citymun ancestor). Null + `isSuppressed` for geos with fewer
  * than 5 receiving BHWs.
+ *
+ * Wrapped in React's per-request `cache()` (string args are safe keys;
+ * precedent: `getActiveDataset`, `lib/db/dataset.ts:35`) — Increment 4's
+ * benchmark rows call this a second time at a region/national ancestor geo
+ * within the same render as the page's own self-geo call.
  */
-export async function getHonorariumInequality(
-  geoCode: string,
-  geoLevel: GeoLevel,
-): Promise<HonorariumInequalityRow | null> {
-  if (geoLevel === "barangay") return null;
-  const datasetId = await getActiveDatasetId();
-  if (datasetId === null) return null;
+export const getHonorariumInequality = cache(
+  async (geoCode: string, geoLevel: GeoLevel): Promise<HonorariumInequalityRow | null> => {
+    if (geoLevel === "barangay") return null;
+    const datasetId = await getActiveDatasetId();
+    if (datasetId === null) return null;
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("agg_honorarium_inequality")
-    .select("n_receiving, gini, p10_amount, p90_amount, p90_p10_ratio, is_suppressed")
-    .eq("dataset_id", datasetId)
-    .eq("geo_code", geoCode)
-    .eq("geo_level", geoLevel)
-    .maybeSingle();
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("agg_honorarium_inequality")
+      .select("n_receiving, gini, p10_amount, p90_amount, p90_p10_ratio, is_suppressed")
+      .eq("dataset_id", datasetId)
+      .eq("geo_code", geoCode)
+      .eq("geo_level", geoLevel)
+      .maybeSingle();
 
-  if (error || !data) return null;
-  return {
-    nReceiving: data.n_receiving,
-    gini: data.gini,
-    p10Amount: data.p10_amount,
-    p90Amount: data.p90_amount,
-    p90p10Ratio: data.p90_p10_ratio,
-    isSuppressed: data.is_suppressed,
-  };
-}
+    if (error || !data) return null;
+    return {
+      nReceiving: data.n_receiving,
+      gini: data.gini,
+      p10Amount: data.p10_amount,
+      p90Amount: data.p90_amount,
+      p90p10Ratio: data.p90_p10_ratio,
+      isSuppressed: data.is_suppressed,
+    };
+  },
+);
 
 /** Increment 2 — one banded cell of the honorarium sufficiency figure. */
 export type HonorariumSufficiencyBand = {
@@ -158,42 +167,46 @@ export type HonorariumSufficiencyRow = {
  * geo has fewer than 5 total profiled BHWs (median/pct nulled, every band
  * row suppressed); individual band cells with 0 < n < 5 are separately
  * nulled + flagged even when the geo overall is not suppressed.
+ *
+ * Wrapped in React's per-request `cache()` (string args are safe keys;
+ * precedent: `getActiveDataset`, `lib/db/dataset.ts:35`) — Increment 4's
+ * benchmark rows call this a second time at a region/national ancestor geo
+ * within the same render as the page's own self-geo call.
  */
-export async function getHonorariumSufficiency(
-  geoCode: string,
-  geoLevel: GeoLevel,
-): Promise<HonorariumSufficiencyRow | null> {
-  if (geoLevel === "barangay") return null;
-  const datasetId = await getActiveDatasetId();
-  if (datasetId === null) return null;
+export const getHonorariumSufficiency = cache(
+  async (geoCode: string, geoLevel: GeoLevel): Promise<HonorariumSufficiencyRow | null> => {
+    if (geoLevel === "barangay") return null;
+    const datasetId = await getActiveDatasetId();
+    if (datasetId === null) return null;
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("agg_honorarium_cumulative")
-    .select(
-      "band_order, band_label, n, pct, n_total, median_cumulative_monthly, pct_below_sufficiency, is_suppressed",
-    )
-    .eq("dataset_id", datasetId)
-    .eq("geo_code", geoCode)
-    .eq("geo_level", geoLevel)
-    .order("band_order", { ascending: true });
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("agg_honorarium_cumulative")
+      .select(
+        "band_order, band_label, n, pct, n_total, median_cumulative_monthly, pct_below_sufficiency, is_suppressed",
+      )
+      .eq("dataset_id", datasetId)
+      .eq("geo_code", geoCode)
+      .eq("geo_level", geoLevel)
+      .order("band_order", { ascending: true });
 
-  if (error || !data || data.length === 0) return null;
-  const [first] = data;
-  return {
-    nTotal: first.n_total,
-    medianCumulativeMonthly: first.median_cumulative_monthly,
-    pctBelowSufficiency: first.pct_below_sufficiency,
-    isSuppressed: data.every((r) => r.is_suppressed),
-    bands: data.map((r) => ({
-      bandOrder: r.band_order,
-      bandLabel: r.band_label,
-      n: r.n,
-      pct: r.pct,
-      isSuppressed: r.is_suppressed,
-    })),
-  };
-}
+    if (error || !data || data.length === 0) return null;
+    const [first] = data;
+    return {
+      nTotal: first.n_total,
+      medianCumulativeMonthly: first.median_cumulative_monthly,
+      pctBelowSufficiency: first.pct_below_sufficiency,
+      isSuppressed: data.every((r) => r.is_suppressed),
+      bands: data.map((r) => ({
+        bandOrder: r.band_order,
+        bandLabel: r.band_label,
+        n: r.n,
+        pct: r.pct,
+        isSuppressed: r.is_suppressed,
+      })),
+    };
+  },
+);
 
 /** E3.7 — one income-class row of national indicator summaries. */
 export type IncomeClassRow = {

@@ -108,3 +108,32 @@ export function benchmarkRowsFor(
     ...(ctx.national ? [{ label: "Philippines", value: pick(ctx.national) }] : []),
   ];
 }
+
+/**
+ * The same This place / region / Philippines row shape as `benchmarkRowsFor`,
+ * but for figures whose metric doesn't live on `BhwOverview`/`BhwCounts` (E1.2's
+ * `BenchmarkSource`) — honorarium amount/distribution/inequality/sufficiency and
+ * workload, which each read a different `lib/db` query fn at the same three
+ * geos (Increment 4). Callers fetch the region/national ancestor values
+ * themselves (the same `cache()`-wrapped query fn used for `self`, just at
+ * `ctx.region`/`NATIONAL_GEO_CODE`) and pass the already-resolved numbers here;
+ * this only owns the row-shape + the same ancestor-presence gating
+ * `benchmarkRowsFor` uses (region omitted at/above region level, national
+ * omitted at national level) so the two helpers can never disagree about when a
+ * row is shown. `selfValue`'s label defaults to "This place" but a barangay
+ * page benchmarking a citymun-fallback figure passes the citymun's name instead
+ * (Risk R3) — the fallback value itself is still the caller's responsibility.
+ */
+export function rowsFromAncestorValues(
+  ctx: BenchmarkContext,
+  selfValue: number | null,
+  regionValue: number | null,
+  nationalValue: number | null,
+  selfLabel = "This place",
+): BenchmarkRow[] {
+  return [
+    { label: selfLabel, value: selfValue, isPrimary: true },
+    ...(ctx.region ? [{ label: ctx.region.geoName, value: regionValue }] : []),
+    ...(ctx.national ? [{ label: "Philippines", value: nationalValue }] : []),
+  ];
+}

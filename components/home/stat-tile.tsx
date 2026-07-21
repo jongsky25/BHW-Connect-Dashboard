@@ -86,6 +86,7 @@ export function StatTile({
   label,
   value,
   caption,
+  context,
   details,
   visual,
   enlarge,
@@ -93,6 +94,10 @@ export function StatTile({
   label: string;
   value: string;
   caption: string;
+  /** Optional adequacy/regional-spread/DOH-caveat line(s) rendered under the
+   * caption (Increment 4's "no naked numbers" rollout for `/bhw`) — plain
+   * `text-xs text-muted` lines, matching `FigureBenchmark`'s footnote styling. */
+  context?: ReactNode;
   /** Optional breakdown shown as plain text below the visual (no expansion — always visible). */
   details?: StatTileDetail[];
   /** One small, non-interactive inline visual (donut / gauge / bars) rendered under the value. */
@@ -107,6 +112,7 @@ export function StatTile({
       <p className="mt-1 text-4xl font-semibold tracking-tight">{value}</p>
       {visual && <div className="mt-3">{visual}</div>}
       <p className="mt-2 text-xs text-muted">{caption}</p>
+      {context}
       {details && details.length > 0 && (
         <dl className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
           {details.map((d) => (

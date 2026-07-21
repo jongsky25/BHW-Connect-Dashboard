@@ -8,6 +8,11 @@
  */
 import type { GeoAncestors } from "@/lib/db/geo";
 import type { GeoLevel } from "@/lib/filters/schema";
+// Type-only imports — erased at compile time, so this stays client-safe even
+// though `peer-ranks.ts` is `server-only` and `figure-benchmark.tsx` is a
+// component module.
+import type { PeerRank } from "@/lib/db/peer-ranks";
+import type { FigureBenchmarkPeer } from "@/components/narrative/figure-benchmark";
 
 /**
  * Plural noun for a geo level's same-level siblings, for peer-rank sentences
@@ -38,4 +43,29 @@ export function peerParentName(geoLevel: GeoLevel, ancestors: GeoAncestors): str
     default:
       return null;
   }
+}
+
+/**
+ * Flattens a `PeerRank` (or its absence) into the plain `FigureBenchmarkPeer`
+ * shape `FigureBenchmark` renders — one mapping shared by every page instead
+ * of re-deriving it per figure. Returns null exactly when there's no rank to
+ * show (indicator not covered by `agg_peer_ranks`, or this geo unranked) —
+ * `FigureBenchmark` never fakes a rank (Risk R1).
+ */
+export function toFigurePeer(
+  rank: PeerRank | null | undefined,
+  parentName: string | null,
+  siblingPlural: string,
+  indicatorLabel: string,
+): FigureBenchmarkPeer | null {
+  if (!rank) return null;
+  return {
+    rankPosition: rank.rankPosition,
+    nSiblings: rank.nSiblings,
+    percentile: rank.percentile,
+    parentName,
+    siblingPlural,
+    indicatorLabel,
+    nTotal: rank.nTotal,
+  };
 }
