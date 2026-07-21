@@ -921,3 +921,34 @@ numerator).
 
 **Verify.** lint/typecheck clean, `npm test` 107 pass, `next build` compiles + type-checks clean
 (same `/place/*` caveat). Live chip rendering deferred to the preview.
+
+## 2026-07-21 — Phase E2.4: Outlier flags + insight generator (live DB)
+
+Completes the DB-dependent E2 work. The MAD outlier flag ships in `agg_peer_ranks.is_outlier`
+(computed in E2.3's migration: |value − median| > 3×MAD, only in groups of ≥8 siblings). This
+increment surfaces it.
+
+- **Peer chip badge.** `PeerRankChip` (E2.3) shows a "Stands out" badge when the current geo is a
+  flagged outlier for the active indicator.
+- **Insight generator.** New `peerOutlier` generator in `lib/db/insights.ts`, following the existing
+  score/curation conventions: at national/region/province it reads the outlier flags for the current
+  geo's children (their sibling group is exactly those children), skips any whose own profiled count
+  is below `MIN_LEADER_N` (so a tiny-N place isn't crowned an outlier on an unstable rate), and picks
+  the single most extreme (largest deviation in MAD units) across all six indicators — "{Name} stands
+  out from other {level}s in {parent} on {indicator} — {value}, well above/below the typical
+  {median}." Labels/units come from the shared `MAP_BASE_INDICATOR_META`/`formatIndicatorValue`.
+- **Verified live**: real, honest outliers surface, e.g. City of Olongapo any-honorarium 0% vs a
+  regional-typical 99% (n=80), Quezon City coverage 37% vs 98%.
+- **Deferred** (noted, not shipped): the plan's optional "map outline" for outlier geos on the
+  choropleth — the chip badge + insight card already surface outliers; a map stroke is a cosmetic
+  add-on left for later.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass), `next build`
+compiles + type-checks clean (same `/place/*` caveat).
+
+### Phase E2 status
+E2.1, E2.5 (no-DB) and E2.2, E2.3, E2.4 (live DB) are all done. Suppression audit note (plan's
+phase verify): the new barangay-grain columns are `agg_bhw_counts`/`agg_training`/`agg_honorarium`
+`ci_low`/`ci_high` (Wilson) — these are intervals, not counts, and reveal nothing an existing
+suppressed count doesn't; `agg_peer_ranks` deliberately excludes barangay. Live axe/Lighthouse/
+figure-render checks remain deferred to the Vercel preview.

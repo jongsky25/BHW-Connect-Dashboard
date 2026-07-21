@@ -12,8 +12,9 @@ import {
 } from "./indicators";
 import { getStepzeroCounts, householdsPerBhw, type StepzeroCounts } from "./stepzero";
 import { getChildGeos, getGeoAncestors, type GeoAncestors, type GeoOption } from "./geo";
-import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
+import { NATIONAL_GEO_CODE, type GeoLevel, type MapBaseIndicator } from "@/lib/filters/schema";
 import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
+import { MAP_BASE_INDICATOR_META, formatIndicatorValue } from "@/lib/analysis/map-indicators";
 
 export type InsightCard = {
   /** Stable per-generator identity — React key, and unique across the grid. */
@@ -490,6 +491,66 @@ const householdCoverage: InsightGenerator = {
   },
 };
 
+/** A child that stands out from its siblings on some base indicator (E2.4) —
+ * reads the precomputed MAD outlier flags in agg_peer_ranks. Children are the
+ * ranked set (region→province→citymun), so this runs national/region/province.
+ * Skips outliers whose own profiled count is below the leader threshold, so a
+ * tiny-N place isn't crowned an outlier on an unstable rate; picks the most
+ * extreme (largest deviation in MAD units) across all indicators. */
+const peerOutlier: InsightGenerator = {
+  id: "peer-outlier",
+  levels: ["national", "region", "province"],
+  async generate(ctx) {
+    const children = await ctx.childSummaries();
+    if (children.length === 0) return null;
+    const childLevel = children[0].geoLevel;
+    const nTotalByCode = new Map(children.map((c) => [c.geoCode, c.nTotal]));
+    const nameByCode = new Map(children.map((c) => [c.geoCode, c.geoName]));
+
+    const datasetId = await getActiveDatasetId();
+    if (datasetId === null) return null;
+    const supabase = createSupabaseServerClient();
+    const { data } = await supabase
+      .from("agg_peer_ranks")
+      .select("geo_code, indicator, value, median, mad")
+      .eq("dataset_id", datasetId)
+      .eq("geo_level", childLevel)
+      .eq("is_outlier", true)
+      .in(
+        "geo_code",
+        children.map((c) => c.geoCode),
+      );
+    if (!data || data.length === 0) return null;
+
+    const best = data
+      .filter(
+        (d) =>
+          d.value !== null &&
+          d.median !== null &&
+          d.mad !== null &&
+          d.mad > 0 &&
+          MAP_BASE_INDICATOR_META[d.indicator as MapBaseIndicator] !== undefined &&
+          (nTotalByCode.get(d.geo_code) ?? 0) >= MIN_LEADER_N,
+      )
+      .map((d) => ({ ...d, dev: Math.abs((d.value as number) - (d.median as number)) / (d.mad as number) }))
+      .sort((a, b) => b.dev - a.dev)[0];
+    if (!best) return null;
+
+    const meta = MAP_BASE_INDICATOR_META[best.indicator as MapBaseIndicator];
+    const name = nameByCode.get(best.geo_code) ?? best.geo_code;
+    const direction = (best.value as number) > (best.median as number) ? "well above" : "well below";
+    const scopeSuffix = ctx.geoLevel === "national" ? "" : ` in ${ctx.geoName}`;
+    return {
+      id: this.id,
+      category: "Outlier",
+      headline: `${name} stands out from other ${LEVEL_NOUN[childLevel]}s${scopeSuffix} on ${meta.label.toLowerCase()} — ${formatIndicatorValue(best.value as number, meta.suffix)}, ${direction} the typical ${formatIndicatorValue(best.median as number, meta.suffix)}.`,
+      caption: `N = ${nTotalByCode.get(best.geo_code)?.toLocaleString() ?? "—"} BHWs · ${name} · 2025 snapshot`,
+      href: `/place/${childLevel}/${best.geo_code}`,
+      score: 47 + Math.min(Math.round(best.dev), 12),
+    };
+  },
+};
+
 /** Registry order is the tie-break when scores are equal, so keep it in
  * rough editorial priority. */
 const INSIGHT_GENERATORS: InsightGenerator[] = [
@@ -497,6 +558,7 @@ const INSIGHT_GENERATORS: InsightGenerator[] = [
   accreditationVsParent,
   accreditationSpread,
   accreditationLaggard,
+  peerOutlier,
   trainingGap,
   honorariumLeader,
   honorariumAmount,
