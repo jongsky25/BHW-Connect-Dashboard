@@ -1,7 +1,6 @@
 "use client";
 
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 
 export type SelectedGeo = {
   geoCode: string;
@@ -18,7 +17,7 @@ export type SelectedGeo = {
  * control to do it.
  */
 export function SelectedGeoChips({ places }: { places: SelectedGeo[] }) {
-  const [filters, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
+  const [filters, setFilters] = useFilterState();
 
   if (places.length === 0) return null;
 

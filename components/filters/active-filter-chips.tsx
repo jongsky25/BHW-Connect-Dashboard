@@ -1,7 +1,6 @@
 "use client";
 
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { useExploreNav } from "@/components/explore/explore-nav";
 
@@ -9,11 +8,7 @@ export type BreadcrumbStep = { label: string; geoLevel: GeoLevel; geoCode: strin
 
 export function ActiveFilterChips({ steps }: { steps: BreadcrumbStep[] }) {
   const { startTransition } = useExploreNav();
-  const [filters, setFilters] = useQueryStates(filterParsers, {
-    shallow: false,
-    history: "push",
-    startTransition,
-  });
+  const [filters, setFilters] = useFilterState({ startTransition });
   const hasActiveFilters =
     filters.geoCode !== NATIONAL_GEO_CODE || (filters.breakdowns?.length ?? 0) > 0;
 

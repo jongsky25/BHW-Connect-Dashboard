@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { useExploreNav } from "@/components/explore/explore-nav";
 import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
@@ -82,11 +81,7 @@ export function RelationshipFigure({
   caption: string;
 }) {
   const { startTransition } = useExploreNav();
-  const [{ relX, relY }, setFilters] = useQueryStates(filterParsers, {
-    shallow: false,
-    history: "push",
-    startTransition,
-  });
+  const [{ relX, relY }, setFilters] = useFilterState({ startTransition });
 
   const childPlural = childLevelLabelPlural.toLowerCase();
   const xMeta = REL_AXIS_META[relX];

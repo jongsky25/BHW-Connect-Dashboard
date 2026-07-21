@@ -1,7 +1,6 @@
 "use client";
 
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 import {
   DEFAULT_BREAKDOWNS,
   DEMOGRAPHIC_DIMENSIONS,
@@ -18,7 +17,7 @@ const LABELS: Record<DemographicDimension, string> = {
 };
 
 export function BreakdownPicker() {
-  const [filters, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
+  const [filters, setFilters] = useFilterState();
   const active = filters.breakdowns ?? DEFAULT_BREAKDOWNS;
 
   function toggle(dimension: DemographicDimension) {

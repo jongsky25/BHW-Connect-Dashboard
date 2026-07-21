@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 
 type GeoSearchResult = { geoCode: string; geoLevel: string; geoName: string; nTotal: number | null };
 
@@ -12,7 +11,7 @@ type GeoSearchResult = { geoCode: string; geoLevel: string; geoName: string; nTo
  * navigating to a place page.
  */
 export function AddGeoSearch({ disabled }: { disabled?: boolean }) {
-  const [filters, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
+  const [filters, setFilters] = useFilterState();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeoSearchResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);

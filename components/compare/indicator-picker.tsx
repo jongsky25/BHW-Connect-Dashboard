@@ -1,7 +1,6 @@
 "use client";
 
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 import { INDICATORS, type Indicator } from "@/lib/filters/schema";
 
 // Labels for every value in INDICATORS — a missing entry would render a blank
@@ -18,7 +17,7 @@ const LABELS: Record<Indicator, string> = {
 };
 
 export function IndicatorPicker() {
-  const [filters, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
+  const [filters, setFilters] = useFilterState();
 
   return (
     <div>
