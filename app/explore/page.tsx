@@ -53,7 +53,8 @@ import { DataQualityBadge } from "@/components/explore/data-quality-badge";
 import { PeerRankChip } from "@/components/explore/peer-rank-chip";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
-import { RelationshipFigure } from "@/components/explore/relationship-figure";
+import { RelationshipFigure, type RelationshipPoint } from "@/components/explore/relationship-figure";
+import { getChildPoverty } from "@/lib/db/poverty";
 import { CohortsFigure } from "@/components/explore/cohorts-figure";
 import { WorkloadFigure } from "@/components/explore/workload-figure";
 import { HonorariumInequalityFigure } from "@/components/explore/honorarium-inequality-figure";
@@ -314,13 +315,23 @@ export default async function ExplorePage({
   // relationships scatter (E1.4, which needs every base value, not just the
   // active one) — one query, two figures.
   let childIndicators: ChildIndicatorRow[] = [];
+  // Relationships scatter points (E1.4) = child base indicators + the external PSA SAE poverty
+  // variable (E4.4), which carries data only where children are cities/municipalities.
+  let relationshipPoints: RelationshipPoint[] = [];
   if (compareChildLevel) {
     const childCodes = mapChildren.map((c) => c.geoCode);
-    const [childRows, trainingCoverage] = await Promise.all([
+    const [childRows, trainingCoverage, povertyByCode] = await Promise.all([
       getChildIndicators(childCodes),
       activeSlug ? getChildTrainingCoverage(childCodes, activeSlug) : Promise.resolve(null),
+      compareChildLevel === "citymun"
+        ? getChildPoverty(childCodes)
+        : Promise.resolve(new Map<string, { incidence: number }>()),
     ]);
     childIndicators = childRows;
+    relationshipPoints = childRows.map((c) => ({
+      ...c,
+      povertyIncidence: povertyByCode.get(c.geoCode)?.incidence ?? null,
+    }));
     mapItems = childIndicators.map((c) => {
       if (trainingCoverage) {
         const t = trainingCoverage.get(c.geoCode);
@@ -649,7 +660,7 @@ export default async function ExplorePage({
         {compareChildLevel && childIndicators.length > 0 && (
           <RelationshipFigure
             key={geo.geoCode}
-            points={childIndicators}
+            points={relationshipPoints}
             childLevel={compareChildLevel}
             childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
             caption={caption}

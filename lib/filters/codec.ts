@@ -13,7 +13,7 @@ import {
   DEMOGRAPHIC_DIMENSIONS,
   GEO_LEVELS,
   INDICATORS,
-  MAP_BASE_INDICATORS,
+  REL_AXIS_INDICATORS,
   NATIONAL_GEO_CODE,
   normalizeMapIndicator,
 } from "./schema";
@@ -41,8 +41,8 @@ export const filterParsers = {
   geoCode: parseAsString.withDefault(NATIONAL_GEO_CODE),
   indicator: parseAsStringEnum([...INDICATORS]),
   mapIndicator: parseAsMapIndicator,
-  relX: parseAsStringEnum([...MAP_BASE_INDICATORS]).withDefault(DEFAULT_REL_X),
-  relY: parseAsStringEnum([...MAP_BASE_INDICATORS]).withDefault(DEFAULT_REL_Y),
+  relX: parseAsStringEnum([...REL_AXIS_INDICATORS]).withDefault(DEFAULT_REL_X),
+  relY: parseAsStringEnum([...REL_AXIS_INDICATORS]).withDefault(DEFAULT_REL_Y),
   compareGeos: parseAsArrayOf(parseAsString),
   breakdowns: parseAsArrayOf(parseAsStringEnum([...DEMOGRAPHIC_DIMENSIONS])),
 };

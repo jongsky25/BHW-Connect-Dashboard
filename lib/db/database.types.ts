@@ -724,6 +724,60 @@ export type Database = {
           },
         ];
       };
+      agg_poverty: {
+        Row: {
+          ci_high: number | null;
+          ci_low: number | null;
+          cv: number | null;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          poverty_incidence: number;
+          sae_year: number;
+          se: number | null;
+        };
+        Insert: {
+          ci_high?: number | null;
+          ci_low?: number | null;
+          cv?: number | null;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          poverty_incidence: number;
+          sae_year: number;
+          se?: number | null;
+        };
+        Update: {
+          ci_high?: number | null;
+          ci_low?: number | null;
+          cv?: number | null;
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          poverty_incidence?: number;
+          sae_year?: number;
+          se?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_poverty_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_poverty_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_training: {
         Row: {
           ci_high: number | null;
