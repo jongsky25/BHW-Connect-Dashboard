@@ -32,6 +32,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from shapely.geometry import mapping, shape
+from shapely.ops import unary_union
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCE_BASE = "https://raw.githubusercontent.com/faeldon/philippines-json-maps/master/2023/geojson"
 OUT_DIR = REPO_ROOT / "public" / "geo"
@@ -151,25 +154,16 @@ def main():
     }
 
     # --- National regions file ---
-    status, data = fetch_json(f"{SOURCE_BASE}/country/lowres/country.0.001.json")
-    matched_region_codes = set()
-    if data:
-        for feature in data["features"]:
-            code = psgc10(feature["properties"]["adm1_psgc"])[:2]
-            feature["properties"]["geo_code"] = code
-            matched_region_codes.add(code)
-            if code not in region_codes:
-                report["source_region_features_unmatched"].append(
-                    {"geo_code": code, "name": feature["properties"].get("adm1_en")}
-                )
-        (OUT_DIR / "regions.json").write_text(json.dumps(data))
-        print(f"[regions] wrote {len(data['features'])} features -> public/geo/regions.json")
-    else:
-        print(f"[regions] FAILED to fetch national file (status={status})", file=sys.stderr)
-
-    for code in sorted(region_codes - matched_region_codes):
-        name = next((r["geo_name"] for r in regions if r["geo_code"] == code), code)
-        report["regions_missing_from_source"].append({"geo_code": code, "name": name})
+    # Built at the very end by dissolving the NIR-reconciled province features
+    # collected in the loop below — NOT from the upstream national source. That
+    # source (`country/lowres/country.*.json`) predates NIR: 17 region polygons
+    # with Negros still inside Regions VI/VII and no region 18. dim_geo and the
+    # province/citymun files here are all on the 18-region NIR series, so shipping
+    # the stale national file left the national map missing NIR and drawing Negros
+    # under VI/VII. Dissolving the (already Negros-carved) province features per
+    # region instead yields region 18 and VI/VII without Negros, so every zoom
+    # level agrees. Keyed region_code -> list of that region's province features.
+    region_province_features = {}
 
     # --- Per-region province files ---
     nir_features = []
@@ -210,15 +204,53 @@ def main():
             f for f in data["features"] if f["properties"]["geo_code"] not in NIR_PROVINCE_CROSSWALK
         ]
         (OUT_DIR / "provinces" / f"{region_code}.json").write_text(json.dumps(data))
+        region_province_features[region_code] = data["features"]
         print(f"[provinces/{region_code}] wrote {len(data['features'])} features")
 
     if nir_features:
         (OUT_DIR / "provinces" / "18.json").write_text(json.dumps({"type": "FeatureCollection", "features": nir_features}))
+        region_province_features["18"] = nir_features
         print(f"[provinces/18] wrote {len(nir_features)} features (crosswalked from pre-NIR regions)")
     for new_code in NIR_PROVINCE_CROSSWALK:
         if new_code not in {f["properties"]["geo_code"] for f in nir_features}:
             p = next(p for p in provinces_by_region.get("18", []) if p["geo_code"] == new_code)
             report["provinces_missing_from_source"].append(p)
+
+    # --- National regions file (dissolved from the reconciled province features) ---
+    # One polygon per region = union of its province features (NIR already carved
+    # into region 18 above), so the national map matches the province/citymun zoom
+    # levels. In the Visayas the VI/VII/18 borders fall in the sea between islands,
+    # so this reconstruction introduces no visible slivers against neighbouring
+    # regions still sourced at the same province resolution.
+    region_features_out = []
+    for region_code in sorted(region_codes):
+        feats = region_province_features.get(region_code, [])
+        if not feats:
+            name = next((r["geo_name"] for r in regions if r["geo_code"] == region_code), region_code)
+            report["regions_missing_from_source"].append({"geo_code": region_code, "name": name})
+            continue
+        geoms = []
+        for f in feats:
+            g = shape(f["geometry"])
+            if not g.is_valid:
+                g = g.buffer(0)  # repair self-intersections before the union
+            geoms.append(g)
+        dissolved = unary_union(geoms)
+        name = next((r["geo_name"] for r in regions if r["geo_code"] == region_code), region_code)
+        region_features_out.append(
+            {
+                "type": "Feature",
+                "properties": {"geo_code": region_code, "adm1_en": name, "geo_level": "region"},
+                "geometry": mapping(dissolved),
+            }
+        )
+    (OUT_DIR / "regions.json").write_text(
+        json.dumps({"type": "FeatureCollection", "features": region_features_out})
+    )
+    print(
+        f"[regions] wrote {len(region_features_out)} features -> public/geo/regions.json "
+        "(dissolved from reconciled province features)"
+    )
 
     # --- Per-province citymun files ---
     for province_code in sorted(province_codes):
