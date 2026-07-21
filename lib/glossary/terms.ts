@@ -72,6 +72,11 @@ export const GLOSSARY = {
     definition:
       "A DOH barangay-level aggregate headcount of Barangay Health Workers (registered, accredited, and non-registered) with population and household context. It provides the total BHW universe; it is a coarser, self-reported tally distinct from the individually-validated per-person dataset.",
   },
+  census_population: {
+    term: "Census population",
+    definition:
+      "The official resident count from the Philippine Statistics Authority (PSA) census — the 2024 Census of Population (POPCEN) for the current figure, with the 2020 Census of Population and Housing (CPH) also available. It is the preferred denominator for per-resident rates; where an area has no matching census entry, the approximate self-reported StepZero population is used instead. The finest census grain here is city/municipality.",
+  },
   households_per_bhw: {
     term: "Households per BHW",
     definition:

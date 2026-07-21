@@ -70,7 +70,8 @@ export const MAP_BASE_INDICATOR_META: Record<MapBaseIndicator, MapIndicatorMeta>
     headlinePhrase: "BHWs per 1,000 residents",
     axisLabel: "BHWs per 1,000 residents",
     suffix: "",
-    denominator: "total BHWs per 1,000 residents (population self-reported in StepZero)",
+    denominator:
+      "total BHWs per 1,000 residents (PSA 2024 census population, or StepZero self-reported where census is unavailable)",
   },
 };
 

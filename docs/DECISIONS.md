@@ -1153,3 +1153,79 @@ reproduces the mapping + reconciliation offline from the PDF + a dim_geo export.
 `dim_lgu_income_reclass` public-read, service-write — same posture as every `dim_*`; it holds public
 LGU classifications, no individuals. `build_aggregates.sql` unchanged (its E3.7 block rebuilds
 `agg_by_income_class` from whatever `dim_geo.income_class` currently holds — now the DOF values).
+
+## 2026-07-21 — E4.2 Population: PSA POPCEN 2024 + CPH 2020
+
+Second Phase-E4 increment (after E4.1's crosswalk infrastructure). Loads PSA census population
+into a new `agg_population` table and switches the "BHWs per 1,000 residents" indicator (E2.1)
+from StepZero self-reported population to census population, with a per-geo fallback to StepZero.
+
+**Sources.** Two PSA "Table B — Population … by Province, City, and Municipality, By Region"
+workbooks the owner supplied: the 2024 Census of Population (POPCEN, dataset `psa-popcen-2024`,
+`census_year` 2024) and the 2020 Census of Population and Housing (CPH, dataset `psa-cph-2020`,
+`census_year` 2020). Both are population-only; **only population is loaded**. The 2020 CPH
+*household* counts are a separate PSA table and a documented follow-up (would add a
+`households_2020` measure and a census households-per-BHW denominator).
+
+**Schema.** `agg_population` is long format — one row per `(dataset_id, geo_code, geo_level,
+census_year, population)` — so each year keeps its own provenance and reloads idempotently by its
+own dataset (the delete/upsert-by-dataset pattern every `agg_*` table uses). Two sources feeding
+one wide row would have broken that. RLS: public-read, service-write, like every other `agg_*`.
+Migration `20260721080000_e4_2_agg_population.sql`, applied live via the Supabase MCP; the two
+`dim_dataset` rows are seeded with `status = 'published'` — **not** `'active'`, the single-dataset
+sentinel `getActiveDataset()` picks for `bhw-2025`; seeding another row `'active'` is what blanked
+the site in E4.3 (#44), so E4.2 follows the corrected convention (and the live rows first mistakenly
+loaded as `'active'` were updated to `'published'`).
+
+**Name-matching (the hard part).** Unlike `ingest_stepzero.py`, these workbooks carry geography
+*names*, not PSGC codes. `ingestion/ingest_population.py` name-matches every row to `dim_geo`
+(post-NIR) province-scoped — province names are globally unique (118/118), which disambiguates the
+~200 duplicate city/municipality names — and rolls national/region/province up from the matched
+citymun leaves via `dim_geo`'s own parentage. Rolling up from leaves (not the file's printed
+subtotals) is what makes the pre-NIR CPH 2020 numbers land on post-NIR Region XVIII automatically.
+Province-header vs eponymous-town collisions (RIZAL-the-province vs RIZAL-the-Laguna-town;
+BULACAN-in-Bulacan) are resolved by a lookahead ("the next leaf must be one of this province's
+towns") plus a "same name as the current province ⇒ it's the town" rule.
+
+**Grain deviation (flagged).** These PSA releases stop at city/municipality — there is no barangay
+population — so `agg_population` is national→region→province→citymun. Barangay-level per-capita
+falls back to citymun, mirroring `agg_training`. This is a deviation from the plan's "barangay
+grain rolled up" wording; the source simply doesn't carry it.
+
+**Reconciliation (the 1.6 discipline).** Matched **1,628/1,639 citymun (99.3%)** for POPCEN 2024
+(national roll-up 111.64M vs published 112.73M, −0.97%) and 1,618/1,639 (98.7%) for CPH 2020
+(roll-up 107.00M, −1.87%). The shortfall is **not** matching error: it is LGUs absent from `dim_geo` entirely
+(municipalities with no BHW records — e.g. Imus, Gen. Mariano Alvarez, five Quezon towns, three
+Basilan towns), plus Manila stored at its province node, plus CPH-2020-only cases (Bacolod — the
+E4.1-flagged gap; Cotabato City and the pre-split Maguindanao subtotal; BARMM SGA clusters). Full
+categorised list in `docs/POPULATION_RECONCILIATION.md`; machine-readable residuals in
+`ingestion/_qa_report_population.json`. Four one-letter spelling reconciliations
+(`BALIUAG→BALIWAG`, `PIO V. CORPUS→CORPUZ`, `LEON T. POSTIGO→BACUNGAN`, `DR. JOSE P. RIZAL→RIZAL`)
+are documented in the script's `SPELLING_FIXUPS`, not silent guesses.
+
+**UI.** The map indicator switcher's `bhw_per_1000` (E1.1) and the place-page per-capita stat now
+prefer census population (`getCensusPopulation2024` / a batched census query), falling back to
+StepZero's self-reported population per geo where census is absent — so the feature works whether
+or not the bulk load has run, and upgrades automatically once it does. Caption/denominator wording
+updated in `lib/analysis/map-indicators.ts`.
+
+**Data load — loaded live and verified.** All **3,517 rows** (1,764 POPCEN + 1,753 CPH) loaded
+into the live project (`ejcuwrnxngdwvecxwrhy`). The sandbox has no direct Postgres TCP and the
+Supabase MCP can't stream a bulk literal file, so — following the `load_stepzero_batch` precedent
+above — a temporary `SECURITY DEFINER` RPC `load_agg_population_batch(p_slug, p_rows jsonb)` was
+created, granted to `anon`, called over PostgREST/HTTPS with the JSON batches (one per dataset),
+then **dropped immediately after**. Verified live: per-dataset row counts and grain match the
+offline build exactly, and the national roll-ups match to the peso (POPCEN 2024 = 111,641,591;
+CPH 2020 = 107,000,833). `get_advisors(security)` surfaces no new issues from the table or the
+(dropped) loader. The documented, reproducible re-load path remains
+`python ingestion/ingest_population.py --database-url "$DATABASE_URL"` (idempotent upsert).
+
+**Determinism.** `variants()` returns a **priority-ordered list**, not a set — Python's randomised
+string hashing over a set made the "first matching variant wins" choice differ between runs (a ~46k
+CPH swing). Ordered matching makes the pipeline reproducible (verified identical across
+`PYTHONHASHSEED` values); `--selftest` guards the helpers.
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (107 pass), and `npm run build` all
+clean; `database.types.ts` carries the new table; `ingest_population.py --verify` reproduces the
+reconciliation numbers above offline.
+

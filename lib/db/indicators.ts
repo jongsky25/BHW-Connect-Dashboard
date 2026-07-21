@@ -351,9 +351,12 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
   if (datasetId === null || geoCodes.length === 0) return [];
 
   const supabase = createSupabaseServerClient();
-  const stepzeroId = await getDatasetIdBySlug(DATASET_SLUGS.stepzero);
+  const [stepzeroId, popcenId] = await Promise.all([
+    getDatasetIdBySlug(DATASET_SLUGS.stepzero),
+    getDatasetIdBySlug(DATASET_SLUGS.popcen2024),
+  ]);
 
-  const [summaryRes, countsRes, stepzeroRes] = await Promise.all([
+  const [summaryRes, countsRes, stepzeroRes, censusRes] = await Promise.all([
     supabase
       .from("agg_geo_summary")
       .select("geo_code, geo_name, pct_accredited, any_honorarium_pct, n_total")
@@ -373,18 +376,32 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
           )
           .eq("dataset_id", stepzeroId)
           .in("geo_code", geoCodes),
+    // Census population is the preferred per-capita denominator (E4.2); fall back to
+    // StepZero's self-reported population per geo where census data is absent (e.g. LGUs
+    // with no BHW records, or before the census load has run).
+    popcenId === null
+      ? Promise.resolve({ data: null })
+      : supabase
+          .from("agg_population")
+          .select("geo_code, population")
+          .eq("dataset_id", popcenId)
+          .eq("census_year", 2024)
+          .in("geo_code", geoCodes),
   ]);
 
   if (summaryRes.error || !summaryRes.data) return [];
 
   const countsByCode = new Map((countsRes.data ?? []).map((row) => [row.geo_code, row]));
   const stepzeroByCode = new Map((stepzeroRes.data ?? []).map((row) => [row.geo_code, row]));
+  const censusPopByCode = new Map(
+    (censusRes.data ?? []).map((row) => [row.geo_code, row.population]),
+  );
 
   return summaryRes.data.map((row) => {
     const sz = stepzeroByCode.get(row.geo_code);
     const households = sz?.households ?? null;
     const totalBhw = sz?.n_total_bhw ?? null;
-    const population = sz?.population ?? null;
+    const population = censusPopByCode.get(row.geo_code) ?? sz?.population ?? null;
     const householdsPerBhw =
       households !== null && totalBhw !== null && households > 0 && totalBhw > 0
         ? Math.round(households / totalBhw)

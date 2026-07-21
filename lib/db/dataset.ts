@@ -70,6 +70,9 @@ export async function getActiveDatasetId(): Promise<number | null> {
 export const DATASET_SLUGS = {
   profiled: "bhw-2025",
   stepzero: "bhw-stepzero-2026",
+  /** PSA 2024 Census of Population — the preferred per-capita denominator (E4.2),
+   * with StepZero's self-reported population as the fallback until it is loaded. */
+  popcen2024: "psa-popcen-2024",
 } as const;
 
 /**
