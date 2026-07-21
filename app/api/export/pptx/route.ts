@@ -1,6 +1,6 @@
 import PptxGenJS from "pptxgenjs";
 import { NextResponse } from "next/server";
-import { getExportFigureData } from "@/lib/exports/figure-data";
+import { formatBenchmarkLine, getExportFigureData } from "@/lib/exports/figure-data";
 import { parseExportQuery, slugify } from "@/lib/exports/query";
 import { renderFigurePng, footerLines } from "@/lib/exports/render-png";
 
@@ -42,6 +42,28 @@ export async function GET(request: Request) {
     sizing: { type: "contain", w: 9.2, h: 4.2 },
   });
   slide.addText(data.headline, { x: 0.4, y: 5.7, w: 9.2, fontSize: 13, color: "1A1D1E" });
+
+  // "No naked numbers" block (Increment 5): the same joined benchmark line,
+  // peer-rank sentence, and adequacy note the on-screen FigureBenchmark slot
+  // renders — one text box between the headline and the source footer.
+  const benchmarkParagraphs = [
+    data.benchmark && data.benchmark.rows.some((r) => r.value !== null)
+      ? formatBenchmarkLine(data.benchmark)
+      : null,
+    data.benchmark?.peerLine ?? null,
+    data.adequacyNote || null,
+  ].filter((s): s is string => Boolean(s));
+  if (benchmarkParagraphs.length > 0) {
+    slide.addText(benchmarkParagraphs.join("\n"), {
+      x: 0.4,
+      y: 6.05,
+      w: 9.2,
+      h: 0.8,
+      fontSize: 10,
+      color: "57616A",
+    });
+  }
+
   slide.addText(footerLines(data).join("  ·  "), {
     x: 0.4,
     y: 6.9,
