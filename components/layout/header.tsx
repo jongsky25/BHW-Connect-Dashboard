@@ -36,8 +36,9 @@ export function Header() {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          BHW Connect
+        <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <span className="equity-mark sm" aria-hidden="true" />
+          <span>BHW Connect</span>
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">

@@ -246,6 +246,33 @@ html[data-presenting] [data-feedback-ui] {
   display: none;
 }
 
+/* ---------------------------------------------------------------------------
+   Equity in Health logo mark.
+
+   Ported from the CSS-IS platform: a single-colour silhouette of the "equity
+   in health" wordmark, painted live in the current accent via a CSS mask — so
+   it recolours with the palette picker and adapts to light/dark automatically.
+   print-color-adjust keeps it visible on printed/exported sheets. */
+.equity-mark {
+  display: inline-block;
+  aspect-ratio: 2048 / 672;
+  background: var(--accent);
+  -webkit-mask: url(/img/equity-mark.png) center/contain no-repeat;
+  mask: url(/img/equity-mark.png) center/contain no-repeat;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  vertical-align: middle;
+}
+.equity-mark.sm {
+  height: 20px;
+}
+.equity-mark.md {
+  height: 40px;
+}
+.equity-mark.lg {
+  height: 54px;
+}
+
 * {
   border-color: var(--border);
 }
