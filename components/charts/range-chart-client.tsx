@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { horizontalRangeSpec, type RangeDatum } from "@/lib/charts/range-chart";
 import { styleAxisTitles } from "@/lib/charts/style-axis";
+import { usePaletteAccent } from "@/lib/charts/use-palette-accent";
 import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
 /**
@@ -31,6 +32,10 @@ export function RangeChartClient({
   const containerRef = useRef<HTMLDivElement>(null);
   const [measuredWidth, setMeasuredWidth] = useState<number>();
   const format = formatterFor(valueFormat);
+  // Callers that don't recolor the box fall back to the live palette accent (a
+  // concrete hex Plot can use) so the chart tracks the appearance setting.
+  const paletteAccent = usePaletteAccent();
+  const resolvedFill = fill ?? paletteAccent;
 
   // Track the container's width so the chart fills it (and stays readable on a
   // narrow mobile screen) instead of overflowing at a fixed 640px, unless the
@@ -57,7 +62,7 @@ export function RangeChartClient({
     import("@observablehq/plot").then((Plot) => {
       if (cancelled || !containerRef.current) return;
       plot = Plot.plot(
-        horizontalRangeSpec(data, { xLabel, yLabel, valueFormat: format, width: plotWidth, fill }),
+        horizontalRangeSpec(data, { xLabel, yLabel, valueFormat: format, width: plotWidth, fill: resolvedFill }),
       );
       // Bold/enlarge the axis titles so they read clearly against the tick labels.
       styleAxisTitles(plot);
@@ -71,7 +76,7 @@ export function RangeChartClient({
       cancelled = true;
       plot?.remove();
     };
-  }, [data, xLabel, yLabel, format, plotWidth, fill]);
+  }, [data, xLabel, yLabel, format, plotWidth, resolvedFill]);
 
   return (
     <div

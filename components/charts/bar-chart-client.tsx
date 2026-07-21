@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { horizontalBarSpec, type BarDatum } from "@/lib/charts/bar-chart";
 import { styleAxisTitles } from "@/lib/charts/style-axis";
+import { usePaletteAccent } from "@/lib/charts/use-palette-accent";
 
 export function BarChartClient({
   data,
@@ -30,6 +31,10 @@ export function BarChartClient({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [measuredWidth, setMeasuredWidth] = useState<number>();
+  // Callers that don't recolor the bars fall back to the live palette accent (a
+  // concrete hex Plot can use) so the chart tracks the appearance setting.
+  const paletteAccent = usePaletteAccent();
+  const resolvedFill = fill ?? paletteAccent;
 
   // Track the container's width so the chart can fill it exactly (no fixed
   // width left over as dead space) when the caller doesn't force one.
@@ -55,7 +60,7 @@ export function BarChartClient({
     import("@observablehq/plot").then((Plot) => {
       if (cancelled || !containerRef.current) return;
       plot = Plot.plot(
-        horizontalBarSpec(data, { xLabel, yLabel, valueSuffix, valueFormat, width: plotWidth, barHeight, fill }),
+        horizontalBarSpec(data, { xLabel, yLabel, valueSuffix, valueFormat, width: plotWidth, barHeight, fill: resolvedFill }),
       );
       // Bold/enlarge the axis titles so they read clearly against the tick labels.
       styleAxisTitles(plot);
@@ -71,7 +76,7 @@ export function BarChartClient({
       cancelled = true;
       plot?.remove();
     };
-  }, [data, xLabel, yLabel, valueSuffix, valueFormat, plotWidth, barHeight, fill]);
+  }, [data, xLabel, yLabel, valueSuffix, valueFormat, plotWidth, barHeight, resolvedFill]);
 
   const format = valueFormat ?? ((n: number) => n.toLocaleString());
 
