@@ -30,6 +30,13 @@ comment on column dim_geo.income_class_prior is
   'Pre-reclassification income class (StepZero-reported, ~DO 23-08 vintage) preserved by E4.3 before dim_geo.income_class was refreshed to DOF DO 074-2024.';
 
 -- 2) Dataset registry row.
+--    status = 'published', NOT 'active': 'active' is the single-dataset sentinel that
+--    getActiveDataset() (lib/db/dataset.ts) picks with `where status='active' order by
+--    last_updated_at desc limit 1`. Only the primary per-person dataset (bhw-2025) may be
+--    'active'; a reference/provenance row carrying 'active' with a newer last_updated_at
+--    would win that query and scope every figure to a dataset_id with zero aggregate rows,
+--    blanking the map and all data site-wide. Auxiliary datasets stay non-'active'
+--    (bhw-stepzero-2026 → 'published', psa-psgc-crosswalk → 'draft').
 insert into dim_dataset (slug, name, source_name, source_url, license, geo_join_level, as_of_date, version, status)
 values (
   'dof-blgf-income-2024',
@@ -40,7 +47,7 @@ values (
   'citymun',
   '2024-11-05',
   '1.0',
-  'active'
+  'published'
 )
 on conflict (slug) do update set
   name = excluded.name, source_name = excluded.source_name, source_url = excluded.source_url,
