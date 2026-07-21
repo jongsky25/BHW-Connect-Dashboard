@@ -8,9 +8,12 @@ import {
 } from "nuqs/server";
 import {
   DEFAULT_MAP_INDICATOR,
+  DEFAULT_REL_X,
+  DEFAULT_REL_Y,
   DEMOGRAPHIC_DIMENSIONS,
   GEO_LEVELS,
   INDICATORS,
+  MAP_BASE_INDICATORS,
   NATIONAL_GEO_CODE,
   normalizeMapIndicator,
 } from "./schema";
@@ -38,6 +41,8 @@ export const filterParsers = {
   geoCode: parseAsString.withDefault(NATIONAL_GEO_CODE),
   indicator: parseAsStringEnum([...INDICATORS]),
   mapIndicator: parseAsMapIndicator,
+  relX: parseAsStringEnum([...MAP_BASE_INDICATORS]).withDefault(DEFAULT_REL_X),
+  relY: parseAsStringEnum([...MAP_BASE_INDICATORS]).withDefault(DEFAULT_REL_Y),
   compareGeos: parseAsArrayOf(parseAsString),
   breakdowns: parseAsArrayOf(parseAsStringEnum([...DEMOGRAPHIC_DIMENSIONS])),
 };

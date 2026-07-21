@@ -685,3 +685,39 @@ one decimal, identical to the map tooltip (`formatValue`) and legend (`formatEdg
 strip now imports `formatIndicatorValue` for accreditation % and avg years instead of printing the
 raw 2-decimal DB value. Result: strip, map tooltip/legend, headline, mini-card, and the distribution
 marker all render the same value identically (e.g. 71.6% everywhere, 10.5 everywhere).
+
+## 2026-07-21 — Phase E1.4: Relationships view (scatter) + correlation-in-words (S7)
+
+Fourth E1 increment (same branch/PR). New `components/explore/relationship-figure.tsx` renders a
+scatter of the current geo's children on two chosen base indicators, below the distribution view,
+and states the link between them in plain words.
+
+- **Two new URL params `relX` / `relY`** (base-indicator enums; defaults `households_per_bhw` ×
+  `pct_accredited`) in `schema.ts` + `codec.ts`, with round-trip tests. Restricted to the **five
+  base indicators** (not `training:`) to avoid a two-axis topic-picker; training-on-axes is a
+  possible follow-up. No server fetch depends on relX/relY — the scatter has every base value per
+  child already — so switching axes recolors instantly while the URL updates (shallow:false +
+  transition per the §1 ground rule; the client data makes the round-trip a no-op visually).
+- **No new query.** `getChildIndicators` (E1.1) already returns all base values per child; the page
+  hoists that row set (`childIndicators`) so the map, distribution, and scatter share one query.
+- **Correlation-in-words (S7).** New client-safe `lib/analysis/correlation.ts`: Spearman's ρ
+  (tie-aware average ranks → Pearson on ranks), `describeCorrelation` bucketing |ρ| at 0.2 / 0.4 /
+  0.7 (none / weak / moderate / strong) with direction. Small-N children (`nTotal < MIN_LEADER_N`)
+  are **excluded from ρ** and drawn as hollow dots; **< 10 comparable places → "too few places to
+  assess a pattern"** instead of a coefficient. The headline carries the ecological caveat inside
+  the sentence ("This compares places, not individual BHWs"), per the review. Thresholds documented
+  in a new `/methodology#relationships` section. **10 unit tests** cover ρ = ±1, a hand-computed
+  single-swap case (ρ = 0.9), ties/constant → undefined, the strength buckets, and the small-N /
+  insufficient paths.
+- **Bespoke accessible SVG scatter (deviation from the plan's Plot suggestion, logged).** The plan
+  suggested Observable Plot (lazy). Chose a hand-rolled SVG instead because each point is a real
+  `<a href="/place/{level}/{code}">` with an `aria-label` (name + both values + N) and a `<title>`
+  tooltip — keyboard-focusable and screen-reader-navigable, which a Plot-rendered SVG is not. Dot
+  size ∝ profiled BHWs; hollow = small-N. This keeps the page's a11y-first posture (the map's
+  aria-hidden-canvas + accessible-equivalent rule) and adds no chart-lib client JS. Fires
+  `rel_axis_change` telemetry.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass, +10 correlation),
+`next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks (ρ sign/
+strength against hand cases on real data — the unit tests already cover the math; URL round-trip;
+place-page links; axe on the SVG links + selects) are **deferred to the Vercel preview**.

@@ -126,6 +126,32 @@ export default async function MethodologyPage() {
         </p>
       </section>
 
+      <section id="relationships" className="flex flex-col gap-2 scroll-mt-6">
+        <h2 className="text-lg font-semibold">Relationships between indicators</h2>
+        <p>
+          The Explore relationships scatter compares two indicators across the places within an
+          area, and summarizes their link with a{" "}
+          <strong>Spearman rank correlation</strong> (ρ). Spearman measures whether places that rank
+          high on one indicator tend to rank high (or low) on the other, without assuming the
+          relationship is a straight line. The coefficient is translated to words using fixed
+          thresholds on its absolute value:
+        </p>
+        <ul className="list-inside list-disc">
+          <li>below 0.2 — no clear link;</li>
+          <li>0.2 to 0.4 — a weak link;</li>
+          <li>0.4 to 0.7 — a moderate link;</li>
+          <li>0.7 and above — a strong link.</li>
+        </ul>
+        <p>
+          Places with fewer than 30 profiled BHWs are excluded from the coefficient (their rates are
+          unstable), and shown as hollow points. With fewer than 10 comparable places the tool
+          reports &quot;too few places to assess a pattern&quot; instead of a number. Most
+          importantly, this is an <strong>ecological</strong> comparison — it describes places, not
+          individual BHWs — so a place-level link does not imply the same relationship holds person
+          by person.
+        </p>
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Privacy &amp; suppression</h2>
         <p>

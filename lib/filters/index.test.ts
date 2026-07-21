@@ -9,6 +9,8 @@ describe("filter codec", () => {
       geoCode: "050400000",
       indicator: "training" as const,
       mapIndicator: "households_per_bhw" as const,
+      relX: "avg_active_years" as const,
+      relY: "coverage_pct" as const,
       compareGeos: ["050400000", "137400000"],
       breakdowns: ["sex" as const, "age_band" as const],
     };
@@ -34,6 +36,8 @@ describe("filter codec", () => {
     expect(parsed.geoCode).toBe(NATIONAL_GEO_CODE);
     expect(parsed.indicator).toBeNull();
     expect(parsed.mapIndicator).toBe("pct_accredited");
+    expect(parsed.relX).toBe("households_per_bhw");
+    expect(parsed.relY).toBe("pct_accredited");
     expect(parsed.compareGeos).toBeNull();
     expect(parsed.breakdowns).toBeNull();
   });

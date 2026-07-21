@@ -36,6 +36,12 @@ export type MapIndicator = MapBaseIndicator | `training:${string}`;
 
 export const DEFAULT_MAP_INDICATOR: MapBaseIndicator = "pct_accredited";
 
+/** Default axes for the relationships scatter (E1.4): load vs accreditation. */
+export const DEFAULT_REL_X: MapBaseIndicator = "households_per_bhw";
+export const DEFAULT_REL_Y: MapBaseIndicator = "pct_accredited";
+
+export const mapBaseIndicatorSchema = z.enum(MAP_BASE_INDICATORS);
+
 const MAP_TRAINING_PREFIX = "training:";
 /** Topic slugs are lower-kebab (`maternal-health`), matching `agg_training.topic_slug`. */
 const TOPIC_SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -97,6 +103,8 @@ export const filterStateSchema = z.object({
     .string()
     .catch(DEFAULT_MAP_INDICATOR)
     .transform(normalizeMapIndicator),
+  relX: mapBaseIndicatorSchema.catch(DEFAULT_REL_X),
+  relY: mapBaseIndicatorSchema.catch(DEFAULT_REL_Y),
   compareGeos: z
     .array(z.string().min(1))
     .max(4)
@@ -115,6 +123,8 @@ export const defaultFilterState: FilterState = filterStateSchema.parse({
   geoCode: NATIONAL_GEO_CODE,
   indicator: null,
   mapIndicator: DEFAULT_MAP_INDICATOR,
+  relX: DEFAULT_REL_X,
+  relY: DEFAULT_REL_Y,
   compareGeos: null,
   breakdowns: null,
 });

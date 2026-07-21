@@ -32,6 +32,7 @@ import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
+import { RelationshipFigure } from "@/components/explore/relationship-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
@@ -204,12 +205,17 @@ export default async function ExplorePage({
   const mapMeta = metaForIndicator(activeMapIndicator, activeTopicLabel);
 
   let mapItems: ChildIndicator[] = [];
+  // Full base-indicator rows per child, shared by the map (mapItems) and the
+  // relationships scatter (E1.4, which needs every base value, not just the
+  // active one) — one query, two figures.
+  let childIndicators: ChildIndicatorRow[] = [];
   if (mapChildLevel) {
     const childCodes = mapChildren.map((c) => c.geoCode);
-    const [childIndicators, trainingCoverage] = await Promise.all([
+    const [childRows, trainingCoverage] = await Promise.all([
       getChildIndicators(childCodes),
       activeSlug ? getChildTrainingCoverage(childCodes, activeSlug) : Promise.resolve(null),
     ]);
+    childIndicators = childRows;
     mapItems = childIndicators.map((c) => {
       if (trainingCoverage) {
         const t = trainingCoverage.get(c.geoCode);
@@ -373,7 +379,7 @@ export default async function ExplorePage({
         )}
 
         {/* Distribution view (E1.3) — spread of the active indicator across
-            children, reusing the map's data. Relationships (E1.4) slots below. */}
+            children, reusing the map's data. */}
         {mapChildLevel && mapItems.length > 0 && (
           <DistributionFigure
             key={`${geo.geoCode}-${activeMapIndicator}`}
@@ -383,6 +389,18 @@ export default async function ExplorePage({
             childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
             childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
             meta={mapMeta}
+            caption={caption}
+          />
+        )}
+
+        {/* Relationships view (E1.4) — scatter of children on two chosen
+            indicators + Spearman-in-words, reusing the same child rows. */}
+        {mapChildLevel && childIndicators.length > 0 && (
+          <RelationshipFigure
+            key={geo.geoCode}
+            points={childIndicators}
+            childLevel={mapChildLevel}
+            childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
             caption={caption}
           />
         )}
