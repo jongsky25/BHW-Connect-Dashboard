@@ -610,3 +610,34 @@ checks the plan lists for E1.1 (each indicator round-tripping through the URL ag
 values spot-checked against place-page figures for two geos per indicator; suppressed/absent data
 rendering grey, never 0; `map_indicator_change` landing in `usage_events`; axe on the new switcher
 control) require live DB + browser and are **deferred to the Vercel preview** — not claimed here.
+
+## 2026-07-21 — Phase E1.2: Explore page restructure
+
+Second E1 increment (same branch/PR as E1.1, per the pinned working branch). Reorders
+`app/explore/page.tsx` around the map and removes the two big-number cards.
+
+- **New order.** breadcrumb chips → labeled summary strip → **map figure (hero, full-width)** →
+  [distribution E1.3 / relationships E1.4 slots, marked with a comment for the next increments] →
+  per-theme figure groups (demographics, training, honorarium) → insights. The map figure was
+  lifted out of the 2-column grid to its own full-width block above the groups.
+- **Deleted the two big-number cards** (Accreditation %, Average years of service) and their now-
+  orphaned `FigureCard` / `ExportMenu` imports. Per the plan, their numbers live on elsewhere:
+  both are now stats in the summary strip (for the current geo) and selectable map indicators (for
+  its children). **Note:** the accreditation card's `ExportMenu` (indicator="accreditation") was
+  removed with it; export-menu parity is restored in E1.5 on the appropriate parity figures, per
+  the plan's sequencing — no export route was deleted, only the button placement.
+- **To avoid a regression in the E1.2→E1.3 gap**, the current geo's own accreditation % and avg
+  years are added as strip stats (they were previously only in the deleted cards; the map switcher
+  colours *children*, not the parent, and E1.3's parent-value marker isn't built yet). This is the
+  plain reading of the plan's "their numbers live in the strip and the switcher."
+- **Summary strip upgraded** (plan E1.2): wrapped in a `<section>` with an `aria-labelledby`
+  heading ("{Geo} at a glance"); `GlossaryTerm` on "validated profiles", "accredited", and
+  "households per BHW"; and a collapsed `<details>` reusing `DenominatorExplainer` (the funnel
+  content, not Home's always-open card) so the two-denominator relationship is one click away
+  without duplicating Home. The explainer only renders when StepZero data exists for the geo.
+
+**Verify.** `npm run lint` (clean, no orphaned imports), `npm run typecheck` (clean), `npm test`
+(91 pass — unchanged; this increment is presentational), `next build` compiles + type-checks clean
+(same `/place/*` no-creds caveat). The plan's visual pass at 360 px / 1280 px, axe on the new strip
++ `<details>`, and the PR screenshot need the rendered page and are **deferred to the Vercel
+preview** — not claimed here.

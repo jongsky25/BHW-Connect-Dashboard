@@ -25,8 +25,8 @@ import { getInsights } from "@/lib/db/insights";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
-import { FigureCard } from "@/components/narrative/figure-card";
-import { ExportMenu } from "@/components/narrative/export-menu";
+import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { DenominatorExplainer } from "@/components/home/denominator-explainer";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
@@ -242,88 +242,100 @@ export default async function ExplorePage({
       <div className="flex flex-1 flex-col gap-6">
         <ActiveFilterChips steps={breadcrumbSteps} />
 
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
-          <span>
-            <span className="font-semibold">{overview.totalBhw?.toLocaleString() ?? "—"}</span>{" "}
-            <span className="text-muted">total BHWs</span>
-          </span>
-          <span>
-            <span className="font-semibold">
-              {overview.validatedProfiles?.toLocaleString() ?? "—"}
-            </span>{" "}
-            <span className="text-muted">
-              validated profiles{coverage !== null ? ` (${coverage}% of registered)` : ""}
-            </span>
-          </span>
-          {overview.householdsPerBhw !== null && (
+        {/* Summary strip (E1.2): labeled, glossary-linked, with a collapsed
+            denominator explainer. The two big-number cards (accreditation, avg
+            years) were removed — their figures live here and, for children, in
+            the map indicator switcher. */}
+        <section
+          aria-labelledby="area-summary-heading"
+          className="rounded-lg border border-border bg-surface px-4 py-3"
+        >
+          <h2
+            id="area-summary-heading"
+            className="text-xs font-semibold uppercase tracking-wide text-muted"
+          >
+            {geo.geoName} at a glance
+          </h2>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
             <span>
-              <span className="font-semibold">{overview.householdsPerBhw.toLocaleString()}</span>{" "}
-              <span className="text-muted">households per BHW</span>
+              <span className="font-semibold">{overview.totalBhw?.toLocaleString() ?? "—"}</span>{" "}
+              <span className="text-muted">total BHWs</span>
             </span>
-          )}
-          {!overview.hasStepzero && (
-            <span className="text-xs text-muted">
-              Quick-count total not available for this area.
+            <span>
+              <span className="font-semibold">
+                {overview.validatedProfiles?.toLocaleString() ?? "—"}
+              </span>{" "}
+              <span className="text-muted">
+                <GlossaryTerm slug="validated_profile">validated profiles</GlossaryTerm>
+                {coverage !== null ? ` (${coverage}% of registered)` : ""}
+              </span>
             </span>
+            <span>
+              <span className="font-semibold">
+                {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
+                  ? `${counts.pctAccredited}%`
+                  : "—"}
+              </span>{" "}
+              <span className="text-muted">
+                <GlossaryTerm slug="accredited">accredited</GlossaryTerm>
+              </span>
+            </span>
+            <span>
+              <span className="font-semibold">{counts?.avgActiveYears ?? "—"}</span>{" "}
+              <span className="text-muted">avg years of service</span>
+            </span>
+            {overview.householdsPerBhw !== null && (
+              <span>
+                <span className="font-semibold">
+                  {overview.householdsPerBhw.toLocaleString()}
+                </span>{" "}
+                <span className="text-muted">
+                  <GlossaryTerm slug="households_per_bhw">households per BHW</GlossaryTerm>
+                </span>
+              </span>
+            )}
+            {!overview.hasStepzero && (
+              <span className="text-xs text-muted">
+                Quick-count total not available for this area.
+              </span>
+            )}
+          </div>
+          {overview.hasStepzero && (
+            <details className="mt-2.5 text-xs">
+              <summary className="cursor-pointer text-muted hover:text-accent">
+                How are these BHWs counted?
+              </summary>
+              <div className="mt-2">
+                <DenominatorExplainer
+                  totalBhw={overview.totalBhw}
+                  registeredUniverse={overview.registeredUniverse}
+                  validatedProfiles={overview.validatedProfiles}
+                  coveragePct={coverage}
+                />
+              </div>
+            </details>
           )}
-        </div>
+        </section>
+
+        {/* Map figure (E1.2 hero) — the indicator switcher is the page's
+            centerpiece, full-width above the per-theme figure groups. */}
+        {mapChildLevel && (
+          <GeoComparisonFigure
+            key={geo.geoCode}
+            geojsonUrl={mapGeojsonUrl}
+            childLevel={mapChildLevel}
+            childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
+            items={mapItems}
+            caption={caption}
+            activeIndicator={activeMapIndicator}
+            meta={mapMeta}
+            trainingTopics={trainingTopics}
+          />
+        )}
+
+        {/* Distribution (E1.3) and relationships (E1.4) views slot in here. */}
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <FigureCard
-            title="Accreditation"
-            caption={caption}
-            exportMenu={
-              <ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />
-            }
-            headline={
-              counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-                ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
-                : "No accreditation data available."
-            }
-            technicalDetails={
-              <p>
-                {counts?.nAccredited?.toLocaleString() ?? "—"} of{" "}
-                {counts?.nTotal?.toLocaleString() ?? "—"} validated profiles are accredited (
-                {counts?.pctAccredited ?? "—"}%).
-              </p>
-            }
-          >
-            <p className="text-4xl font-semibold tracking-tight">
-              {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-                ? `${counts.pctAccredited}%`
-                : "—"}
-            </p>
-          </FigureCard>
-
-          <FigureCard
-            title="Average years of service"
-            caption={caption}
-            headline={
-              counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
-                ? `BHWs here have served an average of ${counts.avgActiveYears} years.`
-                : "No service-year data available."
-            }
-            technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
-          >
-            <p className="text-4xl font-semibold tracking-tight">{counts?.avgActiveYears ?? "—"}</p>
-          </FigureCard>
-
-          {mapChildLevel && (
-            <div className="xl:col-span-2">
-              <GeoComparisonFigure
-                key={geo.geoCode}
-                geojsonUrl={mapGeojsonUrl}
-                childLevel={mapChildLevel}
-                childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
-                items={mapItems}
-                caption={caption}
-                activeIndicator={activeMapIndicator}
-                meta={mapMeta}
-                trainingTopics={trainingTopics}
-              />
-            </div>
-          )}
-
           {demographicsByDimension.map(({ dimension, rows }) => (
             <DemographicsFigure
               key={dimension}
