@@ -252,7 +252,7 @@ export default async function ComparePage({
           // The columns row presents as one slide — side by side is the honest
           // unit of comparison.
           <PresentationSlide id="comparison" title={valid.map((g) => g.geoName).join(" vs ")}>
-            <div className="flex gap-4 overflow-x-auto pb-4">
+            <div className="flex flex-col gap-6 sm:flex-row sm:gap-4 sm:overflow-x-auto sm:pb-4">
               {columns.map((col) => (
                 <CompareColumn key={col.geoCode} data={col} indicator={filters.indicator} />
               ))}
