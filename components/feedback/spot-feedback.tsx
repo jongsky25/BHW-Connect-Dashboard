@@ -132,8 +132,8 @@ export function SpotFeedback() {
     }
   }
 
-  // Keep the widget off admin screens.
-  if (pathname.startsWith("/admin")) return null;
+  // Keep the widget off admin screens and the portal landing page.
+  if (pathname.startsWith("/admin") || pathname === "/") return null;
 
   const isActive = mode !== "idle";
   const panelPos = pin ? clampPanel(pin) : null;

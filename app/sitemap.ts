@@ -5,6 +5,7 @@ const BASE_URL = "https://bhw-connect-jongsky25s-projects.vercel.app";
 
 const STATIC_PATHS = [
   "",
+  "/bhw",
   "/explore",
   "/compare",
   "/methodology",
@@ -29,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = STATIC_PATHS.map((path) => ({
     url: `${BASE_URL}${path}`,
     changeFrequency: "monthly",
-    priority: path === "" ? 1 : 0.6,
+    priority: path === "" || path === "/bhw" ? 1 : 0.6,
   }));
 
   const placeEntries: MetadataRoute.Sitemap = geos.map((geo) => ({

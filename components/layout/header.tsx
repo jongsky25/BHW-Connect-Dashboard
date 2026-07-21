@@ -33,10 +33,14 @@ export function Header() {
     setMobileOpen(false);
   }
 
+  // The Equity in Health portal ("/") supplies its own slim chrome, so the
+  // BHW-specific header is suppressed there.
+  if (pathname === "/") return null;
+
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <Link href="/bhw" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           <span className="equity-mark sm" aria-hidden="true" />
           <span>BHW Connect</span>
         </Link>
