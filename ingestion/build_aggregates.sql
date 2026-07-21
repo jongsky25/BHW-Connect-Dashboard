@@ -402,6 +402,37 @@ cross join lateral (values
 ) as fld(field_name, is_missing)
 group by f.geo_level, f.geo_code, fld.field_name;
 
+-- 9b. Wilson 95% confidence intervals on the proportion aggregates (E2.2).
+-- Closed-form from each row's success/total counts; the ci_low/ci_high columns
+-- are added by supabase/migrations. Runs last, once every table is populated
+-- (agg_honorarium's denominator is agg_bhw_counts.n_total). The helpers are
+-- (re)defined here so a from-scratch build doesn't depend on migration order.
+create or replace function wilson_low(k numeric, n numeric) returns numeric
+  language sql immutable as $$
+  select case when n is null or n <= 0 then null
+    else greatest(0, round(100 * (
+      (k + 1.9208) / (n + 3.8416)
+      - 1.96 * (n / (n + 3.8416)) * sqrt(k * (n - k) / power(n, 3) + 0.9604 / power(n, 2))
+    ), 2)) end;
+$$;
+create or replace function wilson_high(k numeric, n numeric) returns numeric
+  language sql immutable as $$
+  select case when n is null or n <= 0 then null
+    else least(100, round(100 * (
+      (k + 1.9208) / (n + 3.8416)
+      + 1.96 * (n / (n + 3.8416)) * sqrt(k * (n - k) / power(n, 3) + 0.9604 / power(n, 2))
+    ), 2)) end;
+$$;
+
+update agg_bhw_counts set ci_low = wilson_low(n_accredited, n_total),
+                          ci_high = wilson_high(n_accredited, n_total);
+update agg_training set ci_low = wilson_low(n_trained, n_total),
+                        ci_high = wilson_high(n_trained, n_total);
+update agg_honorarium h set ci_low = wilson_low(h.n_receiving, c.n_total),
+                            ci_high = wilson_high(h.n_receiving, c.n_total)
+from agg_bhw_counts c
+where c.dataset_id = h.dataset_id and c.geo_code = h.geo_code and c.geo_level = h.geo_level;
+
 -- 10. Cleanup working tables.
 drop table if exists _agg_base;
 drop table if exists _agg_honorarium_base;

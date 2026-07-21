@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
 import { ExportMenu } from "@/components/narrative/export-menu";
+import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { TrainingRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -57,17 +58,21 @@ export function TrainingFigure({
     );
   }
 
-  const topGaps = [...rows]
+  const sortedRows = [...rows]
     .filter((r) => r.coveragePct !== null)
-    .sort((a, b) => (a.coveragePct as number) - (b.coveragePct as number))
-    .slice(0, 8)
-    .map((r) => ({
-      label: r.topicLabel ?? r.topicSlug,
-      value: r.coveragePct as number,
-      count: r.nTrained ?? undefined,
-    }));
+    .sort((a, b) => (a.coveragePct as number) - (b.coveragePct as number));
+  const topGaps = sortedRows.slice(0, 8).map((r) => ({
+    label: r.topicLabel ?? r.topicSlug,
+    value: r.coveragePct as number,
+    count: r.nTrained ?? undefined,
+  }));
 
   const biggestGap = topGaps[0];
+  const biggestGapRow = sortedRows[0];
+  const gapCi =
+    biggestGapRow && biggestGapRow.ciLow !== null && biggestGapRow.ciHigh !== null
+      ? `${biggestGapRow.ciLow}–${biggestGapRow.ciHigh}%`
+      : null;
 
   // Recency, orthogonal to coverage (E2.1): a topic can be widely trained yet
   // long ago. Flag topics whose median last-trained year is >= STALE_AFTER_YEARS
@@ -98,6 +103,13 @@ export function TrainingFigure({
           year&rdquo; is the middle year among trained BHWs; a topic whose median is{" "}
           {STALE_AFTER_YEARS}+ years before the {SNAPSHOT_YEAR} snapshot ({staleYear} or earlier) is
           flagged as possibly due for a refresher.
+          {gapCi && biggestGap ? (
+            <>
+              {" "}
+              The lowest-coverage topic&apos;s {biggestGap.value}% is a point estimate; its 95%{" "}
+              <GlossaryTerm slug="confidence_interval">confidence interval</GlossaryTerm> is {gapCi}.
+            </>
+          ) : null}
         </p>
       }
     >

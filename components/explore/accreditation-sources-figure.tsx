@@ -15,13 +15,21 @@ import { formatIndicatorValue } from "@/lib/analysis/map-indicators";
 export function AccreditationSourcesFigure({
   lguReported,
   verified,
+  verifiedCi,
   caption,
 }: {
   lguReported: number | null;
   verified: number | null;
+  /** Wilson 95% interval (percentage points) around the verified rate (E2.2). */
+  verifiedCi?: { low: number | null; high: number | null } | null;
   caption: string;
 }) {
   if (lguReported === null) return null;
+
+  const ciText =
+    verifiedCi && verifiedCi.low !== null && verifiedCi.high !== null
+      ? `${formatIndicatorValue(verifiedCi.low, "%")}–${formatIndicatorValue(verifiedCi.high, "%")}`
+      : null;
 
   const gap =
     verified !== null ? Math.round(Math.abs(verified - lguReported) * 10) / 10 : null;
@@ -65,6 +73,11 @@ export function AccreditationSourcesFigure({
           <dd className="mt-1 text-2xl font-semibold tracking-tight">
             {verified !== null ? formatIndicatorValue(verified, "%") : "—"}
           </dd>
+          {ciText && (
+            <dd className="mt-0.5 text-xs text-muted">
+              95% <GlossaryTerm slug="confidence_interval">CI</GlossaryTerm> {ciText}
+            </dd>
+          )}
         </div>
       </dl>
     </FigureCard>

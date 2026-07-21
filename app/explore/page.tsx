@@ -583,6 +583,7 @@ export default async function ExplorePage({
           <AccreditationSourcesFigure
             lguReported={overview.pctRegisteredAccredited}
             verified={counts?.pctAccredited ?? null}
+            verifiedCi={counts ? { low: counts.ciLow, high: counts.ciHigh } : null}
             caption={caption}
           />
 

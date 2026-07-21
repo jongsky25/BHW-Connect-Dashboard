@@ -32,6 +32,13 @@ export function HonorariumFigure({
     }));
 
   const topPayer = [...chartData].sort((a, b) => b.value - a.value)[0];
+  const topPayerRow = [...rows]
+    .filter((r) => r.pctReceiving !== null)
+    .sort((a, b) => (b.pctReceiving as number) - (a.pctReceiving as number))[0];
+  const topPayerCi =
+    topPayerRow && topPayerRow.ciLow !== null && topPayerRow.ciHigh !== null
+      ? `${topPayerRow.ciLow}–${topPayerRow.ciHigh}%`
+      : null;
 
   return (
     <FigureCard
@@ -51,6 +58,14 @@ export function HonorariumFigure({
         <p>
           A BHW may receive <GlossaryTerm slug="honorarium">honorarium</GlossaryTerm> from more than
           one administrative level; percentages are independent per level, not mutually exclusive.
+          {topPayerCi && topPayer ? (
+            <>
+              {" "}
+              The top level&apos;s {topPayer.value}% has a 95%{" "}
+              <GlossaryTerm slug="confidence_interval">confidence interval</GlossaryTerm> of{" "}
+              {topPayerCi}.
+            </>
+          ) : null}
         </p>
       }
     >

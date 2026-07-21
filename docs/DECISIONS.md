@@ -863,3 +863,33 @@ its citymun's grade with the label) are **deferred to the Vercel preview**.
 
 E2.2 (Wilson CIs), E2.3 (percentile ranks), E2.4 (outlier flags) remain parked — they need
 `build_aggregates.sql` migrations + a live aggregate rebuild this sandbox can't run or verify.
+
+## 2026-07-21 — Phase E2.2: Wilson 95% confidence intervals (live DB)
+
+First DB-dependent E2 increment. Owner authorized applying migrations + rebuilds to the live
+`bhw-connect` project (ref ejcuwrnxngdwvecxwrhy) via the connected Supabase MCP.
+
+- **DB.** Migration `supabase/migrations/20260721000000_e2_2_wilson_ci.sql` adds immutable
+  `wilson_low(k,n)`/`wilson_high(k,n)` helpers (closed-form 95% Wilson score interval, z=1.96) and
+  `ci_low`/`ci_high` columns (percentage points) to `agg_bhw_counts` (accreditation), `agg_training`
+  (coverage), and `agg_honorarium` (pct receiving — denominator joined from `agg_bhw_counts.n_total`,
+  confirmed against the build's own definition). Populated in place from the stored success/total
+  counts. **Applied live via MCP `apply_migration`; idempotent** (create-or-replace / add-column-if-
+  not-exists / recompute), so re-running through normal tooling is harmless. Mirrored into
+  `ingestion/build_aggregates.sql` (§9b) so full rebuilds stay in sync. Types regenerated
+  (`lib/db/database.types.ts`) — surgically, to preserve the committed `search_geo.parent_chain`
+  the generator currently omits.
+- **Verified live** (plan's "spot-check 3 geos by hand"): large-n narrow (region 01 15704/23185 →
+  [67.13, 68.33]); small-n wide (barangay 0/1 → [0, 79.35]; 1/1 → [20.65, 100]) — matches textbook
+  Wilson exactly.
+- **UI.** `ciLow`/`ciHigh` surfaced on `BhwCounts`, `TrainingRow`, `HonorariumRow`. The interval is
+  stated in technical details of the place-page Accreditation card, the Explore
+  `AccreditationSourcesFigure` (verified rate), `TrainingFigure` (lowest-coverage topic), and
+  `HonorariumFigure` (top paying level). New glossary term `confidence_interval` in plain language.
+  **Note:** the plan's "enlarged-view interval whiskers" are deferred — stating the interval in
+  technical details satisfies the "technical details state the interval" gate; drawing error bars on
+  the Plot charts is a follow-up refinement, not yet done.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass), `next build`
+compiles + type-checks clean (same `/place/*` no-creds caveat). Live figure rendering deferred to
+the Vercel preview.
