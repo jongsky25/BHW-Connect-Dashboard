@@ -127,7 +127,7 @@ export function ChatLauncher({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-30 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground shadow-lg hover:opacity-90"
+        className="fixed bottom-24 right-4 z-30 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground shadow-lg hover:opacity-90"
       >
         Ask the data
       </button>
