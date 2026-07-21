@@ -1030,3 +1030,22 @@ audit: the new barangay-grain data is `agg_bhw_counts.adjusted_pct` (a rate, not
 nothing a suppressed count doesn't); `agg_cohorts` is national→citymun and counts, not individual
 disclosures; workload/inequality suppress <5. Live axe/Lighthouse/figure-render checks deferred to
 the Vercel preview.
+
+## 2026-07-21 — Fix: enable RLS on agg_peer_ranks
+
+Follow-up (not a plan increment). The E2.3/E2.4 migration created `agg_peer_ranks` but never
+enabled row level security or added a read policy, unlike every other `agg_*`/`dim_*` table.
+With RLS off, PostgREST exposed the table to `anon`/`authenticated` for both read and write —
+the Supabase advisor's `rls_disabled_in_public` (ERROR), and a live write hole (anon could
+INSERT). Surfaced while making the repo public for Vercel previews (which also makes the project
+ref + anon key publicly visible).
+
+Migration `20260721070000_agg_peer_ranks_rls.sql`, applied live via the Supabase MCP: `enable row
+level security` + a `public read` SELECT policy for `anon`/`authenticated` (`using (true)`) —
+identical posture to the other `agg_*` tables (public read, service-role write; the aggregate
+build runs as service role and bypasses RLS). The table holds only non-disclosive derived
+rank/percentile stats at region/province/citymun grain, no individuals. **Verified live:** RLS
+enabled with exactly one SELECT policy, 10,668 rows intact; anon REST read still returns rows (app
+unaffected), anon INSERT now rejected with `42501` (row-level security policy violation). No
+`database.types.ts` change — RLS/policies aren't reflected in generated types. `build_aggregates.sql`
+needs no change (it defers table DDL to migrations and writes as service role).
