@@ -163,8 +163,13 @@ export default async function MethodologyPage() {
           </li>
           <li>
             <strong>BHWs per 1,000 residents.</strong> Total BHWs divided by population, times
-            1,000. Population is self-reported in the StepZero barangay sheets and is approximate;
-            it will be replaced by census figures in a later release.
+            1,000. Population is the{" "}
+            <GlossaryTerm slug="census_population">PSA 2024 census count</GlossaryTerm> (POPCEN),
+            name-matched to each area; where a census figure is unavailable (an area with no
+            matching census entry) it falls back to the approximate self-reported StepZero
+            population. City/municipality is the finest census grain, so barangay-level figures use
+            the city/municipality count. Full source-matching and reconciliation notes are in{" "}
+            <code>docs/POPULATION_RECONCILIATION.md</code>.
           </li>
           <li>
             <strong>Accreditation, two sources.</strong> The StepZero quick-count reports an

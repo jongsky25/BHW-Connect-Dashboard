@@ -682,6 +682,48 @@ export type Database = {
           },
         ];
       };
+      agg_population: {
+        Row: {
+          census_year: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          population: number;
+        };
+        Insert: {
+          census_year: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          population: number;
+        };
+        Update: {
+          census_year?: number;
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          population?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_population_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_population_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_training: {
         Row: {
           ci_high: number | null;

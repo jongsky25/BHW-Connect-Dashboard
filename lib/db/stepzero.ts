@@ -2,6 +2,7 @@ import "server-only";
 import { createSupabaseServerClient } from "./supabase";
 import { DATASET_SLUGS, getDatasetIdBySlug } from "./dataset";
 import { getBhwCounts } from "./indicators";
+import { getCensusPopulation2024 } from "./population";
 import type { GeoLevel } from "@/lib/filters/schema";
 
 /**
@@ -149,9 +150,10 @@ export async function getBhwOverview(
   geoCode: string,
   geoLevel: GeoLevel,
 ): Promise<BhwOverview> {
-  const [stepzero, counts] = await Promise.all([
+  const [stepzero, counts, censusPop] = await Promise.all([
     getStepzeroCounts(geoCode, geoLevel),
     getBhwCounts(geoCode, geoLevel),
+    getCensusPopulation2024(geoCode),
   ]);
 
   const validatedProfiles = counts?.nTotal ?? null;
@@ -165,7 +167,8 @@ export async function getBhwOverview(
     coverageExceedsBase = validatedProfiles > base;
   }
 
-  const population = stepzero?.population ?? null;
+  // Census population (E4.2) preferred; StepZero self-reported population is the fallback.
+  const population = censusPop ?? stepzero?.population ?? null;
   const households = stepzero?.households ?? null;
   const totalBhw = stepzero?.nTotalBhw ?? null;
 
