@@ -1229,3 +1229,58 @@ CPH swing). Ordered matching makes the pipeline reproducible (verified identical
 clean; `database.types.ts` carries the new table; `ingest_population.py --verify` reproduces the
 reconciliation numbers above offline.
 
+
+## 2026-07-21 — E4.4 Poverty: PSA Small Area Estimates (flagship external dataset)
+
+The flagship of Phase E4 (EXPLORE_ENHANCEMENT_PLAN.md §E4.4). Loads PSA city/municipal **Small
+Area Estimates of poverty** into a new `agg_poverty` table and adds poverty incidence as an
+external variable on the Explore Relationships scatter — never on the workforce map (identity
+rule, owner Q1). Migration `20260721090000_e4_4_agg_poverty.sql`, applied live via the Supabase
+MCP; full reconciliation in `docs/POVERTY_SAE.md`.
+
+- **Vintage: 2023, not 2021.** The plan named the 2021 SAE; the public PSA/FOI pages are
+  bot-blocked here (PSA 503, FOI 403; HDX carries only the archived **2009** SAE), the exact
+  research-pass block the plan predicted, so — as with E4.2's census workbooks — the owner supplied
+  the file directly: PSA "Annex 1 … 2018, 2021 and 2023 City- and Municipal-Level Poverty
+  Estimates", **PSGC-stamped**. It carries all three years (2018/2021/2023 back-estimates on one
+  methodology), so one `dim_dataset` row `psa-sae-poverty-2023` (`status='published'`, NOT
+  `'active'` — the E4.3 #44 lesson) covers them; 2023 is the headline the UI reads.
+
+- **Grain — citymun only, no rollup (deviation, flagged).** Poverty incidence is a rate, so it is
+  **not** rolled up to province/region/national (would need population weighting PSA doesn't
+  publish). `agg_poverty` is `geo_level='citymun'` only; poverty surfaces in Relationships solely
+  where children are cities/municipalities (a province view). Deliberate deviation from the plan's
+  "province/citymun grain" wording — the source stops at city/municipality.
+
+- **Join — classic PSGC → dim_geo 2020+ series.** The source uses the **classic pre-2020 PSGC**
+  (NCR districts as pseudo-provinces, Manila=`39`; ARMM region `15`); dim_geo is the 2020+ series
+  (Manila=`806`, BARMM=`19`). `ingestion/build_poverty.py` derives dim_geo's province code from the
+  old PSGC then name-matches the muni within it, region-scoped-unique as fallback (NCR, and the
+  2022 Maguindanao split whose old province `38` no longer resolves; its Parang needs a documented
+  override vs Sulu's Parang). Coverage **1,607/1,651 citymun**, 4,821 rows.
+
+- **Honest residuals (the 1.6 discipline).** The source is **"noHUC"**: 34 Highly Urbanized Cities
+  (Cebu/Davao/… and all Metro Manila outside the City of Manila) are a separate SAE domain, absent
+  here; plus 8 BARMM Special Geographic Areas, Pateros, and Kalayaan (the source's own footnote 3,
+  "not generated"). Four City-of-Manila source districts (Binondo/San Miguel/Ermita/Intramuros) have
+  no dim_geo node (dim_geo folds Manila into 10, the source into 14). All enumerated in
+  `docs/POVERTY_SAE.md` / `ingestion/_qa_report_poverty.json`; nothing silently dropped.
+
+- **Wiring.** New Relationships-only axis type (`REL_EXTERNAL_INDICATORS = ['poverty_incidence']`
+  in `schema.ts`, kept out of `MAP_BASE_INDICATORS` so the map never offers it); `RelAxisIndicator`
+  drives `relX`/`relY`, meta + source stamp in `map-indicators.ts` (`REL_EXTERNAL_INDICATOR_META`),
+  per-child fetch in `lib/db/poverty.ts` (`getChildPoverty`), figure offers the axis only where
+  data exists and stamps the source + ecological sentence. New insight `bhw-density-vs-poverty`
+  correlates BHWs-per-1,000 (census, E4.2) vs poverty across a province's citymun, emitting a card
+  **only when |ρ|≥0.4** — verified live: fires for 22/118 provinces (mostly moderate positive),
+  silent on the rest. `/methodology#relationships` + `glossary(poverty_incidence)` cite the source
+  and the HUC gap.
+
+- **Data load.** Following the `load_agg_population_batch` precedent (no direct Postgres TCP in the
+  sandbox), a temporary `SECURITY DEFINER` RPC `load_agg_poverty(jsonb)` was created, granted to
+  `anon`, called over PostgREST/HTTPS with JSON chunks, then **dropped immediately after**. Verified
+  live: 4,821 rows, 1,607 citymun, 0 orphan FKs, 2023 incidence 1.21–67.83 %, RLS on.
+
+**Verify.** `npm run lint`, `npm run typecheck`, targeted `vitest` (correlation/filters) clean;
+`database.types.ts` carries `agg_poverty` (surgical add, per the E4.3 regen-quirk note);
+`build_poverty.py --selftest`/`--verify` reproduce the join + reconciliation offline.

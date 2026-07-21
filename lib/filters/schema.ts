@@ -37,11 +37,26 @@ export type MapIndicator = MapBaseIndicator | `training:${string}`;
 
 export const DEFAULT_MAP_INDICATOR: MapBaseIndicator = "pct_accredited";
 
+/**
+ * External (non-workforce) variables selectable only on the Relationships axes (E4.4) —
+ * never on the map, which stays BHW-workforce indicators (identity rule, owner Q1). Each has
+ * data only at city/municipality grain (a province view); elsewhere the axis is offered
+ * empty and the scatter degrades to "not enough data".
+ */
+export const REL_EXTERNAL_INDICATORS = ["poverty_incidence"] as const;
+export type RelExternalIndicator = (typeof REL_EXTERNAL_INDICATORS)[number];
+
+/** The full set of axis choices for the relationships scatter: the map's base indicators
+ * plus the external variables. */
+export const REL_AXIS_INDICATORS = [...MAP_BASE_INDICATORS, ...REL_EXTERNAL_INDICATORS] as const;
+export type RelAxisIndicator = (typeof REL_AXIS_INDICATORS)[number];
+
 /** Default axes for the relationships scatter (E1.4): load vs accreditation. */
-export const DEFAULT_REL_X: MapBaseIndicator = "households_per_bhw";
-export const DEFAULT_REL_Y: MapBaseIndicator = "pct_accredited";
+export const DEFAULT_REL_X: RelAxisIndicator = "households_per_bhw";
+export const DEFAULT_REL_Y: RelAxisIndicator = "pct_accredited";
 
 export const mapBaseIndicatorSchema = z.enum(MAP_BASE_INDICATORS);
+export const relAxisIndicatorSchema = z.enum(REL_AXIS_INDICATORS);
 
 const MAP_TRAINING_PREFIX = "training:";
 /** Topic slugs are lower-kebab (`maternal-health`), matching `agg_training.topic_slug`. */
@@ -104,8 +119,8 @@ export const filterStateSchema = z.object({
     .string()
     .catch(DEFAULT_MAP_INDICATOR)
     .transform(normalizeMapIndicator),
-  relX: mapBaseIndicatorSchema.catch(DEFAULT_REL_X),
-  relY: mapBaseIndicatorSchema.catch(DEFAULT_REL_Y),
+  relX: relAxisIndicatorSchema.catch(DEFAULT_REL_X),
+  relY: relAxisIndicatorSchema.catch(DEFAULT_REL_Y),
   compareGeos: z
     .array(z.string().min(1))
     .max(4)

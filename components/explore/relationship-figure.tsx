@@ -7,15 +7,17 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import { useExploreNav } from "@/components/explore/explore-nav";
 import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
 import {
-  MAP_BASE_INDICATOR_META,
-  MAP_BASE_INDICATOR_OPTIONS,
+  REL_AXIS_META,
+  REL_AXIS_OPTIONS,
+  REL_EXTERNAL_INDICATOR_META,
   formatIndicatorValue,
 } from "@/lib/analysis/map-indicators";
 import { describeCorrelation, MIN_CORRELATION_N } from "@/lib/analysis/correlation";
 import { logEvent } from "@/lib/usage/log-client";
-import type { MapBaseIndicator, GeoLevel } from "@/lib/filters/schema";
+import { REL_EXTERNAL_INDICATORS, type RelAxisIndicator, type GeoLevel } from "@/lib/filters/schema";
 
-/** One child geo with all base-indicator values, for the scatter (E1.4). */
+/** One child geo with all axis values, for the scatter (E1.4 / E4.4). `povertyIncidence` is the
+ * external PSA SAE variable, present only at city/municipality grain. */
 export type RelationshipPoint = {
   geoCode: string;
   geoName: string;
@@ -26,9 +28,10 @@ export type RelationshipPoint = {
   avgActiveYears: number | null;
   coveragePct: number | null;
   bhwPer1000: number | null;
+  povertyIncidence: number | null;
 };
 
-function pick(p: RelationshipPoint, indicator: MapBaseIndicator): number | null {
+function pick(p: RelationshipPoint, indicator: RelAxisIndicator): number | null {
   switch (indicator) {
     case "pct_accredited":
       return p.pctAccredited;
@@ -42,7 +45,14 @@ function pick(p: RelationshipPoint, indicator: MapBaseIndicator): number | null 
       return p.coveragePct;
     case "bhw_per_1000":
       return p.bhwPer1000;
+    case "poverty_incidence":
+      return p.povertyIncidence;
   }
+}
+
+/** Whether an axis choice is an external (non-workforce) variable — used for source stamping. */
+function isExternal(indicator: RelAxisIndicator): boolean {
+  return (REL_EXTERNAL_INDICATORS as readonly string[]).includes(indicator);
 }
 
 // Fixed drawing coordinate system; the SVG scales to its container via viewBox.
@@ -79,16 +89,31 @@ export function RelationshipFigure({
   });
 
   const childPlural = childLevelLabelPlural.toLowerCase();
-  const xMeta = MAP_BASE_INDICATOR_META[relX];
-  const yMeta = MAP_BASE_INDICATOR_META[relY];
+  const xMeta = REL_AXIS_META[relX];
+  const yMeta = REL_AXIS_META[relY];
 
   const setAxis = useCallback(
-    (axis: "relX" | "relY", value: MapBaseIndicator) => {
+    (axis: "relX" | "relY", value: RelAxisIndicator) => {
       logEvent("rel_axis_change", { meta: { axis, indicator: value, childLevel } });
       setFilters({ [axis]: value });
     },
     [childLevel, setFilters],
   );
+
+  // External variables (poverty) carry data only at city/municipality grain. Offer them only
+  // where at least one child has a value — but always keep a currently-selected external axis in
+  // the list so a stale permalink's <select> still shows its choice (the scatter then degrades to
+  // "not enough data"). The map's own indicator switcher never lists these.
+  const hasExternalData = points.some((p) => REL_EXTERNAL_INDICATORS.some((k) => pick(p, k) !== null));
+  const axisOptions = REL_AXIS_OPTIONS.filter(
+    (o) => !o.external || hasExternalData || o.value === relX || o.value === relY,
+  );
+
+  // Source stamp for any external axis on the figure (identity rule: external data is cited).
+  const externalCaptions = [relX, relY]
+    .filter(isExternal)
+    .map((k) => REL_EXTERNAL_INDICATOR_META[k as keyof typeof REL_EXTERNAL_INDICATOR_META].caption);
+  const sourceNote = Array.from(new Set(externalCaptions)).join(" · ");
 
   const plotted = useMemo(
     () =>
@@ -141,7 +166,7 @@ export function RelationshipFigure({
   return (
     <FigureCard
       title={`${yMeta.label} vs ${xMeta.label}, across ${childPlural}`}
-      caption={caption}
+      caption={sourceNote ? `${caption} · ${sourceNote}` : caption}
       headline={headline}
       technicalDetails={
         <p>
@@ -169,10 +194,10 @@ export function RelationshipFigure({
             Horizontal axis
             <select
               value={relX}
-              onChange={(e) => setAxis("relX", e.target.value as MapBaseIndicator)}
+              onChange={(e) => setAxis("relX", e.target.value as RelAxisIndicator)}
               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
             >
-              {MAP_BASE_INDICATOR_OPTIONS.map((opt) => (
+              {axisOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -183,10 +208,10 @@ export function RelationshipFigure({
             Vertical axis
             <select
               value={relY}
-              onChange={(e) => setAxis("relY", e.target.value as MapBaseIndicator)}
+              onChange={(e) => setAxis("relY", e.target.value as RelAxisIndicator)}
               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
             >
-              {MAP_BASE_INDICATOR_OPTIONS.map((opt) => (
+              {axisOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
