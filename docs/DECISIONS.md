@@ -1031,6 +1031,58 @@ nothing a suppressed count doesn't); `agg_cohorts` is national→citymun and cou
 disclosures; workload/inequality suppress <5. Live axe/Lighthouse/figure-render checks deferred to
 the Vercel preview.
 
+## 2026-07-21 — Phase E4.1: PSGC crosswalk (infrastructure, EXPLORE_ENHANCEMENT_PLAN.md §E4.1)
+
+First increment of Phase E4 (external datasets), built first because every later load in the phase
+depends on it. `dim_geo` is fixed on one PSGC vintage (`2023 series (>=2024 release, includes
+NIR)`); the Tier-1 sources arriving next (POPCEN/CPH, SAE poverty, DOF/BLGF income classes) each key
+on their own vintage, and a renumbered/reassigned code would silently drop out of a naive join.
+`dim_psgc_crosswalk` + `map_psgc_to_dim_geo()` are the insurance against that. Migration
+`20260721060000_e4_1_psgc_crosswalk.sql`, applied live via the Supabase MCP; full report in
+`docs/PSGC_CROSSWALK.md`.
+
+- **Table** `dim_psgc_crosswalk` (`old_code`, `new_code` FK→`dim_geo`, `geo_level`, `old_vintage`,
+  `new_vintage`, `change_kind` CHECK-constrained vocabulary, `old_name`/`new_name`, `note`,
+  `dataset_id`; `unique(old_code, old_vintage, new_vintage)`; RLS public-read like every other
+  `dim_*`/`agg_*`). Indexed on `old_code` (the downstream lookup key) and `new_code`.
+- **Resolution primitive** `map_psgc_to_dim_geo(p_code, p_old_vintage default null)` (SQL, `stable`,
+  `security invoker`, granted to `anon`/`authenticated`): direct-hit → crosswalk-hit → NULL. Its
+  Python twin (`map_code()` in the builder) is what non-SQL loads import. NULL is deliberate — the
+  caller logs the miss, mirroring the 1.6 two-way reconciliation discipline.
+- **Seeded change: NIR (RA 12000, 2024).** The one large PSGC vintage change the repo already has
+  hard evidence for. Pre-NIR PSGC filed Negros Occidental under Region VI (`06`) and Negros Oriental
+  + Siquijor under Region VII (`07`); dim_geo files all three under Region `18`. Crosswalk rows are
+  derived **from `dim_geo` itself** (region prefix swapped back, province digits preserved) — the
+  same remap `reconcile_boundaries.py` already applies to boundary polygons — not from any external
+  file. **1,357 rows** (3 provinces + 62 citymuns + 1,292 barangays). **Verified live:** 0 `new_code`
+  orphans, 0 `old_code` collisions with live dim_geo; `map_psgc_to_dim_geo('06045')→18045`,
+  `('07061')→18061`, `('18045')→18045` (direct), `('0604502')→1804502`, unknown→NULL. The builder,
+  run offline against a dim_geo CSV export, independently reproduces the same 1,357 rows and a clean
+  report.
+- **Derived from `dim_geo`, not the parquet, on purpose:** the parquet alone yields 1,345 NIR rows;
+  the live `dim_geo` has 1,357 because the StepZero patch (`stepzero_only_v1`) added 12 NIR
+  barangays the parquet never carried. The crosswalk must map onto the real join target, so the
+  seed is an `INSERT … SELECT FROM dim_geo` and the builder's authoritative mode reads `dim_geo`.
+- **Accepted, flagged gap: Bacolod City (HUC).** `dim_geo` has a 4th Region-18 province row `18302`
+  (63 rows); its pre-NIR code isn't a clean region-prefix swap, so — exactly as
+  `reconcile_boundaries.py` already excluded it — it is left unmapped. Not silent: a pre-NIR Bacolod
+  code resolves to NULL and surfaces in the consuming load's reconciliation.
+- **Quarterly-file path not fed (documented):** the general mechanism (diff two PSA PSGC publication
+  snapshots → change rows) is implemented and `--selftest`-covered in
+  `ingestion/build_psgc_crosswalk.py`, but `psa.gov.ph/classification/psgc` is Cloudflare
+  bot-challenged from this environment (`403` challenge — the plan's flagged "research pass hit
+  bot-blocks"). `dim_dataset.psa-psgc-crosswalk.status` stays `draft` until a real file is diffed
+  in. Other known changes (2022 Maguindanao split, city→HUC conversions) are **not** hand-seeded —
+  they need the real correspondence column; guessing codes is what this discipline forbids.
+- **Provenance:** `dim_dataset` row `psa-psgc-crosswalk` (source = PSA PSGC quarterly publication,
+  `as_of_date` = RA 12000 effectivity `2024-06-13`, `status` = `draft`).
+- **Types:** regenerated `lib/db/database.types.ts` for the new table + function via the Supabase MCP.
+
+**Verify.** Migration applied clean; live integrity checks above all pass; `build_psgc_crosswalk.py
+--selftest` passes and its offline reconciliation matches the live seed. No UI surface in this
+increment (pure infrastructure). RLS: `dim_psgc_crosswalk` is public-read, service-write — same as
+every other `dim_*`; no new suppression surface (it holds public geographic codes, no individuals).
+
 ## 2026-07-21 — Fix: enable RLS on agg_peer_ranks
 
 Follow-up (not a plan increment). The E2.3/E2.4 migration created `agg_peer_ranks` but never
