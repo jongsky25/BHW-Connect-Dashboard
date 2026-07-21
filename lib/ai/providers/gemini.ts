@@ -9,12 +9,15 @@ import {
   type ToolDefinition,
 } from "./types";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-flash-latest";
 const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 type GeminiPart =
-  | { text: string }
-  | { functionCall: { name: string; args: Record<string, unknown> } }
+  // `thought` marks an internal reasoning part (thinking models) that must never surface as answer
+  // text; `thoughtSignature` is the opaque token that must be echoed back on the model's own
+  // function-call parts, per Gemini's 2.5 thinking-model function-calling protocol.
+  | { text: string; thought?: boolean }
+  | { functionCall: { name: string; args: Record<string, unknown> }; thoughtSignature?: string }
   | { functionResponse: { name: string; response: Record<string, unknown> } };
 
 type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
@@ -37,7 +40,12 @@ function toGeminiRequest(messages: ChatMessage[], tools: ToolDefinition[]) {
       const parts: GeminiPart[] = [];
       if (message.content) parts.push({ text: message.content });
       for (const call of message.toolCalls ?? []) {
-        parts.push({ functionCall: { name: call.name, args: call.arguments } });
+        // Replay the thoughtSignature Gemini gave us on this call — without it the continuation 400s
+        // ("Function call is missing a thought_signature in functionCall parts").
+        parts.push({
+          functionCall: { name: call.name, args: call.arguments },
+          ...(call.thoughtSignature ? { thoughtSignature: call.thoughtSignature } : {}),
+        });
       }
       contents.push({ role: "model", parts });
     } else if (message.role === "tool") {
@@ -73,7 +81,12 @@ function parseToolCalls(parts: GeminiPart[]): ToolCall[] {
   let index = 0;
   for (const part of parts) {
     if ("functionCall" in part) {
-      calls.push({ id: `${part.functionCall.name}_${index++}`, name: part.functionCall.name, arguments: part.functionCall.args });
+      calls.push({
+        id: `${part.functionCall.name}_${index++}`,
+        name: part.functionCall.name,
+        arguments: part.functionCall.args,
+        thoughtSignature: part.thoughtSignature,
+      });
     }
   }
   return calls;
@@ -81,7 +94,7 @@ function parseToolCalls(parts: GeminiPart[]): ToolCall[] {
 
 function parseText(parts: GeminiPart[]): string | null {
   const text = parts
-    .filter((part): part is { text: string } => "text" in part)
+    .filter((part): part is { text: string; thought?: boolean } => "text" in part && part.thought !== true)
     .map((part) => part.text)
     .join("");
   return text || null;

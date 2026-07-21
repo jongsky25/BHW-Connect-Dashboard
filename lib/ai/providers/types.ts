@@ -11,7 +11,15 @@ export type ToolDefinition = {
   parameters: ToolParameterSchema;
 };
 
-export type ToolCall = { id: string; name: string; arguments: Record<string, unknown> };
+export type ToolCall = {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  /** Gemini 2.5 thinking models attach an opaque `thoughtSignature` to each function-call part and
+   * reject the follow-up turn (HTTP 400) unless it's echoed back verbatim on the same call. Opaque
+   * to every other provider — the OpenAI-compatible path ignores it. */
+  thoughtSignature?: string;
+};
 
 export type ChatMessage =
   | { role: "system"; content: string }
