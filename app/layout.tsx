@@ -5,6 +5,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { FooterGate } from "@/components/layout/footer-gate";
 import { SpotFeedback } from "@/components/feedback/spot-feedback";
 import { PageViewLogger } from "@/components/analytics/page-view-logger";
 import { NoFlashScript } from "@/components/settings/no-flash-script";
@@ -53,7 +54,9 @@ export default function RootLayout({
             <main id="main-content" className="flex flex-1 flex-col">
               {children}
             </main>
-            <Footer />
+            <FooterGate>
+              <Footer />
+            </FooterGate>
             <SpotFeedback />
           </NuqsAdapter>
         </SettingsProvider>

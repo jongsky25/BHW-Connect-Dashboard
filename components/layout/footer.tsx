@@ -38,6 +38,9 @@ export async function Footer() {
           )}
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href="/" className="underline underline-offset-2 hover:text-accent">
+            Equity in Health portal
+          </Link>
           <Link href="/methodology" className="underline underline-offset-2 hover:text-accent">
             Methodology
           </Link>

@@ -7,7 +7,8 @@ import { test, expect } from "@playwright/test";
  * to stay within free CI-minute budgets.
  */
 test("home -> explore -> filter to barangay -> export CSV", async ({ page }) => {
-  await page.goto("/");
+  // The BHW dashboard now lives at /bhw; "/" is the Equity in Health portal.
+  await page.goto("/bhw");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Barangay Health Workers");
 
   await page.getByRole("link", { name: "Explore" }).click();
