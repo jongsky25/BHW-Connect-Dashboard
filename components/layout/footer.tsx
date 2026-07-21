@@ -52,6 +52,10 @@ export async function Footer() {
           </Link>
         </div>
         <p>BHW Connect is an independent public-interest project, not affiliated with DOH.</p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="equity-mark sm" aria-hidden="true" />
+          <span>An Equity in Health Section innovation</span>
+        </div>
       </div>
     </footer>
   );
