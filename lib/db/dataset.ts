@@ -17,6 +17,16 @@ export type DatasetInfo = {
  * failure so callers (footer, etc.) can degrade gracefully rather than crash
  * a page that doesn't otherwise depend on the database.
  *
+ * Pinned to `slug = DATASET_SLUGS.profiled` (`bhw-2025`), not "whichever row is
+ * `status='active'`". The slug is unique, so no other dim_dataset row can ever
+ * win this lookup — a reference/provenance dataset accidentally registered as
+ * `active` (E4.3 did exactly this: see #44) can no longer hijack the active
+ * dataset and scope every figure to a dataset_id with zero aggregate rows.
+ * `status='active'` is retained as a guard so the primary dataset can still be
+ * intentionally retired (returns null → graceful degrade) rather than as the
+ * selector. Swapping the v1 primary to a future dataset is a deliberate edit
+ * here, by design.
+ *
  * Wrapped in React's per-request `cache()` — nearly every query helper calls
  * this for the dataset_id FK, so a page composing many figures (home, place,
  * insights grid) would otherwise re-run the identical lookup dozens of times
@@ -28,9 +38,8 @@ export const getActiveDataset = cache(async (): Promise<DatasetInfo | null> => {
     const { data, error } = await supabase
       .from("dim_dataset")
       .select("dataset_id, slug, name, source_name, license, as_of_date, last_updated_at")
+      .eq("slug", DATASET_SLUGS.profiled)
       .eq("status", "active")
-      .order("last_updated_at", { ascending: false })
-      .limit(1)
       .maybeSingle();
 
     if (error || !data) return null;
