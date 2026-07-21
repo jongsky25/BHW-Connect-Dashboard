@@ -33,8 +33,11 @@ describe("getPlaceLocator (real public/geo files)", () => {
     expect(locator!.highlightIsParent).toBe(false);
   });
 
-  it("returns null for NIR, which has no polygon in the national file", async () => {
-    expect(await getPlaceLocator(geo("18", "region"), ancestors({}))).toBeNull();
+  it("renders NIR (region 18), reconstructed into the national file from its provinces", async () => {
+    const locator = await getPlaceLocator(geo("18", "region"), ancestors({}));
+    expect(locator).not.toBeNull();
+    expect(locator!.highlightPath).not.toBe("");
+    expect(locator!.highlightIsParent).toBe(false);
   });
 
   it("renders a province within its region", async () => {
