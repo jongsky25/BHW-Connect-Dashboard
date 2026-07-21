@@ -55,6 +55,9 @@ ingestion/_qa_report_stepzero.json
 ingestion/_sql_batches_stepzero/
 ingestion/_qa_report_patch_psgc_gap.json
 ingestion/_sql_patch_psgc_gap/
+ingestion/_qa_report_psgc_crosswalk.json
+ingestion/_sql_psgc_crosswalk/
+ingestion/data/dim_geo_nir.csv
 
 # editor
 .vscode/
