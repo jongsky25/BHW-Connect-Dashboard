@@ -25,6 +25,7 @@ export type Database = {
       };
       agg_bhw_counts: {
         Row: {
+          adjusted_pct: number | null;
           any_honorarium_pct: number | null;
           avg_active_years: number | null;
           ci_high: number | null;
@@ -38,6 +39,7 @@ export type Database = {
           pct_accredited: number | null;
         };
         Insert: {
+          adjusted_pct?: number | null;
           any_honorarium_pct?: number | null;
           avg_active_years?: number | null;
           ci_high?: number | null;
@@ -51,6 +53,7 @@ export type Database = {
           pct_accredited?: number | null;
         };
         Update: {
+          adjusted_pct?: number | null;
           any_honorarium_pct?: number | null;
           avg_active_years?: number | null;
           ci_high?: number | null;
@@ -73,6 +76,209 @@ export type Database = {
           },
           {
             foreignKeyName: "agg_bhw_counts_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      agg_by_income_class: {
+        Row: {
+          any_honorarium_pct: number | null;
+          dataset_id: number;
+          id: number;
+          income_class: number;
+          median_honorarium_amount: number | null;
+          n_bhw: number;
+          n_citymun: number | null;
+          pct_accredited: number | null;
+        };
+        Insert: {
+          any_honorarium_pct?: number | null;
+          dataset_id: number;
+          id?: never;
+          income_class: number;
+          median_honorarium_amount?: number | null;
+          n_bhw: number;
+          n_citymun?: number | null;
+          pct_accredited?: number | null;
+        };
+        Update: {
+          any_honorarium_pct?: number | null;
+          dataset_id?: number;
+          id?: never;
+          income_class?: number;
+          median_honorarium_amount?: number | null;
+          n_bhw?: number;
+          n_citymun?: number | null;
+          pct_accredited?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_by_income_class_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+        ];
+      };
+      agg_cohorts: {
+        Row: {
+          cohort_year: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          kind: string;
+          n: number;
+        };
+        Insert: {
+          cohort_year: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          kind: string;
+          n: number;
+        };
+        Update: {
+          cohort_year?: number;
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          kind?: string;
+          n?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_cohorts_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_cohorts_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      agg_honorarium_inequality: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          gini: number | null;
+          id: number;
+          is_suppressed: boolean;
+          n_receiving: number;
+          p10_amount: number | null;
+          p90_amount: number | null;
+          p90_p10_ratio: number | null;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          gini?: number | null;
+          id?: never;
+          is_suppressed?: boolean;
+          n_receiving: number;
+          p10_amount?: number | null;
+          p90_amount?: number | null;
+          p90_p10_ratio?: number | null;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          gini?: number | null;
+          id?: never;
+          is_suppressed?: boolean;
+          n_receiving?: number;
+          p10_amount?: number | null;
+          p90_amount?: number | null;
+          p90_p10_ratio?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_honorarium_inequality_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_honorarium_inequality_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      agg_workload: {
+        Row: {
+          busiest_decile_share: number | null;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          is_suppressed: boolean;
+          mean: number | null;
+          median: number | null;
+          n_bhw: number;
+          p10: number | null;
+          p25: number | null;
+          p75: number | null;
+          p90: number | null;
+        };
+        Insert: {
+          busiest_decile_share?: number | null;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          is_suppressed?: boolean;
+          mean?: number | null;
+          median?: number | null;
+          n_bhw: number;
+          p10?: number | null;
+          p25?: number | null;
+          p75?: number | null;
+          p90?: number | null;
+        };
+        Update: {
+          busiest_decile_share?: number | null;
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          is_suppressed?: boolean;
+          mean?: number | null;
+          median?: number | null;
+          n_bhw?: number;
+          p10?: number | null;
+          p25?: number | null;
+          p75?: number | null;
+          p90?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_workload_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_workload_geo_code_fkey";
             columns: ["geo_code"];
             isOneToOne: false;
             referencedRelation: "dim_geo";

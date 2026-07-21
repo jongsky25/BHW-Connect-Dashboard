@@ -117,4 +117,19 @@ export const GLOSSARY = {
     definition:
       "How much of each BHW profile's information is actually filled in. The grade (A ≥95%, B ≥85%, C below) is the average completeness across the tracked fields, each counted equally; a low grade means figures that rely on the missing fields are less reliable here. See the data-quality page for the field-by-field breakdown.",
   },
+  gini: {
+    term: "Gini coefficient",
+    definition:
+      "A single number from 0 to 1 for how unevenly something is shared out. 0 means everyone gets exactly the same; 1 means one person gets everything. Used here for how evenly (or not) honorarium amounts are spread among the BHWs who receive one.",
+  },
+  income_class: {
+    term: "LGU income class",
+    definition:
+      "The government's ranking of a city or municipality by its yearly income, from 1st class (highest income) to 6th class (lowest). It's a rough proxy for how much a local government can afford to spend — including on supporting its BHWs.",
+  },
+  adjusted_rate: {
+    term: "Adjusted rate",
+    definition:
+      "A rate from a place with very few BHWs is nudged toward its parent area's rate, because a handful of people can swing a small percentage wildly. The adjustment moves noisy small-area rates toward what's typical nearby, leaving large, well-measured areas almost unchanged. Raw rates are shown by default; the adjusted view is an opt-in.",
+  },
 } as const;

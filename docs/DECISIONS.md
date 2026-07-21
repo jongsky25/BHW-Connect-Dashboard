@@ -952,3 +952,81 @@ phase verify): the new barangay-grain columns are `agg_bhw_counts`/`agg_training
 `ci_low`/`ci_high` (Wilson) — these are intervals, not counts, and reveal nothing an existing
 suppressed count doesn't; `agg_peer_ranks` deliberately excludes barangay. Live axe/Lighthouse/
 figure-render checks remain deferred to the Vercel preview.
+
+## 2026-07-21 — Phase E3: New internal aggregates (live DB)
+
+Phase E3 of the Explore enhancement plan — new precomputed aggregates from the already-loaded
+`fact_bhw_raw`/`fact_honorarium` (no re-ingestion needed; the facts are fully loaded on the live
+`bhw-connect` project). Five new figures shipped; two increments downgraded to documented findings
+after the data failed their audit gate. All aggregates are pure SQL applied live via MCP
+`apply_migration` (idempotent, delete-by-dataset then insert) and mirrored into
+`ingestion/build_aggregates.sql` (§11–§15). Types hand-edited into `lib/db/database.types.ts`
+(regeneration drops the committed `search_geo.parent_chain`, per the E2.2 note). DB grew 551 → 576
+MB — within budget; barangay grain deliberately skipped on the new tables (same disk cut as
+`agg_training`), with barangay pages falling back to their citymun ancestor (labeled), mirroring
+the training/completeness pattern.
+
+- **E3.1 `ROLE` dimension — GATED (not shipped).** The audit gate found **no `ROLE` column in the
+  source parquet at all** (nor any position/designation/title field — full column dump checked).
+  There is nothing to ingest, so per the plan's gate ("downgrade to a normalization proposal for
+  the owner instead of shipping garbage categories") this is recorded here and not built. If a role
+  field is wanted, it must first be added to the source dataset upstream.
+
+- **E3.2 Joining waves — SHIPPED.** `agg_cohorts` (geo × kind × cohort_year × n), national→citymun,
+  only non-zero cells (~104k rows). `kind` ∈ {registered, accredited, first_active}. `CohortsFigure`
+  renders three server-side small-multiple column strips (no client JS). Locked 2025-snapshot
+  framing: years as recorded in the snapshot, "when today's BHWs arrived," explicitly not a
+  workforce time series, with the survivorship caveat in the technical details. **Verified live:**
+  national 2025 first_active = 21,635 / registered = 21,585 / accredited = 28,988; region 07
+  first_active 2020→2024 rises 1,196 → 2,516.
+
+- **E3.3 Retention/attrition — DOWNGRADED (not shipped).** Built `agg_retention` (national+region,
+  share of each start-cohort active k years later) and verified it empirically: **every national
+  cohort-year sits at 99.3–100%** (global min 99.3, none below 95). This is pure survivorship — a
+  single 2025 snapshot can't observe anyone who left, so the "curve" is a flat ~100% line. Shipping
+  it would falsely imply BHWs almost never leave. Applying the same audit discipline as E3.1, the
+  table was **dropped** and no figure ships; the finding is documented in `/methodology`
+  (Limitations) so users understand why there is no retention curve. The joining-waves figure (E3.2)
+  carries the honest slice of the same idea.
+
+- **E3.4 Household workload — SHIPPED.** `agg_workload` (p10/p25/median/p75/p90 + mean +
+  busiest-decile share), national→citymun, distribution suppressed for <5 reporting BHWs.
+  `WorkloadFigure` reuses `RangeChartClient` (p10–p90 span) + a percentile table. Headline: "The
+  busiest 10% of BHWs here cover {x}% of all assigned households." **Verified live:** national
+  median 52, p90 180, busiest-decile 43.6% (n=270,662); Pangasinan median 52, busiest 30.9%.
+
+- **E3.5 Honorarium inequality — SHIPPED.** `agg_honorarium_inequality` (Gini + p90:p10 of each
+  BHW's total normalized monthly honorarium among receivers), national→citymun, suppressed for <5
+  receiving. Added as a fourth **Inequality** tab on the Explore honorarium tabbed card. Gini via the
+  standard rank formula `G = 2·Σ(i·x_i)/(n·Σx_i) − (n+1)/n`. **Verified live:** national Gini 0.391,
+  p10 ₱783, p90 ₱4,650, ratio 5.9× (n=265,160); region 07 Gini 0.387, ratio 5.5×.
+
+- **E3.6 Adjusted small-area rates — SHIPPED (owner Q7).** `agg_bhw_counts.adjusted_pct` column,
+  empirical-Bayes (DerSimonian–Laird random-effects, beta-binomial method-of-moments) shrinkage of
+  each citymun/barangay raw accreditation rate toward its parent's pooled rate:
+  `B_i = A/(A + m(1−m)/n_i)`, `adjusted_i = m + B_i·(p_i − m)`, `A` = per-parent-group between-area
+  variance (clamped ≥0). Region/national stay NULL (shown raw). UI: an **opt-in toggle** on the
+  Explore map + ranked list (raw is the default per Q7), only when accreditation is active and the
+  children are citymun/barangay grain; every adjusted rendering is labeled and links
+  `/methodology#adjusted-rates`. **Verified live:** small-N pulls sensibly (13-BHW DATU HOFFER
+  38%→57% toward province 81%; SIGAY 100%→85% toward 73%); region/national untouched (0 non-null);
+  83 provinces have adjusted citymun children for the toggle.
+
+- **E3.7 Income-class equity — SHIPPED.** `agg_by_income_class` (6 national rows: pooled
+  accreditation & any-honorarium shares + median honorarium among receivers, per LGU income class).
+  `IncomeClassFigure` (national view only) — table with a median-honorarium bar; thin classes
+  (<5,000 BHWs) flagged. Uses only `dim_geo.income_class` (E4.3 will refresh it). **Verified live:**
+  median honorarium ₱833 (1st class) vs ₱542 (4th); any-honorarium 98.3% (1st) → 92.5% (6th, thin,
+  n=1,666).
+
+**New glossary terms:** `gini`, `income_class`, `adjusted_rate` (plain-language). **Methodology:**
+new "Joining waves, workload, honorarium inequality, and adjusted rates" section (`#adjusted-rates`
+anchor) + a Limitations bullet on why retention isn't published.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (107 pass), `next build`
+compiles + type-checks clean (fails only at `/place/*` page-data collection for missing
+`NEXT_PUBLIC_SUPABASE_*` creds — the same documented caveat as every prior E-phase). Suppression
+audit: the new barangay-grain data is `agg_bhw_counts.adjusted_pct` (a rate, not a count — reveals
+nothing a suppressed count doesn't); `agg_cohorts` is national→citymun and counts, not individual
+disclosures; workload/inequality suppress <5. Live axe/Lighthouse/figure-render checks deferred to
+the Vercel preview.

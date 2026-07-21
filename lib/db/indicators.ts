@@ -15,6 +15,9 @@ export type BhwCounts = {
   /** Wilson 95% interval (percentage points) around pctAccredited (E2.2). */
   ciLow: number | null;
   ciHigh: number | null;
+  /** Empirical-Bayes adjusted accreditation rate (E3.6). Only computed at
+   * citymun/barangay grain; null at region/national (shown raw). */
+  adjustedPct: number | null;
 };
 
 /**
@@ -31,7 +34,7 @@ export async function getBhwCounts(geoCode: string, geoLevel: GeoLevel): Promise
   const { data, error } = await supabase
     .from("agg_bhw_counts")
     .select(
-      "geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct, ci_low, ci_high",
+      "geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct, ci_low, ci_high, adjusted_pct",
     )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
@@ -50,6 +53,7 @@ export async function getBhwCounts(geoCode: string, geoLevel: GeoLevel): Promise
     anyHonorariumPct: data.any_honorarium_pct,
     ciLow: data.ci_low,
     ciHigh: data.ci_high,
+    adjustedPct: data.adjusted_pct,
   };
 }
 
@@ -311,6 +315,9 @@ export type ChildIndicatorRow = {
   /** Validated-profile count (`agg_geo_summary.n_total`) — the small-N basis. */
   nTotal: number | null;
   pctAccredited: number | null;
+  /** Empirical-Bayes adjusted accreditation rate (E3.6); null unless this child
+   * is at citymun/barangay grain. */
+  adjustedPctAccredited: number | null;
   anyHonorariumPct: number | null;
   avgActiveYears: number | null;
   /** Households ÷ total BHWs (StepZero universe). Higher = heavier load. */
@@ -354,7 +361,7 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
       .in("geo_code", geoCodes),
     supabase
       .from("agg_bhw_counts")
-      .select("geo_code, avg_active_years")
+      .select("geo_code, avg_active_years, adjusted_pct")
       .eq("dataset_id", datasetId)
       .in("geo_code", geoCodes),
     stepzeroId === null
@@ -370,9 +377,7 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
 
   if (summaryRes.error || !summaryRes.data) return [];
 
-  const avgByCode = new Map(
-    (countsRes.data ?? []).map((row) => [row.geo_code, row.avg_active_years]),
-  );
+  const countsByCode = new Map((countsRes.data ?? []).map((row) => [row.geo_code, row]));
   const stepzeroByCode = new Map((stepzeroRes.data ?? []).map((row) => [row.geo_code, row]));
 
   return summaryRes.data.map((row) => {
@@ -404,8 +409,9 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
       geoName: row.geo_name,
       nTotal: row.n_total,
       pctAccredited: row.pct_accredited,
+      adjustedPctAccredited: countsByCode.get(row.geo_code)?.adjusted_pct ?? null,
       anyHonorariumPct: row.any_honorarium_pct,
-      avgActiveYears: avgByCode.get(row.geo_code) ?? null,
+      avgActiveYears: countsByCode.get(row.geo_code)?.avg_active_years ?? null,
       householdsPerBhw,
       coveragePct,
       bhwPer1000,

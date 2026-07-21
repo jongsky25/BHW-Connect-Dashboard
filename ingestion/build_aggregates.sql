@@ -516,6 +516,250 @@ from ranked r
 left join agg_bhw_counts cc on cc.geo_code = r.geo_code and cc.geo_level = r.geo_level
   and cc.dataset_id = (select main_id from ds);
 
--- 10. Cleanup working tables.
+-- 11. agg_cohorts (E3.2): one row per (geo × kind × cohort_year) counting how many
+-- of today's profiled BHWs reached each milestone (registered / accredited / first
+-- active) in that year. National→citymun (barangay skipped, same disk cut as
+-- agg_training); only non-zero cells stored. The table is created by
+-- supabase/migrations. 2025-snapshot framing: years are as recorded in the 2025
+-- dataset, not a workforce time series.
+delete from agg_cohorts where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+with fanned as (
+  select f.registered_year, f.accreditation_year, f.first_active_year,
+    lvl.geo_level, lvl.geo_code
+  from fact_bhw_raw f
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  cross join lateral (values
+    ('citymun'::geo_level_enum, dg.citymun_code),
+    ('province'::geo_level_enum, dg.province_code),
+    ('region'::geo_level_enum, dg.region_code),
+    ('national'::geo_level_enum, 'PH')
+  ) as lvl(geo_level, geo_code)
+),
+unioned as (
+  select geo_code, geo_level, 'registered' as kind, registered_year as yr
+  from fanned where registered_year between 1995 and 2025
+  union all
+  select geo_code, geo_level, 'accredited', accreditation_year
+  from fanned where accreditation_year between 1995 and 2025
+  union all
+  select geo_code, geo_level, 'first_active', first_active_year
+  from fanned where first_active_year between 1995 and 2025
+)
+insert into agg_cohorts (dataset_id, geo_code, geo_level, kind, cohort_year, n)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  geo_code, geo_level, kind, yr, count(*)
+from unioned
+group by geo_code, geo_level, kind, yr;
+
+-- 12. agg_workload (E3.4): per-BHW assigned-household counts summarized per geo
+-- (p10/p25/median/p75/p90 + mean + busiest-decile share). National→citymun grain;
+-- distribution columns suppressed for geos with < 5 reporting BHWs. household 0/null
+-- excluded. Table created by supabase/migrations.
+delete from agg_workload where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+with fanned as (
+  select f.household, lvl.geo_level, lvl.geo_code
+  from fact_bhw_raw f
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  cross join lateral (values
+    ('citymun'::geo_level_enum, dg.citymun_code),
+    ('province'::geo_level_enum, dg.province_code),
+    ('region'::geo_level_enum, dg.region_code),
+    ('national'::geo_level_enum, 'PH')
+  ) as lvl(geo_level, geo_code)
+  where f.household is not null and f.household > 0
+),
+dist as (
+  select geo_code, geo_level, count(*) as n_bhw,
+    round((percentile_cont(0.10) within group (order by household))::numeric, 1) as p10,
+    round((percentile_cont(0.25) within group (order by household))::numeric, 1) as p25,
+    round((percentile_cont(0.50) within group (order by household))::numeric, 1) as median,
+    round((percentile_cont(0.75) within group (order by household))::numeric, 1) as p75,
+    round((percentile_cont(0.90) within group (order by household))::numeric, 1) as p90,
+    round(avg(household)::numeric, 1) as mean,
+    sum(household) as total_hh
+  from fanned group by geo_code, geo_level
+),
+ranked as (
+  select geo_code, geo_level, household,
+    percent_rank() over (partition by geo_code, geo_level order by household desc) as pr
+  from fanned
+),
+top_decile as (
+  select geo_code, geo_level, sum(household) filter (where pr < 0.10) as top_hh
+  from ranked group by geo_code, geo_level
+)
+insert into agg_workload
+  (dataset_id, geo_code, geo_level, n_bhw, p10, p25, median, p75, p90, mean, busiest_decile_share, is_suppressed)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  d.geo_code, d.geo_level, d.n_bhw,
+  case when d.n_bhw < 5 then null else d.p10 end,
+  case when d.n_bhw < 5 then null else d.p25 end,
+  case when d.n_bhw < 5 then null else d.median end,
+  case when d.n_bhw < 5 then null else d.p75 end,
+  case when d.n_bhw < 5 then null else d.p90 end,
+  case when d.n_bhw < 5 then null else d.mean end,
+  case when d.n_bhw < 5 then null else round(100.0 * td.top_hh / nullif(d.total_hh, 0), 1) end,
+  (d.n_bhw < 5)
+from dist d
+join top_decile td on td.geo_code = d.geo_code and td.geo_level = d.geo_level;
+
+-- 13. agg_honorarium_inequality (E3.5): Gini + p90:p10 of each BHW's total
+-- normalized monthly honorarium among receiving BHWs, per geo. National→citymun;
+-- suppressed for < 5 receiving. Table created by supabase/migrations.
+delete from agg_honorarium_inequality where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+with per_bhw as (
+  select h.bhw_id, sum(h.normalized_monthly_amount) as amt,
+    dg.region_code, dg.province_code, dg.citymun_code
+  from fact_honorarium h
+  join fact_bhw_raw f on f.bhw_id = h.bhw_id
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  where h.normalized_monthly_amount is not null and h.normalized_monthly_amount > 0
+  group by h.bhw_id, dg.region_code, dg.province_code, dg.citymun_code
+),
+fanned as (
+  select amt, lvl.geo_level, lvl.geo_code
+  from per_bhw
+  cross join lateral (values
+    ('citymun'::geo_level_enum, citymun_code),
+    ('province'::geo_level_enum, province_code),
+    ('region'::geo_level_enum, region_code),
+    ('national'::geo_level_enum, 'PH')
+  ) as lvl(geo_level, geo_code)
+),
+ranked as (
+  select geo_code, geo_level, amt,
+    row_number() over (partition by geo_code, geo_level order by amt) as rn,
+    count(*) over (partition by geo_code, geo_level) as n
+  from fanned
+),
+gini_calc as (
+  select geo_code, geo_level, max(n) as n_receiving,
+    round(((2.0 * sum(rn * amt)) / nullif(max(n) * sum(amt), 0)
+      - (max(n) + 1.0) / max(n))::numeric, 3) as gini
+  from ranked group by geo_code, geo_level
+),
+pcts as (
+  select geo_code, geo_level,
+    round((percentile_cont(0.10) within group (order by amt))::numeric, 2) as p10,
+    round((percentile_cont(0.90) within group (order by amt))::numeric, 2) as p90
+  from fanned group by geo_code, geo_level
+)
+insert into agg_honorarium_inequality
+  (dataset_id, geo_code, geo_level, n_receiving, gini, p10_amount, p90_amount, p90_p10_ratio, is_suppressed)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  g.geo_code, g.geo_level, g.n_receiving,
+  case when g.n_receiving < 5 then null else g.gini end,
+  case when g.n_receiving < 5 then null else p.p10 end,
+  case when g.n_receiving < 5 then null else p.p90 end,
+  case when g.n_receiving < 5 or p.p10 is null or p.p10 = 0 then null
+    else round(p.p90 / p.p10, 1) end,
+  (g.n_receiving < 5)
+from gini_calc g
+join pcts p on p.geo_code = g.geo_code and p.geo_level = g.geo_level;
+
+-- 14. agg_bhw_counts.adjusted_pct (E3.6): empirical-Bayes (DerSimonian-Laird
+-- random-effects) shrinkage of each small-area raw accreditation rate toward its
+-- parent's pooled rate. Only citymun/barangay grain; region/national stay NULL
+-- (shown raw). Column added by supabase/migrations. Runs after §2/§9b populate
+-- agg_bhw_counts.
+update agg_bhw_counts set adjusted_pct = null
+where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+with units as (
+  select c.geo_code, c.geo_level, dg.parent_code,
+    c.n_total::numeric as n_i, c.n_accredited::numeric as k_i,
+    c.n_accredited::numeric / c.n_total as p_i
+  from agg_bhw_counts c
+  join dim_geo dg on dg.geo_code = c.geo_code and dg.geo_level = c.geo_level
+  where c.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025')
+    and c.geo_level in ('citymun', 'barangay')
+    and c.n_total > 0 and c.n_accredited is not null
+),
+grp as (
+  select parent_code, geo_level, count(*) as g,
+    sum(k_i) / nullif(sum(n_i), 0) as m,
+    sum(n_i) as sum_n, sum(n_i * n_i) as sum_n2
+  from units group by parent_code, geo_level
+),
+tau as (
+  select parent_code, geo_level, m, g, sum_n, sum_n2
+  from grp where g >= 2 and m > 0 and m < 1
+),
+dev as (
+  select u.geo_code, u.geo_level, u.parent_code, u.p_i, u.n_i, t.m, t.g, t.sum_n, t.sum_n2,
+    u.n_i * power(u.p_i - t.m, 2) as weighted_sq
+  from units u
+  join tau t on t.parent_code = u.parent_code and t.geo_level = u.geo_level
+),
+between_var as (
+  select parent_code, geo_level, m, g, sum_n, sum_n2,
+    greatest(0,
+      (sum(weighted_sq) - (g - 1) * m * (1 - m))
+      / nullif(sum_n - sum_n2 / nullif(sum_n, 0), 0)
+    ) as a_var
+  from dev group by parent_code, geo_level, m, g, sum_n, sum_n2
+),
+adjusted as (
+  select u.geo_code, u.geo_level,
+    case
+      when (bv.a_var + bv.m * (1 - bv.m) / u.n_i) = 0 then bv.m
+      else bv.m + (bv.a_var / (bv.a_var + bv.m * (1 - bv.m) / u.n_i)) * (u.p_i - bv.m)
+    end as adj
+  from units u
+  join dim_geo dg on dg.geo_code = u.geo_code and dg.geo_level = u.geo_level
+  join between_var bv on bv.parent_code = dg.parent_code and bv.geo_level = u.geo_level
+)
+update agg_bhw_counts c
+set adjusted_pct = round((100.0 * a.adj)::numeric, 2)
+from adjusted a
+where c.geo_code = a.geo_code and c.geo_level = a.geo_level
+  and c.dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+-- 15. agg_by_income_class (E3.7): national-scope indicator summaries grouped by
+-- the LGU (city/municipality) income class each BHW's barangay belongs to. Six
+-- rows. Table created by supabase/migrations.
+delete from agg_by_income_class where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+with hon_bhw as (select distinct bhw_id from fact_honorarium),
+base as (
+  select f.bhw_id, f.accredited, dg.income_class, (hb.bhw_id is not null) as any_hon
+  from fact_bhw_raw f
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  left join hon_bhw hb on hb.bhw_id = f.bhw_id
+  where dg.income_class between 1 and 6
+),
+agg as (
+  select income_class, count(*) as n_bhw,
+    round(100.0 * count(*) filter (where accredited) / nullif(count(*), 0), 2) as pct_accredited,
+    round(100.0 * count(*) filter (where any_hon) / nullif(count(*), 0), 2) as any_honorarium_pct
+  from base group by income_class
+),
+hon_amt as (
+  select dg.income_class,
+    round((percentile_cont(0.5) within group (order by h.normalized_monthly_amount))::numeric, 2) as med
+  from fact_honorarium h
+  join fact_bhw_raw f on f.bhw_id = h.bhw_id
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  where dg.income_class between 1 and 6 and h.normalized_monthly_amount > 0
+  group by dg.income_class
+),
+cm as (
+  select income_class, count(*) as n_citymun
+  from dim_geo where geo_level = 'citymun' and income_class between 1 and 6
+  group by income_class
+)
+insert into agg_by_income_class
+  (dataset_id, income_class, n_bhw, n_citymun, pct_accredited, any_honorarium_pct, median_honorarium_amount)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  a.income_class, a.n_bhw, cm.n_citymun, a.pct_accredited, a.any_honorarium_pct, hon_amt.med
+from agg a
+left join cm on cm.income_class = a.income_class
+left join hon_amt on hon_amt.income_class = a.income_class
+order by a.income_class;
+
+-- 16. Cleanup working tables.
 drop table if exists _agg_base;
 drop table if exists _agg_honorarium_base;

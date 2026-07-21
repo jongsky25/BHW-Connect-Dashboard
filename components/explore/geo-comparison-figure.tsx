@@ -49,6 +49,7 @@ export function GeoComparisonFigure({
   childLevel,
   childLevelLabel,
   items,
+  adjustedItems,
   caption,
   activeIndicator,
   meta,
@@ -58,6 +59,11 @@ export function GeoComparisonFigure({
   childLevel: GeoLevel;
   childLevelLabel: string;
   items: ChildIndicator[];
+  /** Empirical-Bayes adjusted values per child (E3.6), same shape/order as
+   * `items`. Provided only when the active indicator is accreditation and the
+   * children are at citymun/barangay grain (the levels where small N is
+   * adjusted); undefined otherwise, which hides the toggle. */
+  adjustedItems?: ChildIndicator[];
   caption: string;
   /** Indicator the server resolved `items`' values for — keeps values, headline
    * and caption consistent even while a switcher change is mid-flight. */
@@ -74,22 +80,31 @@ export function GeoComparisonFigure({
 
   const [selectedGeoCode, setSelectedGeoCode] = useState<string | null>(null);
   const [hoveredGeoCode, setHoveredGeoCode] = useState<string | null>(null);
+  // Raw is the default (owner Q7); the adjusted view is an opt-in toggle.
+  const [showAdjusted, setShowAdjusted] = useState(false);
   // Sample the hover-tooltip event once per pageview (E0.6) — the raw stream
   // would be far too chatty to be useful.
   const hoverLoggedRef = useRef(false);
 
   const childLabel = childLevelLabel.toLowerCase();
   const suffix = meta.suffix;
-  const byCode = useMemo(() => new Map(items.map((c) => [c.geoCode, c])), [items]);
 
-  const withData = useMemo(() => items.filter((c) => c.value !== null), [items]);
+  // The adjusted toggle only applies when the server supplied adjusted values for
+  // the active indicator; otherwise fall back to raw so a stale `true` after an
+  // indicator change never mis-renders.
+  const adjustedActive = showAdjusted && adjustedItems != null;
+  const activeItems = adjustedActive ? (adjustedItems as ChildIndicator[]) : items;
+
+  const byCode = useMemo(() => new Map(activeItems.map((c) => [c.geoCode, c])), [activeItems]);
+
+  const withData = useMemo(() => activeItems.filter((c) => c.value !== null), [activeItems]);
   const bins = useMemo(() => computeQuantileBins(withData.map((c) => c.value)), [withData]);
 
   const hasSmallN = useMemo(
-    () => items.some((c) => c.value !== null && c.nTotal !== null && c.nTotal < MIN_LEADER_N),
-    [items],
+    () => activeItems.some((c) => c.value !== null && c.nTotal !== null && c.nTotal < MIN_LEADER_N),
+    [activeItems],
   );
-  const hasNoData = useMemo(() => items.some((c) => c.value === null), [items]);
+  const hasNoData = useMemo(() => activeItems.some((c) => c.value === null), [activeItems]);
 
   const chartData = useMemo(
     () =>
@@ -252,14 +267,41 @@ export function GeoComparisonFigure({
               </select>
             </label>
           )}
+
+          {/* Adjusted-rate toggle (E3.6) — only when the server supplied adjusted
+              values for the active indicator (accreditation at citymun/barangay
+              grain). Raw stays the default. */}
+          {adjustedItems != null && (
+            <label className="flex items-center gap-2 pb-1.5 text-xs font-medium text-muted">
+              <input
+                type="checkbox"
+                checked={showAdjusted}
+                onChange={(e) => setShowAdjusted(e.target.checked)}
+                className="h-4 w-4 rounded border-border"
+              />
+              Adjust for small numbers
+            </label>
+          )}
         </div>
+
+        {adjustedActive && (
+          <p className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-muted">
+            Showing <strong>adjusted</strong> accreditation rates: areas with few profiled BHWs are
+            pulled toward their parent&apos;s rate so a handful of people can&apos;t swing the map.
+            Raw rates return when you untick the box.{" "}
+            <a href="/methodology#adjusted-rates" className="underline hover:text-accent">
+              How this works
+            </a>
+            .
+          </p>
+        )}
 
         {geojsonUrl && (
           <div className="relative">
             <ChoroplethMap
               geojsonUrl={geojsonUrl}
               childLevel={childLevel}
-              data={items.map((c) => ({
+              data={activeItems.map((c) => ({
                 geoCode: c.geoCode,
                 geoName: c.geoName,
                 value: c.value,
