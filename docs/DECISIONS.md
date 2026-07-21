@@ -756,3 +756,42 @@ composition/parity, no new logic to unit-test beyond what E1.1–E1.4 added), `n
 type-checks clean (same `/place/*` no-creds caveat). Live checks (benchmark values match the place
 page for a sample geo; export links resolve for 2 geos; barangay training/completeness show their
 citymun pointers; axe on the tabbed honorarium card) are **deferred to the Vercel preview**.
+
+## 2026-07-21 — Phase E1.6: Sidebar + edge states (Phase E1 complete)
+
+Final E1 increment (same branch/PR).
+
+- **Sidebar `GeoSearch`.** Added the compact `GeoSearch` above the cascade with a new `mode` prop:
+  `mode="explore"` makes a selection navigate to `/explore?geoLevel=…&geoCode=…` (browse in place)
+  instead of the place page — the explore-context behavior the verify gate asks for. Default
+  `mode="place"` leaves Home / place / not-found usages unchanged. Threaded through the keyboard
+  (router.push), result-list, and recents navigation paths.
+- **Breakdown picker.** Retitled its legend "Demographic breakdowns" → **"Add demographic figures"**
+  with a one-line hint ("Show extra breakdowns of the profiled BHWs here"). Component is Explore-only.
+- **Map-absence stub + list-only comparison (edge state).** Refactored the page's `mapChildLevel`
+  into `compareChildLevel`, which now goes one level deeper than the *map*: national→region,
+  region→province, province→citymun, **and citymun→barangay**. Boundary files still stop at citymun
+  polygons (province view), so `mapGeojsonUrl` is null at citymun/barangay. When it's null the page
+  renders a dashed **stub card** ("Maps below the city/municipality level are on the roadmap…",
+  linking `/roadmap`), and — at citymun, where barangay children exist — the `GeoComparisonFigure`
+  renders **list-only** (it already guards the choropleth/legend on `geojsonUrl`), so the stub's
+  "ranked list below covers every barangay" is literally true. The distribution and relationships
+  views render at citymun too (they never needed a map). Barangay is a leaf: stub only, no list.
+- **Barangay training guard.** `agg_training` has no barangay rows, so the switcher's training option
+  is suppressed (empty `trainingTopics`) when the children are barangays, rather than offering a
+  topic every child would render as no-data.
+- **Known follow-up (logged, not a blocker):** a large city (e.g. ~140 barangays) makes the
+  list-only *bar* view tall; the figure's chart/table toggle mitigates it, and the plan asks for
+  "every barangay", so the list is intentionally uncapped. A per-level default-to-table or top-N
+  affordance could refine this later.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass), `next build`
+compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks (sidebar search stays on
+`/explore` with new geo params; stub shows only at citymun/barangay; citymun barangay list renders;
+axe on the new sidebar search + stub) are **deferred to the Vercel preview**.
+
+**Phase E1 release gate.** All six increments (E1.1–E1.6) are merged into this branch/PR. The
+full-cascade Playwright pass (national→barangay exercising switcher/distribution/relationships/parity
+figures), the Lighthouse budget re-check, and the telemetry comparison vs the E0 baseline are
+live/deploy-time activities (no Supabase creds or browser here) and remain **deferred to the preview
++ post-deploy** — called out rather than claimed.

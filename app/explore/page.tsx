@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { loadFilterState } from "@/lib/filters/codec";
 import {
   DEFAULT_BREAKDOWNS,
@@ -26,6 +27,7 @@ import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getInsights } from "@/lib/db/insights";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
+import { GeoSearch } from "@/components/home/geo-search";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { DenominatorExplainer } from "@/components/home/denominator-explainer";
@@ -195,17 +197,20 @@ export default async function ExplorePage({
   const caption = captionFor(overview.validatedProfiles ?? null, geo.geoName);
   const coverage = coverageForDisplay(overview);
 
-  // Map-capable levels only go down to citymun (BUILD_PLAN.md §2/§4.3 — barangay
-  // choropleths are deferred to Phase 2's PMTiles work). At citymun/barangay,
-  // this figure is simply omitted rather than shown broken/empty.
-  const mapChildLevel: GeoLevel | null =
+  // The children the comparison figure ranks. This goes one level deeper than the
+  // *map* (E1.6): national→region, region→province, province→citymun, and
+  // citymun→barangay. Only the first three have boundary files; at citymun the
+  // figure renders list-only (no choropleth) with the map-absence stub above it.
+  const compareChildLevel: GeoLevel | null =
     geo.geoLevel === "national"
       ? "region"
       : geo.geoLevel === "region"
         ? "province"
         : geo.geoLevel === "province"
           ? "citymun"
-          : null;
+          : geo.geoLevel === "citymun"
+            ? "barangay"
+            : null;
   const mapChildren =
     geo.geoLevel === "national"
       ? regions
@@ -213,7 +218,12 @@ export default async function ExplorePage({
         ? provinces
         : geo.geoLevel === "province"
           ? citymuns
-          : [];
+          : geo.geoLevel === "citymun"
+            ? barangays
+            : [];
+  // Boundary files exist only down to citymun polygons (province view); barangay
+  // choropleths are deferred to Phase 2's PMTiles work (BUILD_PLAN §2/§4.3), so
+  // at citymun the map is absent and only the ranked list renders.
   const mapGeojsonUrl =
     geo.geoLevel === "national"
       ? "/geo/regions.json"
@@ -225,10 +235,16 @@ export default async function ExplorePage({
   // Indicator switcher (E1.1). Topics come from the parent's training rows; an
   // active `training:` indicator whose topic isn't available here falls back to
   // the default accreditation view so a stale permalink never shows all-grey.
-  const trainingTopics = training
-    .filter((r) => r.topicSlug)
-    .map((r) => ({ slug: r.topicSlug, label: r.topicLabel ?? r.topicSlug }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  // `agg_training` has no barangay rows, so the switcher's training option is
+  // suppressed when the children are barangays (citymun view) — otherwise it
+  // would offer a topic every child renders as no-data.
+  const trainingTopics =
+    compareChildLevel === "barangay"
+      ? []
+      : training
+          .filter((r) => r.topicSlug)
+          .map((r) => ({ slug: r.topicSlug, label: r.topicLabel ?? r.topicSlug }))
+          .sort((a, b) => a.label.localeCompare(b.label));
 
   const requestedSlug = mapIndicatorTopicSlug(filters.mapIndicator);
   const activeMapIndicator: MapIndicator =
@@ -246,7 +262,7 @@ export default async function ExplorePage({
   // relationships scatter (E1.4, which needs every base value, not just the
   // active one) — one query, two figures.
   let childIndicators: ChildIndicatorRow[] = [];
-  if (mapChildLevel) {
+  if (compareChildLevel) {
     const childCodes = mapChildren.map((c) => c.geoCode);
     const [childRows, trainingCoverage] = await Promise.all([
       getChildIndicators(childCodes),
@@ -302,6 +318,15 @@ export default async function ExplorePage({
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
       <h1 className="sr-only">Explore BHW figures for {geo.geoName}</h1>
       <aside className="flex flex-col gap-6 lg:w-64 lg:shrink-0">
+        {/* Jump straight to any place without walking the cascade (E1.6). In
+            explore mode the search stays on /explore with the geo applied as
+            filters, rather than leaving for the place page. */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted" htmlFor="geo-search-input">
+            Jump to a place
+          </label>
+          <GeoSearch variant="compact" mode="explore" />
+        </div>
         <GeoCascade
           regions={regions}
           provinces={provinces}
@@ -454,13 +479,32 @@ export default async function ExplorePage({
           </section>
         )}
 
-        {/* Map figure (E1.2 hero) — the indicator switcher is the page's
-            centerpiece, full-width above the per-theme figure groups. */}
-        {mapChildLevel && (
+        {/* Map-absence stub (E1.6) — at citymun/barangay there's no choropleth
+            (barangay boundaries are on the roadmap). At citymun the ranked list
+            still renders below; barangay is a leaf with no children to rank. */}
+        {mapGeojsonUrl === null && (
+          <div className="rounded-lg border border-dashed border-border bg-surface/60 px-4 py-3 text-sm">
+            <p className="font-medium">Maps below the city/municipality level are on the roadmap.</p>
+            <p className="mt-1 text-muted">
+              {compareChildLevel
+                ? `Barangay choropleths aren't available yet, so the ranked list below covers every barangay in ${geo.geoName}.`
+                : `Barangay-level maps aren't available yet — the figures below describe ${geo.geoName}.`}{" "}
+              <Link href="/roadmap" className="underline hover:text-accent">
+                See the roadmap
+              </Link>
+              .
+            </p>
+          </div>
+        )}
+
+        {/* Comparison figure (E1.2 hero) — the indicator switcher is the page's
+            centerpiece. Full choropleth at national/region/province; list-only
+            (no boundary file) at citymun, under the stub above. */}
+        {compareChildLevel && (
           <GeoComparisonFigure
             key={geo.geoCode}
             geojsonUrl={mapGeojsonUrl}
-            childLevel={mapChildLevel}
+            childLevel={compareChildLevel}
             childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
             items={mapItems}
             caption={caption}
@@ -472,7 +516,7 @@ export default async function ExplorePage({
 
         {/* Distribution view (E1.3) — spread of the active indicator across
             children, reusing the map's data. */}
-        {mapChildLevel && mapItems.length > 0 && (
+        {compareChildLevel && mapItems.length > 0 && (
           <DistributionFigure
             key={`${geo.geoCode}-${activeMapIndicator}`}
             items={mapItems}
@@ -487,11 +531,11 @@ export default async function ExplorePage({
 
         {/* Relationships view (E1.4) — scatter of children on two chosen
             indicators + Spearman-in-words, reusing the same child rows. */}
-        {mapChildLevel && childIndicators.length > 0 && (
+        {compareChildLevel && childIndicators.length > 0 && (
           <RelationshipFigure
             key={geo.geoCode}
             points={childIndicators}
-            childLevel={mapChildLevel}
+            childLevel={compareChildLevel}
             childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
             caption={caption}
           />

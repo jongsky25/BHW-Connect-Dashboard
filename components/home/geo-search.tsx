@@ -63,8 +63,21 @@ function dataLabel(nTotal: number | null): { text: string; hasData: boolean } {
     : { text: "No profile data yet", hasData: false };
 }
 
-export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }) {
+export function GeoSearch({
+  variant = "hero",
+  mode = "place",
+}: {
+  variant?: "hero" | "compact";
+  /** Where a selection navigates. `place` → the geo's place page (default, used
+   * on Home/place). `explore` → stays on `/explore` with the geo applied as
+   * filter params, so the Explore sidebar search browses in place (E1.6). */
+  mode?: "place" | "explore";
+}) {
   const router = useRouter();
+  const hrefFor = (geoLevel: string, geoCode: string) =>
+    mode === "explore"
+      ? `/explore?geoLevel=${geoLevel}&geoCode=${geoCode}`
+      : `/place/${geoLevel}/${geoCode}`;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeoSearchResult[]>([]);
   const [status, setStatus] = useState<Status>("idle");
@@ -164,7 +177,7 @@ export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }
   function navigateTo(result: GeoSearchResult) {
     rememberRecent(result);
     setOpen(false);
-    router.push(`/place/${result.geoLevel}/${result.geoCode}`);
+    router.push(hrefFor(result.geoLevel, result.geoCode));
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -280,7 +293,7 @@ export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }
                     aria-selected={i === activeIndex}
                   >
                     <Link
-                      href={`/place/${result.geoLevel}/${result.geoCode}`}
+                      href={hrefFor(result.geoLevel, result.geoCode)}
                       onMouseEnter={() => setActiveIndex(i)}
                       onClick={() => {
                         rememberRecent(result);
@@ -322,7 +335,7 @@ export function GeoSearch({ variant = "hero" }: { variant?: "hero" | "compact" }
                 {recents.map((recent) => (
                   <li key={recent.geoCode}>
                     <Link
-                      href={`/place/${recent.geoLevel}/${recent.geoCode}`}
+                      href={hrefFor(recent.geoLevel, recent.geoCode)}
                       onClick={() => setOpen(false)}
                       className="flex items-center justify-between gap-3 rounded px-1 py-1.5 text-sm hover:bg-surface"
                     >
