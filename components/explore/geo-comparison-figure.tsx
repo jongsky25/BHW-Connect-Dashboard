@@ -2,8 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
 import { MapLegend } from "@/components/maps/map-legend";
@@ -72,11 +71,7 @@ export function GeoComparisonFigure({
   trainingTopics: TrainingTopicOption[];
 }) {
   const { startTransition } = useExploreNav();
-  const [, setFilters] = useQueryStates(filterParsers, {
-    shallow: false,
-    history: "push",
-    startTransition,
-  });
+  const [, setFilters] = useFilterState({ startTransition });
 
   const [selectedGeoCode, setSelectedGeoCode] = useState<string | null>(null);
   const [hoveredGeoCode, setHoveredGeoCode] = useState<string | null>(null);

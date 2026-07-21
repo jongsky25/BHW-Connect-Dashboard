@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
 import { FigureCard } from "@/components/narrative/figure-card";
@@ -48,7 +47,7 @@ export function CompareColumn({
   data: CompareColumnData;
   indicator: Indicator | null;
 }) {
-  const [filters, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
+  const [filters, setFilters] = useFilterState();
   const caption = `N = ${data.validatedProfiles?.toLocaleString() ?? "—"} validated profiles · ${data.geoName} · 2025 snapshot`;
 
   function remove() {

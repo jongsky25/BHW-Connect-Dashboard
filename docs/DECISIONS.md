@@ -1339,3 +1339,38 @@ Bringing AI up on the live deployment surfaced two issues beyond the model-id ch
 - **Root cause of "always at capacity" was Supabase, not AI.** `completeWithCascade` runs `checkQuota` (a Supabase read/write of `ai_provider_quota`) _before_ any provider key is consulted, so a deployment missing `SUPABASE_SERVICE_ROLE_KEY` makes every provider report `unavailable` and the cascade collapses to `allCapped` — indistinguishable, from the outside, from "no AI keys." Confirmed by two independent write paths (`ai_provider_quota` and `usage_events`) producing zero rows from a live probe. Fixed operationally by setting the deployment env var; no code change.
 - **`ProviderRequestError` on the Gemini tool-call continuation.** Once the cascade reached Gemini, the _first_ call (tool request) succeeded but the _continuation_ (feeding the tool result back) failed with HTTP 400: `Function call is missing a thought_signature in functionCall parts`. `gemini-flash-latest` resolves to a Gemini 2.5 thinking model, which attaches an opaque `thoughtSignature` to each `functionCall` part and requires it echoed back verbatim on the following turn. The provider dropped it when normalizing to the generic `ToolCall`. Fix: carry `thoughtSignature` through `ToolCall` (optional; ignored by the OpenAI-compatible providers) and replay it on the reconstructed `model` turn in `toGeminiRequest`; also exclude internal `thought` text parts from answer text. Verified end-to-end against the live preview — the chat route returns a grounded, audited answer with `provider: "gemini"`.
 - **Observability.** The cascade previously swallowed every non-429 provider error silently, which is what made the above a multi-step diagnosis. `completeWithCascade` now logs `ProviderRequestError` (with status + detail) and unexpected errors; `ProviderUnavailableError` (no key configured) stays unlogged as expected noise.
+
+## 2026-07-21 — /compare interactive controls dead: client/server URL-key mismatch (root cause + guardrail)
+
+End-to-end diagnosis of the "Compare places" page, which stayed on its empty state no matter what
+was clicked, across several prior fix attempts that changed layout/content but not the actual fault.
+
+- **Root cause.** `lib/filters/codec.ts` maps the `compareGeos` state key to the `?geos=` URL param
+  (`urlKeys`, per BUILD_PLAN.md §7 1.7) — but only in the *server-side* loader/serializer. Every
+  client `useQueryStates(filterParsers, …)` call omitted `urlKeys`, so nuqs defaulted the URL param
+  to the state-key spelling: clicking a search result or quick-add chip wrote `?compareGeos=…`,
+  the server component parsed only `?geos=` and saw nothing, and the page re-rendered unchanged.
+  Confirmed live against production: `/compare?geos=04,05` renders the full comparison,
+  `/compare?compareGeos=04,05` (what the UI actually wrote) renders the empty state.
+- **Why every symptom follows from this one fault.** Add-from-search, quick-add, chip removal,
+  column removal, and Clear all all round-trip through the same mismatched key — so all of them
+  were no-ops. It also explains the *missing quick-add chips* in the user's screenshot: the chips
+  component reads `filters.compareGeos` client-side (from `?compareGeos=`), so after four futile
+  clicks the client believed 4 places were selected and hid itself, while the server still rendered
+  the empty state. Only hand-built `?geos=` permalinks ever worked — which is exactly how 1.7 and
+  the follow-up compare PR were verified, letting the bug slip through repeatedly.
+- **Redesign, not spot-fix.** New `lib/filters/use-filter-state.ts` exports `useFilterState()`, the
+  single client entry point: it wires `urlKeys` (now exported as `filterUrlKeys`), `shallow: false`,
+  and `history: "push"` (the two prior nuqs-default bugs from 1.4) in one place, with an optional
+  `startTransition` passthrough. All ten client call sites now go through it; direct
+  `useQueryState(s)` imports from `nuqs` are an ESLint `no-restricted-imports` error (the hook file
+  itself carries the one sanctioned per-line disable), so client and server can't drift again.
+- **Regression coverage at both layers.** Unit: `loadFilterState(new URLSearchParams("compareGeos=04,05"))`
+  must parse to `null` (the state-key spelling is never a valid URL param). E2E (`e2e/compare.spec.ts`):
+  drives the real click path — quick-add two regions, assert the URL uses `geos=` and never
+  `compareGeos`, assert "Head to head" renders, remove via chip — the path no amount of
+  permalink-based verification covers.
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (124) all clean; `next build` compiles
+(page-data collection needs live Supabase env, unavailable in the sandbox). Behavior verified on
+the Vercel preview deployment via the real click path.

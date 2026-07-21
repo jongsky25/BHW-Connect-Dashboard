@@ -47,11 +47,19 @@ export const filterParsers = {
   breakdowns: parseAsArrayOf(parseAsStringEnum([...DEMOGRAPHIC_DIMENSIONS])),
 };
 
-/** `compareGeos` reads/writes as `?geos=` in the URL, matching BUILD_PLAN.md §7 1.7's spec exactly. */
-const urlKeys = { compareGeos: "geos" };
+/**
+ * `compareGeos` reads/writes as `?geos=` in the URL, matching BUILD_PLAN.md §7 1.7's spec exactly.
+ *
+ * Every consumer of `filterParsers` MUST apply this mapping — server loaders and
+ * serializers here, and client hooks via `useFilterState` (lib/filters/use-filter-state.ts).
+ * A `useQueryStates(filterParsers)` call without it reads/writes `?compareGeos=`,
+ * which the server never sees — that exact mismatch silently broke every
+ * interactive control on /compare while permalinks kept working.
+ */
+export const filterUrlKeys = { compareGeos: "geos" } as const;
 
 /** Server-side: parse a `URLSearchParams`/`Request`/plain record into typed filter state. */
-export const loadFilterState = createLoader(filterParsers, { urlKeys });
+export const loadFilterState = createLoader(filterParsers, { urlKeys: filterUrlKeys });
 
 /** Build a query string (or full URL, given a base) from filter state — for permalinks/exports. */
-export const serializeFilterState = createSerializer(filterParsers, { urlKeys });
+export const serializeFilterState = createSerializer(filterParsers, { urlKeys: filterUrlKeys });
