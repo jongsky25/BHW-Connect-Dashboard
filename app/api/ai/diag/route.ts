@@ -6,7 +6,8 @@ import type { ChatMessage } from "@/lib/ai/providers/types";
 
 export const runtime = "nodejs";
 
-// TEMPORARY diagnostic endpoint — reproduces the two-step Gemini tool-calling flow (initial call →
+// TEMPORARY diagnostic endpoint (folder must not start with "_" — Next.js treats "_foo" as a private
+// folder and excludes it from routing). Reproduces the two-step Gemini tool-calling flow (initial call →
 // tool result fed back → continuation) and returns whatever the provider throws, so the exact
 // upstream error on the failing continuation is visible without Vercel log access. Secret-gated and
 // to be removed before this branch merges.
