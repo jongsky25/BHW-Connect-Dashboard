@@ -31,6 +31,7 @@ import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
+import { DistributionFigure } from "@/components/explore/distribution-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
@@ -40,6 +41,14 @@ const CHILD_LEVEL_LABEL: Record<GeoLevel, string> = {
   province: "City/Municipality",
   citymun: "Barangay",
   barangay: "Barangay",
+};
+
+const CHILD_LEVEL_LABEL_PLURAL: Record<GeoLevel, string> = {
+  national: "Regions",
+  region: "Provinces",
+  province: "Cities/Municipalities",
+  citymun: "Barangays",
+  barangay: "Barangays",
 };
 
 export const metadata = { title: "Explore" };
@@ -220,6 +229,32 @@ export default async function ExplorePage({
     });
   }
 
+  // The parent geo's own value for the active indicator — the distribution
+  // figure's marker (E1.3), sourced identically to the summary strip so the two
+  // never disagree.
+  let parentValue: number | null = null;
+  if (activeSlug) {
+    parentValue = training.find((r) => r.topicSlug === activeSlug)?.coveragePct ?? null;
+  } else {
+    switch (activeMapIndicator as MapBaseIndicator) {
+      case "pct_accredited":
+        parentValue = counts?.pctAccredited ?? null;
+        break;
+      case "any_honorarium_pct":
+        parentValue = counts?.anyHonorariumPct ?? null;
+        break;
+      case "households_per_bhw":
+        parentValue = overview.householdsPerBhw;
+        break;
+      case "avg_active_years":
+        parentValue = counts?.avgActiveYears ?? null;
+        break;
+      case "coverage_pct":
+        parentValue = coverage;
+        break;
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
       <h1 className="sr-only">Explore BHW figures for {geo.geoName}</h1>
@@ -333,7 +368,20 @@ export default async function ExplorePage({
           />
         )}
 
-        {/* Distribution (E1.3) and relationships (E1.4) views slot in here. */}
+        {/* Distribution view (E1.3) — spread of the active indicator across
+            children, reusing the map's data. Relationships (E1.4) slots below. */}
+        {mapChildLevel && mapItems.length > 0 && (
+          <DistributionFigure
+            key={`${geo.geoCode}-${activeMapIndicator}`}
+            items={mapItems}
+            parentValue={parentValue}
+            parentName={geo.geoName}
+            childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
+            childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
+            meta={mapMeta}
+            caption={caption}
+          />
+        )}
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {demographicsByDimension.map(({ dimension, rows }) => (

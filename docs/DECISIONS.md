@@ -641,3 +641,35 @@ Second E1 increment (same branch/PR as E1.1, per the pinned working branch). Reo
 (same `/place/*` no-creds caveat). The plan's visual pass at 360 px / 1280 px, axe on the new strip
 + `<details>`, and the PR screenshot need the rendered page and are **deferred to the Vercel
 preview** — not claimed here.
+
+## 2026-07-21 — Phase E1.3: Distribution view ("spread among children")
+
+Third E1 increment (same branch/PR). New `components/explore/distribution-figure.tsx` renders,
+directly below the map, the spread of the **active `mapIndicator`** across the current geo's
+children — answering "is my province's 62% typical or an outlier?".
+
+- **No new query.** Reuses the exact `items` the map figure already resolved for the active
+  indicator; the page additionally computes the parent geo's own value for that indicator from the
+  same sources the summary strip uses (`getBhwCounts` for accreditation / any-honorarium / avg
+  years, `getBhwOverview` for households-per-BHW and coverage %, the parent's `agg_training` row for
+  `training:` topics), so the parent marker and the strip can never disagree (E1.3 verify gate).
+- **Bespoke server-rendered dot-strip** (no client JS — keeps the map/chart budget lazy), in the
+  same honest-comparator idiom as the home `DotStrip`: one dot per child positioned by value, a
+  shaded interquartile band, a median tick, and an accent marker + "{Parent} overall: X" callout.
+  Small-N children (`nTotal < MIN_LEADER_N`) render as hollow dots with a legend note — consistent
+  with the map's E0.5 signaling. The strip is `role="img"` with a full numeric `aria-label` (lowest/
+  p25/median/p75/highest + parent), and the same five-number summary is in `FigureCard`'s technical
+  details, so the visualization has a complete text alternative without duplicating the ranked list.
+- **Headline template** per the plan: "Most {children} fall between {p25} and {p75}[; {outlier}
+  stands out at {value}]." The outlier is a Tukey 1.5·IQR fence pick, only asserted when there are
+  ≥4 children with a real spread (`iqr > 0`) — never manufactured from 2–3 points or a flat
+  distribution. Values format through the shared `formatIndicatorValue`, so units track the
+  indicator (% vs households vs years).
+- **Placement/keying.** Renders only where the map does (national/region/province parents with
+  children); re-keyed on `geoCode + activeMapIndicator` so it recomputes cleanly when the indicator
+  switches.
+
+**Verify.** `npm run lint`, `npm run typecheck` (both clean), `npm test` (91 pass — presentational
+increment), `next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks
+(parent marker visually matches the strip; small-N dots hollow; headline sanity per indicator across
+levels) are **deferred to the Vercel preview**.
