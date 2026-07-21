@@ -1327,3 +1327,7 @@ established — no new visual language.
 **Verify.** `npm run lint`, `npm run typecheck`, `npm test` (123 tests incl. new
 `compare-metrics.test.ts`) all clean; `next build` compiles (page-data collection needs live
 Supabase env, unavailable in the sandbox).
+
+## 2026-07-21 — Gemini model: pin to `gemini-flash-latest`
+
+Changed `MODEL` in `lib/ai/providers/gemini.ts` from `gemini-2.0-flash` to `gemini-flash-latest`. During live AI bring-up on the production deployment, the cascade reached the Gemini provider (quota rows incremented, not rate-limited/paused) but the request did not complete — consistent with the account's key lacking access to the `gemini-2.0-flash` model id. `gemini-flash-latest` is Google's rolling alias for the current-generation flash model, so it resolves against whatever the key is entitled to and won't need a code change on the next flash revision. Rate-limit seed constants in `lib/ai/quota.ts` are unchanged (per §4.5 they only seed a window's first row; the live `ai_provider_quota` row governs thereafter), and the DECISIONS entry of 2026-07-19 (2.1) referencing `gemini-2.0-flash` is left intact as the historical record of what was verified at that time.

@@ -9,7 +9,7 @@ import {
   type ToolDefinition,
 } from "./types";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-flash-latest";
 const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 type GeminiPart =
