@@ -107,6 +107,11 @@ export const GLOSSARY = {
     definition:
       "Total BHWs divided by the area's population, times 1,000 — how many health workers serve each 1,000 people. Population is self-reported in the StepZero barangay sheets, so treat it as approximate until census data replaces it. Higher means denser BHW coverage.",
   },
+  poverty_incidence: {
+    term: "Poverty incidence",
+    definition:
+      "The share of a city or municipality's population living below the official poverty threshold. From the Philippine Statistics Authority's 2023 Small Area Estimates — model-based estimates that combine the census, income surveys, and administrative data to reach the city/municipality level, each published with a confidence interval. Highly Urbanized Cities are estimated separately and are not covered here. Used only as a comparison variable on the Explore relationships scatter, never as a BHW-workforce figure.",
+  },
   lgu_reported_accreditation: {
     term: "LGU-reported accreditation",
     definition:

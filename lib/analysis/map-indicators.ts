@@ -8,9 +8,12 @@
 import {
   DEFAULT_MAP_INDICATOR,
   MAP_BASE_INDICATORS,
+  REL_AXIS_INDICATORS,
   mapIndicatorTopicSlug,
   type MapBaseIndicator,
   type MapIndicator,
+  type RelAxisIndicator,
+  type RelExternalIndicator,
 } from "@/lib/filters/schema";
 
 export type MapIndicatorMeta = {
@@ -78,6 +81,40 @@ export const MAP_BASE_INDICATOR_META: Record<MapBaseIndicator, MapIndicatorMeta>
 /** Ordered base-indicator options for the switcher. */
 export const MAP_BASE_INDICATOR_OPTIONS: Array<{ value: MapBaseIndicator; label: string }> =
   MAP_BASE_INDICATORS.map((value) => ({ value, label: MAP_BASE_INDICATOR_META[value].label }));
+
+/**
+ * Presentation metadata for external (non-workforce) variables that appear only on the
+ * Relationships axes (E4.4) — never on the map. `caption` is the source stamp shown under the
+ * figure when this variable is on an axis (identity rule: external data is always sourced).
+ */
+export const REL_EXTERNAL_INDICATOR_META: Record<
+  RelExternalIndicator,
+  MapIndicatorMeta & { caption: string }
+> = {
+  poverty_incidence: {
+    label: "Poverty incidence",
+    headlinePhrase: "poverty incidence",
+    axisLabel: "Poverty incidence (%)",
+    suffix: "%",
+    denominator: "share of the population below the poverty threshold",
+    caption: "Poverty incidence: PSA Small Area Estimates 2023 · city/municipality",
+  },
+};
+
+/** Metadata for any relationships axis (base workforce indicator or external variable). */
+export const REL_AXIS_META: Record<RelAxisIndicator, MapIndicatorMeta> = {
+  ...MAP_BASE_INDICATOR_META,
+  ...REL_EXTERNAL_INDICATOR_META,
+};
+
+/** Ordered axis options for the relationships scatter. `external` flags variables that only
+ * carry data at city/municipality grain, so the figure can hide them at other levels. */
+export const REL_AXIS_OPTIONS: Array<{ value: RelAxisIndicator; label: string; external: boolean }> =
+  REL_AXIS_INDICATORS.map((value) => ({
+    value,
+    label: REL_AXIS_META[value].label,
+    external: value in REL_EXTERNAL_INDICATOR_META,
+  }));
 
 /** Presentation metadata for a training-coverage indicator on a given topic. */
 export function trainingIndicatorMeta(topicLabel: string): MapIndicatorMeta {

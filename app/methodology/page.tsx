@@ -150,6 +150,18 @@ export default async function MethodologyPage() {
           individual BHWs — so a place-level link does not imply the same relationship holds person
           by person.
         </p>
+        <p>
+          One axis may be an <strong>external variable</strong> rather than a BHW-workforce
+          indicator: <strong>poverty incidence</strong> from the{" "}
+          <GlossaryTerm slug="poverty_incidence">PSA Small Area Estimates (2023)</GlossaryTerm>, at
+          city/municipality grain. External variables appear only here on the relationships axes —
+          never on the workforce map — and every rendering carries its source. Because the estimates
+          stop at city/municipality, poverty is offered only when the places being compared are
+          cities/municipalities (a province view). Highly Urbanized Cities are a separate SAE domain
+          and carry no estimate; full coverage and reconciliation notes are in{" "}
+          <code>docs/POVERTY_SAE.md</code>. Cite: PSA 2023 City- and Municipal-Level Small Area
+          Estimates of Poverty.
+        </p>
       </section>
 
       <section id="derived-indicators" className="flex flex-col gap-2 scroll-mt-6">

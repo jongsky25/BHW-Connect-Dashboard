@@ -59,6 +59,9 @@ ingestion/_qa_report_psgc_crosswalk.json
 ingestion/_sql_psgc_crosswalk/
 ingestion/_qa_report_population.json
 ingestion/_sql_batches_population/
+ingestion/_qa_report_poverty.json
+ingestion/_sql_batches_poverty/
+ingestion/dim_geo.json
 ingestion/data/dim_geo_nir.csv
 
 # editor

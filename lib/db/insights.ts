@@ -4,6 +4,7 @@ import { getActiveDatasetId } from "./dataset";
 import {
   getBhwCounts,
   getCertification,
+  getChildIndicators,
   getDemographics,
   getHonorarium,
   getTrainingCoverage,
@@ -11,10 +12,12 @@ import {
   type BhwCounts,
 } from "./indicators";
 import { getStepzeroCounts, householdsPerBhw, type StepzeroCounts } from "./stepzero";
+import { getChildPoverty } from "./poverty";
 import { getChildGeos, getGeoAncestors, type GeoAncestors, type GeoOption } from "./geo";
 import { NATIONAL_GEO_CODE, type GeoLevel, type MapBaseIndicator } from "@/lib/filters/schema";
 import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
 import { MAP_BASE_INDICATOR_META, formatIndicatorValue } from "@/lib/analysis/map-indicators";
+import { describeCorrelation } from "@/lib/analysis/correlation";
 
 export type InsightCard = {
   /** Stable per-generator identity — React key, and unique across the grid. */
@@ -491,6 +494,47 @@ const householdCoverage: InsightGenerator = {
   },
 };
 
+/**
+ * BHW density vs poverty across a province's cities/municipalities (E4.4). Correlates each
+ * child's BHWs-per-1,000-residents (census-denominated, E4.2) against its PSA SAE 2023 poverty
+ * incidence, and surfaces a card ONLY when the pattern reaches at least a *moderate* strength
+ * (|ρ| ≥ 0.4) — never a story fabricated from noise. Province level only: poverty is
+ * city/municipality grain, so only a province has children carrying it. Small-N children are
+ * excluded so an unstable density isn't correlated. The headline states it is ecological.
+ */
+const bhwDensityVsPoverty: InsightGenerator = {
+  id: "bhw-density-vs-poverty",
+  levels: ["province"],
+  async generate(ctx) {
+    const children = await getChildGeos(ctx.geoCode, ctx.geoLevel);
+    if (children.length === 0) return null;
+    const codes = children.map((c) => c.geoCode);
+    const [indicators, poverty] = await Promise.all([getChildIndicators(codes), getChildPoverty(codes)]);
+
+    const pairs: Array<[number, number]> = [];
+    for (const c of indicators) {
+      const pov = poverty.get(c.geoCode)?.incidence;
+      if (c.bhwPer1000 === null || pov === undefined) continue;
+      if ((c.nTotal ?? 0) < MIN_LEADER_N) continue; // unstable density — exclude, mirroring the scatter
+      pairs.push([c.bhwPer1000, pov]);
+    }
+
+    const desc = describeCorrelation(pairs);
+    if (desc.kind !== "described") return null;
+    if (desc.strength !== "moderate" && desc.strength !== "strong") return null; // |ρ| ≥ 0.4 only
+
+    const povTracks = desc.direction === "positive" ? "higher" : "lower";
+    return {
+      id: this.id,
+      category: "Poverty",
+      headline: `Across ${ctx.geoName}'s cities and municipalities, more BHWs per 1,000 residents tends to go with ${povTracks} poverty — a ${desc.strength} link. This compares places, not individual BHWs.`,
+      caption: `${desc.n} cities/municipalities · Spearman ρ = ${desc.rho.toFixed(2)} · poverty: PSA SAE 2023 · ecological`,
+      href: `/explore?geoLevel=province&geoCode=${ctx.geoCode}&relX=bhw_per_1000&relY=poverty_incidence`,
+      score: desc.strength === "strong" ? 62 : 52,
+    };
+  },
+};
+
 /** A child that stands out from its siblings on some base indicator (E2.4) —
  * reads the precomputed MAD outlier flags in agg_peer_ranks. Children are the
  * ranked set (region→province→citymun), so this runs national/region/province.
@@ -559,6 +603,7 @@ const INSIGHT_GENERATORS: InsightGenerator[] = [
   accreditationSpread,
   accreditationLaggard,
   peerOutlier,
+  bhwDensityVsPoverty,
   trainingGap,
   honorariumLeader,
   honorariumAmount,

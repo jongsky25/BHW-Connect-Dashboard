@@ -1,7 +1,7 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { colorForValue, NO_DATA_COLOR, type ColorBin } from "@/lib/charts/color-scale";
 import { accent } from "@/lib/charts/palette";
 import type { GeoLevel } from "@/lib/filters/schema";
@@ -16,6 +16,33 @@ export type ChoroplethDatum = {
 function formatValue(value: number, suffix: string): string {
   const rounded = Number.isInteger(value) ? value : Math.round(value * 10) / 10;
   return `${rounded.toLocaleString()}${suffix}`;
+}
+
+type GeoFeature = { properties: Record<string, unknown> };
+type GeoJson = { features: GeoFeature[] };
+
+/**
+ * Paint each child polygon's fill color + small-N flag from the current data and
+ * quantile bins, mutating `geojson.features[i].properties` in place. Called once
+ * before the source is added, then again (with a `setData`) whenever the active
+ * indicator changes — the map is otherwise stuck on the colors baked in at load.
+ */
+function paintFeatures(
+  geojson: GeoJson,
+  data: ChoroplethDatum[],
+  bins: ColorBin[],
+  minLeaderN: number,
+) {
+  const dataMap = new Map(data.map((d) => [d.geoCode, d]));
+  for (const feature of geojson.features) {
+    const code = feature.properties.geo_code as string;
+    const datum = dataMap.get(code);
+    const value = datum?.value;
+    const smallN = datum != null && datum.nTotal != null && datum.nTotal < minLeaderN;
+    feature.properties.__color =
+      value === undefined || value === null ? NO_DATA_COLOR : colorForValue(value, bins);
+    feature.properties.__smallN = smallN && value !== undefined && value !== null;
+  }
 }
 
 /**
@@ -60,6 +87,12 @@ export function ChoroplethMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("maplibre-gl").Map | undefined>(undefined);
+  // The loaded GeoJSON, kept so the recolor effect can repaint its features and
+  // `setData` when the active indicator changes without re-initializing the map.
+  const geojsonRef = useRef<GeoJson | null>(null);
+  // Current child data keyed by code, so the tooltip reads live values after an
+  // indicator change (the map init closure would otherwise capture stale data).
+  const dataMapRef = useRef(new Map<string, ChoroplethDatum>());
   const [mapReady, setMapReady] = useState(false);
 
   // Latest-prop refs so the one-time init effect's map handlers always read
@@ -81,6 +114,7 @@ export function ChoroplethMap({
     onHoverRef.current = onHoverGeo;
     onSelectRef.current = onSelectGeo;
     onDrillRef.current = onDrill;
+    dataMapRef.current = new Map(data.map((d) => [d.geoCode, d]));
   });
 
   // Track feature-state we've set so it can be cleared without a full sweep.
@@ -94,23 +128,12 @@ export function ChoroplethMap({
     let cancelled = false;
     let map: import("maplibre-gl").Map | undefined;
 
-    const dataMap = new Map(dataRef.current.map((d) => [d.geoCode, d]));
-
     Promise.all([import("maplibre-gl"), fetch(geojsonUrl).then((r) => r.json())]).then(
       ([{ default: maplibregl }, geojson]) => {
         if (cancelled || !containerRef.current) return;
 
-        for (const feature of geojson.features) {
-          const code = feature.properties.geo_code;
-          const datum = dataMap.get(code);
-          const value = datum?.value;
-          const smallN = datum != null && datum.nTotal != null && datum.nTotal < minNRef.current;
-          feature.properties.__color =
-            value === undefined || value === null
-              ? NO_DATA_COLOR
-              : colorForValue(value, binsRef.current);
-          feature.properties.__smallN = smallN && value !== undefined && value !== null;
-        }
+        geojsonRef.current = geojson;
+        paintFeatures(geojson, dataRef.current, binsRef.current, minNRef.current);
 
         map = new maplibregl.Map({
           container: containerRef.current,
@@ -233,7 +256,7 @@ export function ChoroplethMap({
               lastReportedHoverRef.current = code;
               onHoverRef.current(code);
             }
-            const datum = dataMap.get(code);
+            const datum = dataMapRef.current.get(code);
             const name = datum?.geoName ?? code;
             const parts: string[] = [name];
             if (datum?.value == null) {
@@ -297,10 +320,29 @@ export function ChoroplethMap({
       lastHoverAppliedRef.current = null;
       lastSelectAppliedRef.current = null;
       lastReportedHoverRef.current = null;
+      geojsonRef.current = null;
       mapRef.current = undefined;
       map?.remove();
     };
   }, [geojsonUrl, childLevel]);
+
+  // Recolor the polygons when the active indicator changes (new `data`/`bins`)
+  // without re-initializing the map. A value/bins signature gates the effect so
+  // an unrelated re-render (e.g. hover state) doesn't trigger a needless
+  // `setData` — the actual bug fix: the map was otherwise stuck on the colors
+  // baked in at load, so switching indicators only re-sorted the ranked list.
+  const paintSignature = useMemo(
+    () => JSON.stringify([minLeaderN, bins, data.map((d) => [d.geoCode, d.value, d.nTotal])]),
+    [data, bins, minLeaderN],
+  );
+  useEffect(() => {
+    const map = mapRef.current;
+    const geojson = geojsonRef.current;
+    if (!map || !mapReady || !geojson) return;
+    paintFeatures(geojson, dataRef.current, binsRef.current, minNRef.current);
+    const source = map.getSource("geo") as { setData?: (data: unknown) => void } | undefined;
+    source?.setData?.(geojson);
+  }, [paintSignature, mapReady]);
 
   // Reflect hovered code (from map or ranked list) as a polygon outline.
   useEffect(() => {

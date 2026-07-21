@@ -53,7 +53,11 @@ import { DataQualityBadge } from "@/components/explore/data-quality-badge";
 import { PeerRankChip } from "@/components/explore/peer-rank-chip";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
-import { RelationshipFigure } from "@/components/explore/relationship-figure";
+import {
+  RelationshipFigure,
+  type RelationshipPoint,
+} from "@/components/explore/relationship-figure";
+import { getChildPoverty } from "@/lib/db/poverty";
 import { CohortsFigure } from "@/components/explore/cohorts-figure";
 import { WorkloadFigure } from "@/components/explore/workload-figure";
 import { HonorariumInequalityFigure } from "@/components/explore/honorarium-inequality-figure";
@@ -318,13 +322,23 @@ export default async function ExplorePage({
   // relationships scatter (E1.4, which needs every base value, not just the
   // active one) — one query, two figures.
   let childIndicators: ChildIndicatorRow[] = [];
+  // Relationships scatter points (E1.4) = child base indicators + the external PSA SAE poverty
+  // variable (E4.4), which carries data only where children are cities/municipalities.
+  let relationshipPoints: RelationshipPoint[] = [];
   if (compareChildLevel) {
     const childCodes = mapChildren.map((c) => c.geoCode);
-    const [childRows, trainingCoverage] = await Promise.all([
+    const [childRows, trainingCoverage, povertyByCode] = await Promise.all([
       getChildIndicators(childCodes),
       activeSlug ? getChildTrainingCoverage(childCodes, activeSlug) : Promise.resolve(null),
+      compareChildLevel === "citymun"
+        ? getChildPoverty(childCodes)
+        : Promise.resolve(new Map<string, { incidence: number }>()),
     ]);
     childIndicators = childRows;
+    relationshipPoints = childRows.map((c) => ({
+      ...c,
+      povertyIncidence: povertyByCode.get(c.geoCode)?.incidence ?? null,
+    }));
     mapItems = childIndicators.map((c) => {
       if (trainingCoverage) {
         const t = trainingCoverage.get(c.geoCode);
@@ -457,10 +471,13 @@ export default async function ExplorePage({
             <PresentButton />
           </div>
 
-          {/* Summary strip (E1.2): labeled, glossary-linked, with a collapsed
-            denominator explainer. The two big-number cards (accreditation, avg
-            years) were removed — their figures live here and, for children, in
-            the map indicator switcher. */}
+          {/* Summary strip (E1.2) + benchmark context (E1.5), consolidated into
+            one block so a headline figure is never shown twice. The count/
+            context metrics (which have no vs-region/vs-nation comparison) sit on
+            the top line; the three comparative metrics (% accredited, avg years,
+            households per BHW) render once below — with benchmark bars when this
+            isn't the national view, and as plain values at national (nothing
+            above it to compare against). */}
           <PresentationSlide id="at-a-glance" title={`${geo.geoName} at a glance`}>
             <section
               aria-labelledby="area-summary-heading"
@@ -488,34 +505,6 @@ export default async function ExplorePage({
                     {coverage !== null ? ` (${coverage}% of registered)` : ""}
                   </span>
                 </span>
-                <span>
-                  <span className="font-semibold">
-                    {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-                      ? formatIndicatorValue(counts.pctAccredited, "%")
-                      : "—"}
-                  </span>{" "}
-                  <span className="text-muted">
-                    <GlossaryTerm slug="accredited">accredited</GlossaryTerm>
-                  </span>
-                </span>
-                <span>
-                  <span className="font-semibold">
-                    {counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
-                      ? formatIndicatorValue(counts.avgActiveYears, "")
-                      : "—"}
-                  </span>{" "}
-                  <span className="text-muted">avg years of service</span>
-                </span>
-                {overview.householdsPerBhw !== null && (
-                  <span>
-                    <span className="font-semibold">
-                      {overview.householdsPerBhw.toLocaleString()}
-                    </span>{" "}
-                    <span className="text-muted">
-                      <GlossaryTerm slug="households_per_bhw">households per BHW</GlossaryTerm>
-                    </span>
-                  </span>
-                )}
                 {overview.bhwPer1000 !== null && (
                   <span>
                     <span className="font-semibold">
@@ -532,8 +521,78 @@ export default async function ExplorePage({
                   </span>
                 )}
               </div>
+
+              {/* The three comparative headline metrics — shown once here. With
+                vs-region/vs-nation bars below the national level; plain values at
+                national. This replaces the former standalone benchmark block. */}
+              <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
+                <div>
+                  <p className="mb-1 text-xs font-medium">
+                    <GlossaryTerm slug="accredited">% accredited</GlossaryTerm>
+                  </p>
+                  {showBenchmarks ? (
+                    <BenchmarkBars
+                      rows={benchmarkRows(
+                        counts?.pctAccredited ?? null,
+                        regionCounts?.pctAccredited ?? null,
+                        nationalCounts?.pctAccredited ?? null,
+                      )}
+                      format="percent"
+                    />
+                  ) : (
+                    <p className="text-sm font-semibold">
+                      {counts?.pctAccredited != null
+                        ? formatIndicatorValue(counts.pctAccredited, "%")
+                        : "—"}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-medium">Avg years of service</p>
+                  {showBenchmarks ? (
+                    <BenchmarkBars
+                      rows={benchmarkRows(
+                        counts?.avgActiveYears ?? null,
+                        regionCounts?.avgActiveYears ?? null,
+                        nationalCounts?.avgActiveYears ?? null,
+                      )}
+                      format="count"
+                      unitSuffix="yrs"
+                    />
+                  ) : (
+                    <p className="text-sm font-semibold">
+                      {counts?.avgActiveYears != null
+                        ? formatIndicatorValue(counts.avgActiveYears, "")
+                        : "—"}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-medium">
+                    <GlossaryTerm slug="households_per_bhw">Households per BHW</GlossaryTerm>
+                  </p>
+                  {showBenchmarks ? (
+                    <BenchmarkBars
+                      rows={benchmarkRows(
+                        overview.householdsPerBhw,
+                        regionOverview?.householdsPerBhw ?? null,
+                        nationalOverview?.householdsPerBhw ?? null,
+                      )}
+                      format="count"
+                      unitSuffix="hh/BHW"
+                    />
+                  ) : (
+                    <p className="text-sm font-semibold">
+                      {overview.householdsPerBhw != null
+                        ? overview.householdsPerBhw.toLocaleString()
+                        : "—"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {overview.hasStepzero && (
-                <details className="mt-2.5 text-xs">
+                <details className="mt-3 text-xs">
                   <summary className="cursor-pointer text-muted hover:text-accent">
                     How are these BHWs counted?
                   </summary>
@@ -553,63 +612,6 @@ export default async function ExplorePage({
           {/* Data-quality grade (E2.5) — one honest letter for how complete the
             profiles behind these figures are, linking the full breakdown. */}
           <DataQualityBadge grade={dataQualityGrade} fallbackCitymunName={gradeFallbackName} />
-
-          {/* Benchmark context (E1.5): the strip's three headline figures vs this
-            area's region and the nation — the "versus what?" the deleted big-
-            number cards used to answer, re-homed here since Explore is geo-first.
-            Hidden at the national level (nothing above it to compare against). */}
-          {showBenchmarks && (
-            <PresentationSlide id="benchmark" title={`How ${geo.geoName} compares`}>
-              <section
-                aria-labelledby="benchmark-heading"
-                className="rounded-lg border border-border bg-surface px-4 py-3"
-              >
-                <h2
-                  id="benchmark-heading"
-                  className="text-xs font-semibold uppercase tracking-wide text-muted"
-                >
-                  How {geo.geoName} compares
-                </h2>
-                <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
-                  <div>
-                    <p className="mb-1 text-xs font-medium">% accredited</p>
-                    <BenchmarkBars
-                      rows={benchmarkRows(
-                        counts?.pctAccredited ?? null,
-                        regionCounts?.pctAccredited ?? null,
-                        nationalCounts?.pctAccredited ?? null,
-                      )}
-                      format="percent"
-                    />
-                  </div>
-                  <div>
-                    <p className="mb-1 text-xs font-medium">Avg years of service</p>
-                    <BenchmarkBars
-                      rows={benchmarkRows(
-                        counts?.avgActiveYears ?? null,
-                        regionCounts?.avgActiveYears ?? null,
-                        nationalCounts?.avgActiveYears ?? null,
-                      )}
-                      format="count"
-                      unitSuffix="yrs"
-                    />
-                  </div>
-                  <div>
-                    <p className="mb-1 text-xs font-medium">Households per BHW</p>
-                    <BenchmarkBars
-                      rows={benchmarkRows(
-                        overview.householdsPerBhw,
-                        regionOverview?.householdsPerBhw ?? null,
-                        nationalOverview?.householdsPerBhw ?? null,
-                      )}
-                      format="count"
-                      unitSuffix="hh/BHW"
-                    />
-                  </div>
-                </div>
-              </section>
-            </PresentationSlide>
-          )}
 
           {/* Map-absence stub (E1.6) — at citymun/barangay there's no choropleth
             (barangay boundaries are on the roadmap). At citymun the ranked list
@@ -684,7 +686,7 @@ export default async function ExplorePage({
             <PresentationSlide id="relationships" title="Relationships between indicators">
               <RelationshipFigure
                 key={geo.geoCode}
-                points={childIndicators}
+                points={relationshipPoints}
                 childLevel={compareChildLevel}
                 childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
                 caption={caption}
