@@ -7,7 +7,7 @@ import { FigureTable } from "@/components/charts/figure-table";
 import { Modal } from "@/components/ui/modal";
 import { ViewToggle, type ViewMode } from "@/components/ui/view-toggle";
 import type { BarDatum } from "@/lib/charts/bar-chart";
-import { accent } from "@/lib/charts/palette";
+import { usePaletteAccent } from "@/lib/charts/use-palette-accent";
 import { formatterFor, type ValueFormatKind } from "@/lib/format";
 
 /**
@@ -47,7 +47,11 @@ export function FigureView({
 }) {
   const [mode, setMode] = useState<ViewMode>("chart");
   const [enlarged, setEnlarged] = useState(false);
-  const [color, setColor] = useState(accent);
+  // Default the bar color to the live palette accent so the chart tracks the
+  // appearance setting; an explicit swatch pick (below) overrides it.
+  const paletteAccent = usePaletteAccent();
+  const [override, setOverride] = useState<string | null>(null);
+  const color = override ?? paletteAccent;
 
   const format = formatterFor(valueFormat);
   const tableFormat = (n: number) => `${format(n)}${valueSuffix ?? ""}`;
@@ -98,7 +102,7 @@ export function FigureView({
       <Modal open={enlarged} onClose={() => setEnlarged(false)} title={title} caption={caption}>
         <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
           <ViewToggle value={mode} onChange={setMode} />
-          {mode === "chart" && <ColorSwatches value={color} onChange={setColor} />}
+          {mode === "chart" && <ColorSwatches value={color} onChange={setOverride} />}
         </div>
         {mode === "chart" ? (
           <div className="flex flex-1 items-center justify-center">
