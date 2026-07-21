@@ -10,7 +10,8 @@ import {
 } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getDataCompleteness } from "@/lib/db/data-quality";
-import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
+import { getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
+import { getBenchmarkContext, benchmarkRowsFor } from "@/lib/db/benchmark-context";
 import { getPlaceLocator } from "@/lib/geo/locator";
 import { getInsights } from "@/lib/db/insights";
 import {
@@ -25,7 +26,7 @@ import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
 import { LocatorMapThumbnail } from "@/components/place/locator-map";
 import { ChildrenTable } from "@/components/place/children-table";
-import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
+import { BenchmarkBars } from "@/components/place/benchmark";
 import { GeoSearch } from "@/components/home/geo-search";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
@@ -102,9 +103,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   if (!geo) notFound();
 
   const [
-    ancestors,
-    overview,
-    counts,
+    benchmarkCtx,
     demographicsByDimension,
     training,
     honorarium,
@@ -112,9 +111,13 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     childSummaries,
     completeness,
   ] = await Promise.all([
-    getGeoAncestors(geo.geoCode, geo.geoLevel),
-    getBhwOverview(geo.geoCode, geo.geoLevel),
-    getBhwCounts(geo.geoCode, geo.geoLevel),
+    // Benchmark context (E1.2): this place vs. its region and the nation, so
+    // every figure answers "versus what?". Also carries the ancestors this page
+    // needs for breadcrumbs/locator/fallback labels, so the ancestor fetch is
+    // no longer duplicated here. Benchmarks are hidden entirely at national
+    // level (`showBenchmarks`); the region row is omitted at and above region
+    // level (`benchmarkCtx.region`).
+    getBenchmarkContext(geo.geoCode, geo.geoLevel, geo.geoName),
     Promise.all(
       DEFAULT_BREAKDOWNS.map(async (dimension) => ({
         dimension,
@@ -128,36 +131,16 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     getDataCompleteness(geo.geoCode, geo.geoLevel),
   ]);
 
+  const ancestors = benchmarkCtx.ancestors;
+  const overview = benchmarkCtx.self.overview;
+  const counts = benchmarkCtx.self.counts;
+  const showBenchmarks = benchmarkCtx.showBenchmarks;
+
   // Needs ancestors (fetched above) to pick the right boundary file, so it
   // can't join the first Promise.all; it's a cached local-file read, not a DB call.
   const locator = await getPlaceLocator(geo, ancestors);
 
   const childLevelLabel = CHILD_LEVEL_PLURAL[geo.geoLevel];
-
-  // Benchmark context: this place vs. its region and the nation, so every figure
-  // answers "versus what?". National is always fetched; the region only when the
-  // place sits inside one (below region level) so a region page never compares
-  // against itself. Benchmarks are hidden entirely on the national page.
-  const showBenchmarks = geo.geoLevel !== "national";
-  const regionBenchmark =
-    geo.geoLevel !== "national" && geo.geoLevel !== "region" ? ancestors.region : null;
-
-  const [nationalOverview, nationalCounts, regionOverview, regionCounts] = await Promise.all([
-    showBenchmarks ? getBhwOverview(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
-    showBenchmarks ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
-    regionBenchmark ? getBhwOverview(regionBenchmark.geoCode, "region") : Promise.resolve(null),
-    regionBenchmark ? getBhwCounts(regionBenchmark.geoCode, "region") : Promise.resolve(null),
-  ]);
-
-  const benchmarkRows = (
-    place: number | null,
-    region: number | null,
-    national: number | null,
-  ): BenchmarkRow[] => [
-    { label: "This place", value: place, isPrimary: true },
-    ...(regionBenchmark ? [{ label: regionBenchmark.geoName, value: region }] : []),
-    { label: "Philippines", value: national },
-  ];
 
   const breadcrumbAncestors: BreadcrumbAncestor[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
@@ -291,11 +274,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               benchmark={
                 showBenchmarks ? (
                   <BenchmarkBars
-                    rows={benchmarkRows(
-                      counts?.pctAccredited ?? null,
-                      regionCounts?.pctAccredited ?? null,
-                      nationalCounts?.pctAccredited ?? null,
-                    )}
+                    rows={benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.pctAccredited ?? null)}
                     format="percent"
                   />
                 ) : undefined
@@ -329,11 +308,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               benchmark={
                 showBenchmarks ? (
                   <BenchmarkBars
-                    rows={benchmarkRows(
-                      counts?.avgActiveYears ?? null,
-                      regionCounts?.avgActiveYears ?? null,
-                      nationalCounts?.avgActiveYears ?? null,
-                    )}
+                    rows={benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.avgActiveYears ?? null)}
                     format="count"
                     unitSuffix="yrs"
                   />
@@ -361,11 +336,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
                 benchmark={
                   showBenchmarks ? (
                     <BenchmarkBars
-                      rows={benchmarkRows(
-                        overview.householdsPerBhw,
-                        regionOverview?.householdsPerBhw ?? null,
-                        nationalOverview?.householdsPerBhw ?? null,
-                      )}
+                      rows={benchmarkRowsFor(benchmarkCtx, (s) => s.overview.householdsPerBhw)}
                       format="count"
                       unitSuffix="hh/BHW"
                     />

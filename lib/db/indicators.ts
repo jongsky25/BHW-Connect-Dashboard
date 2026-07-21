@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createSupabaseServerClient } from "./supabase";
 import { DATASET_SLUGS, getActiveDatasetId, getDatasetIdBySlug } from "./dataset";
 import { getChildGeos } from "./geo";
@@ -25,37 +26,44 @@ export type BhwCounts = {
  * by (geoCode, geoLevel) — this is the same function the Phase 2 AI tool layer
  * (`getIndicatorByGeo`) will call, so numbers shown to users and to the model
  * are guaranteed identical.
+ *
+ * Wrapped in React's per-request `cache()` (string args are safe keys;
+ * precedent: `getActiveDataset`, `lib/db/dataset.ts:35`) — the benchmark
+ * context (E1.2) and a page's own figures often ask for the same geo's counts
+ * within one render.
  */
-export async function getBhwCounts(geoCode: string, geoLevel: GeoLevel): Promise<BhwCounts | null> {
-  const datasetId = await getActiveDatasetId();
-  if (datasetId === null) return null;
+export const getBhwCounts = cache(
+  async (geoCode: string, geoLevel: GeoLevel): Promise<BhwCounts | null> => {
+    const datasetId = await getActiveDatasetId();
+    if (datasetId === null) return null;
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("agg_bhw_counts")
-    .select(
-      "geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct, ci_low, ci_high, adjusted_pct",
-    )
-    .eq("dataset_id", datasetId)
-    .eq("geo_code", geoCode)
-    .eq("geo_level", geoLevel)
-    .maybeSingle();
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("agg_bhw_counts")
+      .select(
+        "geo_code, geo_level, n_total, n_accredited, pct_accredited, avg_active_years, any_honorarium_pct, ci_low, ci_high, adjusted_pct",
+      )
+      .eq("dataset_id", datasetId)
+      .eq("geo_code", geoCode)
+      .eq("geo_level", geoLevel)
+      .maybeSingle();
 
-  if (error || !data) return null;
+    if (error || !data) return null;
 
-  return {
-    geoCode: data.geo_code,
-    geoLevel: data.geo_level,
-    nTotal: data.n_total,
-    nAccredited: data.n_accredited,
-    pctAccredited: data.pct_accredited,
-    avgActiveYears: data.avg_active_years,
-    anyHonorariumPct: data.any_honorarium_pct,
-    ciLow: data.ci_low,
-    ciHigh: data.ci_high,
-    adjustedPct: data.adjusted_pct,
-  };
-}
+    return {
+      geoCode: data.geo_code,
+      geoLevel: data.geo_level,
+      nTotal: data.n_total,
+      nAccredited: data.n_accredited,
+      pctAccredited: data.pct_accredited,
+      avgActiveYears: data.avg_active_years,
+      anyHonorariumPct: data.any_honorarium_pct,
+      ciLow: data.ci_low,
+      ciHigh: data.ci_high,
+      adjustedPct: data.adjusted_pct,
+    };
+  },
+);
 
 export type GeoSummary = {
   geoCode: string;

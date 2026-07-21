@@ -6,6 +6,7 @@ import { RangeChartClient } from "@/components/charts/range-chart-client";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { PeriodToggle, PERIOD_MONTHS, PERIOD_NOUN, type AmountPeriod } from "@/components/ui/period-toggle";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { HonorariumRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 import type { RangeDatum } from "@/lib/charts/range-chart";
@@ -42,11 +43,13 @@ export function HonorariumDistributionFigure({
   caption,
   geoCode,
   geoLevel,
+  benchmark,
 }: {
   rows: HonorariumRow[];
   caption: string;
   geoCode?: string;
   geoLevel?: GeoLevel;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const [period, setPeriod] = useState<AmountPeriod>("monthly");
   const multiplier = PERIOD_MONTHS[period];
@@ -120,6 +123,7 @@ export function HonorariumDistributionFigure({
           )}
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       <div className="mb-3 flex items-center justify-end">
         <PeriodToggle value={period} onChange={setPeriod} />

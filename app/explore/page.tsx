@@ -11,7 +11,6 @@ import {
 } from "@/lib/filters/schema";
 import { getChildGeos, getGeoAncestors, resolveGeoOrNational } from "@/lib/db/geo";
 import {
-  getBhwCounts,
   getCertification,
   getChildIndicators,
   getChildTrainingCoverage,
@@ -30,16 +29,18 @@ import {
 import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
 import { computeDataQualityGrade } from "@/lib/analysis/data-quality-grade";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
-import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import { coverageForDisplay } from "@/lib/db/stepzero";
 import { getPeerRank } from "@/lib/db/peer-ranks";
 import { getInsights } from "@/lib/db/insights";
+import { getBenchmarkContext, benchmarkRowsFor } from "@/lib/db/benchmark-context";
+import { PEER_LEVEL_PLURAL, peerParentName } from "@/lib/analysis/peer-labels";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
 import { GeoSearch } from "@/components/home/geo-search";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { DenominatorExplainer } from "@/components/home/denominator-explainer";
-import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
+import { BenchmarkBars } from "@/components/place/benchmark";
 import { FigureTabs } from "@/components/ui/figure-tabs";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { AccreditationSourcesFigure } from "@/components/explore/accreditation-sources-figure";
@@ -124,15 +125,10 @@ export default async function ExplorePage({
   // running every independent query concurrently, cuts one full sequential
   // round-trip out of the page's server-rendering waterfall versus awaiting
   // all of batch one (including the slower demographics/training queries)
-  // before batch two's three queries could even start.
+  // before batch two's three queries could even start. `getGeoAncestors` is
+  // `cache()`d, so `getBenchmarkContext` below reuses this exact result rather
+  // than re-querying.
   const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
-
-  // Benchmark context (E1.5, mirroring the place page): this place vs its region
-  // and the nation. National is fetched only below the national level; the region
-  // only below region level, so a region page never benchmarks against itself.
-  const showBenchmarks = geo.geoLevel !== "national";
-  const regionBenchmark =
-    geo.geoLevel !== "national" && geo.geoLevel !== "region" ? ancestors.region : null;
 
   // E3 derived figures (cohorts, workload, honorarium inequality) are built down
   // to citymun only; a barangay falls back to its citymun ancestor, labeled —
@@ -144,8 +140,7 @@ export default async function ExplorePage({
 
   const [
     regions,
-    overview,
-    counts,
+    benchmarkCtx,
     demographicsByDimension,
     training,
     honorarium,
@@ -156,18 +151,16 @@ export default async function ExplorePage({
     citymuns,
     barangays,
     insights,
-    nationalOverview,
-    nationalCounts,
-    regionOverview,
-    regionCounts,
     cohorts,
     workload,
     honorariumInequality,
     incomeClassEquity,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
-    getBhwOverview(geo.geoCode, geo.geoLevel),
-    getBhwCounts(geo.geoCode, geo.geoLevel),
+    // Benchmark context (E1.2): this place vs. its region and the nation, so
+    // every figure answers "versus what?". Consolidates what used to be four
+    // separate conditional national/region overview+counts fetches here.
+    getBenchmarkContext(geo.geoCode, geo.geoLevel, geo.geoName),
     Promise.all(
       breakdowns.map(async (dimension) => ({
         dimension,
@@ -187,25 +180,15 @@ export default async function ExplorePage({
     ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
     ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
     getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
-    showBenchmarks ? getBhwOverview(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
-    showBenchmarks ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
-    regionBenchmark ? getBhwOverview(regionBenchmark.geoCode, "region") : Promise.resolve(null),
-    regionBenchmark ? getBhwCounts(regionBenchmark.geoCode, "region") : Promise.resolve(null),
     getCohorts(figureCode, figureLevel),
     getWorkload(figureCode, figureLevel),
     getHonorariumInequality(figureCode, figureLevel),
     geo.geoLevel === "national" ? getIncomeClassEquity() : Promise.resolve([]),
   ]);
 
-  const benchmarkRows = (
-    place: number | null,
-    region: number | null,
-    national: number | null,
-  ): BenchmarkRow[] => [
-    { label: "This place", value: place, isPrimary: true },
-    ...(regionBenchmark ? [{ label: regionBenchmark.geoName, value: region }] : []),
-    { label: "Philippines", value: national },
-  ];
+  const overview = benchmarkCtx.self.overview;
+  const counts = benchmarkCtx.self.counts;
+  const showBenchmarks = benchmarkCtx.showBenchmarks;
 
   const breadcrumbSteps: BreadcrumbStep[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
@@ -401,13 +384,10 @@ export default async function ExplorePage({
   }
 
   // Peer standing of the current geo among its same-level siblings for the active
-  // base indicator (E2.3). Only region/province/citymun are ranked; training
-  // indicators and national/barangay have no row.
-  const PEER_LEVEL_PLURAL: Partial<Record<GeoLevel, string>> = {
-    region: "regions",
-    province: "provinces",
-    citymun: "cities/municipalities",
-  };
+  // base indicator (E2.3). Only region/province/citymun are ranked (E1.2:
+  // `PEER_LEVEL_PLURAL`/`peerParentName` now live in `lib/analysis/peer-labels`,
+  // a client-safe module future pages can share instead of re-deriving these);
+  // training indicators and national/barangay have no row.
   const activeBaseIndicator: MapBaseIndicator | null = activeSlug
     ? null
     : (activeMapIndicator as MapBaseIndicator);
@@ -415,14 +395,6 @@ export default async function ExplorePage({
     activeBaseIndicator && PEER_LEVEL_PLURAL[geo.geoLevel]
       ? await getPeerRank(geo.geoCode, geo.geoLevel, activeBaseIndicator)
       : null;
-  const peerParentName =
-    geo.geoLevel === "region"
-      ? "the Philippines"
-      : geo.geoLevel === "province"
-        ? (ancestors.region?.geoName ?? null)
-        : geo.geoLevel === "citymun"
-          ? (ancestors.province?.geoName ?? null)
-          : null;
 
   // Title-slide facts for presentation mode: where we are, which filters are
   // active, and the page's caption line — all serializable (server → client).
@@ -532,11 +504,7 @@ export default async function ExplorePage({
                   </p>
                   {showBenchmarks ? (
                     <BenchmarkBars
-                      rows={benchmarkRows(
-                        counts?.pctAccredited ?? null,
-                        regionCounts?.pctAccredited ?? null,
-                        nationalCounts?.pctAccredited ?? null,
-                      )}
+                      rows={benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.pctAccredited ?? null)}
                       format="percent"
                     />
                   ) : (
@@ -551,11 +519,7 @@ export default async function ExplorePage({
                   <p className="mb-1 text-xs font-medium">Avg years of service</p>
                   {showBenchmarks ? (
                     <BenchmarkBars
-                      rows={benchmarkRows(
-                        counts?.avgActiveYears ?? null,
-                        regionCounts?.avgActiveYears ?? null,
-                        nationalCounts?.avgActiveYears ?? null,
-                      )}
+                      rows={benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.avgActiveYears ?? null)}
                       format="count"
                       unitSuffix="yrs"
                     />
@@ -573,11 +537,7 @@ export default async function ExplorePage({
                   </p>
                   {showBenchmarks ? (
                     <BenchmarkBars
-                      rows={benchmarkRows(
-                        overview.householdsPerBhw,
-                        regionOverview?.householdsPerBhw ?? null,
-                        nationalOverview?.householdsPerBhw ?? null,
-                      )}
+                      rows={benchmarkRowsFor(benchmarkCtx, (s) => s.overview.householdsPerBhw)}
                       format="count"
                       unitSuffix="hh/BHW"
                     />
@@ -658,7 +618,7 @@ export default async function ExplorePage({
           <PeerRankChip
             rank={peerRank}
             geoName={geo.geoName}
-            parentName={peerParentName}
+            parentName={peerParentName(geo.geoLevel, ancestors)}
             siblingPlural={PEER_LEVEL_PLURAL[geo.geoLevel] ?? ""}
             indicatorLabel={mapMeta.label}
           />

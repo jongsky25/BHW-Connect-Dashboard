@@ -2,6 +2,7 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { HonorariumRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -17,11 +18,13 @@ export function HonorariumFigure({
   caption,
   geoCode,
   geoLevel,
+  benchmark,
 }: {
   rows: HonorariumRow[];
   caption: string;
   geoCode?: string;
   geoLevel?: GeoLevel;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const chartData = rows
     .filter((r) => r.pctReceiving !== null)
@@ -68,6 +71,7 @@ export function HonorariumFigure({
           ) : null}
         </p>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       {chartData.length > 0 ? (
         <FigureView

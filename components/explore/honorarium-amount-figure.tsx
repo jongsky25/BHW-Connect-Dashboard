@@ -6,6 +6,7 @@ import { FigureView } from "@/components/charts/figure-view";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import { PeriodToggle, PERIOD_MONTHS, PERIOD_NOUN, type AmountPeriod } from "@/components/ui/period-toggle";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { HonorariumRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { formatPeso } from "@/lib/format";
@@ -30,11 +31,13 @@ export function HonorariumAmountFigure({
   caption,
   geoCode,
   geoLevel,
+  benchmark,
 }: {
   rows: HonorariumRow[];
   caption: string;
   geoCode?: string;
   geoLevel?: GeoLevel;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const [period, setPeriod] = useState<AmountPeriod>("monthly");
   const multiplier = PERIOD_MONTHS[period];
@@ -81,6 +84,7 @@ export function HonorariumAmountFigure({
           </p>
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       <div className="mb-3 flex items-center justify-end">
         <PeriodToggle value={period} onChange={setPeriod} />

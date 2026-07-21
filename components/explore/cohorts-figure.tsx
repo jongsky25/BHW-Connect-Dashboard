@@ -1,5 +1,6 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { CohortRow } from "@/lib/db/derived-figures";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -70,12 +71,14 @@ export function CohortsFigure({
   caption,
   geoLevel,
   fallbackCitymunName,
+  benchmark,
 }: {
   rows: CohortRow[];
   caption: string;
   geoLevel: GeoLevel;
   /** When set, `rows` describe this citymun (the barangay has no cohort rows). */
   fallbackCitymunName?: string | null;
+  benchmark?: FigureBenchmarkProps;
 }) {
   if (rows.length === 0) {
     return (
@@ -93,6 +96,7 @@ export function CohortsFigure({
             city/municipality&apos;s figure instead.
           </p>
         }
+        benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
       >
         <p className="text-sm text-muted">No data available.</p>
       </FigureCard>
@@ -154,6 +158,7 @@ export function CohortsFigure({
           </p>
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       <div className="flex flex-col gap-4">
         {KIND_ORDER.map((kind) => {

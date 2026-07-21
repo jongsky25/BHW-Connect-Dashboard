@@ -3,6 +3,7 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { TrainingRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -18,12 +19,14 @@ export function TrainingFigure({
   geoLevel,
   citymunAncestor,
   geoCode,
+  benchmark,
 }: {
   rows: TrainingRow[];
   caption: string;
   geoLevel: GeoLevel;
   citymunAncestor: { geoCode: string; geoName: string } | null;
   geoCode?: string;
+  benchmark?: FigureBenchmarkProps;
 }) {
   if (geoLevel === "barangay") {
     return (
@@ -37,6 +40,7 @@ export function TrainingFigure({
             keep the published dataset within a manageable size.
           </p>
         }
+        benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
       >
         <p className="text-sm text-muted">
           {citymunAncestor ? (
@@ -112,6 +116,7 @@ export function TrainingFigure({
           ) : null}
         </p>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       {topGaps.length > 0 ? (
         <FigureView

@@ -1,5 +1,6 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { HonorariumInequalityRow } from "@/lib/db/derived-figures";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { formatPeso } from "@/lib/format";
@@ -23,11 +24,13 @@ export function HonorariumInequalityFigure({
   caption,
   geoLevel,
   fallbackCitymunName,
+  benchmark,
 }: {
   row: HonorariumInequalityRow | null;
   caption: string;
   geoLevel: GeoLevel;
   fallbackCitymunName?: string | null;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const scopeSuffix = fallbackCitymunName ? ` (shown for ${fallbackCitymunName})` : "";
   const title = `Honorarium inequality${scopeSuffix}`;
@@ -51,6 +54,7 @@ export function HonorariumInequalityFigure({
             individual&apos;s pay. Barangay pages show their city/municipality&apos;s figure instead.
           </p>
         }
+        benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
       >
         <p className="text-sm text-muted">No data available.</p>
       </FigureCard>
@@ -89,6 +93,7 @@ export function HonorariumInequalityFigure({
           </p>
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
         <div>
