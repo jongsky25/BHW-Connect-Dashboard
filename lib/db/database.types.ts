@@ -912,6 +912,63 @@ export type Database = {
           },
         ];
       };
+      dim_psgc_crosswalk: {
+        Row: {
+          change_kind: string;
+          crosswalk_id: number;
+          dataset_id: number | null;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          new_code: string | null;
+          new_name: string | null;
+          new_vintage: string;
+          note: string | null;
+          old_code: string;
+          old_name: string | null;
+          old_vintage: string;
+        };
+        Insert: {
+          change_kind: string;
+          crosswalk_id?: never;
+          dataset_id?: number | null;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          new_code?: string | null;
+          new_name?: string | null;
+          new_vintage: string;
+          note?: string | null;
+          old_code: string;
+          old_name?: string | null;
+          old_vintage: string;
+        };
+        Update: {
+          change_kind?: string;
+          crosswalk_id?: never;
+          dataset_id?: number | null;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          new_code?: string | null;
+          new_name?: string | null;
+          new_vintage?: string;
+          note?: string | null;
+          old_code?: string;
+          old_name?: string | null;
+          old_vintage?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "dim_psgc_crosswalk_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "dim_psgc_crosswalk_new_code_fkey";
+            columns: ["new_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       fact_bhw_raw: {
         Row: {
           accreditation_year: number | null;
@@ -1173,6 +1230,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      map_psgc_to_dim_geo: {
+        Args: { p_code: string; p_old_vintage?: string };
+        Returns: string;
+      };
       search_geo: {
         Args: { result_limit?: number; search_query: string };
         Returns: {
