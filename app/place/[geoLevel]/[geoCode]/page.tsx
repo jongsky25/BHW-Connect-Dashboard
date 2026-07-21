@@ -10,8 +10,9 @@ import {
 } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getDataCompleteness } from "@/lib/db/data-quality";
-import { getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
+import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
 import { getBenchmarkContext, benchmarkRowsFor } from "@/lib/db/benchmark-context";
+import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
 import { getPlaceLocator } from "@/lib/geo/locator";
 import { getInsights } from "@/lib/db/insights";
 import {
@@ -31,6 +32,7 @@ import { GeoSearch } from "@/components/home/geo-search";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { HonorariumSufficiencyFigure } from "@/components/explore/honorarium-sufficiency-figure";
 import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { AiInsight } from "@/components/narrative/ai-insight";
@@ -102,11 +104,23 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   const geo = await loadPlace(await params);
   if (!geo) notFound();
 
+  // Needed before the main batch below to compute the citymun-fallback pair
+  // for the sufficiency figure (`agg_honorarium_cumulative` is built down to
+  // citymun only, same as workload/inequality on /explore). `getGeoAncestors`
+  // is `cache()`d, so `getBenchmarkContext` reuses this exact result below
+  // rather than re-querying.
+  const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
+  const figureFallback = geo.geoLevel === "barangay" ? ancestors.citymun : null;
+  const figureCode = figureFallback ? figureFallback.geoCode : geo.geoCode;
+  const figureLevel: GeoLevel = figureFallback ? "citymun" : geo.geoLevel;
+  const figureFallbackName = figureFallback ? figureFallback.geoName : null;
+
   const [
     benchmarkCtx,
     demographicsByDimension,
     training,
     honorarium,
+    honorariumSufficiency,
     insights,
     childSummaries,
     completeness,
@@ -126,12 +140,12 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     ),
     getTrainingCoverage(geo.geoCode, geo.geoLevel),
     getHonorarium(geo.geoCode, geo.geoLevel),
+    getHonorariumSufficiency(figureCode, figureLevel),
     getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
     getChildSummaries(geo.geoCode, geo.geoLevel),
     getDataCompleteness(geo.geoCode, geo.geoLevel),
   ]);
 
-  const ancestors = benchmarkCtx.ancestors;
   const overview = benchmarkCtx.self.overview;
   const counts = benchmarkCtx.self.counts;
   const showBenchmarks = benchmarkCtx.showBenchmarks;
@@ -380,6 +394,16 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               caption={caption}
               geoCode={geo.geoCode}
               geoLevel={geo.geoLevel}
+            />
+          </PresentationSlide>
+
+          <PresentationSlide id="honorarium-sufficiency" title="Honorarium sufficiency">
+            <HonorariumSufficiencyFigure
+              data={honorariumSufficiency}
+              caption={caption}
+              geoCode={geo.geoCode}
+              geoLevel={geo.geoLevel}
+              fallbackCitymunName={figureFallbackName}
             />
           </PresentationSlide>
 

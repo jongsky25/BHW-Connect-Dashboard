@@ -11,6 +11,7 @@ export const INDICATORS = [
   "honorarium",
   "honorarium_amount",
   "honorarium_distribution",
+  "honorarium_sufficiency",
   "service_years",
 ] as const;
 export type Indicator = (typeof INDICATORS)[number];

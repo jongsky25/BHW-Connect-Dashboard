@@ -238,5 +238,17 @@ export async function getExportFigureData(params: {
             : ""),
       };
     }
+    case "honorarium_sufficiency": {
+      // Export parity for this indicator is Increment 5's job (`ExportFigureData`
+      // gains benchmark rows + an adequacy line, then a real case body here —
+      // 8 band rows, the sufficiency headline, benchmark rows for
+      // `pctBelowSufficiency`). Until then this returns `null`, which every
+      // `api/export/*/route.ts` already treats as "Place not found" (a plain
+      // 404) — the same degrade-gracefully path an unknown geo hits today,
+      // not a crash. The switch needs *a* case for this indicator now only
+      // because adding it to `INDICATORS` (§3.2) makes this function's return
+      // type require one (TS2366: not every code path returned a value).
+      return null;
+    }
   }
 }

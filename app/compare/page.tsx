@@ -10,6 +10,7 @@ import {
   getTrainingCoverage,
 } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
 import type { CompareMetricValues } from "@/lib/analysis/compare-metrics";
 import { AddGeoSearch } from "@/components/compare/add-geo-search";
 import { IndicatorPicker } from "@/components/compare/indicator-picker";
@@ -103,21 +104,38 @@ export default async function ComparePage({
     const [loaded, nationalOverview, nationalCounts] = await Promise.all([
       Promise.all(
         valid.map(async (geo) => {
-          const [overview, counts, demographics, training, certification, honorarium] =
-            await Promise.all([
-              getBhwOverview(geo.geoCode, geo.geoLevel),
-              getBhwCounts(geo.geoCode, geo.geoLevel),
-              Promise.all(
-                DEFAULT_BREAKDOWNS.map(async (dimension) => ({
-                  dimension,
-                  rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
-                })),
-              ),
-              getTrainingCoverage(geo.geoCode, geo.geoLevel),
-              getCertification(geo.geoCode, geo.geoLevel),
-              getHonorarium(geo.geoCode, geo.geoLevel),
-            ]);
-          return { geo, overview, counts, demographics, training, certification, honorarium };
+          const [
+            overview,
+            counts,
+            demographics,
+            training,
+            certification,
+            honorarium,
+            honorariumSufficiency,
+          ] = await Promise.all([
+            getBhwOverview(geo.geoCode, geo.geoLevel),
+            getBhwCounts(geo.geoCode, geo.geoLevel),
+            Promise.all(
+              DEFAULT_BREAKDOWNS.map(async (dimension) => ({
+                dimension,
+                rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
+              })),
+            ),
+            getTrainingCoverage(geo.geoCode, geo.geoLevel),
+            getCertification(geo.geoCode, geo.geoLevel),
+            getHonorarium(geo.geoCode, geo.geoLevel),
+            getHonorariumSufficiency(geo.geoCode, geo.geoLevel),
+          ]);
+          return {
+            geo,
+            overview,
+            counts,
+            demographics,
+            training,
+            certification,
+            honorarium,
+            honorariumSufficiency,
+          };
         }),
       ),
       // National reference row for the head-to-head strip — the same "versus
@@ -129,20 +147,32 @@ export default async function ComparePage({
       levels[0] !== "national" ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
     ]);
 
-    columns = loaded.map(({ geo, overview, counts, demographics, training, certification, honorarium }) => ({
-      geoCode: geo.geoCode,
-      geoName: geo.geoName,
-      geoLevel: geo.geoLevel,
-      counts,
-      totalBhw: overview.totalBhw,
-      validatedProfiles: overview.validatedProfiles,
-      coveragePct: coverageForDisplay(overview),
-      householdsPerBhw: overview.householdsPerBhw,
-      demographics,
-      training,
-      certification,
-      honorarium,
-    }));
+    columns = loaded.map(
+      ({
+        geo,
+        overview,
+        counts,
+        demographics,
+        training,
+        certification,
+        honorarium,
+        honorariumSufficiency,
+      }) => ({
+        geoCode: geo.geoCode,
+        geoName: geo.geoName,
+        geoLevel: geo.geoLevel,
+        counts,
+        totalBhw: overview.totalBhw,
+        validatedProfiles: overview.validatedProfiles,
+        coveragePct: coverageForDisplay(overview),
+        householdsPerBhw: overview.householdsPerBhw,
+        demographics,
+        training,
+        certification,
+        honorarium,
+        honorariumSufficiency,
+      }),
+    );
 
     // The summary strip reads the same overview/counts objects as the columns,
     // so the two can never disagree on a value.

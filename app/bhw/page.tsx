@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/indicators";
 import { getBhwOverview, getRegionHouseholdsPerBhw, coverageForDisplay } from "@/lib/db/stepzero";
 import { getHomeInsights } from "@/lib/db/insights";
+import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
 import type { DemographicRow } from "@/lib/db/indicators";
 import type { BarDatum } from "@/lib/charts/bar-chart";
 import { formatCount, formatPct } from "@/lib/format";
@@ -20,6 +21,7 @@ import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
 import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
+import { HonorariumSufficiencyFigure } from "@/components/explore/honorarium-sufficiency-figure";
 import { AiInsight } from "@/components/narrative/ai-insight";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 import { FigureTabs } from "@/components/ui/figure-tabs";
@@ -62,16 +64,25 @@ function educationTile(rows: DemographicRow[]): {
 }
 
 export default async function Home() {
-  const [overview, counts, certification, honorarium, education, insights, regionRatios] =
-    await Promise.all([
-      getBhwOverview("PH", "national"),
-      getBhwCounts("PH", "national"),
-      getCertification("PH", "national"),
-      getHonorarium("PH", "national"),
-      getDemographics("PH", "national", ["education"]),
-      getHomeInsights(),
-      getRegionHouseholdsPerBhw(),
-    ]);
+  const [
+    overview,
+    counts,
+    certification,
+    honorarium,
+    honorariumSufficiency,
+    education,
+    insights,
+    regionRatios,
+  ] = await Promise.all([
+    getBhwOverview("PH", "national"),
+    getBhwCounts("PH", "national"),
+    getCertification("PH", "national"),
+    getHonorarium("PH", "national"),
+    getHonorariumSufficiency("PH", "national"),
+    getDemographics("PH", "national", ["education"]),
+    getHomeInsights(),
+    getRegionHouseholdsPerBhw(),
+  ]);
 
   const coverage = coverageForDisplay(overview);
   // Per-person figures are computed from the individually-profiled subset, so
@@ -310,6 +321,18 @@ export default async function Home() {
             <FigureTabs
               heading="Honorarium"
               tabs={[
+                {
+                  id: "sufficiency",
+                  label: "Is it enough?",
+                  content: (
+                    <HonorariumSufficiencyFigure
+                      data={honorariumSufficiency}
+                      caption={profiledCaption}
+                      geoCode="PH"
+                      geoLevel="national"
+                    />
+                  ),
+                },
                 {
                   id: "who",
                   label: "Who receives",

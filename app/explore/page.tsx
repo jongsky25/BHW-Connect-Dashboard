@@ -24,6 +24,7 @@ import {
   getCohorts,
   getWorkload,
   getHonorariumInequality,
+  getHonorariumSufficiency,
   getIncomeClassEquity,
 } from "@/lib/db/derived-figures";
 import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
@@ -62,6 +63,7 @@ import { getChildPoverty } from "@/lib/db/poverty";
 import { CohortsFigure } from "@/components/explore/cohorts-figure";
 import { WorkloadFigure } from "@/components/explore/workload-figure";
 import { HonorariumInequalityFigure } from "@/components/explore/honorarium-inequality-figure";
+import { HonorariumSufficiencyFigure } from "@/components/explore/honorarium-sufficiency-figure";
 import { IncomeClassFigure } from "@/components/explore/income-class-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
@@ -154,6 +156,7 @@ export default async function ExplorePage({
     cohorts,
     workload,
     honorariumInequality,
+    honorariumSufficiency,
     incomeClassEquity,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
@@ -183,6 +186,7 @@ export default async function ExplorePage({
     getCohorts(figureCode, figureLevel),
     getWorkload(figureCode, figureLevel),
     getHonorariumInequality(figureCode, figureLevel),
+    getHonorariumSufficiency(figureCode, figureLevel),
     geo.geoLevel === "national" ? getIncomeClassEquity() : Promise.resolve([]),
   ]);
 
@@ -745,6 +749,19 @@ export default async function ExplorePage({
             <FigureTabs
               heading="Honorarium"
               tabs={[
+                {
+                  id: "sufficiency",
+                  label: "Is it enough?",
+                  content: (
+                    <HonorariumSufficiencyFigure
+                      data={honorariumSufficiency}
+                      caption={caption}
+                      geoCode={geo.geoCode}
+                      geoLevel={geo.geoLevel}
+                      fallbackCitymunName={figureFallbackName}
+                    />
+                  ),
+                },
                 {
                   id: "who",
                   label: "Who receives",

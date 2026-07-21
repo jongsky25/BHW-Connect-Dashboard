@@ -13,6 +13,7 @@ import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
 import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
+import { HonorariumSufficiencyFigure } from "@/components/explore/honorarium-sufficiency-figure";
 import type {
   BhwCounts,
   CertificationRow,
@@ -20,6 +21,7 @@ import type {
   HonorariumRow,
   TrainingRow,
 } from "@/lib/db/indicators";
+import type { HonorariumSufficiencyRow } from "@/lib/db/derived-figures";
 import type { Indicator } from "@/lib/filters/schema";
 
 export type CompareColumnData = {
@@ -39,6 +41,7 @@ export type CompareColumnData = {
   training: TrainingRow[];
   certification: CertificationRow[];
   honorarium: HonorariumRow[];
+  honorariumSufficiency: HonorariumSufficiencyRow | null;
 };
 
 export function CompareColumn({
@@ -165,6 +168,18 @@ export function CompareColumn({
           heading="Honorarium"
           tabs={[
             {
+              id: "sufficiency",
+              label: "Is it enough?",
+              content: (
+                <HonorariumSufficiencyFigure
+                  data={data.honorariumSufficiency}
+                  caption={caption}
+                  geoCode={data.geoCode}
+                  geoLevel={data.geoLevel}
+                />
+              ),
+            },
+            {
               id: "who",
               label: "Who receives",
               content: (
@@ -204,6 +219,14 @@ export function CompareColumn({
         />
       ) : (
         <>
+          {indicator === "honorarium_sufficiency" && (
+            <HonorariumSufficiencyFigure
+              data={data.honorariumSufficiency}
+              caption={caption}
+              geoCode={data.geoCode}
+              geoLevel={data.geoLevel}
+            />
+          )}
           {indicator === "honorarium" && (
             <HonorariumFigure
               rows={data.honorarium}
