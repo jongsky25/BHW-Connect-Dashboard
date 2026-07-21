@@ -6,7 +6,7 @@ import { GlossaryTerm } from "@/components/glossary/glossary-term";
 import type { DemographicRow } from "@/lib/db/indicators";
 import type { DemographicDimension, GeoLevel } from "@/lib/filters/schema";
 
-const DIMENSION_LABEL: Record<DemographicDimension, string> = {
+export const DIMENSION_LABEL: Record<DemographicDimension, string> = {
   sex: "Sex",
   age_band: "Age",
   civil_status: "Civil status",
@@ -38,7 +38,11 @@ export function DemographicsFigure({
 
   const chartData = rows
     .filter((r) => !r.isSuppressed && r.pct !== null)
-    .map((r) => ({ label: formatCategory(dimension, r.category), value: r.pct as number, count: r.n ?? undefined }));
+    .map((r) => ({
+      label: formatCategory(dimension, r.category),
+      value: r.pct as number,
+      count: r.n ?? undefined,
+    }));
 
   const topCategory = [...chartData].sort((a, b) => b.value - a.value)[0];
 
@@ -48,7 +52,12 @@ export function DemographicsFigure({
       caption={caption}
       exportMenu={
         geoCode && geoLevel ? (
-          <ExportMenu geoCode={geoCode} geoLevel={geoLevel} indicator="demographics" dimension={dimension} />
+          <ExportMenu
+            geoCode={geoCode}
+            geoLevel={geoLevel}
+            indicator="demographics"
+            dimension={dimension}
+          />
         ) : undefined
       }
       headline={

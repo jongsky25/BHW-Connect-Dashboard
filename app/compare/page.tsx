@@ -1,11 +1,19 @@
 import { loadFilterState } from "@/lib/filters/codec";
 import { DEFAULT_BREAKDOWNS } from "@/lib/filters/schema";
 import { getGeoByCode } from "@/lib/db/geo";
-import { getBhwCounts, getDemographics, getHonorarium, getTrainingCoverage } from "@/lib/db/indicators";
+import {
+  getBhwCounts,
+  getDemographics,
+  getHonorarium,
+  getTrainingCoverage,
+} from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { AddGeoSearch } from "@/components/compare/add-geo-search";
 import { IndicatorPicker } from "@/components/compare/indicator-picker";
 import { CompareColumn, type CompareColumnData } from "@/components/compare/compare-column";
+import { PresentationProvider } from "@/components/present/presentation-context";
+import { PresentationSlide } from "@/components/present/presentation-slide";
+import { PresentButton } from "@/components/present/present-button";
 
 export const metadata = { title: "Compare" };
 
@@ -70,63 +78,82 @@ export default async function ComparePage({
     );
   }
 
+  // Title-slide facts for presentation mode (serializable, server → client).
+  const deckMeta = {
+    pageLabel: "Compare places",
+    areaName: canCompare ? valid.map((g) => g.geoName).join(" vs ") : "Compare places",
+    filterChips: canCompare ? valid.map((g) => GEO_LEVEL_LABEL[g.geoLevel]) : [],
+    captionLine: "Side-by-side comparison · 2025 snapshot",
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Compare places</h1>
+    <PresentationProvider meta={deckMeta}>
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Compare places</h1>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <AddGeoSearch disabled={valid.length >= 4} />
-        {canCompare && <IndicatorPicker />}
-      </div>
+        <div className="flex flex-wrap items-end gap-4">
+          <AddGeoSearch disabled={valid.length >= 4} />
+          {canCompare && <IndicatorPicker />}
+          {canCompare && <PresentButton variant="secondary" />}
+        </div>
 
-      {notFoundCount > 0 && (
-        <p className="rounded-md bg-surface px-4 py-2 text-sm text-muted">
-          {notFoundCount} of the requested place{notFoundCount === 1 ? "" : "s"} in this link
-          couldn&apos;t be found and {notFoundCount === 1 ? "was" : "were"} skipped.
-        </p>
-      )}
-
-      {isMismatched && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-4">
-          <p className="font-medium">Compare places at the same level</p>
-          <p className="mt-1 text-sm text-muted">
-            You&apos;ve selected a mix of levels ({levels.map((l) => GEO_LEVEL_LABEL[l]).join(", ")}
-            ). Remove places until only one level remains — e.g. compare two provinces, or two
-            regions, but not a province against a region.
+        {notFoundCount > 0 && (
+          <p className="rounded-md bg-surface px-4 py-2 text-sm text-muted">
+            {notFoundCount} of the requested place{notFoundCount === 1 ? "" : "s"} in this link
+            couldn&apos;t be found and {notFoundCount === 1 ? "was" : "were"} skipped.
           </p>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {valid.map((geo) => (
-              <li key={geo.geoCode} className="rounded-full border border-border bg-background px-3 py-1 text-xs">
-                {geo.geoName} ({GEO_LEVEL_LABEL[geo.geoLevel]})
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
 
-      {!isMismatched && valid.length < 2 && (
-        <div className="flex flex-col items-center gap-2 py-16 text-center text-muted">
-          <p>Add at least two places of the same level to compare them side by side.</p>
-          {valid.length === 1 && (
-            <p className="text-sm">
-              {valid[0].geoName} is added — search above to add one more (up to 4 total).
+        {isMismatched && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-4">
+            <p className="font-medium">Compare places at the same level</p>
+            <p className="mt-1 text-sm text-muted">
+              You&apos;ve selected a mix of levels (
+              {levels.map((l) => GEO_LEVEL_LABEL[l]).join(", ")}
+              ). Remove places until only one level remains — e.g. compare two provinces, or two
+              regions, but not a province against a region.
             </p>
-          )}
-        </div>
-      )}
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {valid.map((geo) => (
+                <li
+                  key={geo.geoCode}
+                  className="rounded-full border border-border bg-background px-3 py-1 text-xs"
+                >
+                  {geo.geoName} ({GEO_LEVEL_LABEL[geo.geoLevel]})
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-      {canCompare && (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {columns.map((col) => (
-            <CompareColumn
-              key={col.geoCode}
-              data={col}
-              indicator={filters.indicator}
-              canRemove={columns.length > 2}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+        {!isMismatched && valid.length < 2 && (
+          <div className="flex flex-col items-center gap-2 py-16 text-center text-muted">
+            <p>Add at least two places of the same level to compare them side by side.</p>
+            {valid.length === 1 && (
+              <p className="text-sm">
+                {valid[0].geoName} is added — search above to add one more (up to 4 total).
+              </p>
+            )}
+          </div>
+        )}
+
+        {canCompare && (
+          // The columns row presents as one slide — side by side is the honest
+          // unit of comparison.
+          <PresentationSlide id="comparison" title={valid.map((g) => g.geoName).join(" vs ")}>
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {columns.map((col) => (
+                <CompareColumn
+                  key={col.geoCode}
+                  data={col}
+                  indicator={filters.indicator}
+                  canRemove={columns.length > 2}
+                />
+              ))}
+            </div>
+          </PresentationSlide>
+        )}
+      </div>
+    </PresentationProvider>
   );
 }

@@ -186,7 +186,12 @@ export function GeoComparisonFigure({
   useEffect(() => {
     if (!selectedGeoCode) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedGeoCode(null);
+      if (e.key === "Escape") {
+        // Mark the Escape as consumed so presentation mode's deck-level
+        // handler dismisses the mini-card first, not the whole presentation.
+        e.preventDefault();
+        setSelectedGeoCode(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -358,12 +363,7 @@ export function GeoComparisonFigure({
         )}
 
         {geojsonUrl && (bins.length > 0 || hasNoData) && (
-          <MapLegend
-            bins={bins}
-            valueSuffix={suffix}
-            hasNoData={hasNoData}
-            hasSmallN={hasSmallN}
-          />
+          <MapLegend bins={bins} valueSuffix={suffix} hasNoData={hasNoData} hasSmallN={hasSmallN} />
         )}
 
         {chartData.length > 0 ? (
