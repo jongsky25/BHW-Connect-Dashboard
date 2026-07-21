@@ -5,7 +5,8 @@ export type BenchmarkRow = {
   /** Short label, e.g. "This place", "Region VII", "Philippines". */
   label: string;
   value: number | null;
-  /** The current place — emphasized and always first. */
+  /** The emphasized row — the current place on place/explore pages, or the
+   * leading place in a Compare head-to-head block. */
   isPrimary?: boolean;
 };
 
@@ -22,12 +23,16 @@ export function BenchmarkBars({
   rows,
   format = "count",
   unitSuffix,
+  flush = false,
 }: {
   rows: BenchmarkRow[];
   /** How to format each value (percent / count / peso). */
   format?: ValueFormatKind;
   /** Optional suffix appended after the formatted value, e.g. "yrs" or "/1,000". */
   unitSuffix?: string;
+  /** Drop the top border/margin — for hosts (e.g. the Compare head-to-head
+   * grid) that provide their own framing instead of sitting under a figure. */
+  flush?: boolean;
 }) {
   const usable = rows.filter((r) => r.value !== null);
   if (usable.length < 2) return null; // nothing to compare against
@@ -40,7 +45,7 @@ export function BenchmarkBars({
     format === "percent" ? 100 : Math.max(...usable.map((r) => r.value as number), 1);
 
   return (
-    <dl className="mt-4 space-y-1.5 border-t border-border pt-3">
+    <dl className={flush ? "space-y-1.5" : "mt-4 space-y-1.5 border-t border-border pt-3"}>
       {rows.map((row) => {
         const pct = row.value === null ? 0 : Math.min(100, (row.value / scaleMax) * 100);
         return (

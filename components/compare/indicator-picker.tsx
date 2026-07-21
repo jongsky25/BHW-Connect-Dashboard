@@ -2,14 +2,19 @@
 
 import { useQueryStates } from "nuqs";
 import { filterParsers } from "@/lib/filters/codec";
-import { INDICATORS } from "@/lib/filters/schema";
+import { INDICATORS, type Indicator } from "@/lib/filters/schema";
 
-const LABELS: Record<string, string> = {
+// Labels for every value in INDICATORS — a missing entry would render a blank
+// option, so the record is typed to force completeness.
+const LABELS: Record<Indicator, string> = {
   accreditation: "Accreditation",
   service_years: "Average years of service",
   demographics: "Demographics",
   training: "Training coverage",
-  honorarium: "Honorarium",
+  certification: "Training & certification",
+  honorarium: "Honorarium: who receives",
+  honorarium_amount: "Honorarium: how much",
+  honorarium_distribution: "Honorarium: distribution",
 };
 
 export function IndicatorPicker() {
