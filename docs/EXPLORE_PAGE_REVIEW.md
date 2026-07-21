@@ -8,9 +8,11 @@ existing data (owner directive: go beyond the variables as given, provided every
 explained in simple terms), and (e) whether Explore is the right home for cross-analysis against
 external data sources.
 
-**Status:** recommendations only — reviewed 2026-07-20 against `main` (`ee1b383`). No implementation
-plan is committed yet; the plan is agreed with the owner after this review is discussed (see §12
-open questions).
+**Status:** reviewed 2026-07-20 against `main` (`ee1b383`). The §12 open questions were answered by
+the owner on 2026-07-21 (all approved; per-topic training included in the map switcher v1;
+NHFR/FHSIS usable when publicly available with citation; P0 ships first; scorecard only, no
+composite index). The committed phased implementation plan is `docs/EXPLORE_ENHANCEMENT_PLAN.md` —
+that document, not this one, is the build spec.
 
 **Hard constraint honored throughout:** nothing below duplicates what the Home page already does
 (national KPI tiles, certification/honorarium national storytelling, the hero geo search) — the
