@@ -1,6 +1,6 @@
 import "server-only";
 import { createSupabaseServerClient } from "./supabase";
-import { getActiveDatasetId } from "./dataset";
+import { DATASET_SLUGS, getActiveDatasetId, getDatasetIdBySlug } from "./dataset";
 import { getChildGeos } from "./geo";
 import type { DemographicDimension, GeoLevel } from "@/lib/filters/schema";
 
@@ -287,34 +287,129 @@ export async function getHonorarium(geoCode: string, geoLevel: GeoLevel): Promis
 export type ChildIndicatorRow = {
   geoCode: string;
   geoName: string;
-  pctAccredited: number | null;
+  /** Validated-profile count (`agg_geo_summary.n_total`) — the small-N basis. */
   nTotal: number | null;
+  pctAccredited: number | null;
+  anyHonorariumPct: number | null;
+  avgActiveYears: number | null;
+  /** Households ÷ total BHWs (StepZero universe). Higher = heavier load. */
+  householdsPerBhw: number | null;
+  /** Validated profiles ÷ StepZero registered universe, capped at 100 — matches
+   * the place-page / summary-strip "profile coverage" figure. */
+  coveragePct: number | null;
 };
 
 /**
- * Accreditation rate for a set of geos — backs the map + ranked-list comparison
- * figure. `n_total` rides along so the map/list can flag small-N children
- * whose rate is unstable (E0.5, `MIN_LEADER_N` threshold).
+ * All base map indicators for a set of geos — backs the map + ranked-list
+ * comparison figure and its indicator switcher (E1.1). Merges three aggregates
+ * by geo_code in one round-trip each:
+ *  - `agg_geo_summary` — pct_accredited, any_honorarium_pct, n_total (profiled);
+ *  - `agg_bhw_counts` — avg_active_years;
+ *  - `agg_bhw_stepzero_counts` (the StepZero companion dataset) — registered/
+ *    accredited universe + households + total BHWs, from which households-per-BHW
+ *    and profile coverage % are derived exactly as `lib/db/stepzero.ts` does.
+ *
+ * `n_total` rides along so the map/list can flag small-N children whose rate is
+ * unstable (E0.5, `MIN_LEADER_N`). Children per parent stay well under the
+ * PostgREST 1,000-row cap for every level this figure renders (national→region
+ * ≈18, region→province ≤~15, province→citymun ≤~50 — national→citymun's 1,639
+ * is never rendered here), so a single `.in()` per table suffices.
  */
 export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndicatorRow[]> {
   const datasetId = await getActiveDatasetId();
   if (datasetId === null || geoCodes.length === 0) return [];
 
   const supabase = createSupabaseServerClient();
+  const stepzeroId = await getDatasetIdBySlug(DATASET_SLUGS.stepzero);
+
+  const [summaryRes, countsRes, stepzeroRes] = await Promise.all([
+    supabase
+      .from("agg_geo_summary")
+      .select("geo_code, geo_name, pct_accredited, any_honorarium_pct, n_total")
+      .eq("dataset_id", datasetId)
+      .in("geo_code", geoCodes),
+    supabase
+      .from("agg_bhw_counts")
+      .select("geo_code, avg_active_years")
+      .eq("dataset_id", datasetId)
+      .in("geo_code", geoCodes),
+    stepzeroId === null
+      ? Promise.resolve({ data: null })
+      : supabase
+          .from("agg_bhw_stepzero_counts")
+          .select("geo_code, n_registered, n_registered_accredited, n_total_bhw, households")
+          .eq("dataset_id", stepzeroId)
+          .in("geo_code", geoCodes),
+  ]);
+
+  if (summaryRes.error || !summaryRes.data) return [];
+
+  const avgByCode = new Map(
+    (countsRes.data ?? []).map((row) => [row.geo_code, row.avg_active_years]),
+  );
+  const stepzeroByCode = new Map((stepzeroRes.data ?? []).map((row) => [row.geo_code, row]));
+
+  return summaryRes.data.map((row) => {
+    const sz = stepzeroByCode.get(row.geo_code);
+    const households = sz?.households ?? null;
+    const totalBhw = sz?.n_total_bhw ?? null;
+    const householdsPerBhw =
+      households !== null && totalBhw !== null && households > 0 && totalBhw > 0
+        ? Math.round(households / totalBhw)
+        : null;
+
+    const registeredUniverse =
+      sz == null || (sz.n_registered === null && sz.n_registered_accredited === null)
+        ? null
+        : (sz.n_registered ?? 0) + (sz.n_registered_accredited ?? 0);
+    const validated = row.n_total;
+    const coveragePct =
+      validated !== null && registeredUniverse !== null && registeredUniverse > 0
+        ? Math.min(100, Math.round((100 * validated) / registeredUniverse))
+        : null;
+
+    return {
+      geoCode: row.geo_code,
+      geoName: row.geo_name,
+      nTotal: row.n_total,
+      pctAccredited: row.pct_accredited,
+      anyHonorariumPct: row.any_honorarium_pct,
+      avgActiveYears: avgByCode.get(row.geo_code) ?? null,
+      householdsPerBhw,
+      coveragePct,
+    };
+  });
+}
+
+export type ChildTrainingRow = { coveragePct: number | null; nTotal: number | null };
+
+/**
+ * Per-topic training coverage for a set of child geos (E1.1) — fetched only when
+ * a `training:<topic>` map indicator is active. `agg_training` exists at
+ * national/region/province/citymun (not barangay), which covers every child
+ * level the map renders. Returns a map keyed by geo_code; absent children map to
+ * no entry (rendered grey), never 0.
+ */
+export async function getChildTrainingCoverage(
+  geoCodes: string[],
+  topicSlug: string,
+): Promise<Map<string, ChildTrainingRow>> {
+  const datasetId = await getActiveDatasetId();
+  if (datasetId === null || geoCodes.length === 0) return new Map();
+
+  const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
-    .from("agg_geo_summary")
-    .select("geo_code, geo_name, pct_accredited, n_total")
+    .from("agg_training")
+    .select("geo_code, coverage_pct, n_total")
     .eq("dataset_id", datasetId)
+    .eq("topic_slug", topicSlug)
     .in("geo_code", geoCodes);
 
-  if (error || !data) return [];
+  if (error || !data) return new Map();
 
-  return data.map((row) => ({
-    geoCode: row.geo_code,
-    geoName: row.geo_name,
-    pctAccredited: row.pct_accredited,
-    nTotal: row.n_total,
-  }));
+  return new Map(
+    data.map((row) => [row.geo_code, { coveragePct: row.coverage_pct, nTotal: row.n_total }]),
+  );
 }
 
 export type ChildSummaryRow = {

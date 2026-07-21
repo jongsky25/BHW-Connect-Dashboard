@@ -30,7 +30,10 @@ export function BreakdownPicker() {
 
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="text-xs font-medium text-muted">Demographic breakdowns</legend>
+      <legend className="text-xs font-medium text-muted">Add demographic figures</legend>
+      <p className="-mt-1 mb-1 text-xs text-muted">
+        Show extra breakdowns of the profiled BHWs here.
+      </p>
       {DEMOGRAPHIC_DIMENSIONS.map((dimension) => (
         <label key={dimension} className="flex items-center gap-2 text-sm">
           <input

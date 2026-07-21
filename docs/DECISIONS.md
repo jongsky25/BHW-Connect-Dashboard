@@ -550,3 +550,248 @@ same caveat as prior entries), so they are deferred to a live pass on the deploy
 ranges are computed from the same `withData` values the ranked list renders, so they match by
 construction. The E0 **telemetry baseline** (XU3: two weeks of map/cascade events before E1) is a
 post-deploy measurement, not a code artifact; E1 development need not block on it.
+
+## 2026-07-21 — Phase E1.1: Explore map indicator switcher
+
+First increment of Phase E1 (EXPLORE_ENHANCEMENT_PLAN.md). Turns the Explore map from
+"a map of accreditation" into a switchable map of the dataset — the highest-value E1 change,
+and the data foundation E1.3 (distribution) / E1.4 (relationships) reuse. Branch off the merged
+E0 `main` (not the E0 branch).
+
+- **New `mapIndicator` URL param.** Added to `lib/filters/schema.ts` (`MAP_BASE_INDICATORS` =
+  `pct_accredited`, `any_honorarium_pct`, `households_per_bhw`, `avg_active_years`, `coverage_pct`;
+  plus `training:<topic_slug>` for per-topic training) and `lib/filters/codec.ts` via a custom
+  `createParser` (base values + a kebab-slug-validated `training:` prefix; everything else
+  `normalizeMapIndicator`s back to the default `pct_accredited` — permalinks degrade, never throw,
+  matching the rest of the codec). Default is omitted from serialized URLs by nuqs. `mapIndicator`
+  is its own param, separate from the per-theme `indicator`. Codec round-trip + `normalizeMapIndicator`
+  unit tests added (`lib/filters/index.test.ts`, now 11 cases).
+- **Data.** `getChildIndicators` widened from accreditation-only to all five base indicators,
+  merging three aggregates by geo_code in one round-trip each: `agg_geo_summary`
+  (pct_accredited, any_honorarium_pct, n_total), `agg_bhw_counts` (avg_active_years), and the
+  StepZero companion `agg_bhw_stepzero_counts` (registered/accredited universe + households +
+  total BHWs). `households_per_bhw` and `coverage_pct` are derived in-helper exactly as
+  `lib/db/stepzero.ts` does. New `getChildTrainingCoverage(codes, topicSlug)` queries `agg_training`
+  and is fetched (in parallel with the base query) only when a `training:` indicator is active.
+  Child counts per parent stay far under the PostgREST 1,000-row cap at every level the map renders
+  (national→region ≈18 … province→citymun ≤~50; national→citymun's 1,639 is never rendered here),
+  so single `.in()`s suffice — documented inline, consistent with `getChildSummaries`.
+- **Coverage denominator — deviation from the plan's literal text, logged per §1.** The plan wrote
+  `coverage_pct = validated / n_total_bhw`. Implemented as `validated / registered-universe`
+  (registered + registered-&-accredited), capped at 100 — i.e. the *exact* figure the summary
+  strip ("X% of registered") and place pages already show via `coverageForDisplay`. Chosen so the
+  E1.1 verify gate ("values spot-checked against place-page figures") holds by construction and the
+  map never contradicts the strip directly above it. Resolves under §1's ground rules (reuse
+  Home/place wording + denominator conventions) and identity rule Q1.
+- **Presentation.** New client-safe `lib/analysis/map-indicators.ts` (no `server-only`, like
+  `thresholds.ts`) holds per-indicator label / headline phrase / axis label / unit suffix /
+  caption denominator as plain strings (crosses the server→client boundary) plus a pure
+  `formatIndicatorValue`. Both the server page (value resolution, caption) and the client figure
+  (switcher, headline, legend) read it. Direction handling: headlines always say "highest
+  {phrase}", never "best/worst" — so `households_per_bhw` (higher = heavier load) carries no valence.
+- **UI.** `GeoComparisonFigure` gained a labeled `<select>` (five base indicators + a "Training
+  coverage" option that reveals a topic `<select>`, disabled when the geo has no training topics).
+  Values/headline/caption/legend all bind to the server-resolved `activeIndicator` (not the
+  optimistic URL read), so the control, the colors, and the ranked list update together on the RSC
+  round-trip — the E0 top progress bar covers the in-between, and a stale `training:` permalink that
+  fell back to accreditation never shows a topic the map isn't rendering. Map recolors, bins
+  recompute (E0.1), ranked list re-sorts, and the caption swaps its denominator per indicator.
+  `logEvent("map_indicator_change", { indicator, childLevel })` fires on change.
+- **Page.** `app/explore/page.tsx` reads `filters.mapIndicator`, validates an active `training:`
+  topic against the parent's available topics (falling back to the default if absent), resolves each
+  child's value server-side, and passes resolved `items` + `activeIndicator` + `meta` + the topic
+  list to the figure. The two big-number cards are untouched here (their removal is E1.2).
+
+**Verify.** `npm run lint` (clean), `npm run typecheck` (clean), `npm test` (91 pass, incl. 5 new
+codec/normalizer cases), and `next build` all run; `next build` compiles + type-checks clean and
+fails only at `/place/[geoLevel]/[geoCode]` page-data collection for lack of `.env.local` Supabase
+credentials — the identical sandbox caveat as the E0 entry, unrelated to this change. The live
+checks the plan lists for E1.1 (each indicator round-tripping through the URL against real data;
+values spot-checked against place-page figures for two geos per indicator; suppressed/absent data
+rendering grey, never 0; `map_indicator_change` landing in `usage_events`; axe on the new switcher
+control) require live DB + browser and are **deferred to the Vercel preview** — not claimed here.
+
+## 2026-07-21 — Phase E1.2: Explore page restructure
+
+Second E1 increment (same branch/PR as E1.1, per the pinned working branch). Reorders
+`app/explore/page.tsx` around the map and removes the two big-number cards.
+
+- **New order.** breadcrumb chips → labeled summary strip → **map figure (hero, full-width)** →
+  [distribution E1.3 / relationships E1.4 slots, marked with a comment for the next increments] →
+  per-theme figure groups (demographics, training, honorarium) → insights. The map figure was
+  lifted out of the 2-column grid to its own full-width block above the groups.
+- **Deleted the two big-number cards** (Accreditation %, Average years of service) and their now-
+  orphaned `FigureCard` / `ExportMenu` imports. Per the plan, their numbers live on elsewhere:
+  both are now stats in the summary strip (for the current geo) and selectable map indicators (for
+  its children). **Note:** the accreditation card's `ExportMenu` (indicator="accreditation") was
+  removed with it; export-menu parity is restored in E1.5 on the appropriate parity figures, per
+  the plan's sequencing — no export route was deleted, only the button placement.
+- **To avoid a regression in the E1.2→E1.3 gap**, the current geo's own accreditation % and avg
+  years are added as strip stats (they were previously only in the deleted cards; the map switcher
+  colours *children*, not the parent, and E1.3's parent-value marker isn't built yet). This is the
+  plain reading of the plan's "their numbers live in the strip and the switcher."
+- **Summary strip upgraded** (plan E1.2): wrapped in a `<section>` with an `aria-labelledby`
+  heading ("{Geo} at a glance"); `GlossaryTerm` on "validated profiles", "accredited", and
+  "households per BHW"; and a collapsed `<details>` reusing `DenominatorExplainer` (the funnel
+  content, not Home's always-open card) so the two-denominator relationship is one click away
+  without duplicating Home. The explainer only renders when StepZero data exists for the geo.
+
+**Verify.** `npm run lint` (clean, no orphaned imports), `npm run typecheck` (clean), `npm test`
+(91 pass — unchanged; this increment is presentational), `next build` compiles + type-checks clean
+(same `/place/*` no-creds caveat). The plan's visual pass at 360 px / 1280 px, axe on the new strip
++ `<details>`, and the PR screenshot need the rendered page and are **deferred to the Vercel
+preview** — not claimed here.
+
+## 2026-07-21 — Phase E1.3: Distribution view ("spread among children")
+
+Third E1 increment (same branch/PR). New `components/explore/distribution-figure.tsx` renders,
+directly below the map, the spread of the **active `mapIndicator`** across the current geo's
+children — answering "is my province's 62% typical or an outlier?".
+
+- **No new query.** Reuses the exact `items` the map figure already resolved for the active
+  indicator; the page additionally computes the parent geo's own value for that indicator from the
+  same sources the summary strip uses (`getBhwCounts` for accreditation / any-honorarium / avg
+  years, `getBhwOverview` for households-per-BHW and coverage %, the parent's `agg_training` row for
+  `training:` topics), so the parent marker and the strip can never disagree (E1.3 verify gate).
+- **Bespoke server-rendered dot-strip** (no client JS — keeps the map/chart budget lazy), in the
+  same honest-comparator idiom as the home `DotStrip`: one dot per child positioned by value, a
+  shaded interquartile band, a median tick, and an accent marker + "{Parent} overall: X" callout.
+  Small-N children (`nTotal < MIN_LEADER_N`) render as hollow dots with a legend note — consistent
+  with the map's E0.5 signaling. The strip is `role="img"` with a full numeric `aria-label` (lowest/
+  p25/median/p75/highest + parent), and the same five-number summary is in `FigureCard`'s technical
+  details, so the visualization has a complete text alternative without duplicating the ranked list.
+- **Headline template** per the plan: "Most {children} fall between {p25} and {p75}[; {outlier}
+  stands out at {value}]." The outlier is a Tukey 1.5·IQR fence pick, only asserted when there are
+  ≥4 children with a real spread (`iqr > 0`) — never manufactured from 2–3 points or a flat
+  distribution. Values format through the shared `formatIndicatorValue`, so units track the
+  indicator (% vs households vs years).
+- **Placement/keying.** Renders only where the map does (national/region/province parents with
+  children); re-keyed on `geoCode + activeMapIndicator` so it recomputes cleanly when the indicator
+  switches.
+
+**Verify.** `npm run lint`, `npm run typecheck` (both clean), `npm test` (91 pass — presentational
+increment), `next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks
+(parent marker visually matches the strip; small-N dots hollow; headline sanity per indicator across
+levels) are **deferred to the Vercel preview**.
+
+### E1.3 follow-up — unified value formatting (strip ⇄ map ⇄ distribution)
+
+Live smoke-check on the preview showed the distribution's parent marker and the summary strip
+displaying the same figure at different precision (avg years 10.5 vs 10.47; accreditation 72% vs
+71.57%) — the same number, but a reviewer would read it as a mismatch against the "parent marker
+matches the strip" gate. Fixed by making `formatIndicatorValue` the single formatter for all of
+them: dropped its whole-number special-case for percentages so it now rounds every non-integer to
+one decimal, identical to the map tooltip (`formatValue`) and legend (`formatEdge`); and the summary
+strip now imports `formatIndicatorValue` for accreditation % and avg years instead of printing the
+raw 2-decimal DB value. Result: strip, map tooltip/legend, headline, mini-card, and the distribution
+marker all render the same value identically (e.g. 71.6% everywhere, 10.5 everywhere).
+
+## 2026-07-21 — Phase E1.4: Relationships view (scatter) + correlation-in-words (S7)
+
+Fourth E1 increment (same branch/PR). New `components/explore/relationship-figure.tsx` renders a
+scatter of the current geo's children on two chosen base indicators, below the distribution view,
+and states the link between them in plain words.
+
+- **Two new URL params `relX` / `relY`** (base-indicator enums; defaults `households_per_bhw` ×
+  `pct_accredited`) in `schema.ts` + `codec.ts`, with round-trip tests. Restricted to the **five
+  base indicators** (not `training:`) to avoid a two-axis topic-picker; training-on-axes is a
+  possible follow-up. No server fetch depends on relX/relY — the scatter has every base value per
+  child already — so switching axes recolors instantly while the URL updates (shallow:false +
+  transition per the §1 ground rule; the client data makes the round-trip a no-op visually).
+- **No new query.** `getChildIndicators` (E1.1) already returns all base values per child; the page
+  hoists that row set (`childIndicators`) so the map, distribution, and scatter share one query.
+- **Correlation-in-words (S7).** New client-safe `lib/analysis/correlation.ts`: Spearman's ρ
+  (tie-aware average ranks → Pearson on ranks), `describeCorrelation` bucketing |ρ| at 0.2 / 0.4 /
+  0.7 (none / weak / moderate / strong) with direction. Small-N children (`nTotal < MIN_LEADER_N`)
+  are **excluded from ρ** and drawn as hollow dots; **< 10 comparable places → "too few places to
+  assess a pattern"** instead of a coefficient. The headline carries the ecological caveat inside
+  the sentence ("This compares places, not individual BHWs"), per the review. Thresholds documented
+  in a new `/methodology#relationships` section. **10 unit tests** cover ρ = ±1, a hand-computed
+  single-swap case (ρ = 0.9), ties/constant → undefined, the strength buckets, and the small-N /
+  insufficient paths.
+- **Bespoke accessible SVG scatter (deviation from the plan's Plot suggestion, logged).** The plan
+  suggested Observable Plot (lazy). Chose a hand-rolled SVG instead because each point is a real
+  `<a href="/place/{level}/{code}">` with an `aria-label` (name + both values + N) and a `<title>`
+  tooltip — keyboard-focusable and screen-reader-navigable, which a Plot-rendered SVG is not. Dot
+  size ∝ profiled BHWs; hollow = small-N. This keeps the page's a11y-first posture (the map's
+  aria-hidden-canvas + accessible-equivalent rule) and adds no chart-lib client JS. Fires
+  `rel_axis_change` telemetry.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass, +10 correlation),
+`next build` compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks (ρ sign/
+strength against hand cases on real data — the unit tests already cover the math; URL round-trip;
+place-page links; axe on the SVG links + selects) are **deferred to the Vercel preview**.
+
+## 2026-07-21 — Phase E1.5: Figure parity + exports
+
+Fifth E1 increment (same branch/PR). Brings the figures Explore was inexplicably shallower on up to
+parity with the place page — but now responding to the geo filter, which the place page (one fixed
+geo) and Home (national only) can't do.
+
+- **Certification.** `CertificationFigure` (training & certification coverage) added to the figure
+  grid, fetched via `getCertification` — built at all five geo levels, so no fallback needed.
+- **Honorarium as one tabbed card.** Replaced the lone by-payer-level `HonorariumFigure` with a
+  `FigureTabs` "Honorarium" card — **Who receives · How much · Distribution** — the exact composition
+  Home uses, reusing `HonorariumFigure` / `HonorariumAmountFigure` / `HonorariumDistributionFigure`
+  unchanged, scoped to the selected geo. Rendered full-width below the grid, as on Home.
+- **Completeness.** `CompletenessFigure` at the current geo (`getDataCompleteness`), with the same
+  barangay→citymun pointer fallback it uses on place pages.
+- **Exports.** `TrainingFigure` and the honorarium figures now receive `geoCode`/`geoLevel` on
+  Explore, so their built-in `ExportMenu`s appear (they were previously omitted here); certification
+  carries its export too. Demographics already had exports. The map/distribution/relationship
+  figures get exports in E5, per the plan — not here.
+- **Benchmarks — re-homed vs the plan's literal placement (logged, per §1 + identity rule Q1).**
+  The plan said "BenchmarkBars vs region/national on accreditation, avg-years, training, honorarium."
+  The place page actually attaches benchmarks to the **accreditation, avg-years, and households-per-
+  BHW scalar cards** — which E1.2 *deleted* from Explore. Rather than reintroduce those cards or
+  invent training/honorarium benchmarks the place page doesn't have, I added one compact "How {geo}
+  compares" section under the summary strip with three `BenchmarkBars` (accreditation %, avg years,
+  households/BHW) vs region + nation — the same three metrics, same `benchmarkRows` shape, and the
+  same ancestor queries (`getBhwCounts`/`getBhwOverview` at national/region) as the place page, so
+  "benchmark values match the place page for the same geo" holds by construction. Hidden at national
+  level (nothing above to compare against); region level compares vs nation only.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass — this increment is
+composition/parity, no new logic to unit-test beyond what E1.1–E1.4 added), `next build` compiles +
+type-checks clean (same `/place/*` no-creds caveat). Live checks (benchmark values match the place
+page for a sample geo; export links resolve for 2 geos; barangay training/completeness show their
+citymun pointers; axe on the tabbed honorarium card) are **deferred to the Vercel preview**.
+
+## 2026-07-21 — Phase E1.6: Sidebar + edge states (Phase E1 complete)
+
+Final E1 increment (same branch/PR).
+
+- **Sidebar `GeoSearch`.** Added the compact `GeoSearch` above the cascade with a new `mode` prop:
+  `mode="explore"` makes a selection navigate to `/explore?geoLevel=…&geoCode=…` (browse in place)
+  instead of the place page — the explore-context behavior the verify gate asks for. Default
+  `mode="place"` leaves Home / place / not-found usages unchanged. Threaded through the keyboard
+  (router.push), result-list, and recents navigation paths.
+- **Breakdown picker.** Retitled its legend "Demographic breakdowns" → **"Add demographic figures"**
+  with a one-line hint ("Show extra breakdowns of the profiled BHWs here"). Component is Explore-only.
+- **Map-absence stub + list-only comparison (edge state).** Refactored the page's `mapChildLevel`
+  into `compareChildLevel`, which now goes one level deeper than the *map*: national→region,
+  region→province, province→citymun, **and citymun→barangay**. Boundary files still stop at citymun
+  polygons (province view), so `mapGeojsonUrl` is null at citymun/barangay. When it's null the page
+  renders a dashed **stub card** ("Maps below the city/municipality level are on the roadmap…",
+  linking `/roadmap`), and — at citymun, where barangay children exist — the `GeoComparisonFigure`
+  renders **list-only** (it already guards the choropleth/legend on `geojsonUrl`), so the stub's
+  "ranked list below covers every barangay" is literally true. The distribution and relationships
+  views render at citymun too (they never needed a map). Barangay is a leaf: stub only, no list.
+- **Barangay training guard.** `agg_training` has no barangay rows, so the switcher's training option
+  is suppressed (empty `trainingTopics`) when the children are barangays, rather than offering a
+  topic every child would render as no-data.
+- **Known follow-up (logged, not a blocker):** a large city (e.g. ~140 barangays) makes the
+  list-only *bar* view tall; the figure's chart/table toggle mitigates it, and the plan asks for
+  "every barangay", so the list is intentionally uncapped. A per-level default-to-table or top-N
+  affordance could refine this later.
+
+**Verify.** `npm run lint`, `npm run typecheck` (clean), `npm test` (101 pass), `next build`
+compiles + type-checks clean (same `/place/*` no-creds caveat). Live checks (sidebar search stays on
+`/explore` with new geo params; stub shows only at citymun/barangay; citymun barangay list renders;
+axe on the new sidebar search + stub) are **deferred to the Vercel preview**.
+
+**Phase E1 release gate.** All six increments (E1.1–E1.6) are merged into this branch/PR. The
+full-cascade Playwright pass (national→barangay exercising switcher/distribution/relationships/parity
+figures), the Lighthouse budget re-check, and the telemetry comparison vs the E0 baseline are
+live/deploy-time activities (no Supabase creds or browser here) and remain **deferred to the preview
++ post-deploy** — called out rather than claimed.

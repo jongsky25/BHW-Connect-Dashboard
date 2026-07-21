@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadFilterState, serializeFilterState } from "./codec";
-import { NATIONAL_GEO_CODE } from "./schema";
+import { NATIONAL_GEO_CODE, normalizeMapIndicator } from "./schema";
 
 describe("filter codec", () => {
   it("round-trips a full filter state through URL <-> state", () => {
@@ -8,6 +8,9 @@ describe("filter codec", () => {
       geoLevel: "province" as const,
       geoCode: "050400000",
       indicator: "training" as const,
+      mapIndicator: "households_per_bhw" as const,
+      relX: "avg_active_years" as const,
+      relY: "coverage_pct" as const,
       compareGeos: ["050400000", "137400000"],
       breakdowns: ["sex" as const, "age_band" as const],
     };
@@ -32,8 +35,32 @@ describe("filter codec", () => {
     expect(parsed.geoLevel).toBe("national");
     expect(parsed.geoCode).toBe(NATIONAL_GEO_CODE);
     expect(parsed.indicator).toBeNull();
+    expect(parsed.mapIndicator).toBe("pct_accredited");
+    expect(parsed.relX).toBe("households_per_bhw");
+    expect(parsed.relY).toBe("pct_accredited");
     expect(parsed.compareGeos).toBeNull();
     expect(parsed.breakdowns).toBeNull();
+  });
+
+  it("round-trips a per-topic training map indicator through the URL", () => {
+    const url = serializeFilterState("/explore", {
+      geoLevel: "region",
+      geoCode: "040000000",
+      mapIndicator: "training:maternal-health",
+    });
+    const params = new URL(url, "http://localhost").searchParams;
+    expect(params.get("mapIndicator")).toBe("training:maternal-health");
+    expect(loadFilterState(params).mapIndicator).toBe("training:maternal-health");
+  });
+
+  it("falls back to the default map indicator for unknown or malformed values", () => {
+    expect(loadFilterState(new URLSearchParams("mapIndicator=not-real")).mapIndicator).toBe(
+      "pct_accredited",
+    );
+    // A `training:` prefix with an invalid (non-kebab) slug degrades, never throws.
+    expect(loadFilterState(new URLSearchParams("mapIndicator=training:Bad Slug")).mapIndicator).toBe(
+      "pct_accredited",
+    );
   });
 
   it("falls back to the national view for an invalid geoLevel, never throwing", () => {
@@ -61,5 +88,34 @@ describe("filter codec", () => {
         new URLSearchParams("geoLevel=%00&geoCode=&indicator=[object Object]&geos=,,,"),
       ),
     ).not.toThrow();
+  });
+});
+
+describe("normalizeMapIndicator", () => {
+  it("passes through every base indicator", () => {
+    for (const v of [
+      "pct_accredited",
+      "any_honorarium_pct",
+      "households_per_bhw",
+      "avg_active_years",
+      "coverage_pct",
+    ]) {
+      expect(normalizeMapIndicator(v)).toBe(v);
+    }
+  });
+
+  it("accepts a well-formed training slug", () => {
+    expect(normalizeMapIndicator("training:maternal-health")).toBe("training:maternal-health");
+    expect(normalizeMapIndicator("training:tb")).toBe("training:tb");
+  });
+
+  it("defaults for empty, unknown, or malformed input", () => {
+    expect(normalizeMapIndicator(null)).toBe("pct_accredited");
+    expect(normalizeMapIndicator(undefined)).toBe("pct_accredited");
+    expect(normalizeMapIndicator("")).toBe("pct_accredited");
+    expect(normalizeMapIndicator("bhw_per_1000")).toBe("pct_accredited");
+    expect(normalizeMapIndicator("training:")).toBe("pct_accredited");
+    expect(normalizeMapIndicator("training:Bad Slug")).toBe("pct_accredited");
+    expect(normalizeMapIndicator("training:-leading")).toBe("pct_accredited");
   });
 });

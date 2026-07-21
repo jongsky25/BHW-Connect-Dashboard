@@ -1,24 +1,48 @@
+import Link from "next/link";
 import { loadFilterState } from "@/lib/filters/codec";
-import { DEFAULT_BREAKDOWNS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
+import {
+  DEFAULT_BREAKDOWNS,
+  DEFAULT_MAP_INDICATOR,
+  NATIONAL_GEO_CODE,
+  mapIndicatorTopicSlug,
+  type GeoLevel,
+  type MapBaseIndicator,
+  type MapIndicator,
+} from "@/lib/filters/schema";
 import { getChildGeos, getGeoAncestors, resolveGeoOrNational } from "@/lib/db/geo";
 import {
   getBhwCounts,
+  getCertification,
   getChildIndicators,
+  getChildTrainingCoverage,
   getDemographics,
   getHonorarium,
   getTrainingCoverage,
+  type ChildIndicatorRow,
 } from "@/lib/db/indicators";
+import { getDataCompleteness } from "@/lib/db/data-quality";
+import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
+import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getInsights } from "@/lib/db/insights";
 import { GeoCascade } from "@/components/filters/geo-cascade";
 import { BreakdownPicker } from "@/components/filters/breakdown-picker";
+import { GeoSearch } from "@/components/home/geo-search";
 import { ActiveFilterChips, type BreadcrumbStep } from "@/components/filters/active-filter-chips";
-import { FigureCard } from "@/components/narrative/figure-card";
-import { ExportMenu } from "@/components/narrative/export-menu";
+import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { DenominatorExplainer } from "@/components/home/denominator-explainer";
+import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
+import { FigureTabs } from "@/components/ui/figure-tabs";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
+import { CertificationFigure } from "@/components/explore/certification-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
+import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
+import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
+import { DistributionFigure } from "@/components/explore/distribution-figure";
+import { RelationshipFigure } from "@/components/explore/relationship-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
@@ -30,10 +54,34 @@ const CHILD_LEVEL_LABEL: Record<GeoLevel, string> = {
   barangay: "Barangay",
 };
 
+const CHILD_LEVEL_LABEL_PLURAL: Record<GeoLevel, string> = {
+  national: "Regions",
+  region: "Provinces",
+  province: "Cities/Municipalities",
+  citymun: "Barangays",
+  barangay: "Barangays",
+};
+
 export const metadata = { title: "Explore" };
 
 function captionFor(nProfiles: number | null, geoName: string) {
   return `N = ${nProfiles !== null ? nProfiles.toLocaleString() : "—"} validated profiles · ${geoName} · 2025 snapshot`;
+}
+
+/** Pick a child's value for one base map indicator (E1.1). */
+function mapBaseValue(row: ChildIndicatorRow, indicator: MapBaseIndicator): number | null {
+  switch (indicator) {
+    case "pct_accredited":
+      return row.pctAccredited;
+    case "any_honorarium_pct":
+      return row.anyHonorariumPct;
+    case "households_per_bhw":
+      return row.householdsPerBhw;
+    case "avg_active_years":
+      return row.avgActiveYears;
+    case "coverage_pct":
+      return row.coveragePct;
+  }
 }
 
 export default async function ExplorePage({
@@ -54,6 +102,13 @@ export default async function ExplorePage({
   // before batch two's three queries could even start.
   const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
 
+  // Benchmark context (E1.5, mirroring the place page): this place vs its region
+  // and the nation. National is fetched only below the national level; the region
+  // only below region level, so a region page never benchmarks against itself.
+  const showBenchmarks = geo.geoLevel !== "national";
+  const regionBenchmark =
+    geo.geoLevel !== "national" && geo.geoLevel !== "region" ? ancestors.region : null;
+
   const [
     regions,
     overview,
@@ -61,10 +116,16 @@ export default async function ExplorePage({
     demographicsByDimension,
     training,
     honorarium,
+    certification,
+    completeness,
     provinces,
     citymuns,
     barangays,
     insights,
+    nationalOverview,
+    nationalCounts,
+    regionOverview,
+    regionCounts,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
     getBhwOverview(geo.geoCode, geo.geoLevel),
@@ -77,11 +138,27 @@ export default async function ExplorePage({
     ),
     getTrainingCoverage(geo.geoCode, geo.geoLevel),
     getHonorarium(geo.geoCode, geo.geoLevel),
+    getCertification(geo.geoCode, geo.geoLevel),
+    getDataCompleteness(geo.geoCode, geo.geoLevel),
     ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
     ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
     ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
     getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
+    showBenchmarks ? getBhwOverview(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+    showBenchmarks ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+    regionBenchmark ? getBhwOverview(regionBenchmark.geoCode, "region") : Promise.resolve(null),
+    regionBenchmark ? getBhwCounts(regionBenchmark.geoCode, "region") : Promise.resolve(null),
   ]);
+
+  const benchmarkRows = (
+    place: number | null,
+    region: number | null,
+    national: number | null,
+  ): BenchmarkRow[] => [
+    { label: "This place", value: place, isPrimary: true },
+    ...(regionBenchmark ? [{ label: regionBenchmark.geoName, value: region }] : []),
+    { label: "Philippines", value: national },
+  ];
 
   const breadcrumbSteps: BreadcrumbStep[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
@@ -120,17 +197,20 @@ export default async function ExplorePage({
   const caption = captionFor(overview.validatedProfiles ?? null, geo.geoName);
   const coverage = coverageForDisplay(overview);
 
-  // Map-capable levels only go down to citymun (BUILD_PLAN.md §2/§4.3 — barangay
-  // choropleths are deferred to Phase 2's PMTiles work). At citymun/barangay,
-  // this figure is simply omitted rather than shown broken/empty.
-  const mapChildLevel: GeoLevel | null =
+  // The children the comparison figure ranks. This goes one level deeper than the
+  // *map* (E1.6): national→region, region→province, province→citymun, and
+  // citymun→barangay. Only the first three have boundary files; at citymun the
+  // figure renders list-only (no choropleth) with the map-absence stub above it.
+  const compareChildLevel: GeoLevel | null =
     geo.geoLevel === "national"
       ? "region"
       : geo.geoLevel === "region"
         ? "province"
         : geo.geoLevel === "province"
           ? "citymun"
-          : null;
+          : geo.geoLevel === "citymun"
+            ? "barangay"
+            : null;
   const mapChildren =
     geo.geoLevel === "national"
       ? regions
@@ -138,7 +218,12 @@ export default async function ExplorePage({
         ? provinces
         : geo.geoLevel === "province"
           ? citymuns
-          : [];
+          : geo.geoLevel === "citymun"
+            ? barangays
+            : [];
+  // Boundary files exist only down to citymun polygons (province view); barangay
+  // choropleths are deferred to Phase 2's PMTiles work (BUILD_PLAN §2/§4.3), so
+  // at citymun the map is absent and only the ranked list renders.
   const mapGeojsonUrl =
     geo.geoLevel === "national"
       ? "/geo/regions.json"
@@ -147,14 +232,101 @@ export default async function ExplorePage({
         : geo.geoLevel === "province"
           ? `/geo/citymun/${geo.geoCode}.json`
           : null;
-  const childIndicators = mapChildLevel
-    ? await getChildIndicators(mapChildren.map((c) => c.geoCode))
-    : [];
+  // Indicator switcher (E1.1). Topics come from the parent's training rows; an
+  // active `training:` indicator whose topic isn't available here falls back to
+  // the default accreditation view so a stale permalink never shows all-grey.
+  // `agg_training` has no barangay rows, so the switcher's training option is
+  // suppressed when the children are barangays (citymun view) — otherwise it
+  // would offer a topic every child renders as no-data.
+  const trainingTopics =
+    compareChildLevel === "barangay"
+      ? []
+      : training
+          .filter((r) => r.topicSlug)
+          .map((r) => ({ slug: r.topicSlug, label: r.topicLabel ?? r.topicSlug }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+  const requestedSlug = mapIndicatorTopicSlug(filters.mapIndicator);
+  const activeMapIndicator: MapIndicator =
+    requestedSlug !== null && !trainingTopics.some((t) => t.slug === requestedSlug)
+      ? DEFAULT_MAP_INDICATOR
+      : filters.mapIndicator;
+  const activeSlug = mapIndicatorTopicSlug(activeMapIndicator);
+  const activeTopicLabel = activeSlug
+    ? (trainingTopics.find((t) => t.slug === activeSlug)?.label ?? activeSlug)
+    : null;
+  const mapMeta = metaForIndicator(activeMapIndicator, activeTopicLabel);
+
+  let mapItems: ChildIndicator[] = [];
+  // Full base-indicator rows per child, shared by the map (mapItems) and the
+  // relationships scatter (E1.4, which needs every base value, not just the
+  // active one) — one query, two figures.
+  let childIndicators: ChildIndicatorRow[] = [];
+  if (compareChildLevel) {
+    const childCodes = mapChildren.map((c) => c.geoCode);
+    const [childRows, trainingCoverage] = await Promise.all([
+      getChildIndicators(childCodes),
+      activeSlug ? getChildTrainingCoverage(childCodes, activeSlug) : Promise.resolve(null),
+    ]);
+    childIndicators = childRows;
+    mapItems = childIndicators.map((c) => {
+      if (trainingCoverage) {
+        const t = trainingCoverage.get(c.geoCode);
+        return {
+          geoCode: c.geoCode,
+          geoName: c.geoName,
+          value: t?.coveragePct ?? null,
+          nTotal: t?.nTotal ?? c.nTotal,
+        };
+      }
+      return {
+        geoCode: c.geoCode,
+        geoName: c.geoName,
+        value: mapBaseValue(c, activeMapIndicator as MapBaseIndicator),
+        nTotal: c.nTotal,
+      };
+    });
+  }
+
+  // The parent geo's own value for the active indicator — the distribution
+  // figure's marker (E1.3), sourced identically to the summary strip so the two
+  // never disagree.
+  let parentValue: number | null = null;
+  if (activeSlug) {
+    parentValue = training.find((r) => r.topicSlug === activeSlug)?.coveragePct ?? null;
+  } else {
+    switch (activeMapIndicator as MapBaseIndicator) {
+      case "pct_accredited":
+        parentValue = counts?.pctAccredited ?? null;
+        break;
+      case "any_honorarium_pct":
+        parentValue = counts?.anyHonorariumPct ?? null;
+        break;
+      case "households_per_bhw":
+        parentValue = overview.householdsPerBhw;
+        break;
+      case "avg_active_years":
+        parentValue = counts?.avgActiveYears ?? null;
+        break;
+      case "coverage_pct":
+        parentValue = coverage;
+        break;
+    }
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
       <h1 className="sr-only">Explore BHW figures for {geo.geoName}</h1>
       <aside className="flex flex-col gap-6 lg:w-64 lg:shrink-0">
+        {/* Jump straight to any place without walking the cascade (E1.6). In
+            explore mode the search stays on /explore with the geo applied as
+            filters, rather than leaving for the place page. */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted" htmlFor="geo-search-input">
+            Jump to a place
+          </label>
+          <GeoSearch variant="compact" mode="explore" />
+        </div>
         <GeoCascade
           regions={regions}
           provinces={provinces}
@@ -173,84 +345,212 @@ export default async function ExplorePage({
       <div className="flex flex-1 flex-col gap-6">
         <ActiveFilterChips steps={breadcrumbSteps} />
 
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
-          <span>
-            <span className="font-semibold">{overview.totalBhw?.toLocaleString() ?? "—"}</span>{" "}
-            <span className="text-muted">total BHWs</span>
-          </span>
-          <span>
-            <span className="font-semibold">
-              {overview.validatedProfiles?.toLocaleString() ?? "—"}
-            </span>{" "}
-            <span className="text-muted">
-              validated profiles{coverage !== null ? ` (${coverage}% of registered)` : ""}
-            </span>
-          </span>
-          {overview.householdsPerBhw !== null && (
+        {/* Summary strip (E1.2): labeled, glossary-linked, with a collapsed
+            denominator explainer. The two big-number cards (accreditation, avg
+            years) were removed — their figures live here and, for children, in
+            the map indicator switcher. */}
+        <section
+          aria-labelledby="area-summary-heading"
+          className="rounded-lg border border-border bg-surface px-4 py-3"
+        >
+          <h2
+            id="area-summary-heading"
+            className="text-xs font-semibold uppercase tracking-wide text-muted"
+          >
+            {geo.geoName} at a glance
+          </h2>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
             <span>
-              <span className="font-semibold">{overview.householdsPerBhw.toLocaleString()}</span>{" "}
-              <span className="text-muted">households per BHW</span>
+              <span className="font-semibold">{overview.totalBhw?.toLocaleString() ?? "—"}</span>{" "}
+              <span className="text-muted">total BHWs</span>
             </span>
-          )}
-          {!overview.hasStepzero && (
-            <span className="text-xs text-muted">
-              Quick-count total not available for this area.
+            <span>
+              <span className="font-semibold">
+                {overview.validatedProfiles?.toLocaleString() ?? "—"}
+              </span>{" "}
+              <span className="text-muted">
+                <GlossaryTerm slug="validated_profile">validated profiles</GlossaryTerm>
+                {coverage !== null ? ` (${coverage}% of registered)` : ""}
+              </span>
             </span>
+            <span>
+              <span className="font-semibold">
+                {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
+                  ? formatIndicatorValue(counts.pctAccredited, "%")
+                  : "—"}
+              </span>{" "}
+              <span className="text-muted">
+                <GlossaryTerm slug="accredited">accredited</GlossaryTerm>
+              </span>
+            </span>
+            <span>
+              <span className="font-semibold">
+                {counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
+                  ? formatIndicatorValue(counts.avgActiveYears, "")
+                  : "—"}
+              </span>{" "}
+              <span className="text-muted">avg years of service</span>
+            </span>
+            {overview.householdsPerBhw !== null && (
+              <span>
+                <span className="font-semibold">
+                  {overview.householdsPerBhw.toLocaleString()}
+                </span>{" "}
+                <span className="text-muted">
+                  <GlossaryTerm slug="households_per_bhw">households per BHW</GlossaryTerm>
+                </span>
+              </span>
+            )}
+            {!overview.hasStepzero && (
+              <span className="text-xs text-muted">
+                Quick-count total not available for this area.
+              </span>
+            )}
+          </div>
+          {overview.hasStepzero && (
+            <details className="mt-2.5 text-xs">
+              <summary className="cursor-pointer text-muted hover:text-accent">
+                How are these BHWs counted?
+              </summary>
+              <div className="mt-2">
+                <DenominatorExplainer
+                  totalBhw={overview.totalBhw}
+                  registeredUniverse={overview.registeredUniverse}
+                  validatedProfiles={overview.validatedProfiles}
+                  coveragePct={coverage}
+                />
+              </div>
+            </details>
           )}
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <FigureCard
-            title="Accreditation"
-            caption={caption}
-            exportMenu={
-              <ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />
-            }
-            headline={
-              counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-                ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
-                : "No accreditation data available."
-            }
-            technicalDetails={
-              <p>
-                {counts?.nAccredited?.toLocaleString() ?? "—"} of{" "}
-                {counts?.nTotal?.toLocaleString() ?? "—"} validated profiles are accredited (
-                {counts?.pctAccredited ?? "—"}%).
-              </p>
-            }
+        {/* Benchmark context (E1.5): the strip's three headline figures vs this
+            area's region and the nation — the "versus what?" the deleted big-
+            number cards used to answer, re-homed here since Explore is geo-first.
+            Hidden at the national level (nothing above it to compare against). */}
+        {showBenchmarks && (
+          <section
+            aria-labelledby="benchmark-heading"
+            className="rounded-lg border border-border bg-surface px-4 py-3"
           >
-            <p className="text-4xl font-semibold tracking-tight">
-              {counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
-                ? `${counts.pctAccredited}%`
-                : "—"}
-            </p>
-          </FigureCard>
-
-          <FigureCard
-            title="Average years of service"
-            caption={caption}
-            headline={
-              counts?.avgActiveYears !== null && counts?.avgActiveYears !== undefined
-                ? `BHWs here have served an average of ${counts.avgActiveYears} years.`
-                : "No service-year data available."
-            }
-            technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
-          >
-            <p className="text-4xl font-semibold tracking-tight">{counts?.avgActiveYears ?? "—"}</p>
-          </FigureCard>
-
-          {mapChildLevel && (
-            <div className="xl:col-span-2">
-              <GeoComparisonFigure
-                key={geo.geoCode}
-                geojsonUrl={mapGeojsonUrl}
-                childLevel={mapChildLevel}
-                childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
-                items={childIndicators}
-                caption={caption}
-              />
+            <h2
+              id="benchmark-heading"
+              className="text-xs font-semibold uppercase tracking-wide text-muted"
+            >
+              How {geo.geoName} compares
+            </h2>
+            <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
+              <div>
+                <p className="mb-1 text-xs font-medium">% accredited</p>
+                <BenchmarkBars
+                  rows={benchmarkRows(
+                    counts?.pctAccredited ?? null,
+                    regionCounts?.pctAccredited ?? null,
+                    nationalCounts?.pctAccredited ?? null,
+                  )}
+                  format="percent"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium">Avg years of service</p>
+                <BenchmarkBars
+                  rows={benchmarkRows(
+                    counts?.avgActiveYears ?? null,
+                    regionCounts?.avgActiveYears ?? null,
+                    nationalCounts?.avgActiveYears ?? null,
+                  )}
+                  format="count"
+                  unitSuffix="yrs"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium">Households per BHW</p>
+                <BenchmarkBars
+                  rows={benchmarkRows(
+                    overview.householdsPerBhw,
+                    regionOverview?.householdsPerBhw ?? null,
+                    nationalOverview?.householdsPerBhw ?? null,
+                  )}
+                  format="count"
+                  unitSuffix="hh/BHW"
+                />
+              </div>
             </div>
-          )}
+          </section>
+        )}
+
+        {/* Map-absence stub (E1.6) — at citymun/barangay there's no choropleth
+            (barangay boundaries are on the roadmap). At citymun the ranked list
+            still renders below; barangay is a leaf with no children to rank. */}
+        {mapGeojsonUrl === null && (
+          <div className="rounded-lg border border-dashed border-border bg-surface/60 px-4 py-3 text-sm">
+            <p className="font-medium">Maps below the city/municipality level are on the roadmap.</p>
+            <p className="mt-1 text-muted">
+              {compareChildLevel
+                ? `Barangay choropleths aren't available yet, so the ranked list below covers every barangay in ${geo.geoName}.`
+                : `Barangay-level maps aren't available yet — the figures below describe ${geo.geoName}.`}{" "}
+              <Link href="/roadmap" className="underline hover:text-accent">
+                See the roadmap
+              </Link>
+              .
+            </p>
+          </div>
+        )}
+
+        {/* Comparison figure (E1.2 hero) — the indicator switcher is the page's
+            centerpiece. Full choropleth at national/region/province; list-only
+            (no boundary file) at citymun, under the stub above. */}
+        {compareChildLevel && (
+          <GeoComparisonFigure
+            key={geo.geoCode}
+            geojsonUrl={mapGeojsonUrl}
+            childLevel={compareChildLevel}
+            childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
+            items={mapItems}
+            caption={caption}
+            activeIndicator={activeMapIndicator}
+            meta={mapMeta}
+            trainingTopics={trainingTopics}
+          />
+        )}
+
+        {/* Distribution view (E1.3) — spread of the active indicator across
+            children, reusing the map's data. */}
+        {compareChildLevel && mapItems.length > 0 && (
+          <DistributionFigure
+            key={`${geo.geoCode}-${activeMapIndicator}`}
+            items={mapItems}
+            parentValue={parentValue}
+            parentName={geo.geoName}
+            childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
+            childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
+            meta={mapMeta}
+            caption={caption}
+          />
+        )}
+
+        {/* Relationships view (E1.4) — scatter of children on two chosen
+            indicators + Spearman-in-words, reusing the same child rows. */}
+        {compareChildLevel && childIndicators.length > 0 && (
+          <RelationshipFigure
+            key={geo.geoCode}
+            points={childIndicators}
+            childLevel={compareChildLevel}
+            childLevelLabelPlural={CHILD_LEVEL_LABEL_PLURAL[geo.geoLevel]}
+            caption={caption}
+          />
+        )}
+
+        {/* Per-theme figure groups (E1.5 parity): certification, demographics,
+            training, and completeness — each now responding to the geo filter,
+            with exports, matching what the place page shows for one geo. */}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <CertificationFigure
+            rows={certification}
+            caption={caption}
+            geoCode={geo.geoCode}
+            geoLevel={geo.geoLevel}
+          />
 
           {demographicsByDimension.map(({ dimension, rows }) => (
             <DemographicsFigure
@@ -268,10 +568,60 @@ export default async function ExplorePage({
             caption={caption}
             geoLevel={geo.geoLevel}
             citymunAncestor={ancestors.citymun}
+            geoCode={geo.geoCode}
           />
 
-          <HonorariumFigure rows={honorarium} caption={caption} />
+          <CompletenessFigure
+            rows={completeness}
+            caption={caption}
+            geoLevel={geo.geoLevel}
+            citymunAncestor={ancestors.citymun}
+          />
         </div>
+
+        {/* One honorarium story told three ways — tabbed, exactly as Home does
+            it, but scoped to the selected geo (E1.5). */}
+        <FigureTabs
+          heading="Honorarium"
+          tabs={[
+            {
+              id: "who",
+              label: "Who receives",
+              content: (
+                <HonorariumFigure
+                  rows={honorarium}
+                  caption={caption}
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                />
+              ),
+            },
+            {
+              id: "amount",
+              label: "How much",
+              content: (
+                <HonorariumAmountFigure
+                  rows={honorarium}
+                  caption={caption}
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                />
+              ),
+            },
+            {
+              id: "distribution",
+              label: "Distribution",
+              content: (
+                <HonorariumDistributionFigure
+                  rows={honorarium}
+                  caption={caption}
+                  geoCode={geo.geoCode}
+                  geoLevel={geo.geoLevel}
+                />
+              ),
+            },
+          ]}
+        />
 
         <InsightsGrid insights={insights} geoLevel={geo.geoLevel} geoName={geo.geoName} />
       </div>
