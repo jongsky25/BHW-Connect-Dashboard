@@ -197,6 +197,63 @@ export default async function MethodologyPage() {
         </ul>
       </section>
 
+      <section id="adjusted-rates" className="flex flex-col gap-2 scroll-mt-6">
+        <h2 className="text-lg font-semibold">
+          Joining waves, workload, honorarium inequality, and adjusted rates
+        </h2>
+        <ul className="list-inside list-disc">
+          <li>
+            <strong>Joining waves.</strong> How many of today&apos;s profiled BHWs reached each
+            milestone — first became active, registered, accredited — in each year, read from the
+            2025 snapshot. Years are as recorded in that snapshot. This is not a picture of the
+            workforce over time: it counts only BHWs still in the 2025 registry, so anyone who joined
+            and left before 2025 is not shown. Read it as &ldquo;when today&apos;s BHWs
+            arrived,&rdquo; never as a headcount per year.
+          </li>
+          <li>
+            <strong>Household workload.</strong> The spread of assigned households per BHW
+            (10th/25th/median/75th/90th percentile), plus the &ldquo;busiest 10%&rdquo; share — how
+            much of an area&apos;s total assigned households fall to its highest-caseload tenth of
+            BHWs (10% would be perfectly even; higher means load concentrates on fewer workers).
+            Household counts are self-reported; counts of zero are excluded. Built down to the
+            city/municipality level and hidden where fewer than 5 BHWs report a count.
+          </li>
+          <li>
+            <strong>Honorarium inequality.</strong> Among BHWs who receive any{" "}
+            <GlossaryTerm slug="honorarium">honorarium</GlossaryTerm> in an area, we total each
+            person&apos;s monthly honorarium across every paying level and measure how unevenly those
+            totals are spread: the <GlossaryTerm slug="gini">Gini coefficient</GlossaryTerm> (0 =
+            everyone equal, 1 = one person receives all) and the p90:p10 ratio (the best-paid
+            tenth&apos;s floor divided by the least-paid tenth&apos;s ceiling). Hidden where fewer
+            than 5 BHWs receive honorarium, since a spread over 1–4 amounts could reveal an
+            individual&apos;s pay.
+          </li>
+          <li>
+            <strong>Support by LGU income class.</strong> Accreditation, any-honorarium share, and
+            median honorarium grouped by the{" "}
+            <GlossaryTerm slug="income_class">income class</GlossaryTerm> of each BHW&apos;s
+            city/municipality (1st highest, 6th lowest) — a national-scope equity lens. Income
+            classes are the values currently in the dataset and will be refreshed from the 2024
+            DOF/BLGF reclassification in a later release.
+          </li>
+          <li>
+            <strong>Adjusted accreditation rate.</strong> A raw percentage from a place with only a
+            handful of profiled BHWs is noisy — one person swings it several points. The{" "}
+            <GlossaryTerm slug="adjusted_rate">adjusted rate</GlossaryTerm> shrinks each small-area
+            raw rate toward its parent area&apos;s pooled rate, using an empirical-Bayes
+            (DerSimonian–Laird random-effects) estimate of how much real spread there is between
+            neighbouring areas. Where neighbours genuinely differ, rates barely move; where the
+            spread looks like noise, small areas are pulled toward the typical nearby value. A large,
+            well-measured area keeps almost its raw rate. Worked example: a municipality with 13
+            profiled BHWs and a raw 38% accreditation, in a province averaging 81%, is adjusted to
+            about 57% — the small sample is nudged toward its province without erasing its real
+            difference. Only computed at the city/municipality and barangay levels, where small
+            numbers occur; regions and the nation are always shown raw. Raw is the default everywhere;
+            the adjusted view is an opt-in toggle, always labelled.
+          </li>
+        </ul>
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">Privacy &amp; suppression</h2>
         <p>
@@ -213,6 +270,13 @@ export default async function MethodologyPage() {
           <li>The dataset is a single snapshot, not a live registry — figures don&apos;t update in real time.</li>
           <li>Sex is heavily skewed female in the underlying data, which is why sex breakdowns hit suppression routinely at the barangay level.</li>
           <li>A handful of places have no matching map boundary due to source-data vintage differences — see /data-quality.</li>
+          <li>
+            Retention and attrition can&apos;t be measured from this snapshot. Because it records
+            only BHWs still active in 2025, anyone who left earlier is absent, so every starting
+            cohort appears almost fully &ldquo;retained&rdquo; — a survivorship artefact, not a real
+            finding. We therefore don&apos;t publish a retention curve; the joining-waves figure is
+            framed strictly as when today&apos;s BHWs arrived.
+          </li>
         </ul>
       </section>
 

@@ -21,6 +21,12 @@ import {
   type ChildIndicatorRow,
 } from "@/lib/db/indicators";
 import { getDataCompleteness, type CompletenessRow } from "@/lib/db/data-quality";
+import {
+  getCohorts,
+  getWorkload,
+  getHonorariumInequality,
+  getIncomeClassEquity,
+} from "@/lib/db/derived-figures";
 import { formatIndicatorValue, metaForIndicator } from "@/lib/analysis/map-indicators";
 import { computeDataQualityGrade } from "@/lib/analysis/data-quality-grade";
 import type { ChildIndicator } from "@/components/explore/geo-comparison-figure";
@@ -48,6 +54,10 @@ import { PeerRankChip } from "@/components/explore/peer-rank-chip";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
 import { RelationshipFigure } from "@/components/explore/relationship-figure";
+import { CohortsFigure } from "@/components/explore/cohorts-figure";
+import { WorkloadFigure } from "@/components/explore/workload-figure";
+import { HonorariumInequalityFigure } from "@/components/explore/honorarium-inequality-figure";
+import { IncomeClassFigure } from "@/components/explore/income-class-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 
@@ -116,6 +126,14 @@ export default async function ExplorePage({
   const regionBenchmark =
     geo.geoLevel !== "national" && geo.geoLevel !== "region" ? ancestors.region : null;
 
+  // E3 derived figures (cohorts, workload, honorarium inequality) are built down
+  // to citymun only; a barangay falls back to its citymun ancestor, labeled —
+  // mirroring the training/completeness fallback.
+  const figureFallback = geo.geoLevel === "barangay" ? ancestors.citymun : null;
+  const figureCode = figureFallback ? figureFallback.geoCode : geo.geoCode;
+  const figureLevel: GeoLevel = figureFallback ? "citymun" : geo.geoLevel;
+  const figureFallbackName = figureFallback ? figureFallback.geoName : null;
+
   const [
     regions,
     overview,
@@ -134,6 +152,10 @@ export default async function ExplorePage({
     nationalCounts,
     regionOverview,
     regionCounts,
+    cohorts,
+    workload,
+    honorariumInequality,
+    incomeClassEquity,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
     getBhwOverview(geo.geoCode, geo.geoLevel),
@@ -161,6 +183,10 @@ export default async function ExplorePage({
     showBenchmarks ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
     regionBenchmark ? getBhwOverview(regionBenchmark.geoCode, "region") : Promise.resolve(null),
     regionBenchmark ? getBhwCounts(regionBenchmark.geoCode, "region") : Promise.resolve(null),
+    getCohorts(figureCode, figureLevel),
+    getWorkload(figureCode, figureLevel),
+    getHonorariumInequality(figureCode, figureLevel),
+    geo.geoLevel === "national" ? getIncomeClassEquity() : Promise.resolve([]),
   ]);
 
   const benchmarkRows = (
@@ -280,6 +306,10 @@ export default async function ExplorePage({
   const mapMeta = metaForIndicator(activeMapIndicator, activeTopicLabel);
 
   let mapItems: ChildIndicator[] = [];
+  // Empirical-Bayes adjusted values per child for the accreditation map (E3.6),
+  // populated only when accreditation is active and the children are at
+  // citymun/barangay grain (the levels adjusted). Undefined hides the toggle.
+  let adjustedMapItems: ChildIndicator[] | undefined;
   // Full base-indicator rows per child, shared by the map (mapItems) and the
   // relationships scatter (E1.4, which needs every base value, not just the
   // active one) — one query, two figures.
@@ -308,6 +338,19 @@ export default async function ExplorePage({
         nTotal: c.nTotal,
       };
     });
+
+    if (
+      activeMapIndicator === "pct_accredited" &&
+      (compareChildLevel === "citymun" || compareChildLevel === "barangay") &&
+      childIndicators.some((c) => c.adjustedPctAccredited !== null)
+    ) {
+      adjustedMapItems = childIndicators.map((c) => ({
+        geoCode: c.geoCode,
+        geoName: c.geoName,
+        value: c.adjustedPctAccredited,
+        nTotal: c.nTotal,
+      }));
+    }
   }
 
   // The parent geo's own value for the active indicator — the distribution
@@ -568,6 +611,7 @@ export default async function ExplorePage({
             childLevel={compareChildLevel}
             childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
             items={mapItems}
+            adjustedItems={adjustedMapItems}
             caption={caption}
             activeIndicator={activeMapIndicator}
             meta={mapMeta}
@@ -655,7 +699,28 @@ export default async function ExplorePage({
             geoLevel={geo.geoLevel}
             citymunAncestor={ancestors.citymun}
           />
+
+          {/* Workload distribution (E3.4) — how many households each BHW covers. */}
+          <WorkloadFigure
+            row={workload}
+            caption={caption}
+            geoLevel={geo.geoLevel}
+            fallbackCitymunName={figureFallbackName}
+          />
         </div>
+
+        {/* Joining waves (E3.2) — when today's BHWs reached each milestone. */}
+        <CohortsFigure
+          rows={cohorts}
+          caption={caption}
+          geoLevel={geo.geoLevel}
+          fallbackCitymunName={figureFallbackName}
+        />
+
+        {/* Income-class equity (E3.7) — national scope only. */}
+        {geo.geoLevel === "national" && incomeClassEquity.length > 0 && (
+          <IncomeClassFigure rows={incomeClassEquity} caption={caption} />
+        )}
 
         {/* One honorarium story told three ways — tabbed, exactly as Home does
             it, but scoped to the selected geo (E1.5). */}
@@ -695,6 +760,18 @@ export default async function ExplorePage({
                   caption={caption}
                   geoCode={geo.geoCode}
                   geoLevel={geo.geoLevel}
+                />
+              ),
+            },
+            {
+              id: "inequality",
+              label: "Inequality",
+              content: (
+                <HonorariumInequalityFigure
+                  row={honorariumInequality}
+                  caption={caption}
+                  geoLevel={geo.geoLevel}
+                  fallbackCitymunName={figureFallbackName}
                 />
               ),
             },
