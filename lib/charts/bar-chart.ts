@@ -1,7 +1,7 @@
 import * as Plot from "@observablehq/plot";
 import { accent } from "./palette";
 
-export type BarDatum = { label: string; value: number; count?: number };
+export type BarDatum = { label: string; value: number; count?: number; geoCode?: string };
 
 /**
  * Horizontal bar chart spec, shared between the client-rendered explore

@@ -21,7 +21,11 @@ function SortButton({
   children: ReactNode;
 }) {
   return (
-    <button type="button" onClick={onClick} className="flex items-center gap-1 font-medium hover:text-accent">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1 font-medium hover:text-accent"
+    >
       {children}
       {active && <span aria-hidden="true">{dir === "desc" ? "▼" : "▲"}</span>}
     </button>
@@ -43,15 +47,26 @@ export function FigureTable({
   valueHeader = "Value",
   valueFormatter = (n: number) => n.toLocaleString(),
   valueKind = "count",
+  hoveredGeoCode,
+  onHoverGeoCode,
 }: {
   data: BarDatum[];
   labelHeader?: string;
   valueHeader?: string;
   valueFormatter?: (n: number) => string;
   valueKind?: "count" | "percent" | "amount";
+  /** When set, the row whose `geoCode` matches is highlighted — the ranked-list
+   * half of the map <-> list linked hover (E0.4). */
+  hoveredGeoCode?: string | null;
+  /** Called with a row's `geoCode` (or null on leave) so hovering a list row
+   * can outline the matching map polygon. */
+  onHoverGeoCode?: (code: string | null) => void;
 }) {
   const defaultSort: SortColumn = valueKind === "amount" ? "value" : "percent";
-  const [sort, setSort] = useState<{ column: SortColumn; dir: SortDir }>({ column: defaultSort, dir: "desc" });
+  const [sort, setSort] = useState<{ column: SortColumn; dir: SortDir }>({
+    column: defaultSort,
+    dir: "desc",
+  });
 
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const rows = data.map((d) => ({
@@ -62,14 +77,20 @@ export function FigureTable({
 
   const sorted = [...rows].sort((a, b) => {
     const key = (r: (typeof rows)[number]) =>
-      sort.column === "count" ? (r.count ?? -Infinity) : sort.column === "percent" ? r.percent : r.value;
+      sort.column === "count"
+        ? (r.count ?? -Infinity)
+        : sort.column === "percent"
+          ? r.percent
+          : r.value;
     const diff = key(a) - key(b);
     return sort.dir === "desc" ? -diff : diff;
   });
 
   function toggleSort(column: SortColumn) {
     setSort((prev) =>
-      prev.column === column ? { column, dir: prev.dir === "desc" ? "asc" : "desc" } : { column, dir: "desc" },
+      prev.column === column
+        ? { column, dir: prev.dir === "desc" ? "asc" : "desc" }
+        : { column, dir: "desc" },
     );
   }
 
@@ -86,19 +107,31 @@ export function FigureTable({
             <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium">{labelHeader}</th>
             {valueKind === "amount" ? (
               <th className="px-3 py-2 sm:px-4 sm:py-3" aria-sort={ariaSortFor("value")}>
-                <SortButton active={sort.column === "value"} dir={sort.dir} onClick={() => toggleSort("value")}>
+                <SortButton
+                  active={sort.column === "value"}
+                  dir={sort.dir}
+                  onClick={() => toggleSort("value")}
+                >
                   {valueHeader}
                 </SortButton>
               </th>
             ) : (
               <>
                 <th className="px-3 py-2 sm:px-4 sm:py-3" aria-sort={ariaSortFor("count")}>
-                  <SortButton active={sort.column === "count"} dir={sort.dir} onClick={() => toggleSort("count")}>
+                  <SortButton
+                    active={sort.column === "count"}
+                    dir={sort.dir}
+                    onClick={() => toggleSort("count")}
+                  >
                     No.
                   </SortButton>
                 </th>
                 <th className="px-3 py-2 sm:px-4 sm:py-3" aria-sort={ariaSortFor("percent")}>
-                  <SortButton active={sort.column === "percent"} dir={sort.dir} onClick={() => toggleSort("percent")}>
+                  <SortButton
+                    active={sort.column === "percent"}
+                    dir={sort.dir}
+                    onClick={() => toggleSort("percent")}
+                  >
                     %
                   </SortButton>
                 </th>
@@ -108,13 +141,24 @@ export function FigureTable({
         </thead>
         <tbody>
           {sorted.map((d) => (
-            <tr key={d.label} className="border-b border-border last:border-0 hover:bg-surface">
+            <tr
+              key={d.label}
+              onMouseEnter={
+                d.geoCode && onHoverGeoCode ? () => onHoverGeoCode(d.geoCode!) : undefined
+              }
+              onMouseLeave={d.geoCode && onHoverGeoCode ? () => onHoverGeoCode(null) : undefined}
+              className={`border-b border-border last:border-0 hover:bg-surface ${
+                d.geoCode && hoveredGeoCode === d.geoCode ? "bg-accent-subtle" : ""
+              }`}
+            >
               <td className="px-3 py-2 sm:px-4 sm:py-3">{d.label}</td>
               {valueKind === "amount" ? (
                 <td className="px-3 py-2 sm:px-4 sm:py-3">{valueFormatter(d.value)}</td>
               ) : (
                 <>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">{d.count != null ? formatCount(d.count) : "—"}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">
+                    {d.count != null ? formatCount(d.count) : "—"}
+                  </td>
                   <td className="px-3 py-2 sm:px-4 sm:py-3">{Math.round(d.percent * 10) / 10}%</td>
                 </>
               )}

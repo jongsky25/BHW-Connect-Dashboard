@@ -54,31 +54,67 @@ export default async function ExplorePage({
   // before batch two's three queries could even start.
   const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
 
-  const [regions, overview, counts, demographicsByDimension, training, honorarium, provinces, citymuns, barangays, insights] =
-    await Promise.all([
-      getChildGeos(NATIONAL_GEO_CODE, "national"),
-      getBhwOverview(geo.geoCode, geo.geoLevel),
-      getBhwCounts(geo.geoCode, geo.geoLevel),
-      Promise.all(
-        breakdowns.map(async (dimension) => ({
-          dimension,
-          rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
-        })),
-      ),
-      getTrainingCoverage(geo.geoCode, geo.geoLevel),
-      getHonorarium(geo.geoCode, geo.geoLevel),
-      ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
-      ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
-      ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
-      getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
-    ]);
+  const [
+    regions,
+    overview,
+    counts,
+    demographicsByDimension,
+    training,
+    honorarium,
+    provinces,
+    citymuns,
+    barangays,
+    insights,
+  ] = await Promise.all([
+    getChildGeos(NATIONAL_GEO_CODE, "national"),
+    getBhwOverview(geo.geoCode, geo.geoLevel),
+    getBhwCounts(geo.geoCode, geo.geoLevel),
+    Promise.all(
+      breakdowns.map(async (dimension) => ({
+        dimension,
+        rows: await getDemographics(geo.geoCode, geo.geoLevel, [dimension]),
+      })),
+    ),
+    getTrainingCoverage(geo.geoCode, geo.geoLevel),
+    getHonorarium(geo.geoCode, geo.geoLevel),
+    ancestors.region ? getChildGeos(ancestors.region.geoCode, "region") : Promise.resolve([]),
+    ancestors.province ? getChildGeos(ancestors.province.geoCode, "province") : Promise.resolve([]),
+    ancestors.citymun ? getChildGeos(ancestors.citymun.geoCode, "citymun") : Promise.resolve([]),
+    getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
+  ]);
 
   const breadcrumbSteps: BreadcrumbStep[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
-    ...(ancestors.region ? [{ label: ancestors.region.geoName, geoLevel: "region" as const, geoCode: ancestors.region.geoCode }] : []),
-    ...(ancestors.province ? [{ label: ancestors.province.geoName, geoLevel: "province" as const, geoCode: ancestors.province.geoCode }] : []),
-    ...(ancestors.citymun ? [{ label: ancestors.citymun.geoName, geoLevel: "citymun" as const, geoCode: ancestors.citymun.geoCode }] : []),
-    ...(geo.geoLevel === "barangay" ? [{ label: geo.geoName, geoLevel: "barangay" as const, geoCode: geo.geoCode }] : []),
+    ...(ancestors.region
+      ? [
+          {
+            label: ancestors.region.geoName,
+            geoLevel: "region" as const,
+            geoCode: ancestors.region.geoCode,
+          },
+        ]
+      : []),
+    ...(ancestors.province
+      ? [
+          {
+            label: ancestors.province.geoName,
+            geoLevel: "province" as const,
+            geoCode: ancestors.province.geoCode,
+          },
+        ]
+      : []),
+    ...(ancestors.citymun
+      ? [
+          {
+            label: ancestors.citymun.geoName,
+            geoLevel: "citymun" as const,
+            geoCode: ancestors.citymun.geoCode,
+          },
+        ]
+      : []),
+    ...(geo.geoLevel === "barangay"
+      ? [{ label: geo.geoName, geoLevel: "barangay" as const, geoCode: geo.geoCode }]
+      : []),
   ];
 
   const caption = captionFor(overview.validatedProfiles ?? null, geo.geoName);
@@ -88,8 +124,21 @@ export default async function ExplorePage({
   // choropleths are deferred to Phase 2's PMTiles work). At citymun/barangay,
   // this figure is simply omitted rather than shown broken/empty.
   const mapChildLevel: GeoLevel | null =
-    geo.geoLevel === "national" ? "region" : geo.geoLevel === "region" ? "province" : geo.geoLevel === "province" ? "citymun" : null;
-  const mapChildren = geo.geoLevel === "national" ? regions : geo.geoLevel === "region" ? provinces : geo.geoLevel === "province" ? citymuns : [];
+    geo.geoLevel === "national"
+      ? "region"
+      : geo.geoLevel === "region"
+        ? "province"
+        : geo.geoLevel === "province"
+          ? "citymun"
+          : null;
+  const mapChildren =
+    geo.geoLevel === "national"
+      ? regions
+      : geo.geoLevel === "region"
+        ? provinces
+        : geo.geoLevel === "province"
+          ? citymuns
+          : [];
   const mapGeojsonUrl =
     geo.geoLevel === "national"
       ? "/geo/regions.json"
@@ -98,7 +147,9 @@ export default async function ExplorePage({
         : geo.geoLevel === "province"
           ? `/geo/citymun/${geo.geoCode}.json`
           : null;
-  const childIndicators = mapChildLevel ? await getChildIndicators(mapChildren.map((c) => c.geoCode)) : [];
+  const childIndicators = mapChildLevel
+    ? await getChildIndicators(mapChildren.map((c) => c.geoCode))
+    : [];
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row">
@@ -128,7 +179,9 @@ export default async function ExplorePage({
             <span className="text-muted">total BHWs</span>
           </span>
           <span>
-            <span className="font-semibold">{overview.validatedProfiles?.toLocaleString() ?? "—"}</span>{" "}
+            <span className="font-semibold">
+              {overview.validatedProfiles?.toLocaleString() ?? "—"}
+            </span>{" "}
             <span className="text-muted">
               validated profiles{coverage !== null ? ` (${coverage}% of registered)` : ""}
             </span>
@@ -140,7 +193,9 @@ export default async function ExplorePage({
             </span>
           )}
           {!overview.hasStepzero && (
-            <span className="text-xs text-muted">Quick-count total not available for this area.</span>
+            <span className="text-xs text-muted">
+              Quick-count total not available for this area.
+            </span>
           )}
         </div>
 
@@ -148,7 +203,9 @@ export default async function ExplorePage({
           <FigureCard
             title="Accreditation"
             caption={caption}
-            exportMenu={<ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />}
+            exportMenu={
+              <ExportMenu geoCode={geo.geoCode} geoLevel={geo.geoLevel} indicator="accreditation" />
+            }
             headline={
               counts?.pctAccredited !== null && counts?.pctAccredited !== undefined
                 ? `About ${Math.round(counts.pctAccredited)}% of profiled BHWs here are accredited.`
@@ -156,8 +213,9 @@ export default async function ExplorePage({
             }
             technicalDetails={
               <p>
-                {counts?.nAccredited?.toLocaleString() ?? "—"} of {counts?.nTotal?.toLocaleString() ?? "—"}{" "}
-                validated profiles are accredited ({counts?.pctAccredited ?? "—"}%).
+                {counts?.nAccredited?.toLocaleString() ?? "—"} of{" "}
+                {counts?.nTotal?.toLocaleString() ?? "—"} validated profiles are accredited (
+                {counts?.pctAccredited ?? "—"}%).
               </p>
             }
           >
@@ -178,14 +236,13 @@ export default async function ExplorePage({
             }
             technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
           >
-            <p className="text-4xl font-semibold tracking-tight">
-              {counts?.avgActiveYears ?? "—"}
-            </p>
+            <p className="text-4xl font-semibold tracking-tight">{counts?.avgActiveYears ?? "—"}</p>
           </FigureCard>
 
           {mapChildLevel && (
             <div className="xl:col-span-2">
               <GeoComparisonFigure
+                key={geo.geoCode}
                 geojsonUrl={mapGeojsonUrl}
                 childLevel={mapChildLevel}
                 childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
