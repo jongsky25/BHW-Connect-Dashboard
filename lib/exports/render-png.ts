@@ -144,7 +144,7 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
     <rect width="100%" height="100%" fill="#ffffff"/>
     <text x="${MARGIN}" y="26" font-size="20" font-weight="600" font-family="system-ui, sans-serif" fill="#1a1d1e">${escapeXml(data.title)}</text>
     <text x="${MARGIN}" y="46" font-size="12" font-family="system-ui, sans-serif" fill="#57616a">${escapeXml(data.caption)}</text>
-    <svg x="${MARGIN}" y="${HEADER_H}" width="${chart.width}" height="${chart.height}" viewBox="${viewBox}">${inner}</svg>
+    <svg x="${MARGIN}" y="${HEADER_H}" width="${chart.width}" height="${chart.height}" viewBox="${viewBox}" color="#1a1d1e">${inner}</svg>
     <text x="${MARGIN}" y="${HEADER_H + chart.height + 24}" font-size="13" font-family="system-ui, sans-serif" fill="#1a1d1e">${escapeXml(data.headline)}</text>
     ${benchmarkSvg(MARGIN, HEADER_H + chart.height + 44, lines)}
     ${footerSvg(MARGIN, height - FOOTER_H + FOOTER_LINE_H)}

@@ -193,6 +193,9 @@ const accreditationSpread: InsightGenerator = {
       category: "Equity",
       headline: `Accreditation ranges from ${Math.round(metric(spread.bottom) as number)}% in ${spread.bottom.geoName} to ${Math.round(metric(spread.top) as number)}% in ${spread.top.geoName} — a ${spread.gap}-point gap between ${noun}s${scopeSuffix}.`,
       caption: `${ranked.length} ${noun}s compared · ${ctx.geoName} · 2025 snapshot`,
+      // Click through to the accreditation choropleth for this geo, where the
+      // full child-by-child spread behind the headline is visible (feedback #8).
+      href: `/explore?geoLevel=${ctx.geoLevel}&geoCode=${ctx.geoCode}&mapIndicator=pct_accredited`,
       score: 50 + Math.min(spread.gap, 40) / 2,
     };
   },

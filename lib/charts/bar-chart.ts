@@ -39,8 +39,9 @@ export function horizontalBarSpec(
   const compact = width < 520;
   const longestLabel = Math.max(0, ...data.map((d) => d.label.length));
   // Reserve just enough of the left gutter for the longest y-axis label, but
-  // cap it so a narrow plot still leaves usable room for the bars.
-  const marginLeft = Math.min(compact ? 128 : 200, Math.max(56, longestLabel * 7 + 14));
+  // cap it so a narrow plot still leaves usable room for the bars. The per-char
+  // factor tracks the slightly larger tick font set via `style.fontSize` below.
+  const marginLeft = Math.min(compact ? 136 : 210, Math.max(60, longestLabel * 8 + 16));
   const barHeight = Math.min(options.barHeight ?? 32, compact ? 40 : 200);
   // Render the y-axis title horizontally along the top (labelAnchor "top")
   // rather than rotated in the left gutter, where — even with a widened margin
@@ -53,10 +54,14 @@ export function horizontalBarSpec(
     // Reserve room for the value label drawn past the end of the longest
     // bar — without it, a wide value (e.g. "201,653") can clip against the
     // plot's right edge on a narrow/responsive width.
-    marginRight: compact ? 44 : 56,
+    marginRight: compact ? 48 : 60,
     marginTop: hasYTitle ? 34 : undefined,
     width,
     height: Math.max(80, data.length * barHeight + 20 + (hasYTitle ? 20 : 0)),
+    // Slightly larger tick/label text than Plot's ~10px default, for readability
+    // (user feedback: text too small). Axis titles are enlarged further in
+    // styleAxisTitles; text color is themed via `fill: currentColor` there.
+    style: { fontSize: "13px" },
     x: { label: options.xLabel ?? null, grid: true, nice: true },
     y: { label: options.yLabel ?? null, labelAnchor: "top" },
     marks: [
@@ -70,6 +75,9 @@ export function horizontalBarSpec(
         text: (d: BarDatum) => `${format(d.value)}${suffix}`,
         dx: 6,
         textAnchor: "start",
+        // Themed text — follows the container's CSS color so value labels stay
+        // readable in dark mode (styleAxisTitles enforces the same on all text).
+        fill: "currentColor",
         sort: { y: "-x" },
       }),
       Plot.tip(

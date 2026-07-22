@@ -27,14 +27,19 @@
   --danger: #b3261e;
   --warning: #8a5a00;
 
-  /* Type scale (major third, 1.25) */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.25rem;
-  --font-size-xl: 1.5625rem;
-  --font-size-2xl: 1.953rem;
-  --font-size-3xl: 2.441rem;
+  /* Type scale (major third, 1.25). Bumped one notch from a 1rem to a 1.0625rem
+     base for readability (user feedback: text too small) — the whole scale is
+     shifted up proportionally so the 1.25 ratio and vertical rhythm are kept.
+     The per-user "Font size" accessibility setting (data-font-size, below) still
+     composes on top of this. */
+  --font-size-xs: 0.8125rem;
+  --font-size-sm: 0.9375rem;
+  --font-size-base: 1.0625rem;
+  --font-size-lg: 1.33rem;
+  --font-size-xl: 1.66rem;
+  --font-size-2xl: 2.07rem;
+  --font-size-3xl: 2.59rem;
+  --font-size-4xl: 3.11rem;
 
   /* Spacing scale (4px base) */
   --space-1: 0.25rem;
@@ -78,6 +83,9 @@
   --text-xl: var(--font-size-xl);
   --text-2xl: var(--font-size-2xl);
   --text-3xl: var(--font-size-3xl);
+  /* Register text-4xl too so the KPI stat numbers (which use text-4xl) track the
+     app scale instead of falling back to Tailwind's built-in 2.25rem. */
+  --text-4xl: var(--font-size-4xl);
 }
 
 /* ---------------------------------------------------------------------------

@@ -8,23 +8,45 @@
 export function StackedMiniBar({
   segments,
   ariaLabel,
+  showLegend = false,
 }: {
   segments: { label: string; value: number; color: string }[];
   ariaLabel: string;
+  /** Render a visible color→label key beneath the bar. The bar's segments are
+   * otherwise unlabeled, so multi-color mixes read as an unexplained gradient
+   * (user feedback #13: "add a legend to this graph for clarity"). */
+  showLegend?: boolean;
 }) {
   const total = segments.reduce((sum, s) => sum + s.value, 0);
   return (
-    <div role="img" aria-label={ariaLabel} className="flex h-3 w-full overflow-hidden rounded-full bg-surface">
-      {total > 0 &&
-        segments.map(
-          (s) =>
-            s.value > 0 && (
+    <div>
+      <div role="img" aria-label={ariaLabel} className="flex h-3 w-full overflow-hidden rounded-full bg-surface">
+        {total > 0 &&
+          segments.map(
+            (s) =>
+              s.value > 0 && (
+                <span
+                  key={s.label}
+                  style={{ width: `${(100 * s.value) / total}%`, backgroundColor: s.color }}
+                />
+              ),
+          )}
+      </div>
+      {showLegend && (
+        <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted" aria-hidden="true">
+          {segments.map((s) => (
+            <li key={s.label} className="flex items-center gap-1.5">
               <span
-                key={s.label}
-                style={{ width: `${(100 * s.value) / total}%`, backgroundColor: s.color }}
+                className="inline-block size-2.5 shrink-0 rounded-[3px]"
+                style={{ backgroundColor: s.color }}
               />
-            ),
-        )}
+              <span>
+                {s.label} · {s.value.toLocaleString()}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -62,7 +84,10 @@ export function Donut({
   );
 }
 
-/** Compact vertical stack of thin bars, darkest-to-lightest ramp, one rung per row. */
+/** Compact vertical stack of thin bars, darkest-to-lightest ramp, one rung per
+ * row. Each rung is labeled with its category and percentage so the ramp isn't
+ * an unexplained set of colored bars (user feedback #14: "add a legend to this
+ * graph for clarity"). */
 export function LadderBars({
   rows,
   ariaLabel,
@@ -72,16 +97,26 @@ export function LadderBars({
 }) {
   const max = Math.max(1, ...rows.map((r) => r.pct));
   return (
-    <div role="img" aria-label={ariaLabel} className="flex flex-col gap-0.5">
+    <div role="img" aria-label={ariaLabel} className="flex flex-col gap-1.5">
       {rows.map((r, i) => (
-        <div key={r.label} className="h-1.5 rounded-full bg-surface">
-          <div
-            className="h-full rounded-full"
-            style={{
-              width: `${(100 * r.pct) / max}%`,
-              backgroundColor: `var(--seq-${Math.min(7, i + 1)})`,
-            }}
-          />
+        <div key={r.label} className="grid grid-cols-[1fr_auto] items-center gap-x-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted">
+            <span
+              className="inline-block size-2 shrink-0 rounded-[2px]"
+              style={{ backgroundColor: `var(--seq-${Math.min(7, i + 1)})` }}
+            />
+            <span className="truncate">{r.label}</span>
+          </div>
+          <span className="text-xs tabular-nums text-muted">{r.pct}%</span>
+          <div className="col-span-2 h-1.5 rounded-full bg-surface">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${(100 * r.pct) / max}%`,
+                backgroundColor: `var(--seq-${Math.min(7, i + 1)})`,
+              }}
+            />
+          </div>
         </div>
       ))}
     </div>
@@ -192,12 +227,31 @@ export function DotStrip({
           style={{ left: left(marker), backgroundColor: "var(--accent)" }}
         />
       </div>
-      <div className="mt-0.5 flex justify-between text-[0.65rem] text-muted" aria-hidden="true">
+      <div className="mt-0.5 flex justify-between text-[0.7rem] text-muted" aria-hidden="true">
         <span>0</span>
         <span>
           regions {lowest.toLocaleString()}–{highest.toLocaleString()}
         </span>
       </div>
+      {/* Key: the visual was reported as unclear — "I don't understand the
+          significance of the dots" (user feedback #12). Spell out that each
+          faint dot is one region and the accent tick is this area's value. */}
+      <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.7rem] text-muted" aria-hidden="true">
+        <li className="flex items-center gap-1.5">
+          <span
+            className="inline-block size-2 shrink-0 rounded-full opacity-60"
+            style={{ backgroundColor: "var(--seq-3)" }}
+          />
+          <span>each dot = one region</span>
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-3 w-1 shrink-0 rounded-full"
+            style={{ backgroundColor: "var(--accent)" }}
+          />
+          <span>this area</span>
+        </li>
+      </ul>
     </div>
   );
 }
