@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/admin/changelog", label: "Changelog" },
   { href: "/admin/ingestion", label: "Ingestion history" },
   { href: "/admin/ai-quota", label: "AI quota" },
+  { href: "/admin/answer-bank", label: "Answer bank" },
 ];
 
 export function AdminNav() {

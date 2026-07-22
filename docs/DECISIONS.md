@@ -1408,3 +1408,34 @@ service-role-only `ai_ask_log` table, and single-turn questions are answered fro
 `ask-cache.test.ts`/`ask-log.test.ts`) all clean. Live behavior verified against the Vercel
 preview after applying the two migrations: first ask of a fresh question answers live and lands
 in log + bank; the identical ask answers instantly with `cached: true` and no `tool_call` events.
+
+## 2026-07-22 — Ask-the-Data answer bank: admin curation (A3)
+
+Implements Phase A3 of `docs/ASK_CACHE_PLAN.md`: the `/admin/answer-bank` surface that turns the
+raw capture into a deliberately curated FAQ layer, plus a savings signal on the admin overview.
+
+- **`lib/db/ask-bank.ts`** (service-role reads/writes, same convention as `usage-analytics.ts`):
+  `listAskBank` (stored answers, most-hit first), `listFrequentQuestions` (log grouped by
+  normalized question — "what people actually ask", bounded in-memory scan like the usage
+  dashboard), `getAskCacheSavings` (live vs. cache-hit counts from `usage_events` → hit rate),
+  and the curation mutations `setAskBankStatus` / `updateAskBankAnswer` / `deleteAskBankEntry`.
+- **`/admin/answer-bank` page + actions**: three cards (cache hits, live calls, hit rate over
+  30d); the stored-answer worklist with per-entry approve / block / reset-to-auto, an inline
+  answer editor (Save & approve — pins the edit so write-back can't clobber it), and delete; and
+  a most-asked-questions table from the log. Every server action re-checks `getAdminUser()`
+  itself — a form on an admin page is not proof the request is authorized (feedback/actions.ts
+  discipline). Nav link + an overview card added.
+- **Curation semantics** reuse the invariants A2 already enforces: `block` both makes the serving
+  path miss the question (always live) and — since `storeAskAnswer` never overwrites a non-`auto`
+  row — stops it being repopulated; `approve`/edit pin an entry against write-back; `delete` is
+  for a bad `auto` capture you want regenerated fresh (vs. `block`, which suppresses permanently).
+- **Theming fix caught in review:** first pass used raw `red-*` + Tailwind `dark:` classes; the
+  app themes via a `data-theme` attribute with semantic tokens (no `dark:` usage anywhere), so
+  switched to the existing `--color-danger` token, which adapts in both themes.
+
+Deferred (unchanged from plan): A3.3 refresh-on-ingest precompute for `approved` entries (extends
+the daily narrative cron) and A4 trigram near-match (gated on measured hit rate).
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (148 tests incl. new
+`ask-bank.test.ts`) all clean; the two A1/A2 migrations are already applied to the live project so
+the page reads real captured rows.
