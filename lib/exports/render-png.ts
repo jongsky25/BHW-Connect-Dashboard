@@ -21,8 +21,10 @@ import { formatBenchmarkLine, type ExportFigureData } from "./figure-data";
 const FONT_DIR = path.join(process.cwd(), "lib", "exports", "fonts");
 const DEFAULT_FONT_FAMILY = "DejaVu Sans";
 
-/** Font config shared by every `new Resvg(...)` call in this module. */
-function resvgFont() {
+/** Font config shared by every `new Resvg(...)` call — also reused by the profiling-status
+ * one-pager (lib/exports/profiling-status-figure.ts) so both rasterize with the same
+ * bundled fonts. */
+export function resvgFont() {
   return {
     fontFiles: [path.join(FONT_DIR, "DejaVuSans.ttf"), path.join(FONT_DIR, "DejaVuSans-Bold.ttf")],
     loadSystemFonts: false,
@@ -30,7 +32,7 @@ function resvgFont() {
   };
 }
 
-function escapeXml(value: string): string {
+export function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

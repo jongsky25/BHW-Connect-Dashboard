@@ -73,6 +73,10 @@ export const DATASET_SLUGS = {
   /** PSA 2024 Census of Population — the preferred per-capita denominator (E4.2),
    * with StepZero's self-reported population as the fallback until it is loaded. */
   popcen2024: "psa-popcen-2024",
+  /** 2026 encoding-status snapshot — how far individual profiling has progressed
+   * (Encode → Validate → Certify). Read only by slug; kept separate from the 2025
+   * datasets (see lib/db/profiling-status.ts). */
+  profilingStatus: "bhw-profiling-status-2026",
 } as const;
 
 /**

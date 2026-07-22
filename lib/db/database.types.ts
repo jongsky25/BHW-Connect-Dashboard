@@ -346,6 +346,69 @@ export type Database = {
           },
         ];
       };
+      agg_bhw_profiling_status: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          n_accredited: number;
+          n_approved: number;
+          n_back_to_encoder: number;
+          n_drafted: number;
+          n_for_validation: number;
+          n_registered: number;
+          n_total_bhw: number;
+          n_unregistered: number;
+          n_validated: number;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_accredited?: number;
+          n_approved?: number;
+          n_back_to_encoder?: number;
+          n_drafted?: number;
+          n_for_validation?: number;
+          n_registered?: number;
+          n_total_bhw?: number;
+          n_unregistered?: number;
+          n_validated?: number;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_accredited?: number;
+          n_approved?: number;
+          n_back_to_encoder?: number;
+          n_drafted?: number;
+          n_for_validation?: number;
+          n_registered?: number;
+          n_total_bhw?: number;
+          n_unregistered?: number;
+          n_validated?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_bhw_profiling_status_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_bhw_profiling_status_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_bhw_stepzero_counts: {
         Row: {
           dataset_id: number;

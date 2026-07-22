@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
     // so include the fonts explicitly for both export functions.
     "/api/export/png": ["./lib/exports/fonts/*.ttf"],
     "/api/export/pptx": ["./lib/exports/fonts/*.ttf"],
+    "/api/export/profiling-status": ["./lib/exports/fonts/*.ttf"],
   },
 };
 

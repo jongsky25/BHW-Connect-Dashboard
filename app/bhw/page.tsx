@@ -17,6 +17,7 @@ import type { BarDatum } from "@/lib/charts/bar-chart";
 import { NATIONAL_GEO_CODE } from "@/lib/filters/schema";
 import { formatCount, formatPct } from "@/lib/format";
 import { GeoSearch } from "@/components/home/geo-search";
+import { ProfilingStatusCard } from "@/components/home/profiling-status-card";
 import { StatHero } from "@/components/home/stat-hero";
 import { StatTile } from "@/components/home/stat-tile";
 import { Donut, DotStrip, Gauge, LadderBars } from "@/components/home/mini-viz";
@@ -351,6 +352,10 @@ export default async function Home() {
               }
             />
           </section>
+        </PresentationSlide>
+
+        <PresentationSlide id="profiling-status" title="BHW Profiling Status (2026)">
+          <ProfilingStatusCard />
         </PresentationSlide>
 
         <PresentationSlide id="denominator" title="How BHWs are counted">
