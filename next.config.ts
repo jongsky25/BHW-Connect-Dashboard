@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
   // public/ files into the function and the locator would silently vanish.
   outputFileTracingIncludes: {
     "/place/[geoLevel]/[geoCode]": ["./public/geo/**/*"],
+    // Server-side PNG/PPTX exports rasterize with @resvg/resvg-js, which needs
+    // real font files at runtime (lib/exports/render-png.ts) — Vercel's
+    // serverless runtime has no system fonts, so without bundling the fonts
+    // every text node renders blank. The tracer can't see the readFileSync,
+    // so include the fonts explicitly for both export functions.
+    "/api/export/png": ["./lib/exports/fonts/*.ttf"],
+    "/api/export/pptx": ["./lib/exports/fonts/*.ttf"],
   },
 };
 
