@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOrGenerateNarrative } from "@/lib/ai/narrative";
+import { refreshApprovedAskAnswers } from "@/lib/ai/ask-refresh";
 import { getAllGeosAtLevels, getGeoByCode } from "@/lib/db/geo";
 import { getTopVisitedGeos } from "@/lib/db/usage-analytics";
 import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
@@ -8,6 +9,11 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const TIME_BUDGET_MS = 50_000;
+// Reserve for refreshing curated answer-bank entries (A3.3). Runs first: on a normal day there
+// are no stale `approved` entries so it returns near-instantly and narratives keep the full
+// budget; only after an ingestion (version bump) does it consume its slice, and coverage of both
+// fills over a few days per this cron's existing philosophy.
+const ASK_REFRESH_DEADLINE_MS = 15_000;
 const TOP_VISITED_LIMIT = 20;
 
 function isAuthorized(request: Request): boolean {
@@ -36,6 +42,12 @@ export async function GET(request: Request) {
   }
 
   const started = Date.now();
+
+  // A3.3: proactively regenerate curated (approved) answer-bank entries under the current dataset
+  // version so the first visitor after an ingestion still gets an instant answer. Bounded and
+  // self-yielding — near-zero cost on days with no version bump.
+  const askRefresh = await refreshApprovedAskAnswers({ startedAt: started, deadlineMs: ASK_REFRESH_DEADLINE_MS });
+
   const [regionsAndProvinces, topVisited] = await Promise.all([
     getAllGeosAtLevels(["region", "province"]),
     getTopVisitedGeos(TOP_VISITED_LIMIT),
@@ -75,6 +87,7 @@ export async function GET(request: Request) {
     generated,
     ranOutOfTime,
     remainingAfterTimeout: ranOutOfTime ? targets.length - attempted : 0,
+    askRefresh,
     durationMs: Date.now() - started,
   });
 }

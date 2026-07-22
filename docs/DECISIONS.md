@@ -1439,3 +1439,40 @@ the daily narrative cron) and A4 trigram near-match (gated on measured hit rate)
 **Verify.** `npm run lint`, `npm run typecheck`, `npm test` (148 tests incl. new
 `ask-bank.test.ts`) all clean; the two A1/A2 migrations are already applied to the live project so
 the page reads real captured rows.
+
+## 2026-07-22 — Ask-the-Data answer bank: refresh-on-ingest (A3.3)
+
+Implements Phase A3.3 of `docs/ASK_CACHE_PLAN.md` — the big credit saver: after an ingestion
+bumps the dataset version, every `approved` bank entry keyed to the old version goes dormant (the
+serving path keys on the current version, so it never quotes stale numbers — it just misses).
+`refreshApprovedAskAnswers` (`lib/ai/ask-refresh.ts`) proactively regenerates those curated
+questions under the new version so the first visitor after a refresh still gets an instant answer
+instead of eating a live call. Each dataset refresh then costs N precompute regenerations instead
+of N × visitors live calls.
+
+- **Only `approved` entries are refreshed.** `auto` entries regenerate lazily on first ask, so
+  this stays bounded to the small admin-curated set.
+- **Regeneration reruns the full grounding path** — same system prompt, page context
+  reconstructed from `geo_code` via `getGeoByCode`, same numeric audit — so a refreshed answer
+  meets the identical safety bar as a live one. A refreshed row stays `approved` so it keeps being
+  refreshed on the next bump; the superseded old-version row is deleted only after the new one is
+  safely written. If a provider is capped or the audit strips everything, the dormant old row is
+  kept and retried next run.
+- **Decision — a hand-edited approved answer is replaced on a version bump, by design.** Its
+  numbers were checked against the *old* data; carrying its text forward verbatim under a new
+  version would risk quoting stale figures — the one invariant the whole scheme forbids. Edits are
+  therefore dataset-version-scoped.
+- **Cron wiring (`/api/cron/precompute`):** the refresh runs *first* with a 15s reserve, then the
+  existing narrative precompute takes the rest of the 50s budget. It self-yields — on a normal day
+  there are no stale approved entries so it returns in ~one query and narratives keep the full
+  budget; only on an ingestion day does it consume its slice. Both fill over a few days per this
+  cron's existing philosophy. `askRefresh` counts are added to the JSON response.
+
+Remaining: A4 trigram near-match stays intentionally deferred (plan §0 #4: "off until measured") —
+it's gated on the real hit-rate numbers the A3 dashboard now collects, not built speculatively.
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (155 tests incl. new
+`ask-refresh.test.ts` covering regeneration, context reconstruction, capped/audit-empty skips,
+deadline, and no-stale/error paths) all clean. Live cron behavior is driven by Vercel's scheduler
+(same as the existing narrative precompute, which likewise can't be manually invoked without
+`CRON_SECRET`).
