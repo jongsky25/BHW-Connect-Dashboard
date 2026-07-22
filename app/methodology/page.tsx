@@ -319,6 +319,14 @@ export default async function MethodologyPage() {
           every provider is at capacity, the insight is simply left out — the template figures and
           headlines throughout the rest of the site never depend on AI and always work.
         </p>
+        <p>
+          Questions asked in the &ldquo;Ask the data&rdquo; chat may be stored (with the checked
+          answer they received) to improve responses: a question that has already been asked and
+          verified against the current dataset can be answered instantly from that stored answer
+          — such answers are labeled in the chat. Stored answers are tied to the dataset version
+          they were checked against and are discarded when the data is refreshed. Don&apos;t
+          include personal information in chat questions.
+        </p>
       </section>
 
       <section className="flex flex-col gap-2">

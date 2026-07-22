@@ -35,10 +35,10 @@ const STARTER_QUESTIONS = [
   "Which region has the highest accreditation rate?",
 ];
 
-type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
+type ChatMessage = { role: "user" | "assistant" | "system"; content: string; cached?: boolean };
 type StreamEvent =
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
-  | { type: "message"; content: string; provider: string | null }
+  | { type: "message"; content: string; provider: string | null; cached?: boolean }
   | { type: "capacity"; message: string }
   | { type: "error"; message: string };
 
@@ -106,7 +106,7 @@ export function ChatLauncher({
           if (event.type === "tool_call") {
             setToolTrace((prev) => [...prev, TOOL_LABELS[event.name] ?? event.name]);
           } else if (event.type === "message") {
-            setMessages((prev) => [...prev, { role: "assistant", content: event.content }]);
+            setMessages((prev) => [...prev, { role: "assistant", content: event.content, cached: event.cached }]);
           } else if (event.type === "capacity" || event.type === "error") {
             setMessages((prev) => [...prev, { role: "system", content: event.message }]);
           }
@@ -188,6 +188,11 @@ export function ChatLauncher({
               }
             >
               {m.content}
+              {m.cached && (
+                <span className="mt-1 block text-[10px] text-muted">
+                  Instant answer from a previously verified response
+                </span>
+              )}
             </li>
           ))}
         </ul>

@@ -1374,3 +1374,37 @@ was clicked, across several prior fix attempts that changed layout/content but n
 **Verify.** `npm run lint`, `npm run typecheck`, `npm test` (124) all clean; `next build` compiles
 (page-data collection needs live Supabase env, unavailable in the sandbox). Behavior verified on
 the Vercel preview deployment via the real click path.
+
+## 2026-07-22 — Ask-the-Data answer bank: capture (A1) + first-layer serve (A2)
+
+Implements Phases A1 and A2 of `docs/ASK_CACHE_PLAN.md`: every chat turn is captured to a new
+service-role-only `ai_ask_log` table, and single-turn questions are answered from a new
+`ai_ask_cache` answer bank before the provider cascade — a repeat question costs zero AI credits.
+
+- **Capture (`ai_ask_log`)** records question (raw + normalized), geo context, turn index,
+  audited answer, outcome (`answered`/`audited_empty`/`capacity`/`error`), provider, served-from,
+  data_version, tool trace, and latency. Best-effort in every branch of the chat route, wrapped
+  like `rate-limit.ts` — a logging failure can never break the turn. Nothing is served from the
+  log; it's the curation corpus for Phase A3 and the measure of savings.
+- **Serve (`ai_ask_cache`)** keys on `data_version|geo_scope|question_norm` — the identical
+  invalidation scheme as `ai_narrative_cache`, so a dataset refresh invalidates every stored
+  answer automatically and a cached answer can never quote stale numbers. Only single-turn
+  questions (`messages.length === 1`) are looked up or written back: follow-ups depend on
+  conversation history. Geo scope is part of the key because the route injects the current place
+  into the system prompt — identical words mean different answers on different pages. Only
+  audit-surviving text is ever stored, so the bank replays only verified answers.
+- **Normalization is deliberately dumb** (NFKC → lowercase → collapse whitespace → strip terminal
+  punctuation → strip leading politeness prefixes, exhaustively unit-tested): a collision serves
+  a wrong answer while a miss just costs one live call, so every choice biases toward missing.
+- **Owner decisions per plan §0 defaults:** cache hits skip the rate limit (they cost nothing;
+  logged as `ai_chat_cache_hit` usage events so hit rate = cache_hit / (cache_hit + chat_message)
+  with no new infra) and are labeled in the chat UI ("Instant answer from a previously verified
+  response"). `auto` (unreviewed) entries are served — the numeric audit is the safety gate;
+  A3 curation adds approve/edit/block on top. Write-back never clobbers an `approved`/`blocked`
+  row. `/methodology#ai` gains a paragraph disclosing question storage and the dataset-version
+  lifetime of stored answers.
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (140 tests incl. new
+`ask-cache.test.ts`/`ask-log.test.ts`) all clean. Live behavior verified against the Vercel
+preview after applying the two migrations: first ask of a fresh question answers live and lands
+in log + bank; the identical ask answers instantly with `cached: true` and no `tool_call` events.
