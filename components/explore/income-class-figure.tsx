@@ -1,5 +1,6 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { IncomeClassRow } from "@/lib/db/derived-figures";
 import { formatPeso } from "@/lib/format";
 
@@ -21,7 +22,15 @@ const MIN_CLASS_N = 5000; // below this a class's national figures are thin — 
  * reclassification loaded by E4.3; a handful the source left unclassified keep their
  * prior class. Only rendered at the national view.
  */
-export function IncomeClassFigure({ rows, caption }: { rows: IncomeClassRow[]; caption: string }) {
+export function IncomeClassFigure({
+  rows,
+  caption,
+  benchmark,
+}: {
+  rows: IncomeClassRow[];
+  caption: string;
+  benchmark?: FigureBenchmarkProps;
+}) {
   const withHonorarium = rows.filter((r) => r.medianHonorariumAmount !== null);
   const maxMedian = Math.max(0, ...withHonorarium.map((r) => r.medianHonorariumAmount as number));
 
@@ -63,6 +72,7 @@ export function IncomeClassFigure({ rows, caption }: { rows: IncomeClassRow[]; c
           </p>
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-left text-sm">

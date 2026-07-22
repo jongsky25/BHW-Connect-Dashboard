@@ -1,14 +1,20 @@
 import {
   getBhwCounts,
   getCertification,
+  getChildIndicators,
   getHonorarium,
   getDemographics,
   hsGradOrAbovePct,
 } from "@/lib/db/indicators";
 import { getBhwOverview, getRegionHouseholdsPerBhw, coverageForDisplay } from "@/lib/db/stepzero";
+import { getChildGeos } from "@/lib/db/geo";
 import { getHomeInsights } from "@/lib/db/insights";
+import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
+import { regionalSpread } from "@/lib/analysis/regional-spread";
+import { DOH_INDICATIVE_NOTE } from "@/lib/analysis/thresholds";
 import type { DemographicRow } from "@/lib/db/indicators";
 import type { BarDatum } from "@/lib/charts/bar-chart";
+import { NATIONAL_GEO_CODE } from "@/lib/filters/schema";
 import { formatCount, formatPct } from "@/lib/format";
 import { GeoSearch } from "@/components/home/geo-search";
 import { StatHero } from "@/components/home/stat-hero";
@@ -20,6 +26,7 @@ import { CertificationFigure } from "@/components/explore/certification-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
 import { HonorariumAmountFigure } from "@/components/explore/honorarium-amount-figure";
 import { HonorariumDistributionFigure } from "@/components/explore/honorarium-distribution-figure";
+import { HonorariumSufficiencyFigure } from "@/components/explore/honorarium-sufficiency-figure";
 import { AiInsight } from "@/components/narrative/ai-insight";
 import { ChatLauncher } from "@/components/chat/chat-launcher";
 import { FigureTabs } from "@/components/ui/figure-tabs";
@@ -62,16 +69,35 @@ function educationTile(rows: DemographicRow[]): {
 }
 
 export default async function Home() {
-  const [overview, counts, certification, honorarium, education, insights, regionRatios] =
-    await Promise.all([
-      getBhwOverview("PH", "national"),
-      getBhwCounts("PH", "national"),
-      getCertification("PH", "national"),
-      getHonorarium("PH", "national"),
-      getDemographics("PH", "national", ["education"]),
-      getHomeInsights(),
-      getRegionHouseholdsPerBhw(),
-    ]);
+  // Regions of the country, for the Accredited tile's regional-spread line
+  // (Increment 4 / Risk R2): `/bhw` has no ancestor to benchmark against, so
+  // the honest "versus what?" here is the observed spread across regions,
+  // exactly like the households-per-BHW tile already does with `regionRatios`.
+  const regions = await getChildGeos(NATIONAL_GEO_CODE, "national");
+
+  const [
+    overview,
+    counts,
+    certification,
+    honorarium,
+    honorariumSufficiency,
+    education,
+    insights,
+    regionRatios,
+    regionIndicators,
+  ] = await Promise.all([
+    getBhwOverview("PH", "national"),
+    getBhwCounts("PH", "national"),
+    getCertification("PH", "national"),
+    getHonorarium("PH", "national"),
+    getHonorariumSufficiency("PH", "national"),
+    getDemographics("PH", "national", ["education"]),
+    getHomeInsights(),
+    getRegionHouseholdsPerBhw(),
+    getChildIndicators(regions.map((r) => r.geoCode)),
+  ]);
+
+  const accreditedSpread = regionalSpread(regionIndicators, (r) => r.pctAccredited);
 
   const coverage = coverageForDisplay(overview);
   // Per-person figures are computed from the individually-profiled subset, so
@@ -162,6 +188,12 @@ export default async function Home() {
               label="Total BHWs"
               value={formatCount(overview.totalBhw)}
               caption="Registered/accredited + non-registered (LGU-declared, pre-profiling) · 2025"
+              context={
+                <p className="mt-1 text-xs text-muted">
+                  LGU-declared universe; N = {formatCount(overview.validatedProfiles)} individually
+                  profiled{coverage !== null ? ` (${coverage}%)` : ""}.
+                </p>
+              }
               registrationMix={overview.hasStepzero ? registrationMix : undefined}
               enlarge={
                 overview.hasStepzero
@@ -179,6 +211,13 @@ export default async function Home() {
               label="Validated profiles"
               value={formatCount(overview.validatedProfiles)}
               caption={coverageCaption}
+              context={
+                overview.validatedProfiles !== null ? (
+                  <p className="mt-2 text-xs text-muted">
+                    Based on n = {formatCount(overview.validatedProfiles)} validated profiles.
+                  </p>
+                ) : undefined
+              }
               visual={
                 counts?.pctAccredited != null ? (
                   <Donut
@@ -203,6 +242,21 @@ export default async function Home() {
               label="Accredited"
               value={formatPct(counts?.pctAccredited ?? null)}
               caption={profiledCaption}
+              context={
+                <>
+                  {counts?.nTotal != null && (
+                    <p className="mt-2 text-xs text-muted">
+                      Based on n = {formatCount(counts.nTotal)} validated profiles.
+                    </p>
+                  )}
+                  {accreditedSpread && (
+                    <p className="mt-1 text-xs text-muted">
+                      Regional averages range {formatPct(accreditedSpread.min)}–
+                      {formatPct(accreditedSpread.max)}.
+                    </p>
+                  )}
+                </>
+              }
               visual={
                 counts?.pctAccredited != null ? (
                   <Gauge
@@ -228,6 +282,13 @@ export default async function Home() {
               label="Educational attainment"
               value={edu.hasData ? `${edu.hsPlusPct}%` : "—"}
               caption="High school graduate or higher · validated profiles · 2025"
+              context={
+                overview.validatedProfiles !== null ? (
+                  <p className="mt-2 text-xs text-muted">
+                    Based on n = {formatCount(overview.validatedProfiles)} validated profiles.
+                  </p>
+                ) : undefined
+              }
               visual={
                 edu.rows.length > 0 ? (
                   <LadderBars rows={edu.rows} ariaLabel="Educational attainment, by category" />
@@ -257,6 +318,16 @@ export default async function Home() {
                 overview.households !== null
                   ? `Total BHWs across ${formatCount(overview.households)} households · StepZero · 2025`
                   : "Household data not available"
+              }
+              context={
+                <>
+                  {overview.totalBhw !== null && (
+                    <p className="mt-2 text-xs text-muted">
+                      Based on n = {formatCount(overview.totalBhw)} total BHWs.
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-muted">{DOH_INDICATIVE_NOTE}</p>
+                </>
               }
               visual={
                 overview.householdsPerBhw !== null && regionRatios.length > 0 ? (
@@ -302,6 +373,7 @@ export default async function Home() {
               caption={profiledCaption}
               geoCode="PH"
               geoLevel="national"
+              benchmark={{ n: counts?.nTotal ?? null }}
             />
           </PresentationSlide>
           {/* One honorarium story told three ways — tabbed instead of three
@@ -310,6 +382,19 @@ export default async function Home() {
             <FigureTabs
               heading="Honorarium"
               tabs={[
+                {
+                  id: "sufficiency",
+                  label: "Is it enough?",
+                  content: (
+                    <HonorariumSufficiencyFigure
+                      data={honorariumSufficiency}
+                      caption={profiledCaption}
+                      geoCode="PH"
+                      geoLevel="national"
+                      benchmark={{ n: honorariumSufficiency?.nTotal ?? null }}
+                    />
+                  ),
+                },
                 {
                   id: "who",
                   label: "Who receives",

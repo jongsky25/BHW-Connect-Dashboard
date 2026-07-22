@@ -76,7 +76,7 @@ async function generateOrReadCache(
     return asNarrative(cached);
   }
 
-  const prompt = `Write a short (2-4 sentence) narrative summarizing BHW figures for ${geoName} (geo_code ${geoCode}, geoLevel ${geoLevel}). Call getIndicatorByGeo for the accreditation and demographics indicators, and check getTrainingCoverage/getHonorariumStats for anything worth mentioning. Lead with the Total BHWs vs. Validated profiles framing, then one or two more findings from the data. One paragraph, plain language, WPSAR tone.`;
+  const prompt = `Write a short (2-4 sentence) narrative summarizing BHW figures for ${geoName} (geo_code ${geoCode}, geoLevel ${geoLevel}). Call getIndicatorByGeo for the accreditation and demographics indicators, and check getTrainingCoverage/getHonorariumStats for anything worth mentioning. Lead with the Total BHWs vs. Validated profiles framing, then one or two more findings from the data. When you cite a headline figure, situate it against this place's region and the nation (call getIndicatorByGeo again with the region's or the national 'PH' geo_code), note where it stands among same-level places if the data you have shows that, and always state the N (validated profiles) behind any percentage, flagging plainly when N is small enough that the figure could swing widely. One paragraph, plain language, WPSAR tone.`;
 
   const result = await runToolLoop([
     { role: "system", content: SYSTEM_PROMPT },

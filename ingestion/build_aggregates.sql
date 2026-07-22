@@ -760,6 +760,108 @@ left join cm on cm.income_class = a.income_class
 left join hon_amt on hon_amt.income_class = a.income_class
 order by a.income_class;
 
--- 16. Cleanup working tables.
+-- 16. agg_honorarium_cumulative: honorarium sufficiency ("is it enough?"),
+-- banded cumulative per-BHW honorarium among ALL profiled BHWs (not just
+-- recipients — critical delta vs §13's agg_honorarium_inequality, which is
+-- receiving-BHWs-only). Each BHW's total normalized monthly honorarium summed
+-- across every paying level they receive from (non-recipients get 0) is
+-- banded into 8 buckets (None / ₱1-4,000 / ₱4,001-8,000 / ₱8,001-12,000 /
+-- ₱12,001-16,000 / ₱16,001-20,000 / ₱20,001-24,000 / Over ₱24,000) and counted
+-- per geo, zero-filled so every geo has all 8 rows. National/region/province/
+-- citymun grain (barangay skipped, same disk cut as agg_training/agg_workload;
+-- ~14.4k rows). Band cells with 0 < n < 5 are suppressed (n/pct nulled,
+-- is_suppressed true); n = 0 stays visible. Geos with fewer than 5 total
+-- profiled BHWs have median_cumulative_monthly/pct_below_sufficiency nulled
+-- and every band row suppressed (n_total itself stays visible, a plain
+-- headcount). pct_below_sufficiency threshold is ₱2,040/month (₱68/day),
+-- resolved empirically against this dataset (R5) — see
+-- lib/analysis/thresholds.ts and supabase/migrations/20260721100000_honorarium_cumulative.sql.
+-- Table created by supabase/migrations.
+delete from agg_honorarium_cumulative where dataset_id = (select dataset_id from dim_dataset where slug = 'bhw-2025');
+
+with per_bhw as (
+  select f.bhw_id,
+    coalesce(sum(h.normalized_monthly_amount) filter (where h.normalized_monthly_amount > 0), 0) as amt,
+    dg.region_code, dg.province_code, dg.citymun_code
+  from fact_bhw_raw f
+  join dim_geo dg on dg.geo_code = f.geo_code and dg.geo_level = 'barangay'
+  left join fact_honorarium h on h.bhw_id = f.bhw_id
+  group by f.bhw_id, dg.region_code, dg.province_code, dg.citymun_code
+),
+fanned as (
+  select amt, lvl.geo_level, lvl.geo_code
+  from per_bhw
+  cross join lateral (values
+    ('citymun'::geo_level_enum, citymun_code),
+    ('province'::geo_level_enum, province_code),
+    ('region'::geo_level_enum, region_code),
+    ('national'::geo_level_enum, 'PH')
+  ) as lvl(geo_level, geo_code)
+),
+banded as (
+  select geo_code, geo_level, amt,
+    case
+      when amt <= 0 then 0
+      when amt <= 4000 then 1
+      when amt <= 8000 then 2
+      when amt <= 12000 then 3
+      when amt <= 16000 then 4
+      when amt <= 20000 then 5
+      when amt <= 24000 then 6
+      else 7
+    end as band_order
+  from fanned
+),
+geo_stats as (
+  select geo_code, geo_level, count(*) as n_total,
+    round((percentile_cont(0.5) within group (order by amt))::numeric, 2) as median_amt,
+    round(100.0 * count(*) filter (where amt < 2040) / count(*), 1) as pct_below
+  from banded
+  group by geo_code, geo_level
+),
+band_counts as (
+  select geo_code, geo_level, band_order, count(*) as n
+  from banded
+  group by geo_code, geo_level, band_order
+),
+bands as (
+  select * from (values
+    (0, 'None'),
+    (1, '₱1-4,000'),
+    (2, '₱4,001-8,000'),
+    (3, '₱8,001-12,000'),
+    (4, '₱12,001-16,000'),
+    (5, '₱16,001-20,000'),
+    (6, '₱20,001-24,000'),
+    (7, 'Over ₱24,000')
+  ) as b(band_order, band_label)
+),
+zero_filled as (
+  select gs.geo_code, gs.geo_level, b.band_order, b.band_label,
+    coalesce(bc.n, 0) as n,
+    gs.n_total, gs.median_amt, gs.pct_below
+  from geo_stats gs
+  cross join bands b
+  left join band_counts bc
+    on bc.geo_code = gs.geo_code and bc.geo_level = gs.geo_level and bc.band_order = b.band_order
+)
+insert into agg_honorarium_cumulative
+  (dataset_id, geo_code, geo_level, band_order, band_label, n, pct, n_total,
+   median_cumulative_monthly, pct_below_sufficiency, is_suppressed)
+select (select dataset_id from dim_dataset where slug = 'bhw-2025'),
+  z.geo_code, z.geo_level, z.band_order, z.band_label,
+  case when z.n_total < 5 then null
+       when z.n > 0 and z.n < 5 then null
+       else z.n end,
+  case when z.n_total < 5 then null
+       when z.n > 0 and z.n < 5 then null
+       else round(100.0 * z.n / nullif(z.n_total, 0), 1) end,
+  z.n_total,
+  case when z.n_total < 5 then null else z.median_amt end,
+  case when z.n_total < 5 then null else z.pct_below end,
+  (z.n_total < 5 or (z.n > 0 and z.n < 5))
+from zero_filled z;
+
+-- 17. Cleanup working tables.
 drop table if exists _agg_base;
 drop table if exists _agg_honorarium_base;

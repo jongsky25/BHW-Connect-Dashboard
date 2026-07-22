@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createSupabaseServerClient } from "./supabase";
 import { DATASET_SLUGS, getDatasetIdBySlug } from "./dataset";
 import { getBhwCounts } from "./indicators";
@@ -146,51 +147,56 @@ export function householdsPerBhw(
   return Math.round(households / totalBhw);
 }
 
-export async function getBhwOverview(
-  geoCode: string,
-  geoLevel: GeoLevel,
-): Promise<BhwOverview> {
-  const [stepzero, counts, censusPop] = await Promise.all([
-    getStepzeroCounts(geoCode, geoLevel),
-    getBhwCounts(geoCode, geoLevel),
-    getCensusPopulation2024(geoCode),
-  ]);
+/**
+ * Wrapped in React's per-request `cache()` (string args are safe keys;
+ * precedent: `getActiveDataset`, `lib/db/dataset.ts:35`) — the benchmark
+ * context (E1.2) and a page's own figures often ask for the same geo's
+ * overview within one render.
+ */
+export const getBhwOverview = cache(
+  async (geoCode: string, geoLevel: GeoLevel): Promise<BhwOverview> => {
+    const [stepzero, counts, censusPop] = await Promise.all([
+      getStepzeroCounts(geoCode, geoLevel),
+      getBhwCounts(geoCode, geoLevel),
+      getCensusPopulation2024(geoCode),
+    ]);
 
-  const validatedProfiles = counts?.nTotal ?? null;
-  const base = stepzero?.registeredUniverse ?? null;
+    const validatedProfiles = counts?.nTotal ?? null;
+    const base = stepzero?.registeredUniverse ?? null;
 
-  let profilingCoveragePct: number | null = null;
-  let coverageExceedsBase = false;
-  if (validatedProfiles !== null && base !== null && base > 0) {
-    const raw = (100 * validatedProfiles) / base;
-    profilingCoveragePct = Math.round(raw);
-    coverageExceedsBase = validatedProfiles > base;
-  }
+    let profilingCoveragePct: number | null = null;
+    let coverageExceedsBase = false;
+    if (validatedProfiles !== null && base !== null && base > 0) {
+      const raw = (100 * validatedProfiles) / base;
+      profilingCoveragePct = Math.round(raw);
+      coverageExceedsBase = validatedProfiles > base;
+    }
 
-  // Census population (E4.2) preferred; StepZero self-reported population is the fallback.
-  const population = censusPop ?? stepzero?.population ?? null;
-  const households = stepzero?.households ?? null;
-  const totalBhw = stepzero?.nTotalBhw ?? null;
+    // Census population (E4.2) preferred; StepZero self-reported population is the fallback.
+    const population = censusPop ?? stepzero?.population ?? null;
+    const households = stepzero?.households ?? null;
+    const totalBhw = stepzero?.nTotalBhw ?? null;
 
-  return {
-    geoCode,
-    geoLevel,
-    totalBhw,
-    registeredUniverse: base,
-    nRegistered: stepzero?.nRegistered ?? null,
-    nRegisteredAccredited: stepzero?.nRegisteredAccredited ?? null,
-    nonRegistered: stepzero?.nNonRegistered ?? null,
-    validatedProfiles,
-    profilingCoveragePct,
-    coverageExceedsBase,
-    hasStepzero: stepzero !== null,
-    population,
-    households,
-    householdsPerBhw: householdsPerBhw(households, totalBhw),
-    pctRegisteredAccredited: stepzero?.pctRegisteredAccredited ?? null,
-    bhwPer1000: bhwPer1000(totalBhw, population),
-  };
-}
+    return {
+      geoCode,
+      geoLevel,
+      totalBhw,
+      registeredUniverse: base,
+      nRegistered: stepzero?.nRegistered ?? null,
+      nRegisteredAccredited: stepzero?.nRegisteredAccredited ?? null,
+      nonRegistered: stepzero?.nNonRegistered ?? null,
+      validatedProfiles,
+      profilingCoveragePct,
+      coverageExceedsBase,
+      hasStepzero: stepzero !== null,
+      population,
+      households,
+      householdsPerBhw: householdsPerBhw(households, totalBhw),
+      pctRegisteredAccredited: stepzero?.pctRegisteredAccredited ?? null,
+      bhwPer1000: bhwPer1000(totalBhw, population),
+    };
+  },
+);
 
 export type RegionHouseholdsPerBhw = { geoCode: string; geoName: string; value: number };
 

@@ -1374,3 +1374,94 @@ was clicked, across several prior fix attempts that changed layout/content but n
 **Verify.** `npm run lint`, `npm run typecheck`, `npm test` (124) all clean; `next build` compiles
 (page-data collection needs live Supabase env, unavailable in the sandbox). Behavior verified on
 the Vercel preview deployment via the real click path.
+
+## 2026-07-21 — No-naked-numbers rollout: benchmarks, honorarium sufficiency, DOH 1:20 reversal
+
+The stakeholder ask (paraphrased): the platform proves its worth if it shows a *status* for
+BHWs — is the count per place *enough* for the workload, is honorarium *sufficient* — not bare
+numbers that invite "compared to what?". This lands the full rollout (Increments 1–7): every
+headline figure now carries a vertical benchmark (this place vs. region vs. nation), a peer
+rank among same-level siblings where one exists, and an adequacy signal (the n behind the
+number, degrading visibly below `MIN_LEADER_N` and suppressing below 5).
+
+- **(a) Consolidation.** `getBenchmarkContext`/`benchmarkRowsFor`/`rowsFromAncestorValues`
+  (`lib/db/benchmark-context.ts`) replace the hand-rolled this-place/region/nation fetches that
+  `/place`, `/explore`, and `/compare` each duplicated. Batch `getPeerRanks` (`lib/db/peer-ranks.ts`)
+  fetches several indicators' peer standing in one query. `FigureBenchmark`
+  (`components/narrative/figure-benchmark.tsx`) fills `FigureCard`'s existing `benchmark` slot —
+  no new slot — rendering bars, a `peerRankSentence` (extracted from `PeerRankChip` so wording
+  never drifts), and an adequacy note. `getBhwCounts`/`getBhwOverview`/`getGeoAncestors` gained
+  React `cache()` at their definitions so the context is free when a page already fetched the
+  same geo. Threaded through every figure in the Increment 4 contract table; `/bhw` gets a
+  `regionalSpread` helper (no vertical benchmark makes sense at the national page) plus a
+  `context` prop on `StatTile`/`StatHero`; `/place`'s `ProfileHeader` gained a `benchmarkNote`
+  line; `CompareColumnData` gained serializable `peerRanks`/`nationalReference` for place-vs-nation
+  column benchmarks.
+- **(b) DOH 1:20 reversal.** `docs/HOME_SEARCH_REVIEW.md` §6 previously recorded "External DOH
+  staffing-ratio targets (e.g., household-per-BHW norms) — not adopted; benchmarks use
+  national/regional averages computed from this dataset," and the 2026-07-20 "Households per BHW"
+  entry above independently declined the same ratio ("Deliberately did not cite a specific DOH
+  ideal ratio such as 1:20 — no owner-confirmed source for which target applies"). The owner has
+  now sanctioned citing it, but strictly as an **indicative reference, never a pass/fail gauge**:
+  `DOH_INDICATIVE_HOUSEHOLDS_PER_BHW = 20` + a verbatim `DOH_INDICATIVE_NOTE` string
+  (`lib/analysis/thresholds.ts`) appear only as a footnote on the households-per-BHW
+  tiles/cards/strip and on `WorkloadFigure` — never as a chart marker or target line. Dataset-relative
+  comparison (this place vs. region vs. nation) remains the primary status signal throughout.
+- **(c) `agg_honorarium_cumulative`.** New table (migration
+  `supabase/migrations/20260721100000_honorarium_cumulative.sql`, mirrored as
+  `ingestion/build_aggregates.sql` §16, applied live) reproduces the deck's "59% receive less
+  than ₱68/day" headline as a real, banded figure — 8 bands (None, ₱1–4,000 … Over ₱24,000),
+  built to national/region/province/citymun (barangay skipped, matching `agg_training`'s disk
+  discipline). The critical design delta versus E3.5's recipients-only inequality CTE: the
+  denominator here is a LEFT JOIN from `fact_bhw_raw`, so **all 270,917 profiled BHWs** land in a
+  band (non-recipients fall into "None"), not just those who receive something. Suppression is
+  both per-cell (a band with 0 < n < 5 is nulled — band membership at n<5 could reveal an
+  individual's pay band) and per-geo (n_total < 5 nulls every row for that geo). Verified live:
+  row counts national=8, region=144, province=944, citymun=13,112; band totals reconcile exactly
+  to 270,917 at every level; DB size 591 → 593 MB (~2 MB delta, comfortably inside the free-tier
+  budget). **R5 resolved empirically**: the scope doc's own arithmetic conflicted (₱68/day ≈
+  ₱2,040/month vs. its own "≈₱300/month" parenthetical) — querying the live per-BHW cumulative CTE
+  gives pct below ₱300/month = 3.6% and pct below ₱2,040/month = 59.2%. Only the latter is
+  anywhere near the deck's "59%," so the ₱300/month parenthetical in
+  `docs/HONORARIUM_ANALYSIS_SCOPE.md` was simply a measurement error, not an alternate reading;
+  ₱2,040/month (₱68/day) is confirmed as the real cut. National median cumulative honorarium =
+  ₱1,750/month (~₱58/day). `HONORARIUM_SUFFICIENCY_MONTHLY_PHP = 2040` and
+  `HONORARIUM_SUFFICIENCY_DAILY_PHP = 68` (`lib/analysis/thresholds.ts`) are the single source of
+  truth — the threshold is never hard-coded a second time anywhere else. Surfaced by the new
+  `HonorariumSufficiencyFigure` ("Is it enough?"), mounted as the first honorarium tab on `/bhw`,
+  `/explore`, and `/compare`, and as a new slide right after the honorarium slide on `/place`
+  (barangay falls back to its citymun ancestor, labeled).
+- **(d) Export parity + narrative prompt.** `ExportFigureData` gained an optional `benchmark`
+  block (place/region/nation rows + peer-rank sentence) and an always-present `adequacyNote`,
+  rendered in all four formats (PNG/PPTX/CSV/XLSX) via one shared `formatBenchmarkLine` helper so
+  they can't drift from each other — pure insertions, existing indicators' row payloads are
+  unchanged. The ₱ glyph was confirmed rendering correctly through `resvg` for the PNG path.
+  `lib/ai/narrative.ts`'s generation prompt gained one added sentence instructing the model to
+  situate a cited headline figure against its region and the nation (by calling
+  `getIndicatorByGeo` again with the region/national geo_code — no new tool needed, it already
+  accepts any geo), mention peer standing among same-level places when it can tell, and always
+  state the N behind a percentage, flagging small samples plainly. Already-cached narratives keep
+  their pre-rollout style until they naturally regenerate (cache TTL / dataset version bump) —
+  not backfilled.
+- **(e) Follow-up.** Honorarium sufficiency was deliberately **not** added to `agg_peer_ranks`
+  this pass (Risk R1 — scope control): it gets an adequacy note and vertical benchmark like every
+  other figure, but no peer-rank line. Adding it is a small, isolated follow-up (one more indicator
+  in the existing peer-ranks migration/build), not a design gap.
+
+**Verify.** `npm run lint && npm run typecheck && npm test` all pass; `next build` compiles
+(page-data collection needs live Supabase env — the known, pre-existing sandbox residual).
+
+**Post-merge verification findings (same day).** An end-to-end pass against the live preview
+(axe scans, DOM adequacy audit, presentation-mode check, export read-back, suppression walk)
+confirmed the rollout: 0 axe violations on `/bhw` and `/place/province/04010`; all 9
+contract-eligible figures on a province place page carry an adequacy line; the sole n<5 citymun
+in `agg_honorarium_cumulative` (KALAYAAN, 1705321) exports the correct "Withheld" adequacy line.
+Two pre-existing defects (both reproduced on production `main`, unrelated to this branch) were
+found and are tracked separately rather than fixed here: (1) every citymun/barangay place page
+under Palawan (17053) returns HTTP 500; (2) PNG exports render with **all text missing** on
+Vercel — `lib/exports/render-png.ts` never configures a font source for resvg and the serverless
+runtime has no system fonts, so text is silently dropped. That second finding **corrects the
+claim in (d) above**: the ₱ glyph was verified through resvg in the sandbox (which has system
+fonts), not on Vercel; the benchmark/adequacy lines are correctly present in the PNG's SVG input
+and will appear once a font is bundled into the resvg call (`loadSystemFonts: false` +
+`fontFiles`), the proper fix for the whole PNG export feature.

@@ -1,6 +1,7 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { RangeChartClient } from "@/components/charts/range-chart-client";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { WorkloadRow } from "@/lib/db/derived-figures";
 import type { RangeDatum } from "@/lib/charts/range-chart";
 import type { GeoLevel } from "@/lib/filters/schema";
@@ -19,11 +20,13 @@ export function WorkloadFigure({
   caption,
   geoLevel,
   fallbackCitymunName,
+  benchmark,
 }: {
   row: WorkloadRow | null;
   caption: string;
   geoLevel: GeoLevel;
   fallbackCitymunName?: string | null;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const scopeSuffix = fallbackCitymunName ? ` (shown for ${fallbackCitymunName})` : "";
   const title = `Household workload${scopeSuffix}`;
@@ -47,6 +50,7 @@ export function WorkloadFigure({
             city/municipality&apos;s figure instead.
           </p>
         }
+        benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
       >
         <p className="text-sm text-muted">No data available.</p>
       </FigureCard>
@@ -92,6 +96,7 @@ export function WorkloadFigure({
           </p>
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       <RangeChartClient data={chartData} xLabel="Assigned households" yLabel="" valueFormat="count" />
 

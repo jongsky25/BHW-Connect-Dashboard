@@ -246,6 +246,18 @@ export default async function MethodologyPage() {
             individual&apos;s pay.
           </li>
           <li>
+            <strong>Honorarium sufficiency.</strong> Every profiled BHW in an area — not only
+            those who receive something — is placed in a band by their{" "}
+            <GlossaryTerm slug="honorarium_sufficiency">cumulative monthly honorarium</GlossaryTerm>{" "}
+            summed across every paying level (None, ₱1–4,000, … Over ₱24,000), answering the
+            deck&apos;s &ldquo;is it enough?&rdquo; question directly: the share of BHWs below a
+            ₱2,040/month sufficiency cut (≈₱68/day, using the same 30-day-month convention as
+            elsewhere on this page). Nationally, 59.2% of profiled BHWs fall below that cut, and
+            the national median cumulative honorarium is ₱1,750/month (~₱58/day). Built down to
+            the city/municipality level and hidden where fewer than 5 BHWs are profiled; a band
+            with fewer than 5 BHWs in it is withheld even when the area overall is shown.
+          </li>
+          <li>
             <strong>Support by LGU income class.</strong> Accreditation, any-honorarium share, and
             median honorarium grouped by the{" "}
             <GlossaryTerm slug="income_class">income class</GlossaryTerm> of each BHW&apos;s

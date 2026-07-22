@@ -51,3 +51,50 @@ export async function getPeerRank(
     isOutlier: data.is_outlier,
   };
 }
+
+/**
+ * Batch variant of `getPeerRank`: every requested indicator's standing for one
+ * geo, in a single `.in()` query — for pages (E1.5) that build a
+ * `FigureBenchmarkProps.peer` line for several figures at once instead of
+ * issuing one round trip per indicator. Returns a map keyed by indicator name;
+ * an indicator with no row (not one of `agg_peer_ranks`'s 6 covered
+ * indicators, or this geo unranked) simply has no entry — same "never fake a
+ * rank" rule as `getPeerRank`. Empty map at national/barangay, since neither
+ * grain has rows in `agg_peer_ranks`.
+ */
+export async function getPeerRanks(
+  geoCode: string,
+  geoLevel: GeoLevel,
+  indicators: readonly string[],
+): Promise<Map<string, PeerRank>> {
+  if (indicators.length === 0) return new Map();
+
+  const datasetId = await getActiveDatasetId();
+  if (datasetId === null) return new Map();
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("agg_peer_ranks")
+    .select("indicator, value, n_total, rank_position, n_siblings, percentile, is_outlier")
+    .eq("dataset_id", datasetId)
+    .eq("geo_code", geoCode)
+    .eq("geo_level", geoLevel)
+    .in("indicator", indicators);
+
+  if (error || !data) return new Map();
+
+  return new Map(
+    data.map((row) => [
+      row.indicator,
+      {
+        indicator: row.indicator,
+        value: row.value,
+        nTotal: row.n_total,
+        rankPosition: row.rank_position,
+        nSiblings: row.n_siblings,
+        percentile: row.percentile,
+        isOutlier: row.is_outlier,
+      },
+    ]),
+  );
+}

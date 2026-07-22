@@ -42,6 +42,7 @@ export function ProfileHeader({
   householdsPerBhw,
   incomeClass,
   locator,
+  benchmarkNote,
 }: {
   geoName: string;
   geoLevel: GeoLevel;
@@ -57,6 +58,11 @@ export function ProfileHeader({
   incomeClass: number | null;
   /** Locator-map thumbnail (omitted when the geo has no boundary). */
   locator?: ReactNode;
+  /** One compact muted line under the stat-chip row (Increment 4) — e.g.
+   * "Region VII: 62 hh/BHW · Philippines: 58 hh/BHW · n = 1,234 profiled (92%)."
+   * The full benchmark bars live on the cards below; this is just the
+   * at-a-glance summary. */
+  benchmarkNote?: ReactNode;
 }) {
   return (
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
@@ -111,6 +117,7 @@ export function ProfileHeader({
             )}
           </div>
         )}
+        {benchmarkNote && <p className="text-xs text-muted">{benchmarkNote}</p>}
       </div>
       {locator}
     </header>

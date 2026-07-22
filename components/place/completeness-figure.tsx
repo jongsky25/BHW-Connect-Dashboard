@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { CompletenessRow } from "@/lib/db/data-quality";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -27,11 +28,13 @@ export function CompletenessFigure({
   caption,
   geoLevel,
   citymunAncestor,
+  benchmark,
 }: {
   rows: CompletenessRow[];
   caption: string;
   geoLevel: GeoLevel;
   citymunAncestor: { geoCode: string; geoName: string } | null;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const methodology = (
     <>
@@ -62,6 +65,7 @@ export function CompletenessFigure({
             {methodology}
           </>
         }
+        benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
       >
         <p className="text-sm text-muted">
           {citymunAncestor ? (
@@ -112,6 +116,7 @@ export function CompletenessFigure({
           {methodology}
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       {rows.length === 0 ? (
         <p className="text-sm text-muted">No data available.</p>
