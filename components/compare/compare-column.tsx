@@ -173,7 +173,7 @@ export function CompareColumn({
   };
 
   return (
-    <div className="flex min-w-72 flex-1 flex-col gap-4">
+    <div className="flex w-full min-w-0 flex-col gap-4 sm:min-w-72 sm:flex-1">
       <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
         <Link
           href={`/place/${data.geoLevel}/${data.geoCode}`}
@@ -184,7 +184,7 @@ export function CompareColumn({
         <button
           type="button"
           onClick={remove}
-          className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface hover:text-accent"
+          className="rounded-md px-3 py-2 text-xs text-muted hover:bg-surface hover:text-accent"
         >
           Remove
         </button>

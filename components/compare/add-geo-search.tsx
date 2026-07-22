@@ -52,7 +52,7 @@ export function AddGeoSearch({ disabled }: { disabled?: boolean }) {
   }
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="relative w-full max-w-sm">
       <label htmlFor="add-geo-search-input" className="sr-only">
         Add a place to compare
       </label>
@@ -67,7 +67,7 @@ export function AddGeoSearch({ disabled }: { disabled?: boolean }) {
         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm focus:border-accent disabled:opacity-50"
       />
       {hasSearched && !disabled && (
-        <ul className="mt-1 overflow-hidden rounded-md border border-border bg-background shadow-lg">
+        <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-border bg-background shadow-lg">
           {results.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted">No matching places found.</li>
           ) : (

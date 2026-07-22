@@ -39,7 +39,7 @@ export function SelectedGeoChips({ places }: { places: SelectedGeo[] }) {
             type="button"
             onClick={() => remove(place.geoCode)}
             aria-label={`Remove ${place.geoName} from the comparison`}
-            className="rounded-full px-1.5 py-0.5 text-muted hover:bg-background hover:text-accent"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-base text-muted hover:bg-background hover:text-accent"
           >
             ×
           </button>
