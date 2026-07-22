@@ -2,16 +2,45 @@ import { describe, expect, it } from "vitest";
 import { step, toProfilingStatus, type Row } from "./profiling-status";
 
 describe("step", () => {
-  it("computes the rounded percentage of the denominator", () => {
-    expect(step(50, 200)).toEqual({ count: 50, pct: 25, pctCapped: 25 });
+  it("computes the rounded percentage and the remaining-to-goal gap", () => {
+    expect(step(50, 200)).toEqual({
+      count: 50,
+      pct: 25,
+      pctCapped: 25,
+      remaining: 150,
+      pctToGo: 75,
+    });
   });
 
-  it("caps pctCapped at 100 while keeping the raw pct when the count drifts above the base", () => {
-    expect(step(120, 100)).toEqual({ count: 120, pct: 120, pctCapped: 100 });
+  it("reports a zero gap when the step is exactly complete", () => {
+    expect(step(100, 100)).toEqual({
+      count: 100,
+      pct: 100,
+      pctCapped: 100,
+      remaining: 0,
+      pctToGo: 0,
+    });
+  });
+
+  it("caps pctCapped at 100 and floors the gap at 0 when the count drifts above the base", () => {
+    // Raw pct is kept for transparency, but there is nothing left to do (remaining 0, 0% to go).
+    expect(step(120, 100)).toEqual({
+      count: 120,
+      pct: 120,
+      pctCapped: 100,
+      remaining: 0,
+      pctToGo: 0,
+    });
   });
 
   it("returns null percentages when the denominator is zero", () => {
-    expect(step(5, 0)).toEqual({ count: 5, pct: null, pctCapped: null });
+    expect(step(5, 0)).toEqual({
+      count: 5,
+      pct: null,
+      pctCapped: null,
+      remaining: 0,
+      pctToGo: null,
+    });
   });
 });
 
@@ -73,5 +102,16 @@ describe("toProfilingStatus", () => {
 
   it("derives the denominator as registered + accredited + unregistered", () => {
     expect(toProfilingStatus(abuyog).totalBhw).toBe(387);
+  });
+
+  it("exposes the remaining-to-certify gap against the denominator", () => {
+    // JARO: 238 to profile, 233 certified → 5 still to certify (~2% to go).
+    const s = toProfilingStatus(jaro);
+    expect(s.certify.remaining).toBe(5);
+    expect(s.certify.pctToGo).toBe(2);
+    // ABUYOG: nothing certified yet → the whole denominator is still to go.
+    const a = toProfilingStatus(abuyog);
+    expect(a.certify.remaining).toBe(387);
+    expect(a.certify.pctToGo).toBe(100);
   });
 });
