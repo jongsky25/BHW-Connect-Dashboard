@@ -319,12 +319,19 @@ export function SpotFeedback() {
           data-feedback-ui
           onClick={() => (isActive ? reset() : startPicking())}
           aria-pressed={isActive}
-          className="fixed bottom-6 right-6 z-[63] flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground shadow-lg transition-colors hover:opacity-90"
+          aria-label={isActive ? "Cancel feedback" : "Leave feedback"}
+          title={isActive ? "Cancel feedback" : "Leave feedback"}
+          className="fixed bottom-6 right-6 z-[63] flex items-center justify-center rounded-full bg-accent p-2.5 text-accent-foreground shadow-lg transition-colors hover:opacity-90"
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.04 2 11c0 2.7 1.34 5.1 3.47 6.74L5 22l4.6-2.02c.77.18 1.58.27 2.4.27 5.52 0 10-4.04 10-9S17.52 2 12 2z" />
-          </svg>
-          {isActive ? "Cancel" : "Feedback"}
+          {isActive ? (
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          ) : (
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.04 2 11c0 2.7 1.34 5.1 3.47 6.74L5 22l4.6-2.02c.77.18 1.58.27 2.4.27 5.52 0 10-4.04 10-9S17.52 2 12 2z" />
+            </svg>
+          )}
         </button>
       )}
     </div>
