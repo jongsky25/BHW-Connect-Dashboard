@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { usePresentation } from "./presentation-context";
+import { useFitScale } from "./use-fit-scale";
+
+/** Layout width (px) content slides are composed at before the fit-to-screen
+ * zoom — matches the former `max-w-5xl` (64rem) cap. */
+const SLIDE_DESIGN_WIDTH = 1024;
 
 /**
  * Marks a page section as one presentation slide. The children always render
@@ -28,19 +33,21 @@ export function PresentationSlide({
   children: ReactNode;
 }) {
   const { register, activeSlideId } = usePresentation();
-  const ref = useRef<HTMLDivElement>(null);
+  const isActive = activeSlideId === id;
+
+  // frameRef doubles as the registration element (the promoted fullscreen box);
+  // contentRef is the centred inner wrapper the fit-to-screen zoom scales up.
+  const { frameRef, contentRef } = useFitScale(isActive, SLIDE_DESIGN_WIDTH);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = frameRef.current;
     if (!el) return;
     return register({ id, title, el });
-  }, [id, title, register]);
-
-  const isActive = activeSlideId === id;
+  }, [id, title, register, frameRef]);
 
   return (
     <div
-      ref={ref}
+      ref={frameRef}
       data-slide-active={isActive || undefined}
       className={
         isActive
@@ -50,7 +57,12 @@ export function PresentationSlide({
           : undefined
       }
     >
-      <div className={isActive ? "m-auto w-full max-w-5xl" : undefined}>{children}</div>
+      {/* When active, useFitScale sets an explicit width + zoom inline; the
+          m-auto keeps the scaled block centred. Inactive, it's a plain
+          pass-through div so the in-page layout is untouched. */}
+      <div ref={contentRef} className={isActive ? "m-auto" : undefined}>
+        {children}
+      </div>
     </div>
   );
 }
