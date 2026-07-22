@@ -1465,3 +1465,138 @@ claim in (d) above**: the ₱ glyph was verified through resvg in the sandbox (w
 fonts), not on Vercel; the benchmark/adequacy lines are correctly present in the PNG's SVG input
 and will appear once a font is bundled into the resvg call (`loadSystemFonts: false` +
 `fontFiles`), the proper fix for the whole PNG export feature.
+
+## 2026-07-22 — Ask-the-Data answer bank: capture (A1) + first-layer serve (A2)
+
+Implements Phases A1 and A2 of `docs/ASK_CACHE_PLAN.md`: every chat turn is captured to a new
+service-role-only `ai_ask_log` table, and single-turn questions are answered from a new
+`ai_ask_cache` answer bank before the provider cascade — a repeat question costs zero AI credits.
+
+- **Capture (`ai_ask_log`)** records question (raw + normalized), geo context, turn index,
+  audited answer, outcome (`answered`/`audited_empty`/`capacity`/`error`), provider, served-from,
+  data_version, tool trace, and latency. Best-effort in every branch of the chat route, wrapped
+  like `rate-limit.ts` — a logging failure can never break the turn. Nothing is served from the
+  log; it's the curation corpus for Phase A3 and the measure of savings.
+- **Serve (`ai_ask_cache`)** keys on `data_version|geo_scope|question_norm` — the identical
+  invalidation scheme as `ai_narrative_cache`, so a dataset refresh invalidates every stored
+  answer automatically and a cached answer can never quote stale numbers. Only single-turn
+  questions (`messages.length === 1`) are looked up or written back: follow-ups depend on
+  conversation history. Geo scope is part of the key because the route injects the current place
+  into the system prompt — identical words mean different answers on different pages. Only
+  audit-surviving text is ever stored, so the bank replays only verified answers.
+- **Normalization is deliberately dumb** (NFKC → lowercase → collapse whitespace → strip terminal
+  punctuation → strip leading politeness prefixes, exhaustively unit-tested): a collision serves
+  a wrong answer while a miss just costs one live call, so every choice biases toward missing.
+- **Owner decisions per plan §0 defaults:** cache hits skip the rate limit (they cost nothing;
+  logged as `ai_chat_cache_hit` usage events so hit rate = cache_hit / (cache_hit + chat_message)
+  with no new infra) and are labeled in the chat UI ("Instant answer from a previously verified
+  response"). `auto` (unreviewed) entries are served — the numeric audit is the safety gate;
+  A3 curation adds approve/edit/block on top. Write-back never clobbers an `approved`/`blocked`
+  row. `/methodology#ai` gains a paragraph disclosing question storage and the dataset-version
+  lifetime of stored answers.
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (140 tests incl. new
+`ask-cache.test.ts`/`ask-log.test.ts`) all clean. Live behavior verified against the Vercel
+preview after applying the two migrations: first ask of a fresh question answers live and lands
+in log + bank; the identical ask answers instantly with `cached: true` and no `tool_call` events.
+
+## 2026-07-22 — Ask-the-Data answer bank: admin curation (A3)
+
+Implements Phase A3 of `docs/ASK_CACHE_PLAN.md`: the `/admin/answer-bank` surface that turns the
+raw capture into a deliberately curated FAQ layer, plus a savings signal on the admin overview.
+
+- **`lib/db/ask-bank.ts`** (service-role reads/writes, same convention as `usage-analytics.ts`):
+  `listAskBank` (stored answers, most-hit first), `listFrequentQuestions` (log grouped by
+  normalized question — "what people actually ask", bounded in-memory scan like the usage
+  dashboard), `getAskCacheSavings` (live vs. cache-hit counts from `usage_events` → hit rate),
+  and the curation mutations `setAskBankStatus` / `updateAskBankAnswer` / `deleteAskBankEntry`.
+- **`/admin/answer-bank` page + actions**: three cards (cache hits, live calls, hit rate over
+  30d); the stored-answer worklist with per-entry approve / block / reset-to-auto, an inline
+  answer editor (Save & approve — pins the edit so write-back can't clobber it), and delete; and
+  a most-asked-questions table from the log. Every server action re-checks `getAdminUser()`
+  itself — a form on an admin page is not proof the request is authorized (feedback/actions.ts
+  discipline). Nav link + an overview card added.
+- **Curation semantics** reuse the invariants A2 already enforces: `block` both makes the serving
+  path miss the question (always live) and — since `storeAskAnswer` never overwrites a non-`auto`
+  row — stops it being repopulated; `approve`/edit pin an entry against write-back; `delete` is
+  for a bad `auto` capture you want regenerated fresh (vs. `block`, which suppresses permanently).
+- **Theming fix caught in review:** first pass used raw `red-*` + Tailwind `dark:` classes; the
+  app themes via a `data-theme` attribute with semantic tokens (no `dark:` usage anywhere), so
+  switched to the existing `--color-danger` token, which adapts in both themes.
+
+Deferred (unchanged from plan): A3.3 refresh-on-ingest precompute for `approved` entries (extends
+the daily narrative cron) and A4 trigram near-match (gated on measured hit rate).
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (148 tests incl. new
+`ask-bank.test.ts`) all clean; the two A1/A2 migrations are already applied to the live project so
+the page reads real captured rows.
+
+## 2026-07-22 — Ask-the-Data answer bank: refresh-on-ingest (A3.3)
+
+Implements Phase A3.3 of `docs/ASK_CACHE_PLAN.md` — the big credit saver: after an ingestion
+bumps the dataset version, every `approved` bank entry keyed to the old version goes dormant (the
+serving path keys on the current version, so it never quotes stale numbers — it just misses).
+`refreshApprovedAskAnswers` (`lib/ai/ask-refresh.ts`) proactively regenerates those curated
+questions under the new version so the first visitor after a refresh still gets an instant answer
+instead of eating a live call. Each dataset refresh then costs N precompute regenerations instead
+of N × visitors live calls.
+
+- **Only `approved` entries are refreshed.** `auto` entries regenerate lazily on first ask, so
+  this stays bounded to the small admin-curated set.
+- **Regeneration reruns the full grounding path** — same system prompt, page context
+  reconstructed from `geo_code` via `getGeoByCode`, same numeric audit — so a refreshed answer
+  meets the identical safety bar as a live one. A refreshed row stays `approved` so it keeps being
+  refreshed on the next bump; the superseded old-version row is deleted only after the new one is
+  safely written. If a provider is capped or the audit strips everything, the dormant old row is
+  kept and retried next run.
+- **Decision — a hand-edited approved answer is replaced on a version bump, by design.** Its
+  numbers were checked against the *old* data; carrying its text forward verbatim under a new
+  version would risk quoting stale figures — the one invariant the whole scheme forbids. Edits are
+  therefore dataset-version-scoped.
+- **Cron wiring (`/api/cron/precompute`):** the refresh runs *first* with a 15s reserve, then the
+  existing narrative precompute takes the rest of the 50s budget. It self-yields — on a normal day
+  there are no stale approved entries so it returns in ~one query and narratives keep the full
+  budget; only on an ingestion day does it consume its slice. Both fill over a few days per this
+  cron's existing philosophy. `askRefresh` counts are added to the JSON response.
+
+Remaining: A4 trigram near-match stays intentionally deferred (plan §0 #4: "off until measured") —
+it's gated on the real hit-rate numbers the A3 dashboard now collects, not built speculatively.
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (155 tests incl. new
+`ask-refresh.test.ts` covering regeneration, context reconstruction, capped/audit-empty skips,
+deadline, and no-stale/error paths) all clean. Live cron behavior is driven by Vercel's scheduler
+(same as the existing narrative precompute, which likewise can't be manually invoked without
+`CRON_SECRET`).
+
+## 2026-07-22 — Ask-the-Data answer bank: trigram near-match (A4)
+
+Implements Phase A4 of `docs/ASK_CACHE_PLAN.md`: a phrasing variant can reuse a stored answer via
+`pg_trgm` similarity instead of a fresh live call. Built at the owner's request ahead of the
+"measure first" default, but shipped **behind a flag (`ASK_NEAR_MATCH_ENABLED`, default off)** so
+enabling it is a deliberate env change, not a deploy — the plan's safety stance intact.
+
+- **`match_ask_answer` SQL function** (`extensions.similarity`, `security invoker`, pinned
+  `search_path`, GIN trigram index on `question_norm`) mirrors the existing `search_geo` pattern.
+  Far stricter than exact match: `approved` entries **only** (the audit verified the stored answer
+  against the *stored* question, not the asked one), **same geo scope AND data_version**, single
+  best match at/above the threshold. Not granted to anon — service-role path only.
+- **Threshold calibrated against real trigram scores, not guessed.** Measured on live data:
+  the dangerous near-collision `accreditation rate in cebu` vs `…bohol` scores **0.667**;
+  rewordings ~0.48; legitimate variants like `which`/`what region…` and `vs.`/`versus` land at
+  **~0.85**. So the default **0.85** rejects the wrong-answer cases while catching trivial
+  variants, and misses looser paraphrases (0.75) — the safe failure direction (a miss just costs
+  one live call). Override via `ASK_NEAR_MATCH_THRESHOLD` while tuning.
+- **Route + observability:** near-match runs only after an exact-match miss on a single-turn
+  question; a hit streams with `cached: true`, skips the rate limit, and is logged
+  `served_from: 'cache_near'` (distinct from `'cache'`) so the admin page can split exact vs near
+  hits per question — the "Near" column exists to audit false positives. The answer-bank page
+  shows the on/off state and how to enable it.
+- **Verified live:** applied `match_ask_answer` to the project; an above-threshold variant
+  (`…profiles versus the total`, 0.852) returns the approved entry, while the Cebu/Bohol case and
+  a different question correctly return nothing. Security advisors unchanged (the function's pinned
+  search_path avoids the mutable-path warning).
+
+That completes every phase in `docs/ASK_CACHE_PLAN.md` (A1–A4).
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (161 tests incl. near-match config +
+lookup coverage in `ask-cache.test.ts` and the exact/near split in `ask-bank.test.ts`) all clean.

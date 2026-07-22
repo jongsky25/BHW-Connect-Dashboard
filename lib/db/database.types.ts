@@ -898,6 +898,102 @@ export type Database = {
           },
         ];
       };
+      ai_ask_cache: {
+        Row: {
+          answer_md: string;
+          cache_key: string;
+          data_version: string;
+          generated_at: string;
+          geo_code: string | null;
+          hit_count: number;
+          last_hit_at: string | null;
+          provider: string | null;
+          question_display: string;
+          question_norm: string;
+          status: string;
+        };
+        Insert: {
+          answer_md: string;
+          cache_key: string;
+          data_version: string;
+          generated_at?: string;
+          geo_code?: string | null;
+          hit_count?: number;
+          last_hit_at?: string | null;
+          provider?: string | null;
+          question_display: string;
+          question_norm: string;
+          status?: string;
+        };
+        Update: {
+          answer_md?: string;
+          cache_key?: string;
+          data_version?: string;
+          generated_at?: string;
+          geo_code?: string | null;
+          hit_count?: number;
+          last_hit_at?: string | null;
+          provider?: string | null;
+          question_display?: string;
+          question_norm?: string;
+          status?: string;
+        };
+        Relationships: [];
+      };
+      ai_ask_log: {
+        Row: {
+          answer_md: string | null;
+          created_at: string;
+          data_version: string | null;
+          geo_code: string | null;
+          geo_level: string | null;
+          id: number;
+          latency_ms: number | null;
+          outcome: string;
+          provider: string | null;
+          question_norm: string;
+          question_raw: string;
+          served_from: string;
+          session_id: string;
+          tool_trace: Json | null;
+          turn_index: number;
+        };
+        Insert: {
+          answer_md?: string | null;
+          created_at?: string;
+          data_version?: string | null;
+          geo_code?: string | null;
+          geo_level?: string | null;
+          id?: never;
+          latency_ms?: number | null;
+          outcome: string;
+          provider?: string | null;
+          question_norm: string;
+          question_raw: string;
+          served_from?: string;
+          session_id: string;
+          tool_trace?: Json | null;
+          turn_index: number;
+        };
+        Update: {
+          answer_md?: string | null;
+          created_at?: string;
+          data_version?: string | null;
+          geo_code?: string | null;
+          geo_level?: string | null;
+          id?: never;
+          latency_ms?: number | null;
+          outcome?: string;
+          provider?: string | null;
+          question_norm?: string;
+          question_raw?: string;
+          served_from?: string;
+          session_id?: string;
+          tool_trace?: Json | null;
+          turn_index?: number;
+        };
+        Relationships: [];
+      };
       ai_narrative_cache: {
         Row: {
           cache_key: string;
@@ -1446,6 +1542,16 @@ export type Database = {
       map_psgc_to_dim_geo: {
         Args: { p_code: string; p_old_vintage?: string };
         Returns: string;
+      };
+      match_ask_answer: {
+        Args: { min_sim?: number; q: string; scope: string; version: string };
+        Returns: {
+          answer_md: string;
+          cache_key: string;
+          provider: string | null;
+          question_norm: string;
+          score: number;
+        }[];
       };
       search_geo: {
         Args: { result_limit?: number; search_query: string };
