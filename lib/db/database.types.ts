@@ -1483,6 +1483,16 @@ export type Database = {
         Args: { p_code: string; p_old_vintage?: string };
         Returns: string;
       };
+      match_ask_answer: {
+        Args: { min_sim?: number; q: string; scope: string; version: string };
+        Returns: {
+          answer_md: string;
+          cache_key: string;
+          provider: string | null;
+          question_norm: string;
+          score: number;
+        }[];
+      };
       search_geo: {
         Args: { result_limit?: number; search_query: string };
         Returns: {

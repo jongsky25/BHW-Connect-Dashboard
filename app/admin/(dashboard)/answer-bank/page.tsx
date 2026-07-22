@@ -1,3 +1,4 @@
+import { isNearMatchEnabled } from "@/lib/ai/ask-cache";
 import {
   getAskCacheSavings,
   listAskBank,
@@ -44,6 +45,8 @@ export default async function AdminAnswerBankPage() {
 
   const totalChat = savings.liveMessages + savings.cacheHits;
   const hitRate = totalChat > 0 ? Math.round((savings.cacheHits / totalChat) * 100) : 0;
+  const nearMatchOn = isNearMatchEnabled();
+  const nearTotal = frequent.reduce((sum, g) => sum + g.servedNear, 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -65,6 +68,15 @@ export default async function AdminAnswerBankPage() {
             <p className="mt-1 text-xs text-muted">of chat turns served from the bank</p>
           </div>
         </div>
+        <p className="text-xs text-muted">
+          Near-match (fuzzy phrasing) serving is{" "}
+          <span className={nearMatchOn ? "font-medium text-accent" : "font-medium text-danger"}>
+            {nearMatchOn ? "on" : "off"}
+          </span>
+          {nearMatchOn
+            ? ` — ${nearTotal} near-match ${nearTotal === 1 ? "hit" : "hits"} in the last 30 days (approved answers only; audit the “Near” column below for false positives).`
+            : " — set ASK_NEAR_MATCH_ENABLED=1 to let close phrasing variants reuse approved answers."}
+        </p>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -99,7 +111,8 @@ export default async function AdminAnswerBankPage() {
               <tr className="text-left text-xs text-muted">
                 <th className="py-1 pr-4 font-medium">Question</th>
                 <th className="py-1 pr-4 font-medium">Asks</th>
-                <th className="py-1 pr-4 font-medium">From cache</th>
+                <th className="py-1 pr-4 font-medium">Exact cache</th>
+                <th className="py-1 pr-4 font-medium">Near</th>
                 <th className="py-1 font-medium">Scopes</th>
               </tr>
             </thead>
@@ -109,6 +122,9 @@ export default async function AdminAnswerBankPage() {
                   <td className="py-1 pr-4">{g.sample}</td>
                   <td className="py-1 pr-4 font-medium">{g.asks}</td>
                   <td className="py-1 pr-4">{g.servedFromCache}</td>
+                  <td className={`py-1 pr-4 ${g.servedNear > 0 ? "font-medium text-accent" : "text-muted"}`}>
+                    {g.servedNear}
+                  </td>
                   <td className="py-1 text-xs text-muted">{g.geoScopes.join(", ")}</td>
                 </tr>
               ))}

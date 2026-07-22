@@ -1476,3 +1476,36 @@ it's gated on the real hit-rate numbers the A3 dashboard now collects, not built
 deadline, and no-stale/error paths) all clean. Live cron behavior is driven by Vercel's scheduler
 (same as the existing narrative precompute, which likewise can't be manually invoked without
 `CRON_SECRET`).
+
+## 2026-07-22 — Ask-the-Data answer bank: trigram near-match (A4)
+
+Implements Phase A4 of `docs/ASK_CACHE_PLAN.md`: a phrasing variant can reuse a stored answer via
+`pg_trgm` similarity instead of a fresh live call. Built at the owner's request ahead of the
+"measure first" default, but shipped **behind a flag (`ASK_NEAR_MATCH_ENABLED`, default off)** so
+enabling it is a deliberate env change, not a deploy — the plan's safety stance intact.
+
+- **`match_ask_answer` SQL function** (`extensions.similarity`, `security invoker`, pinned
+  `search_path`, GIN trigram index on `question_norm`) mirrors the existing `search_geo` pattern.
+  Far stricter than exact match: `approved` entries **only** (the audit verified the stored answer
+  against the *stored* question, not the asked one), **same geo scope AND data_version**, single
+  best match at/above the threshold. Not granted to anon — service-role path only.
+- **Threshold calibrated against real trigram scores, not guessed.** Measured on live data:
+  the dangerous near-collision `accreditation rate in cebu` vs `…bohol` scores **0.667**;
+  rewordings ~0.48; legitimate variants like `which`/`what region…` and `vs.`/`versus` land at
+  **~0.85**. So the default **0.85** rejects the wrong-answer cases while catching trivial
+  variants, and misses looser paraphrases (0.75) — the safe failure direction (a miss just costs
+  one live call). Override via `ASK_NEAR_MATCH_THRESHOLD` while tuning.
+- **Route + observability:** near-match runs only after an exact-match miss on a single-turn
+  question; a hit streams with `cached: true`, skips the rate limit, and is logged
+  `served_from: 'cache_near'` (distinct from `'cache'`) so the admin page can split exact vs near
+  hits per question — the "Near" column exists to audit false positives. The answer-bank page
+  shows the on/off state and how to enable it.
+- **Verified live:** applied `match_ask_answer` to the project; an above-threshold variant
+  (`…profiles versus the total`, 0.852) returns the approved entry, while the Cebu/Bohol case and
+  a different question correctly return nothing. Security advisors unchanged (the function's pinned
+  search_path avoids the mutable-path warning).
+
+That completes every phase in `docs/ASK_CACHE_PLAN.md` (A1–A4).
+
+**Verify.** `npm run lint`, `npm run typecheck`, `npm test` (161 tests incl. near-match config +
+lookup coverage in `ask-cache.test.ts` and the exact/near split in `ask-bank.test.ts`) all clean.

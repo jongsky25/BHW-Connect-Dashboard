@@ -6,6 +6,8 @@ const { state, createSupabaseServiceClient } = vi.hoisted(() => {
     selectError: null as { message: string } | null,
     updates: [] as Record<string, unknown>[],
     upserts: [] as Record<string, unknown>[],
+    rpcResult: { data: null as unknown, error: null as { message: string } | null },
+    rpcCalls: [] as { name: string; args: Record<string, unknown> }[],
   };
   const createSupabaseServiceClient = vi.fn(() => ({
     from: () => ({
@@ -25,18 +27,34 @@ const { state, createSupabaseServiceClient } = vi.hoisted(() => {
         return { error: null };
       },
     }),
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      state.rpcCalls.push({ name, args });
+      return state.rpcResult;
+    },
   }));
   return { state, createSupabaseServiceClient };
 });
 vi.mock("@/lib/db/service-client", () => ({ createSupabaseServiceClient }));
 
-const { askCacheKey, lookupAskCache, normalizeQuestion, storeAskAnswer } = await import("./ask-cache");
+const {
+  askCacheKey,
+  lookupAskCache,
+  lookupAskCacheNearMatch,
+  isNearMatchEnabled,
+  nearMatchThreshold,
+  normalizeQuestion,
+  storeAskAnswer,
+} = await import("./ask-cache");
 
 beforeEach(() => {
   state.row = null;
   state.selectError = null;
   state.updates = [];
   state.upserts = [];
+  state.rpcResult = { data: null, error: null };
+  state.rpcCalls = [];
+  delete process.env.ASK_NEAR_MATCH_ENABLED;
+  delete process.env.ASK_NEAR_MATCH_THRESHOLD;
   createSupabaseServiceClient.mockClear();
 });
 
@@ -139,5 +157,70 @@ describe("storeAskAnswer", () => {
       throw new Error("unconfigured");
     });
     await expect(storeAskAnswer(params)).resolves.toBeUndefined();
+  });
+});
+
+describe("near-match config", () => {
+  it("is disabled by default and enabled only by an explicit truthy flag", () => {
+    expect(isNearMatchEnabled()).toBe(false);
+    process.env.ASK_NEAR_MATCH_ENABLED = "1";
+    expect(isNearMatchEnabled()).toBe(true);
+    process.env.ASK_NEAR_MATCH_ENABLED = "true";
+    expect(isNearMatchEnabled()).toBe(true);
+    process.env.ASK_NEAR_MATCH_ENABLED = "yes";
+    expect(isNearMatchEnabled()).toBe(false);
+  });
+
+  it("defaults the threshold to 0.85 and honors a valid override", () => {
+    expect(nearMatchThreshold()).toBe(0.85);
+    process.env.ASK_NEAR_MATCH_THRESHOLD = "0.9";
+    expect(nearMatchThreshold()).toBe(0.9);
+    process.env.ASK_NEAR_MATCH_THRESHOLD = "banana";
+    expect(nearMatchThreshold()).toBe(0.85);
+    process.env.ASK_NEAR_MATCH_THRESHOLD = "1.5";
+    expect(nearMatchThreshold()).toBe(0.85);
+  });
+});
+
+describe("lookupAskCacheNearMatch", () => {
+  it("returns null without touching the db when disabled", async () => {
+    const hit = await lookupAskCacheNearMatch("q", null, "v1");
+    expect(hit).toBeNull();
+    expect(state.rpcCalls).toHaveLength(0);
+  });
+
+  it("returns the best approved match and bumps its hit_count when enabled", async () => {
+    process.env.ASK_NEAR_MATCH_ENABLED = "1";
+    state.rpcResult = {
+      data: [
+        { cache_key: "v1|national|how many bhws", question_norm: "how many bhws", answer_md: "There are 5.", provider: "gemini", score: 0.92 },
+      ],
+      error: null,
+    };
+    state.row = { hit_count: 2 }; // read for the bump
+
+    const hit = await lookupAskCacheNearMatch("how many bhw", null, "v1");
+    expect(hit).toMatchObject({ answerMd: "There are 5.", provider: "gemini", matchedNorm: "how many bhws", score: 0.92 });
+    expect(state.rpcCalls[0]).toEqual({
+      name: "match_ask_answer",
+      args: { q: "how many bhw", scope: "national", version: "v1", min_sim: 0.85 },
+    });
+    expect(state.updates).toHaveLength(1);
+    expect(state.updates[0].hit_count).toBe(3);
+  });
+
+  it("passes the page geo scope through to the rpc", async () => {
+    process.env.ASK_NEAR_MATCH_ENABLED = "1";
+    state.rpcResult = { data: [], error: null };
+    await lookupAskCacheNearMatch("q", "07", "v1");
+    expect(state.rpcCalls[0].args).toMatchObject({ scope: "07" });
+  });
+
+  it("returns null on an empty match set or rpc error", async () => {
+    process.env.ASK_NEAR_MATCH_ENABLED = "1";
+    state.rpcResult = { data: [], error: null };
+    expect(await lookupAskCacheNearMatch("q", null, "v1")).toBeNull();
+    state.rpcResult = { data: null, error: { message: "boom" } };
+    expect(await lookupAskCacheNearMatch("q", null, "v1")).toBeNull();
   });
 });

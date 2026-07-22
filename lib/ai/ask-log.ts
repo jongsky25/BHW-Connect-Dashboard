@@ -23,7 +23,8 @@ export type AskLogEntry = {
   answerMd: string | null;
   outcome: AskOutcome;
   provider: string | null;
-  servedFrom: "live" | "cache";
+  /** 'cache' = exact-match bank hit, 'cache_near' = trigram near-match hit (A4), 'live' = generated. */
+  servedFrom: "live" | "cache" | "cache_near";
   dataVersion: string | null;
   toolTrace: { name: string; args: Record<string, unknown> }[];
   latencyMs: number;

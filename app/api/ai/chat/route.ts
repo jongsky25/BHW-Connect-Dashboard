@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runToolLoop } from "@/lib/ai/agent-loop";
-import { lookupAskCache, normalizeQuestion, storeAskAnswer } from "@/lib/ai/ask-cache";
+import { lookupAskCache, lookupAskCacheNearMatch, normalizeQuestion, storeAskAnswer } from "@/lib/ai/ask-cache";
 import { recordAsk, type AskLogEntry } from "@/lib/ai/ask-log";
 import { auditNarrative } from "@/lib/ai/audit";
 import { isChatRateLimited, recordChatCacheHit, recordChatMessage } from "@/lib/ai/rate-limit";
@@ -90,12 +90,27 @@ export async function POST(request: Request) {
       ...partial,
     });
 
-  const cached = isSingleTurn ? await lookupAskCache(questionNorm, geoCode ?? null, dataVersion) : null;
-  if (cached) {
+  // First-layer response: exact-match bank hit, then (if enabled) a trigram near-match on an
+  // approved answer. Both cost no provider credits, so they skip the rate limit and stream
+  // instantly; only the served_from marker differs, for analysis.
+  let bankHit: { answerMd: string; provider: string | null } | null = null;
+  let servedFrom: "cache" | "cache_near" = "cache";
+  if (isSingleTurn) {
+    bankHit = await lookupAskCache(questionNorm, geoCode ?? null, dataVersion);
+    if (!bankHit) {
+      const near = await lookupAskCacheNearMatch(questionNorm, geoCode ?? null, dataVersion);
+      if (near) {
+        bankHit = { answerMd: near.answerMd, provider: near.provider };
+        servedFrom = "cache_near";
+      }
+    }
+  }
+  if (bankHit) {
+    const hit = bankHit;
     await recordChatCacheHit(sessionId, geoCode ?? null);
     return ndjsonStream(async (send) => {
-      send({ type: "message", content: cached.answerMd, provider: cached.provider, cached: true });
-      await logEntry({ answerMd: cached.answerMd, outcome: "answered", provider: cached.provider, servedFrom: "cache", toolTrace: [] });
+      send({ type: "message", content: hit.answerMd, provider: hit.provider, cached: true });
+      await logEntry({ answerMd: hit.answerMd, outcome: "answered", provider: hit.provider, servedFrom, toolTrace: [] });
     });
   }
 

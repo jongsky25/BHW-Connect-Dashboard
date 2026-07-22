@@ -69,6 +69,8 @@ export type AskLogGroup = {
   asks: number;
   servedLive: number;
   servedFromCache: number;
+  /** Trigram near-match hits (A4) — the path worth auditing for false positives. */
+  servedNear: number;
   lastAskedAt: string;
   /** Distinct geo scopes this question was asked under ("national" for no page context). */
   geoScopes: string[];
@@ -102,6 +104,7 @@ export async function listFrequentQuestions(sinceDays = 30, limit = 50): Promise
         asks: 0,
         servedLive: 0,
         servedFromCache: 0,
+        servedNear: 0,
         lastAskedAt: row.created_at,
         geoScopes: [],
         scopeSet: new Set<string>(),
@@ -110,6 +113,7 @@ export async function listFrequentQuestions(sinceDays = 30, limit = 50): Promise
     }
     g.asks += 1;
     if (row.served_from === "cache") g.servedFromCache += 1;
+    else if (row.served_from === "cache_near") g.servedNear += 1;
     else g.servedLive += 1;
     g.scopeSet.add(row.geo_code ?? "national");
     // rows arrive newest-first, so the first-seen created_at is the most recent

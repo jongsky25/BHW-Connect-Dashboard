@@ -57,6 +57,7 @@ describe("listFrequentQuestions", () => {
     state.result = {
       data: [
         { question_norm: "how many bhws", question_raw: "How many BHWs?", geo_code: "07", served_from: "cache", created_at: "2026-07-22T03:00:00Z" },
+        { question_norm: "how many bhws", question_raw: "how many bhws", geo_code: null, served_from: "cache_near", created_at: "2026-07-22T02:30:00Z" },
         { question_norm: "how many bhws", question_raw: "how many bhws", geo_code: null, served_from: "live", created_at: "2026-07-22T02:00:00Z" },
         { question_norm: "training gap", question_raw: "biggest training gap", geo_code: null, served_from: "live", created_at: "2026-07-22T01:00:00Z" },
       ],
@@ -66,8 +67,9 @@ describe("listFrequentQuestions", () => {
     expect(groups).toHaveLength(2);
 
     const bhw = groups.find((g) => g.questionNorm === "how many bhws")!;
-    expect(bhw.asks).toBe(2);
+    expect(bhw.asks).toBe(3);
     expect(bhw.servedFromCache).toBe(1);
+    expect(bhw.servedNear).toBe(1);
     expect(bhw.servedLive).toBe(1);
     expect(bhw.sample).toBe("How many BHWs?"); // newest raw phrasing
     expect(bhw.geoScopes.sort()).toEqual(["07", "national"]);
