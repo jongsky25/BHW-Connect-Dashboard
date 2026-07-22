@@ -1,6 +1,6 @@
 import "server-only";
 import { renderBarChartSvg } from "@/lib/charts/render-svg";
-import type { ExportFigureData } from "./figure-data";
+import { formatBenchmarkLine, type ExportFigureData } from "./figure-data";
 
 function escapeXml(value: string): string {
   return value
@@ -22,6 +22,10 @@ const HEADER_H = 68;
 const HEADLINE_H = 36;
 const FOOTER_LINE_H = 16;
 const FOOTER_H = FOOTER_LINE_H * 2 + 8;
+/** Line height for the benchmark/peer/adequacy block (Increment 5) — same
+ * footer-style size as `footerSvg`, so the extra lines read as a natural
+ * continuation of the figure rather than a second, differently-styled block. */
+const EXTRA_LINE_H = 16;
 
 /** Two lines rather than one — the full source name + license + date reliably overflows a single line at export width. */
 export function footerLines(data: ExportFigureData): [string, string] {
@@ -39,13 +43,46 @@ function withFooterText(template: string, data: ExportFigureData): string {
   return template.replace("{{LINE1}}", escapeXml(line1)).replace("{{LINE2}}", escapeXml(line2));
 }
 
+/**
+ * Up to 3 "no naked numbers" lines (Increment 5): the joined vertical
+ * benchmark ("This place 62% · Region VII 71% · Philippines 68%"), the
+ * compact peer-standing sentence, and the adequacy note — same wording the
+ * on-screen `FigureBenchmark` slot renders, so an export reads like the page.
+ * Any of the three may be absent; only present lines take up height.
+ */
+function benchmarkLines(data: ExportFigureData): string[] {
+  const lines: string[] = [];
+  if (data.benchmark && data.benchmark.rows.some((r) => r.value !== null)) {
+    lines.push(formatBenchmarkLine(data.benchmark));
+  }
+  if (data.benchmark?.peerLine) {
+    lines.push(data.benchmark.peerLine);
+  }
+  if (data.adequacyNote) {
+    lines.push(data.adequacyNote);
+  }
+  return lines;
+}
+
+function benchmarkSvg(x: number, firstLineY: number, lines: string[]): string {
+  return lines
+    .map(
+      (line, i) =>
+        `<text x="${x}" y="${firstLineY + i * EXTRA_LINE_H}" font-size="11" font-family="system-ui, sans-serif" fill="#57616a">${escapeXml(line)}</text>`,
+    )
+    .join("\n    ");
+}
+
 /** Composes a title + caption + chart + headline + footer into one PNG, matching the on-screen FigureCard. */
 export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
   const { Resvg } = await import("@resvg/resvg-js");
 
+  const lines = benchmarkLines(data);
+  const extraH = lines.length > 0 ? lines.length * EXTRA_LINE_H + 10 : 0;
+
   if (data.isSuppressed || data.rows.length === 0) {
     const width = 640;
-    const height = 236;
+    const height = 236 + extraH;
     const message = data.isSuppressed
       ? "Suppressed to protect privacy (n<5)"
       : "No data available";
@@ -55,6 +92,7 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
       <text x="${MARGIN}" y="52" font-size="12" font-family="system-ui, sans-serif" fill="#57616a">${escapeXml(data.caption)}</text>
       <rect x="${MARGIN}" y="72" width="${width - MARGIN * 2}" height="80" fill="#f6f7f8"/>
       <text x="${width / 2}" y="118" font-size="14" font-family="system-ui, sans-serif" fill="#57616a" text-anchor="middle">${escapeXml(message)}</text>
+      ${benchmarkSvg(MARGIN, 172, lines)}
       ${footerSvg(MARGIN, height - FOOTER_H + FOOTER_LINE_H)}
     </svg>`;
     return new Resvg(withFooterText(svg, data), { fitTo: { mode: "width", value: width * 2 } })
@@ -69,7 +107,7 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
   const { viewBox, inner } = extractSvgInner(chart.svg);
 
   const width = chart.width + MARGIN * 2;
-  const height = HEADER_H + chart.height + HEADLINE_H + FOOTER_H;
+  const height = HEADER_H + chart.height + HEADLINE_H + extraH + FOOTER_H;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     <rect width="100%" height="100%" fill="#ffffff"/>
@@ -77,6 +115,7 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
     <text x="${MARGIN}" y="46" font-size="12" font-family="system-ui, sans-serif" fill="#57616a">${escapeXml(data.caption)}</text>
     <svg x="${MARGIN}" y="${HEADER_H}" width="${chart.width}" height="${chart.height}" viewBox="${viewBox}">${inner}</svg>
     <text x="${MARGIN}" y="${HEADER_H + chart.height + 24}" font-size="13" font-family="system-ui, sans-serif" fill="#1a1d1e">${escapeXml(data.headline)}</text>
+    ${benchmarkSvg(MARGIN, HEADER_H + chart.height + 44, lines)}
     ${footerSvg(MARGIN, height - FOOTER_H + FOOTER_LINE_H)}
   </svg>`;
 

@@ -48,18 +48,36 @@ The deck goes well beyond what `agg_honorarium` can currently answer. Each item 
 needs a migration and an ingestion re-run (`ingestion/build_aggregates.sql`), so they
 are deliberately out of scope for the home-dashboard pass.
 
-### B. Cumulative honorarium per BHW (deck slide 14)
+### B. Cumulative honorarium per BHW (deck slide 14) — Built
 
-The most policy-relevant number: each BHW's **total** honorarium summed across every
-level they receive from, then the distribution across BHWs. The deck bins this into
-bands (None, 1–4,000, … , >24,000) and lands the headline **"59% receive less than
-₱68 per day"** (≈ ₱300/month). This is **not computable from `agg_honorarium`**, which
-is already grouped by paying level — it needs the per-`bhw_id` sum before aggregation.
+Each BHW's **total** honorarium summed across every level they receive from, then the
+distribution across BHWs, binned into bands (None, ₱1–4,000, … , Over ₱24,000). Built
+as `agg_honorarium_cumulative` (migration `20260721100000_honorarium_cumulative.sql`,
+mirrored in `ingestion/build_aggregates.sql` §16), grouped from `fact_honorarium` by
+`bhw_id` with `sum(normalized_monthly_amount)`, **LEFT JOINed from `fact_bhw_raw`** so
+every profiled BHW lands in a band — including non-recipients, who fall into "None" —
+rather than only those who receive something (contrast this file's earlier
+recipients-only inequality CTE). Built to national/region/province/citymun (barangay
+skipped, same disk discipline as `agg_training`); a band cell with 0 < n < 5 is
+suppressed (band membership at n<5 could reveal an individual's pay band), and a geo
+with n_total < 5 suppresses every row. Surfaced by `HonorariumSufficiencyFigure`
+("Is it enough?"), the first honorarium tab on `/bhw`, `/explore`, `/compare`, and a
+slide on `/place` right after the honorarium slide (barangay falls back to its
+citymun ancestor).
 
-- New table, e.g. `agg_honorarium_cumulative` (dataset × geo × amount-band → `n`, `pct`),
-  built from `fact_honorarium` grouped by `bhw_id` with `sum(normalized_monthly_amount)`.
-- Also expose an average/median cumulative monthly amount per BHW as a headline stat.
-- Drive the "₱X per day" framing from the median cumulative monthly amount ÷ 30.
+Live national numbers (verified against the deployed table): **59.2%** of profiled
+BHWs receive less than the ₱68/day sufficiency cut in cumulative, all-levels
+honorarium — matching the deck's "59%" — with a national median cumulative honorarium
+of **₱1,750/month** (~₱58/day). The "₱68 per day" framing is exact: ₱68/day × 30 =
+₱2,040/month, and `HONORARIUM_SUFFICIENCY_MONTHLY_PHP`/`_DAILY_PHP`
+(`lib/analysis/thresholds.ts`) are set to 2,040 and 68 respectively, the single source
+of truth for this cut.
+
+**Correction:** this section previously carried a parenthetical "(≈ ₱300/month)" next
+to the ₱68/day framing. That was simply measured wrong — ₱68/day is ₱2,040/month, not
+₱300/month, and querying the live per-BHW data confirms it: pct below ₱2,040/month is
+59.2% (matching the deck), while pct below ₱300/month is only 3.6% (nowhere near the
+deck's headline). ₱2,040/month is the correct, and now the deployed, cut.
 
 ### C. Cross-cutting
 

@@ -23,6 +23,11 @@ export const GLOSSARY = {
     definition:
       "A cash allowance paid to a BHW by a local government unit (region, province, city/municipality, or barangay) in recognition of their service. A BHW can receive honorarium from more than one level at once.",
   },
+  honorarium_sufficiency: {
+    term: "Honorarium sufficiency",
+    definition:
+      "Each BHW's honorarium summed across every paying level (region, province, city/municipality, barangay) into one cumulative monthly total, then compared to a sufficiency cut of ₱2,040/month (≈₱68/day, using a 30-day-month convention). Unlike the distribution and inequality figures, which describe amounts only among BHWs who receive something, the denominator here is every profiled BHW, including those who receive no honorarium at all.",
+  },
   active_years: {
     term: "Years of service",
     definition:

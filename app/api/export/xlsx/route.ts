@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
-import { getExportFigureData } from "@/lib/exports/figure-data";
+import { formatBenchmarkLine, getExportFigureData } from "@/lib/exports/figure-data";
 import { parseExportQuery, slugify } from "@/lib/exports/query";
 
 export const runtime = "nodejs";
@@ -55,6 +55,19 @@ export async function GET(request: Request) {
       "Individual-level breakdowns are suppressed when a geo has fewer than 5 BHWs, to prevent re-identification. Totals/counts are not suppressed.",
     ],
   ];
+  // "No naked numbers" rows (Increment 5) — same benchmark line, peer-rank
+  // sentence, and adequacy note the on-screen FigureBenchmark slot renders,
+  // appended to the "About this data" sheet; each is omitted when absent.
+  if (data.benchmark && data.benchmark.rows.some((r) => r.value !== null)) {
+    aboutRows.push(["Benchmark", formatBenchmarkLine(data.benchmark)]);
+  }
+  if (data.benchmark?.peerLine) {
+    aboutRows.push(["Peer rank", data.benchmark.peerLine]);
+  }
+  if (data.adequacyNote) {
+    aboutRows.push(["Adequacy", data.adequacyNote]);
+  }
+
   for (const [label, value] of aboutRows) {
     const row = aboutSheet.addRow([label, value]);
     row.getCell(1).font = { bold: true };

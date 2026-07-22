@@ -11,6 +11,16 @@ import {
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getDataCompleteness } from "@/lib/db/data-quality";
 import { getGeoAncestors, getGeoByCode, getStaticGeoParams } from "@/lib/db/geo";
+import {
+  getBenchmarkContext,
+  benchmarkRowsFor,
+  rowsFromAncestorValues,
+} from "@/lib/db/benchmark-context";
+import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
+import { getPeerRanks } from "@/lib/db/peer-ranks";
+import { PEER_LEVEL_PLURAL, peerParentName, toFigurePeer } from "@/lib/analysis/peer-labels";
+import { MAP_BASE_INDICATOR_META } from "@/lib/analysis/map-indicators";
+import { DOH_INDICATIVE_NOTE } from "@/lib/analysis/thresholds";
 import { getPlaceLocator } from "@/lib/geo/locator";
 import { getInsights } from "@/lib/db/insights";
 import {
@@ -22,14 +32,15 @@ import {
 import { FigureCard } from "@/components/narrative/figure-card";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark } from "@/components/narrative/figure-benchmark";
 import { ProfileHeader, type BreadcrumbAncestor } from "@/components/place/profile-header";
 import { LocatorMapThumbnail } from "@/components/place/locator-map";
 import { ChildrenTable } from "@/components/place/children-table";
-import { BenchmarkBars, type BenchmarkRow } from "@/components/place/benchmark";
 import { GeoSearch } from "@/components/home/geo-search";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
 import { HonorariumFigure } from "@/components/explore/honorarium-figure";
+import { HonorariumSufficiencyFigure } from "@/components/explore/honorarium-sufficiency-figure";
 import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { InsightsGrid } from "@/components/insights/insights-grid";
 import { AiInsight } from "@/components/narrative/ai-insight";
@@ -37,6 +48,29 @@ import { DIMENSION_LABEL } from "@/components/explore/demographics-figure";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
 import { PresentButton } from "@/components/present/present-button";
+
+/** R3: at barangay, a figure that renders the barangay's own data (not an
+ * ancestor fallback) still has no peer row — `agg_peer_ranks` stops at
+ * citymun — so the absence needs an explanation rather than silence. */
+const BARANGAY_PEER_NOTE = "Peer ranking is available down to city/municipality level.";
+
+/** R3: a figure built only down to citymun shows its citymun ancestor's data
+ * at a barangay page — this note says so explicitly, alongside the figure's
+ * own "(shown for X)" title suffix. */
+function fallbackNote(fallbackCitymunName: string | null): string | undefined {
+  return fallbackCitymunName
+    ? `Shown for ${fallbackCitymunName}; barangay-level data is not built for this figure.`
+    : undefined;
+}
+
+/** The 4 indicators `agg_peer_ranks` covers that also have a standalone figure
+ * card on this page (Increment 4) — batched into one `getPeerRanks` call. */
+const FIGURE_PEER_INDICATORS = [
+  "pct_accredited",
+  "avg_active_years",
+  "any_honorarium_pct",
+  "households_per_bhw",
+] as const;
 
 export const revalidate = 86_400; // ISR: refresh at most once a day (citymun/barangay; regions/provinces are SSG via generateStaticParams)
 
@@ -101,20 +135,44 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   const geo = await loadPlace(await params);
   if (!geo) notFound();
 
+  // Needed before the main batch below to compute the citymun-fallback pair
+  // for the sufficiency figure (`agg_honorarium_cumulative` is built down to
+  // citymun only, same as workload/inequality on /explore). `getGeoAncestors`
+  // is `cache()`d, so `getBenchmarkContext` reuses this exact result below
+  // rather than re-querying.
+  const ancestors = await getGeoAncestors(geo.geoCode, geo.geoLevel);
+  const figureFallback = geo.geoLevel === "barangay" ? ancestors.citymun : null;
+  const figureCode = figureFallback ? figureFallback.geoCode : geo.geoCode;
+  const figureLevel: GeoLevel = figureFallback ? "citymun" : geo.geoLevel;
+  const figureFallbackName = figureFallback ? figureFallback.geoName : null;
+
+  // Ancestor-presence gating for Increment 4's benchmark rows — see the
+  // matching comment on /explore; a pure function of geoLevel, known before
+  // `benchmarkCtx` resolves.
+  const wantRegionRow = geo.geoLevel !== "national" && geo.geoLevel !== "region";
+  const wantNationalRow = geo.geoLevel !== "national";
+  const regionCode = ancestors.region?.geoCode ?? null;
+
   const [
-    ancestors,
-    overview,
-    counts,
+    benchmarkCtx,
     demographicsByDimension,
     training,
     honorarium,
+    honorariumSufficiency,
     insights,
     childSummaries,
     completeness,
+    peerRanks,
+    honorariumSufficiencyRegion,
+    honorariumSufficiencyNational,
   ] = await Promise.all([
-    getGeoAncestors(geo.geoCode, geo.geoLevel),
-    getBhwOverview(geo.geoCode, geo.geoLevel),
-    getBhwCounts(geo.geoCode, geo.geoLevel),
+    // Benchmark context (E1.2): this place vs. its region and the nation, so
+    // every figure answers "versus what?". Also carries the ancestors this page
+    // needs for breadcrumbs/locator/fallback labels, so the ancestor fetch is
+    // no longer duplicated here. Benchmarks are hidden entirely at national
+    // level (`showBenchmarks`); the region row is omitted at and above region
+    // level (`benchmarkCtx.region`).
+    getBenchmarkContext(geo.geoCode, geo.geoLevel, geo.geoName),
     Promise.all(
       DEFAULT_BREAKDOWNS.map(async (dimension) => ({
         dimension,
@@ -123,41 +181,32 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     ),
     getTrainingCoverage(geo.geoCode, geo.geoLevel),
     getHonorarium(geo.geoCode, geo.geoLevel),
+    getHonorariumSufficiency(figureCode, figureLevel),
     getInsights(geo.geoLevel, geo.geoCode, geo.geoName),
     getChildSummaries(geo.geoCode, geo.geoLevel),
     getDataCompleteness(geo.geoCode, geo.geoLevel),
+    // Peer standing (E2.3/E1.5) for the 4 `agg_peer_ranks`-covered indicators
+    // that also have a benchmarked card on this page, batched into one query.
+    getPeerRanks(geo.geoCode, geo.geoLevel, FIGURE_PEER_INDICATORS),
+    // Ancestor fetch for the sufficiency figure's vertical rows (Increment 4) —
+    // `pctBelowSufficiency` doesn't live on `BenchmarkContext`.
+    wantRegionRow && regionCode
+      ? getHonorariumSufficiency(regionCode, "region")
+      : Promise.resolve(null),
+    wantNationalRow
+      ? getHonorariumSufficiency(NATIONAL_GEO_CODE, "national")
+      : Promise.resolve(null),
   ]);
+
+  const overview = benchmarkCtx.self.overview;
+  const counts = benchmarkCtx.self.counts;
+  const showBenchmarks = benchmarkCtx.showBenchmarks;
 
   // Needs ancestors (fetched above) to pick the right boundary file, so it
   // can't join the first Promise.all; it's a cached local-file read, not a DB call.
   const locator = await getPlaceLocator(geo, ancestors);
 
   const childLevelLabel = CHILD_LEVEL_PLURAL[geo.geoLevel];
-
-  // Benchmark context: this place vs. its region and the nation, so every figure
-  // answers "versus what?". National is always fetched; the region only when the
-  // place sits inside one (below region level) so a region page never compares
-  // against itself. Benchmarks are hidden entirely on the national page.
-  const showBenchmarks = geo.geoLevel !== "national";
-  const regionBenchmark =
-    geo.geoLevel !== "national" && geo.geoLevel !== "region" ? ancestors.region : null;
-
-  const [nationalOverview, nationalCounts, regionOverview, regionCounts] = await Promise.all([
-    showBenchmarks ? getBhwOverview(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
-    showBenchmarks ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
-    regionBenchmark ? getBhwOverview(regionBenchmark.geoCode, "region") : Promise.resolve(null),
-    regionBenchmark ? getBhwCounts(regionBenchmark.geoCode, "region") : Promise.resolve(null),
-  ]);
-
-  const benchmarkRows = (
-    place: number | null,
-    region: number | null,
-    national: number | null,
-  ): BenchmarkRow[] => [
-    { label: "This place", value: place, isPrimary: true },
-    ...(regionBenchmark ? [{ label: regionBenchmark.geoName, value: region }] : []),
-    { label: "Philippines", value: national },
-  ];
 
   const breadcrumbAncestors: BreadcrumbAncestor[] = [
     { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
@@ -192,6 +241,32 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
 
   const caption = `N = ${overview.validatedProfiles?.toLocaleString() ?? "—"} validated profiles · ${geo.geoName} · 2025 snapshot`;
 
+  // One compact at-a-glance line under the stat-chip row (Increment 4 §4.3) —
+  // the full benchmark bars + peer standing live on the cards below; this is
+  // just "versus what?" in one glance. Omitted at the national level (nothing
+  // to compare against) and when there's nothing to report.
+  const profileCoverage = coverageForDisplay(overview);
+  const benchmarkNoteParts: string[] = [];
+  if (benchmarkCtx.region) {
+    benchmarkNoteParts.push(
+      `${benchmarkCtx.region.geoName}: ${benchmarkCtx.region.overview.householdsPerBhw?.toLocaleString() ?? "—"} hh/BHW`,
+    );
+  }
+  if (benchmarkCtx.national) {
+    benchmarkNoteParts.push(
+      `Philippines: ${benchmarkCtx.national.overview.householdsPerBhw?.toLocaleString() ?? "—"} hh/BHW`,
+    );
+  }
+  if (overview.validatedProfiles !== null) {
+    benchmarkNoteParts.push(
+      `n = ${overview.validatedProfiles.toLocaleString()} profiled${
+        profileCoverage !== null ? ` (${profileCoverage}%)` : ""
+      }`,
+    );
+  }
+  const profileBenchmarkNote =
+    showBenchmarks && benchmarkNoteParts.length > 0 ? `${benchmarkNoteParts.join(" · ")}.` : undefined;
+
   // Title-slide facts for presentation mode (serializable, server → client).
   const deckMeta = {
     pageLabel: "Place profile",
@@ -215,6 +290,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           coveragePct={coverageForDisplay(overview)}
           householdsPerBhw={overview.householdsPerBhw}
           incomeClass={geo.incomeClass}
+          benchmarkNote={profileBenchmarkNote}
           locator={
             locator ? (
               <LocatorMapThumbnail
@@ -289,16 +365,22 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
                 </p>
               }
               benchmark={
-                showBenchmarks ? (
-                  <BenchmarkBars
-                    rows={benchmarkRows(
-                      counts?.pctAccredited ?? null,
-                      regionCounts?.pctAccredited ?? null,
-                      nationalCounts?.pctAccredited ?? null,
-                    )}
-                    format="percent"
-                  />
-                ) : undefined
+                <FigureBenchmark
+                  rows={
+                    showBenchmarks
+                      ? benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.pctAccredited ?? null)
+                      : undefined
+                  }
+                  format="percent"
+                  peer={toFigurePeer(
+                    peerRanks.get("pct_accredited"),
+                    peerParentName(geo.geoLevel, ancestors),
+                    PEER_LEVEL_PLURAL[geo.geoLevel] ?? "",
+                    MAP_BASE_INDICATOR_META.pct_accredited.label,
+                  )}
+                  n={counts?.nTotal ?? null}
+                  note={geo.geoLevel === "barangay" ? BARANGAY_PEER_NOTE : undefined}
+                />
               }
             >
               <p className="text-4xl font-semibold tracking-tight">
@@ -327,17 +409,23 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               }
               technicalDetails={<p>Computed from each BHW&apos;s recorded active-service years.</p>}
               benchmark={
-                showBenchmarks ? (
-                  <BenchmarkBars
-                    rows={benchmarkRows(
-                      counts?.avgActiveYears ?? null,
-                      regionCounts?.avgActiveYears ?? null,
-                      nationalCounts?.avgActiveYears ?? null,
-                    )}
-                    format="count"
-                    unitSuffix="yrs"
-                  />
-                ) : undefined
+                <FigureBenchmark
+                  rows={
+                    showBenchmarks
+                      ? benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.avgActiveYears ?? null)
+                      : undefined
+                  }
+                  format="count"
+                  unitSuffix="yrs"
+                  peer={toFigurePeer(
+                    peerRanks.get("avg_active_years"),
+                    peerParentName(geo.geoLevel, ancestors),
+                    PEER_LEVEL_PLURAL[geo.geoLevel] ?? "",
+                    MAP_BASE_INDICATOR_META.avg_active_years.label,
+                  )}
+                  n={counts?.nTotal ?? null}
+                  note={geo.geoLevel === "barangay" ? BARANGAY_PEER_NOTE : undefined}
+                />
               }
             >
               <p className="text-4xl font-semibold tracking-tight">
@@ -359,17 +447,29 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
                   </p>
                 }
                 benchmark={
-                  showBenchmarks ? (
-                    <BenchmarkBars
-                      rows={benchmarkRows(
-                        overview.householdsPerBhw,
-                        regionOverview?.householdsPerBhw ?? null,
-                        nationalOverview?.householdsPerBhw ?? null,
-                      )}
-                      format="count"
-                      unitSuffix="hh/BHW"
-                    />
-                  ) : undefined
+                  <FigureBenchmark
+                    rows={
+                      showBenchmarks
+                        ? benchmarkRowsFor(benchmarkCtx, (s) => s.overview.householdsPerBhw)
+                        : undefined
+                    }
+                    format="count"
+                    unitSuffix="hh/BHW"
+                    peer={toFigurePeer(
+                      peerRanks.get("households_per_bhw"),
+                      peerParentName(geo.geoLevel, ancestors),
+                      PEER_LEVEL_PLURAL[geo.geoLevel] ?? "",
+                      MAP_BASE_INDICATOR_META.households_per_bhw.label,
+                    )}
+                    n={overview.totalBhw ?? null}
+                    nLabel="total BHWs"
+                    note={[
+                      geo.geoLevel === "barangay" ? BARANGAY_PEER_NOTE : null,
+                      DOH_INDICATIVE_NOTE,
+                    ]
+                      .filter((s): s is string => Boolean(s))
+                      .join(" ")}
+                  />
                 }
               >
                 <p className="text-4xl font-semibold tracking-tight">{overview.householdsPerBhw}</p>
@@ -389,6 +489,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
                 caption={caption}
                 geoCode={geo.geoCode}
                 geoLevel={geo.geoLevel}
+                benchmark={{ n: counts?.nTotal ?? null }}
               />
             </PresentationSlide>
           ))}
@@ -400,6 +501,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               geoLevel={geo.geoLevel}
               citymunAncestor={ancestors.citymun}
               geoCode={geo.geoCode}
+              benchmark={{ n: counts?.nTotal ?? null }}
             />
           </PresentationSlide>
 
@@ -409,6 +511,44 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               caption={caption}
               geoCode={geo.geoCode}
               geoLevel={geo.geoLevel}
+              benchmark={{
+                rows: showBenchmarks
+                  ? benchmarkRowsFor(benchmarkCtx, (s) => s.counts?.anyHonorariumPct ?? null)
+                  : undefined,
+                format: "percent",
+                peer: toFigurePeer(
+                  peerRanks.get("any_honorarium_pct"),
+                  peerParentName(geo.geoLevel, ancestors),
+                  PEER_LEVEL_PLURAL[geo.geoLevel] ?? "",
+                  MAP_BASE_INDICATOR_META.any_honorarium_pct.label,
+                ),
+                n: counts?.nTotal ?? null,
+                note: geo.geoLevel === "barangay" ? BARANGAY_PEER_NOTE : undefined,
+              }}
+            />
+          </PresentationSlide>
+
+          <PresentationSlide id="honorarium-sufficiency" title="Honorarium sufficiency">
+            <HonorariumSufficiencyFigure
+              data={honorariumSufficiency}
+              caption={caption}
+              geoCode={geo.geoCode}
+              geoLevel={geo.geoLevel}
+              fallbackCitymunName={figureFallbackName}
+              benchmark={{
+                rows: showBenchmarks
+                  ? rowsFromAncestorValues(
+                      benchmarkCtx,
+                      honorariumSufficiency?.pctBelowSufficiency ?? null,
+                      honorariumSufficiencyRegion?.pctBelowSufficiency ?? null,
+                      honorariumSufficiencyNational?.pctBelowSufficiency ?? null,
+                      figureFallbackName ?? "This place",
+                    )
+                  : undefined,
+                format: "percent",
+                n: honorariumSufficiency?.nTotal ?? null,
+                note: fallbackNote(figureFallbackName),
+              }}
             />
           </PresentationSlide>
 
@@ -418,6 +558,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
               caption={caption}
               geoLevel={geo.geoLevel}
               citymunAncestor={ancestors.citymun}
+              benchmark={{ n: counts?.nTotal ?? null }}
             />
           </PresentationSlide>
         </div>

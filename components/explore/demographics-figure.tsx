@@ -3,6 +3,7 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { DemographicRow } from "@/lib/db/indicators";
 import type { DemographicDimension, GeoLevel } from "@/lib/filters/schema";
 
@@ -26,12 +27,14 @@ export function DemographicsFigure({
   caption,
   geoCode,
   geoLevel,
+  benchmark,
 }: {
   dimension: DemographicDimension;
   rows: DemographicRow[];
   caption: string;
   geoCode?: string;
   geoLevel?: GeoLevel;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const isSuppressed = rows.some((r) => r.isSuppressed);
   const rollup = rows.find((r) => r.isSuppressed && r.rollupGeoCode);
@@ -90,6 +93,7 @@ export function DemographicsFigure({
           )}
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       {isSuppressed ? (
         <p className="rounded-md bg-surface px-4 py-6 text-center text-sm text-muted">

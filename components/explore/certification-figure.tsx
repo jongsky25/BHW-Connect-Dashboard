@@ -2,6 +2,7 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import { FigureView } from "@/components/charts/figure-view";
 import { ExportMenu } from "@/components/narrative/export-menu";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import type { CertificationRow } from "@/lib/db/indicators";
 import type { GeoLevel } from "@/lib/filters/schema";
 
@@ -20,11 +21,13 @@ export function CertificationFigure({
   caption,
   geoCode,
   geoLevel,
+  benchmark,
 }: {
   rows: CertificationRow[];
   caption: string;
   geoCode?: string;
   geoLevel?: GeoLevel;
+  benchmark?: FigureBenchmarkProps;
 }) {
   const byType = new Map(rows.map((r) => [r.certType, r]));
   const chartData = CERT_ORDER.map((t) => byType.get(t))
@@ -61,6 +64,7 @@ export function CertificationFigure({
           <p>Percentages are of the validated profiles in this area.</p>
         </>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       {chartData.length > 0 ? (
         <FigureView

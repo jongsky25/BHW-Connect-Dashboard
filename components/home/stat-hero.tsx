@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { StackedMiniBar } from "@/components/home/mini-viz";
 import { StatEnlargeModal, type StatEnlarge } from "@/components/home/stat-tile";
 
@@ -11,12 +11,17 @@ export function StatHero({
   label,
   value,
   caption,
+  context,
   registrationMix,
   enlarge,
 }: {
   label: string;
   value: string;
   caption: string;
+  /** Optional line rendered under the caption (Increment 4) — the universe/N
+   * line, e.g. "LGU-declared universe; N = 270,917 individually profiled
+   * (98%)." Plain `text-xs text-muted`, matching `FigureBenchmark`'s footnote. */
+  context?: ReactNode;
   /** Registered / registered & accredited / non-registered, for the mini-bar. */
   registrationMix?: { label: string; value: number; color: string }[];
   enlarge?: StatEnlarge;
@@ -35,6 +40,7 @@ export function StatHero({
         </div>
       )}
       <p className="mt-3 text-xs text-muted">{caption}</p>
+      {context}
     </>
   );
 

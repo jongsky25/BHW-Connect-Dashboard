@@ -14,6 +14,7 @@ const LABELS: Record<Indicator, string> = {
   honorarium: "Honorarium: who receives",
   honorarium_amount: "Honorarium: how much",
   honorarium_distribution: "Honorarium: distribution",
+  honorarium_sufficiency: "Honorarium sufficiency",
 };
 
 export function IndicatorPicker() {

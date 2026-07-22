@@ -10,6 +10,8 @@ import {
   getTrainingCoverage,
 } from "@/lib/db/indicators";
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
+import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
+import { getPeerRanks } from "@/lib/db/peer-ranks";
 import type { CompareMetricValues } from "@/lib/analysis/compare-metrics";
 import { AddGeoSearch } from "@/components/compare/add-geo-search";
 import { IndicatorPicker } from "@/components/compare/indicator-picker";
@@ -33,6 +35,15 @@ const GEO_LEVEL_LABEL: Record<string, string> = {
 
 /** How many same-level peers to suggest when exactly one place is selected. */
 const MAX_PEER_SUGGESTIONS = 8;
+
+/** The 4 indicators `agg_peer_ranks` covers that also have a benchmarked
+ * column figure (Increment 4) — batched into one `getPeerRanks` call per geo. */
+const FIGURE_PEER_INDICATORS = [
+  "pct_accredited",
+  "avg_active_years",
+  "any_honorarium_pct",
+  "households_per_bhw",
+] as const;
 
 /**
  * The largest same-level peers of a selected geo (by validated profiles), for
@@ -100,11 +111,26 @@ export default async function ComparePage({
   let summaryPlaces: CompareSummaryPlace[] = [];
   let reference: { label: string; values: CompareMetricValues } | null = null;
   if (canCompare) {
-    const [loaded, nationalOverview, nationalCounts] = await Promise.all([
-      Promise.all(
-        valid.map(async (geo) => {
-          const [overview, counts, demographics, training, certification, honorarium] =
-            await Promise.all([
+    // National reference for the column-level benchmarks (Increment 4 §4.4):
+    // place-vs-nation only, no region rows (four places' regions would be
+    // noise — the head-to-head strip above already covers across-places).
+    // Skipped when the compared level IS national (nothing above it).
+    const wantNationalReference = levels[0] !== "national";
+
+    const [loaded, nationalOverview, nationalCounts, nationalCertification, nationalHonorarium, nationalHonorariumSufficiency] =
+      await Promise.all([
+        Promise.all(
+          valid.map(async (geo) => {
+            const [
+              overview,
+              counts,
+              demographics,
+              training,
+              certification,
+              honorarium,
+              honorariumSufficiency,
+              peerRankMap,
+            ] = await Promise.all([
               getBhwOverview(geo.geoCode, geo.geoLevel),
               getBhwCounts(geo.geoCode, geo.geoLevel),
               Promise.all(
@@ -116,33 +142,84 @@ export default async function ComparePage({
               getTrainingCoverage(geo.geoCode, geo.geoLevel),
               getCertification(geo.geoCode, geo.geoLevel),
               getHonorarium(geo.geoCode, geo.geoLevel),
+              getHonorariumSufficiency(geo.geoCode, geo.geoLevel),
+              // Peer standing (E2.3/E1.5) — batched per geo, the 4
+              // `agg_peer_ranks`-covered indicators with a column figure here.
+              getPeerRanks(geo.geoCode, geo.geoLevel, FIGURE_PEER_INDICATORS),
             ]);
-          return { geo, overview, counts, demographics, training, certification, honorarium };
-        }),
-      ),
-      // National reference row for the head-to-head strip — the same "versus
-      // what?" context every other page shows. Skipped when the compared level
-      // IS national (nothing above it).
-      levels[0] !== "national"
-        ? getBhwOverview(NATIONAL_GEO_CODE, "national")
-        : Promise.resolve(null),
-      levels[0] !== "national" ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
-    ]);
+            return {
+              geo,
+              overview,
+              counts,
+              demographics,
+              training,
+              certification,
+              honorarium,
+              honorariumSufficiency,
+              peerRankMap,
+            };
+          }),
+        ),
+        // National reference row for the head-to-head strip — the same "versus
+        // what?" context every other page shows.
+        wantNationalReference
+          ? getBhwOverview(NATIONAL_GEO_CODE, "national")
+          : Promise.resolve(null),
+        wantNationalReference ? getBhwCounts(NATIONAL_GEO_CODE, "national") : Promise.resolve(null),
+        wantNationalReference ? getCertification(NATIONAL_GEO_CODE, "national") : Promise.resolve([]),
+        wantNationalReference ? getHonorarium(NATIONAL_GEO_CODE, "national") : Promise.resolve([]),
+        wantNationalReference
+          ? getHonorariumSufficiency(NATIONAL_GEO_CODE, "national")
+          : Promise.resolve(null),
+      ]);
 
-    columns = loaded.map(({ geo, overview, counts, demographics, training, certification, honorarium }) => ({
-      geoCode: geo.geoCode,
-      geoName: geo.geoName,
-      geoLevel: geo.geoLevel,
-      counts,
-      totalBhw: overview.totalBhw,
-      validatedProfiles: overview.validatedProfiles,
-      coveragePct: coverageForDisplay(overview),
-      householdsPerBhw: overview.householdsPerBhw,
-      demographics,
-      training,
-      certification,
-      honorarium,
-    }));
+    // Reused across every column — plain, serializable data (Risk R8) built
+    // once from the national fetches above rather than refetched per column.
+    const nationalReference: CompareColumnData["nationalReference"] = wantNationalReference
+      ? {
+          counts: nationalCounts
+            ? {
+                pctAccredited: nationalCounts.pctAccredited,
+                avgActiveYears: nationalCounts.avgActiveYears,
+                anyHonorariumPct: nationalCounts.anyHonorariumPct,
+                nTotal: nationalCounts.nTotal,
+              }
+            : null,
+          certification: nationalCertification,
+          honorarium: nationalHonorarium,
+          honorariumSufficiency: nationalHonorariumSufficiency,
+        }
+      : null;
+
+    columns = loaded.map(
+      ({
+        geo,
+        overview,
+        counts,
+        demographics,
+        training,
+        certification,
+        honorarium,
+        honorariumSufficiency,
+        peerRankMap,
+      }) => ({
+        geoCode: geo.geoCode,
+        geoName: geo.geoName,
+        geoLevel: geo.geoLevel,
+        counts,
+        totalBhw: overview.totalBhw,
+        validatedProfiles: overview.validatedProfiles,
+        coveragePct: coverageForDisplay(overview),
+        householdsPerBhw: overview.householdsPerBhw,
+        demographics,
+        training,
+        certification,
+        honorarium,
+        honorariumSufficiency,
+        peerRanks: Object.fromEntries(peerRankMap),
+        nationalReference,
+      }),
+    );
 
     // The summary strip reads the same overview/counts objects as the columns,
     // so the two can never disagree on a value.

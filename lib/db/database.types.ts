@@ -169,6 +169,66 @@ export type Database = {
           },
         ];
       };
+      agg_honorarium_cumulative: {
+        Row: {
+          band_label: string;
+          band_order: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          is_suppressed: boolean;
+          median_cumulative_monthly: number | null;
+          n: number | null;
+          n_total: number;
+          pct: number | null;
+          pct_below_sufficiency: number | null;
+        };
+        Insert: {
+          band_label: string;
+          band_order: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          is_suppressed?: boolean;
+          median_cumulative_monthly?: number | null;
+          n?: number | null;
+          n_total: number;
+          pct?: number | null;
+          pct_below_sufficiency?: number | null;
+        };
+        Update: {
+          band_label?: string;
+          band_order?: number;
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          is_suppressed?: boolean;
+          median_cumulative_monthly?: number | null;
+          n?: number | null;
+          n_total?: number;
+          pct?: number | null;
+          pct_below_sufficiency?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_honorarium_cumulative_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_honorarium_cumulative_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_honorarium_inequality: {
         Row: {
           dataset_id: number;

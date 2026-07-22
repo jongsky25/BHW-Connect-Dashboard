@@ -1,5 +1,6 @@
 import { FigureCard } from "@/components/narrative/figure-card";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { FigureBenchmark, type FigureBenchmarkProps } from "@/components/narrative/figure-benchmark";
 import { formatIndicatorValue } from "@/lib/analysis/map-indicators";
 
 /**
@@ -17,12 +18,14 @@ export function AccreditationSourcesFigure({
   verified,
   verifiedCi,
   caption,
+  benchmark,
 }: {
   lguReported: number | null;
   verified: number | null;
   /** Wilson 95% interval (percentage points) around the verified rate (E2.2). */
   verifiedCi?: { low: number | null; high: number | null } | null;
   caption: string;
+  benchmark?: FigureBenchmarkProps;
 }) {
   if (lguReported === null) return null;
 
@@ -60,6 +63,7 @@ export function AccreditationSourcesFigure({
           .
         </p>
       }
+      benchmark={benchmark ? <FigureBenchmark {...benchmark} /> : undefined}
     >
       <dl className="grid grid-cols-2 gap-3">
         <div className="rounded-md border border-border bg-surface/40 p-3">
