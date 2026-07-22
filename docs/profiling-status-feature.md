@@ -20,6 +20,22 @@ of the Philippines.
   - **Validated** = validated + approved
   - **Certified** = approved
   - Invariant: Encoded ≥ Validated ≥ Certified; each shown as % of the total-BHW denominator.
+- **Denominator is the hero** on every page (`StatusHero`), with the headline "still to certify"
+  gap (`total − certified`) beneath it. Each funnel step also carries its **remaining** count and
+  **% to go** — the complement of `pctCapped`, derived once in `step()` (`remaining` floored at 0
+  on overshoot).
+- **Bottleneck view** (`BottleneckBars`) re-splits the same population into mutually-exclusive
+  *current* states (drafted / awaiting validation / rework / awaiting certification / certified /
+  not yet encoded) to show where records pile up — `back_to_encoder` is the rework/quality signal.
+- **Rankings & flags:** `AreaRanking` (furthest-along vs. most-still-to-do child areas, only when
+  there's real spread) and `CoverageFlags` (areas reporting, areas at 0% certified, and the >100%
+  encoded-exceeds-headcount artefact).
+- **Drill-down** goes national → region → province → city/municipality. The **barangay** level is
+  wired in the UI (heading + graceful "no barangay data yet" note) but has no rows, since the
+  source sheets are city/municipality-grain.
+- **Not built (data-limited):** trend / velocity / projected-completion (needs periodic snapshots)
+  and an interactive choropleth (reuses the heavy `ChoroplethMap` + ranked-list scaffolding from
+  `/explore`; the `AreaRanking` list is the accessible stand-in for now).
 - **Download = PNG one-pager** (reuses `@resvg/resvg-js`; no `pdf-lib` — the repo has no PDF
   machinery).
 

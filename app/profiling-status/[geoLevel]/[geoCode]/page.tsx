@@ -9,7 +9,11 @@ import {
 } from "@/lib/db/profiling-status";
 import { GEO_LEVELS, type GeoLevel } from "@/lib/filters/schema";
 import { formatCount } from "@/lib/format";
+import { StatusHero } from "@/components/profiling-status/status-hero";
 import { FunnelBars } from "@/components/profiling-status/funnel-bars";
+import { BottleneckBars } from "@/components/profiling-status/bottleneck-bars";
+import { AreaRanking } from "@/components/profiling-status/area-ranking";
+import { CoverageFlags } from "@/components/profiling-status/coverage-flags";
 import { ChildBreakdown } from "@/components/profiling-status/child-breakdown";
 
 export const revalidate = 86_400; // ISR: citymun render on-demand; region/province are SSG.
@@ -18,7 +22,7 @@ const CHILD_HEADING: Record<GeoLevel, string | null> = {
   national: "Regions",
   region: "Provinces",
   province: "Cities / municipalities",
-  citymun: null,
+  citymun: "Barangays",
   barangay: null,
 };
 
@@ -105,9 +109,12 @@ export default async function ProfilingStatusAreaPage({ params }: { params: Prom
       {status && status.totalBhw > 0 ? (
         <>
           <section className="rounded-lg border border-border bg-background p-5 sm:p-6">
-            <p className="text-sm text-muted">{formatCount(status.totalBhw)} BHWs to profile</p>
-            <div className="mt-4">
+            <StatusHero status={status} />
+            <div className="mt-6">
               <FunnelBars status={status} />
+            </div>
+            <div className="mt-6 border-t border-border pt-5">
+              <BottleneckBars status={status} />
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
               <p className="text-xs text-muted">Encode → Validate → Certify · 2026 profiling</p>
@@ -121,8 +128,25 @@ export default async function ProfilingStatusAreaPage({ params }: { params: Prom
           </section>
 
           {childHeading && children.length > 0 && (
-            <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-              <ChildBreakdown heading={childHeading} items={children} />
+            <>
+              <AreaRanking heading={childHeading} items={children} />
+              <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                <ChildBreakdown heading={childHeading} items={children} />
+                <div className="mt-4 border-t border-border pt-4">
+                  <CoverageFlags items={children} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* A city/municipality has barangay children in principle, but the 2026 profiling
+              sheets are municipality-grain — so barangay rows don't exist yet. Say so explicitly
+              rather than leaving a blank, matching the region-by-region rollout messaging. */}
+          {childHeading === "Barangays" && children.length === 0 && (
+            <div className="rounded-lg border border-border bg-surface p-5 text-sm text-muted sm:p-6">
+              No barangay-level profiling data yet. The 2026 encoding status is reported per
+              city/municipality; barangay breakdowns will appear here as barangay-grain data is
+              loaded.
             </div>
           )}
         </>

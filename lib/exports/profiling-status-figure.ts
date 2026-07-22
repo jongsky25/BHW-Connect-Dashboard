@@ -17,6 +17,7 @@ const CHILD_HEADING: Partial<Record<GeoLevel, string>> = {
   national: "Regions",
   region: "Provinces",
   province: "Cities / municipalities",
+  citymun: "Barangays",
 };
 
 const STEPS = [
@@ -39,15 +40,19 @@ function fmt(n: number): string {
 function pct(step: ProfilingStatusStep): string {
   return step.pct === null ? "—" : `${step.pct}%`;
 }
+/** A raw percentage value (e.g. `pctToGo`) rendered as "N%" or an em-dash when unknown. */
+function pct2(value: number | null): string {
+  return value === null ? "—" : `${value}%`;
+}
 
-/** One summary bar (label · count · %), width = capped % of the denominator. */
+/** One summary bar (label · count · % · remaining), width = capped % of the denominator. */
 function summaryBar(y: number, label: string, color: string, step: ProfilingStatusStep): string {
   const barY = y + 14;
   const barW = INNER;
   const fillW = Math.round((barW * (step.pctCapped ?? 0)) / 100);
   return `
     <text x="${MARGIN}" y="${y + 10}" font-size="13" font-weight="600" fill="${INK}">${escapeXml(label)}</text>
-    <text x="${MARGIN + INNER}" y="${y + 10}" font-size="13" fill="${MUTED}" text-anchor="end">${fmt(step.count)} · ${pct(step)}</text>
+    <text x="${MARGIN + INNER}" y="${y + 10}" font-size="13" fill="${MUTED}" text-anchor="end">${fmt(step.count)} · ${pct(step)} · ${fmt(step.remaining)} to go</text>
     <rect x="${MARGIN}" y="${barY}" width="${barW}" height="10" rx="5" fill="#f6f7f8"/>
     <rect x="${MARGIN}" y="${barY}" width="${fillW}" height="10" rx="5" fill="${color}"/>`;
 }
@@ -98,6 +103,11 @@ export async function buildProfilingStatusFigure(
   parts.push(
     `<text x="${MARGIN}" y="${y + 14}" font-size="13" fill="${INK}">${escapeXml(`${fmt(status.totalBhw)} BHWs to profile — Encoded ${fmt(status.encode.count)} (${pct(status.encode)}) · Validated ${fmt(status.validate.count)} (${pct(status.validate)}) · Certified ${fmt(status.certify.count)} (${pct(status.certify)})`)}</text>`,
   );
+  y += 20;
+  // The "how far to go" line — the certify gap, the headline the page leads with.
+  parts.push(
+    `<text x="${MARGIN}" y="${y + 14}" font-size="13" font-weight="600" fill="${INK}">${escapeXml(`${fmt(status.certify.remaining)} still to certify${status.certify.pctToGo === null ? "" : ` (${status.certify.pctToGo}% to go)`}`)}</text>`,
+  );
   y += 26;
   parts.push(`<line x1="${MARGIN}" y1="${y}" x2="${MARGIN + INNER}" y2="${y}" stroke="${BORDER}"/>`);
   y += 14;
@@ -117,14 +127,16 @@ export async function buildProfilingStatusFigure(
     y += 20;
     parts.push(`<text x="${MARGIN}" y="${y}" font-size="13" font-weight="600" fill="${INK}">${escapeXml(childHeading)}</text>`);
     // column x positions (right-aligned numeric columns)
-    const cTotal = MARGIN + INNER - 360;
-    const cEnc = MARGIN + INNER - 240;
-    const cVal = MARGIN + INNER - 110;
-    const cCert = MARGIN + INNER;
+    const cTotal = MARGIN + INNER - 440;
+    const cEnc = MARGIN + INNER - 330;
+    const cVal = MARGIN + INNER - 220;
+    const cCert = MARGIN + INNER - 110;
+    const cToGo = MARGIN + INNER;
     parts.push(`<text x="${cTotal}" y="${y}" font-size="10" fill="${MUTED}" text-anchor="end">Total</text>`);
     parts.push(`<text x="${cEnc}" y="${y}" font-size="10" fill="${MUTED}" text-anchor="end">Encoded</text>`);
     parts.push(`<text x="${cVal}" y="${y}" font-size="10" fill="${MUTED}" text-anchor="end">Validated</text>`);
     parts.push(`<text x="${cCert}" y="${y}" font-size="10" fill="${MUTED}" text-anchor="end">Certified</text>`);
+    parts.push(`<text x="${cToGo}" y="${y}" font-size="10" fill="${MUTED}" text-anchor="end">To certify</text>`);
     y += 6;
     parts.push(`<line x1="${MARGIN}" y1="${y}" x2="${MARGIN + INNER}" y2="${y}" stroke="${BORDER}"/>`);
     y += 16;
@@ -134,6 +146,9 @@ export async function buildProfilingStatusFigure(
       parts.push(cell(cEnc, y, c.encode.count, c.encode));
       parts.push(cell(cVal, y, c.validate.count, c.validate));
       parts.push(cell(cCert, y, c.certify.count, c.certify));
+      parts.push(
+        `<text x="${cToGo}" y="${y}" font-size="11" fill="${MUTED}" text-anchor="end">${fmt(c.certify.remaining)} · ${pct2(c.certify.pctToGo)}</text>`,
+      );
       y += 18;
     }
     y += 2;

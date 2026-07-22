@@ -43,8 +43,11 @@ export function ChildBreakdown({
               <th scope="col" className="py-2 pr-3 text-right font-medium">
                 Validated
               </th>
-              <th scope="col" className="py-2 text-right font-medium">
+              <th scope="col" className="py-2 pr-3 text-right font-medium">
                 Certified
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                To certify
               </th>
             </tr>
           </thead>
@@ -68,8 +71,11 @@ export function ChildBreakdown({
                 <td className="py-2 pr-3 text-right tabular-nums">
                   {formatCount(c.validate.count)} · {pctLabel(c.validate.pct)}
                 </td>
-                <td className="py-2 text-right tabular-nums">
+                <td className="py-2 pr-3 text-right tabular-nums">
                   {formatCount(c.certify.count)} · {pctLabel(c.certify.pct)}
+                </td>
+                <td className="py-2 text-right tabular-nums text-muted">
+                  {formatCount(c.certify.remaining)} · {pctLabel(c.certify.pctToGo)}
                 </td>
               </tr>
             ))}
