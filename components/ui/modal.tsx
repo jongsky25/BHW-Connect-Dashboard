@@ -39,7 +39,7 @@ export function Modal({
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
-      className="fixed inset-0 m-auto hidden max-h-[92vh] min-h-[40vh] w-[96vw] max-w-6xl rounded-lg border border-border bg-background p-0 shadow-xl backdrop:bg-foreground/40 open:flex open:flex-col"
+      className="fixed inset-0 m-auto hidden max-h-[92vh] min-h-[40vh] w-[96vw] max-w-6xl rounded-lg border border-border bg-background p-0 text-foreground shadow-xl backdrop:bg-foreground/40 open:flex open:flex-col"
     >
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-3 sm:p-5">
         <div>

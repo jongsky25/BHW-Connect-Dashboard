@@ -323,7 +323,7 @@ export default async function Home() {
               }
               caption={
                 overview.households !== null
-                  ? `Total BHWs across ${formatCount(overview.households)} households · StepZero · 2025`
+                  ? `Households served per BHW, on average · across ${formatCount(overview.households)} households · StepZero · 2025`
                   : "Household data not available"
               }
               context={
@@ -404,7 +404,7 @@ export default async function Home() {
                 },
                 {
                   id: "who",
-                  label: "Who receives",
+                  label: "Who provides",
                   content: (
                     <HonorariumFigure
                       rows={honorarium}

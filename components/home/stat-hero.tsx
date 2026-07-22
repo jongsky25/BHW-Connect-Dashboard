@@ -36,6 +36,7 @@ export function StatHero({
           <StackedMiniBar
             segments={registrationMix}
             ariaLabel={registrationMix.map((s) => `${s.label} ${s.value.toLocaleString()}`).join(", ")}
+            showLegend
           />
         </div>
       )}

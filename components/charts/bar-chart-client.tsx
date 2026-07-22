@@ -85,7 +85,11 @@ export function BarChartClient({
       ref={containerRef}
       role="img"
       aria-label={`${xLabel ?? "Chart"}: ${data.map((d) => `${d.label} ${format(d.value)}${valueSuffix ?? ""}`).join(", ")}`}
-      className="w-full overflow-x-auto"
+      // text-foreground sets CSS `color`, which Plot's text (rendered with
+      // fill: currentColor, see lib/charts/bar-chart.ts + style-axis.ts) inherits
+      // — so axis/tick/value labels stay readable in dark mode instead of Plot's
+      // default near-black fill.
+      className="w-full overflow-x-auto text-foreground"
     />
   );
 }

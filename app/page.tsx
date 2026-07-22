@@ -16,16 +16,9 @@ export const metadata: Metadata = {
 export default function Portal() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-8 sm:px-6 sm:py-12">
-      {/* Slim portal header — the hub's own brand, not the BHW nav. */}
-      <header className="flex items-center">
-        <span
-          className="equity-mark md"
-          role="img"
-          aria-label="Equity in Health"
-        />
-      </header>
-
-      {/* Hero */}
+      {/* Hero — the single Equity in Health mark lives here, centered. (An
+          earlier slim upper-left header mark was removed as redundant with this
+          one, per user feedback #11.) */}
       <section className="flex flex-col items-center gap-4 pt-4 text-center">
         <span className="equity-mark lg" role="img" aria-label="Equity in Health" />
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Equity in Health</h1>

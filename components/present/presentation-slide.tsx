@@ -53,7 +53,7 @@ export function PresentationSlide({
         isActive
           ? // m-auto on the child (not justify-center here) so content taller
             // than the viewport scrolls from the top instead of clipping.
-            "fixed inset-0 z-[60] flex overflow-y-auto bg-background px-6 py-16 sm:px-12"
+            "fixed inset-0 z-[60] flex overflow-y-auto bg-background px-6 py-16 sm:px-12 sm:py-20"
           : undefined
       }
     >
@@ -61,6 +61,18 @@ export function PresentationSlide({
           m-auto keeps the scaled block centred. Inactive, it's a plain
           pass-through div so the in-page layout is untouched. */}
       <div ref={contentRef} className={isActive ? "m-auto" : undefined}>
+        {/* Presentation chrome: a labeled slide header so a promoted slide reads
+            as a deliberate presentation, not the in-page card (user feedback
+            #9). It lives inside the fit-scaled content so it zooms with the
+            slide, and is a stable leading slot (false when inactive) so
+            `children` keep the same array index across promotion — preserving
+            chart/tab/map state, per the no-reparenting note above. */}
+        {isActive && (
+          <div className="mb-8 border-b border-border pb-4 sm:mb-10">
+            <p className="text-xs font-medium tracking-wide text-muted uppercase">BHW Connect</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
+          </div>
+        )}
         {children}
       </div>
     </div>
