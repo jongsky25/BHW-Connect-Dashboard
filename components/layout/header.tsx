@@ -33,9 +33,10 @@ export function Header() {
     setMobileOpen(false);
   }
 
-  // The Equity in Health portal ("/") supplies its own slim chrome, so the
-  // BHW-specific header is suppressed there.
-  if (pathname === "/") return null;
+  // The Equity in Health portal ("/") and the 2026 BHW Profiling Status section
+  // ("/profiling-status/*") each supply their own slim chrome, so the census
+  // (BHW Connect) header is suppressed on both.
+  if (pathname === "/" || pathname.startsWith("/profiling-status")) return null;
 
   return (
     <header className="border-b border-border bg-background">

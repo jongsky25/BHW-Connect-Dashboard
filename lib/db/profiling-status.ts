@@ -169,3 +169,25 @@ export const getProfilingStatusChildren = cache(
       );
   },
 );
+
+/**
+ * Region + province `{ geoLevel, geoCode }` that actually have a profiling-status row — for
+ * `generateStaticParams` (pre-render only geos with data) and the sitemap. City/municipality
+ * pages are left to ISR. Returns [] on any read failure.
+ */
+export async function getProfilingStatusStaticParams(): Promise<
+  { geoLevel: GeoLevel; geoCode: string }[]
+> {
+  const datasetId = await getDatasetIdBySlug(DATASET_SLUGS.profilingStatus);
+  if (datasetId === null) return [];
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("agg_bhw_profiling_status")
+    .select("geo_code, geo_level")
+    .eq("dataset_id", datasetId)
+    .in("geo_level", ["region", "province"]);
+
+  if (error || !data) return [];
+  return data.map((row) => ({ geoLevel: row.geo_level, geoCode: row.geo_code }));
+}

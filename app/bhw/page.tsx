@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   getBhwCounts,
   getCertification,
@@ -17,7 +18,6 @@ import type { BarDatum } from "@/lib/charts/bar-chart";
 import { NATIONAL_GEO_CODE } from "@/lib/filters/schema";
 import { formatCount, formatPct } from "@/lib/format";
 import { GeoSearch } from "@/components/home/geo-search";
-import { ProfilingStatusCard } from "@/components/home/profiling-status-card";
 import { StatHero } from "@/components/home/stat-hero";
 import { StatTile } from "@/components/home/stat-tile";
 import { Donut, DotStrip, Gauge, LadderBars } from "@/components/home/mini-viz";
@@ -68,6 +68,12 @@ function educationTile(rows: DemographicRow[]): {
     .map((r) => ({ label: r.category, n: r.n as number, pct: r.pct as number }));
   return { hsPlusPct: hsGradOrAbovePct(rows) ?? 0, rows: rowsOut, hasData: byCat.size > 0 };
 }
+
+// Names this dataset the "2025 BHW Census" (the tab reads "2025 BHW Census · BHW Connect"),
+// distinguishing it from the separate 2026 BHW Profiling Status section.
+export const metadata: Metadata = {
+  title: "2025 BHW Census",
+};
 
 export default async function Home() {
   // Regions of the country, for the Accredited tile's regional-spread line
@@ -352,10 +358,6 @@ export default async function Home() {
               }
             />
           </section>
-        </PresentationSlide>
-
-        <PresentationSlide id="profiling-status" title="BHW Profiling Status (2026)">
-          <ProfilingStatusCard />
         </PresentationSlide>
 
         <PresentationSlide id="denominator" title="How BHWs are counted">
