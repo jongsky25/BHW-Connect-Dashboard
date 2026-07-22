@@ -55,13 +55,14 @@ export default function Portal() {
         <h2 className="sr-only">Datasets</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DatasetCard
-            title="Barangay Health Workers (BHW)"
+            title="2025 BHW Census"
             description="The Philippine BHW workforce — accreditation, training, demographics, and honorarium, down to the city/municipality level."
             href="/bhw"
           />
           <DatasetCard
-            title="More datasets"
-            description="Additional open health datasets held by the section are being prepared for release here."
+            title="2026 BHW Profiling Status"
+            description="How far the 2026 individual-profiling exercise has progressed — Encode → Validate → Certify — from city/municipality up to national level."
+            href="/profiling-status"
           />
           <DatasetCard
             title="Ways forward"

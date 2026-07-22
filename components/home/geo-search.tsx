@@ -70,14 +70,17 @@ export function GeoSearch({
   variant?: "hero" | "compact";
   /** Where a selection navigates. `place` → the geo's place page (default, used
    * on Home/place). `explore` → stays on `/explore` with the geo applied as
-   * filter params, so the Explore sidebar search browses in place (E1.6). */
-  mode?: "place" | "explore";
+   * filter params, so the Explore sidebar search browses in place (E1.6).
+   * `profiling` → the geo's page in the 2026 BHW Profiling Status section. */
+  mode?: "place" | "explore" | "profiling";
 }) {
   const router = useRouter();
   const hrefFor = (geoLevel: string, geoCode: string) =>
     mode === "explore"
       ? `/explore?geoLevel=${geoLevel}&geoCode=${geoCode}`
-      : `/place/${geoLevel}/${geoCode}`;
+      : mode === "profiling"
+        ? `/profiling-status/${geoLevel}/${geoCode}`
+        : `/place/${geoLevel}/${geoCode}`;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeoSearchResult[]>([]);
   const [status, setStatus] = useState<Status>("idle");

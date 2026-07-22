@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllGeosAtLevels } from "@/lib/db/geo";
+import { getProfilingStatusStaticParams } from "@/lib/db/profiling-status";
 
 const BASE_URL = "https://bhw-connect-jongsky25s-projects.vercel.app";
 
@@ -14,6 +15,8 @@ const STATIC_PATHS = [
   "/privacy",
   "/feedback",
   "/roadmap",
+  "/profiling-status",
+  "/profiling-status/methodology",
 ];
 
 /**
@@ -25,12 +28,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Region + province + citymun is ~1,775 rows — past the platform's hard
   // 1,000-row-per-request cap (BUILD_PLAN.md pitfall P9), so this paginates
   // internally rather than a single query, which would silently truncate.
-  const geos = await getAllGeosAtLevels(["region", "province", "citymun"]);
+  const [geos, profilingGeos] = await Promise.all([
+    getAllGeosAtLevels(["region", "province", "citymun"]),
+    // Only region/province profiling pages that actually have data (city/mun is ISR).
+    getProfilingStatusStaticParams(),
+  ]);
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_PATHS.map((path) => ({
     url: `${BASE_URL}${path}`,
     changeFrequency: "monthly",
-    priority: path === "" || path === "/bhw" ? 1 : 0.6,
+    priority: path === "" || path === "/bhw" || path === "/profiling-status" ? 1 : 0.6,
   }));
 
   const placeEntries: MetadataRoute.Sitemap = geos.map((geo) => ({
@@ -39,5 +46,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: geo.geoLevel === "region" ? 0.8 : geo.geoLevel === "province" ? 0.6 : 0.4,
   }));
 
-  return [...staticEntries, ...placeEntries];
+  const profilingEntries: MetadataRoute.Sitemap = profilingGeos.map((geo) => ({
+    url: `${BASE_URL}/profiling-status/${geo.geoLevel}/${geo.geoCode}`,
+    changeFrequency: "weekly",
+    priority: geo.geoLevel === "region" ? 0.8 : 0.6,
+  }));
+
+  return [...staticEntries, ...placeEntries, ...profilingEntries];
 }
