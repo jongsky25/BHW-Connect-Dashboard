@@ -1600,3 +1600,33 @@ That completes every phase in `docs/ASK_CACHE_PLAN.md` (A1–A4).
 
 **Verify.** `npm run lint`, `npm run typecheck`, `npm test` (161 tests incl. near-match config +
 lookup coverage in `ask-cache.test.ts` and the exact/near split in `ask-bank.test.ts`) all clean.
+
+## 2026-07-22 — Present mode: fit-to-screen scaling for large crowds / LED walls
+
+Present view previously promoted each slide to a fullscreen box but rendered it at the *normal
+page* font sizes, capped at `max-w-5xl` (1024px) and centred — tiny for an audience and wasting
+most of a 1920px+ LED wall. The ask was "the biggest font that still doesn't overlap."
+
+- **Uniform scale, not font-only.** Several figures mix rem-based type (`text-*`) with **fixed-rem
+  column widths** (e.g. the benchmark bars' `grid-cols-[7rem_1fr_auto]`), so scaling *only* fonts
+  would overflow those fixed tracks and overlap. Instead each promoted slide is composed at a fixed
+  design width and scaled up with **CSS `zoom`** (`components/present/use-fit-scale.ts`), which
+  grows fonts, padding, and fixed-rem widths in lockstep — overlap is impossible by construction.
+  `zoom` (unlike `transform: scale`) reflows, so the existing `m-auto` centring and
+  `overflow-y-auto` scrolling keep working. Charts are vector (Observable Plot / SVG) so they stay
+  crisp when magnified.
+- **"Maximum" is computed, not a magic number.** The hook measures the slide's natural height at
+  the design width, then picks the largest zoom that still fits the fullscreen frame in *both*
+  axes, so the type is as large as each slide and each screen allow. It never scales **below 1**
+  (a slide too tall to fit keeps its size and scrolls, exactly as before) and is capped at
+  **2.6×** so a sparse single-stat slide doesn't blow up cartoonishly. On a laptop preview the fit
+  usually lands at 1× (unchanged); on a 1080p+ wall the type grows ~1.5–2.6×.
+- **Applies to every slide.** Content slides (`presentation-slide.tsx`, design width 1024px) and
+  the generated title/closing slides (`presentation-deck.tsx`, 768px) share the same hook, so the
+  whole deck reads at one large size. Recomputes on viewport/frame resize; the ResizeObserver
+  watches only the never-zoomed frame, so there's no measure↔zoom feedback loop.
+
+**Verify.** `npm run lint`, `npm run typecheck`, and the presentation unit tests
+(`deck-logic.test.ts`) all clean. No DB/env available in this environment for a live screenshot, so
+the fit is derived from the layout mechanics (fixed design width + uniform zoom) rather than
+measured against rendered data.
