@@ -10,7 +10,11 @@ type Geometry =
   | { type: "MultiPolygon"; coordinates: number[][][][] };
 
 export type BoundaryCollection = {
-  features: { properties: { geo_code?: string }; geometry: Geometry }[];
+  // `geometry` is nullable: the boundary pipeline emits a feature with a null
+  // geometry for geos it can't source a shape for (e.g. the Kalayaan /
+  // Spratly Islands citymun, 1705321), which is valid GeoJSON. Five citymun
+  // context files ship one such feature today.
+  features: { properties: { geo_code?: string }; geometry: Geometry | null }[];
 };
 
 export type LocatorMap = {
@@ -41,7 +45,8 @@ const MIN_CONTEXT_RING_PX = 2;
  * place stays findable in the thumbnail. */
 const MARKER_THRESHOLD_PX = 8;
 
-function ringsOf(geometry: Geometry): number[][][] {
+function ringsOf(geometry: Geometry | null): number[][][] {
+  if (!geometry) return [];
   if (geometry.type === "Polygon") return geometry.coordinates;
   if (geometry.type === "MultiPolygon") return geometry.coordinates.flat();
   return [];

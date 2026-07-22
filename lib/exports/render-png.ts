@@ -1,6 +1,34 @@
 import "server-only";
+import path from "node:path";
 import { renderBarChartSvg } from "@/lib/charts/render-svg";
 import { formatBenchmarkLine, type ExportFigureData } from "./figure-data";
+
+/**
+ * Bundled fonts for server-side rasterization. Vercel's serverless runtime
+ * ships no system fonts, so `new Resvg(...)` with the default (system-font)
+ * config silently drops every text node — titles, axis labels, headline and
+ * footer all vanished from PNG/PPTX exports in production. DejaVu Sans is
+ * bundled here (and force-included into the export functions via
+ * `outputFileTracingIncludes` in next.config.ts, keyed off `process.cwd()` the
+ * same way the place page loads public/geo) and passed to resvg explicitly; it
+ * covers the peso sign ₱ (U+20B1) the honorarium figures use.
+ *
+ * The SVGs request `font-family="system-ui, sans-serif"` (matching the
+ * on-screen figure); that family isn't loaded, so resvg falls back to
+ * `defaultFontFamily` — "DejaVu Sans" — for every text node. The `600`-weight
+ * title/axis labels pick up the bundled bold face.
+ */
+const FONT_DIR = path.join(process.cwd(), "lib", "exports", "fonts");
+const DEFAULT_FONT_FAMILY = "DejaVu Sans";
+
+/** Font config shared by every `new Resvg(...)` call in this module. */
+function resvgFont() {
+  return {
+    fontFiles: [path.join(FONT_DIR, "DejaVuSans.ttf"), path.join(FONT_DIR, "DejaVuSans-Bold.ttf")],
+    loadSystemFonts: false,
+    defaultFontFamily: DEFAULT_FONT_FAMILY,
+  };
+}
 
 function escapeXml(value: string): string {
   return value
@@ -83,9 +111,7 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
   if (data.isSuppressed || data.rows.length === 0) {
     const width = 640;
     const height = 236 + extraH;
-    const message = data.isSuppressed
-      ? "Suppressed to protect privacy (n<5)"
-      : "No data available";
+    const message = data.isSuppressed ? "Suppressed to protect privacy (n<5)" : "No data available";
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <rect width="100%" height="100%" fill="#ffffff"/>
       <text x="${MARGIN}" y="32" font-size="20" font-weight="600" font-family="system-ui, sans-serif" fill="#1a1d1e">${escapeXml(data.title)}</text>
@@ -95,7 +121,10 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
       ${benchmarkSvg(MARGIN, 172, lines)}
       ${footerSvg(MARGIN, height - FOOTER_H + FOOTER_LINE_H)}
     </svg>`;
-    return new Resvg(withFooterText(svg, data), { fitTo: { mode: "width", value: width * 2 } })
+    return new Resvg(withFooterText(svg, data), {
+      fitTo: { mode: "width", value: width * 2 },
+      font: resvgFont(),
+    })
       .render()
       .asPng();
   }
@@ -119,7 +148,10 @@ export async function renderFigurePng(data: ExportFigureData): Promise<Buffer> {
     ${footerSvg(MARGIN, height - FOOTER_H + FOOTER_LINE_H)}
   </svg>`;
 
-  return new Resvg(withFooterText(svg, data), { fitTo: { mode: "width", value: width * 2 } })
+  return new Resvg(withFooterText(svg, data), {
+    fitTo: { mode: "width", value: width * 2 },
+    font: resvgFont(),
+  })
     .render()
     .asPng();
 }

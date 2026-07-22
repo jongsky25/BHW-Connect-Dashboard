@@ -20,9 +20,43 @@ const geo = (geoCode: string, geoLevel: "region" | "province" | "citymun" | "bar
   geoName: geoCode,
 });
 
-const region03 = { geoCode: "03", geoLevel: "region" as const, geoName: "Central Luzon", incomeClass: null };
-const pampanga = { geoCode: "03054", geoLevel: "province" as const, geoName: "Pampanga", incomeClass: null };
-const apalit = { geoCode: "0305402", geoLevel: "citymun" as const, geoName: "Apalit", incomeClass: null };
+const region03 = {
+  geoCode: "03",
+  geoLevel: "region" as const,
+  geoName: "Central Luzon",
+  incomeClass: null,
+};
+const pampanga = {
+  geoCode: "03054",
+  geoLevel: "province" as const,
+  geoName: "Pampanga",
+  incomeClass: null,
+};
+const apalit = {
+  geoCode: "0305402",
+  geoLevel: "citymun" as const,
+  geoName: "Apalit",
+  incomeClass: null,
+};
+
+const region17 = {
+  geoCode: "17",
+  geoLevel: "region" as const,
+  geoName: "MIMAROPA",
+  incomeClass: null,
+};
+const palawan = {
+  geoCode: "17053",
+  geoLevel: "province" as const,
+  geoName: "Palawan",
+  incomeClass: null,
+};
+const aborlan = {
+  geoCode: "1705301",
+  geoLevel: "citymun" as const,
+  geoName: "Aborlan",
+  incomeClass: null,
+};
 
 describe("getPlaceLocator (real public/geo files)", () => {
   it("renders a region within the country", async () => {
@@ -41,7 +75,10 @@ describe("getPlaceLocator (real public/geo files)", () => {
   });
 
   it("renders a province within its region", async () => {
-    const locator = await getPlaceLocator(geo("03054", "province"), ancestors({ region: region03 }));
+    const locator = await getPlaceLocator(
+      geo("03054", "province"),
+      ancestors({ region: region03 }),
+    );
     expect(locator).not.toBeNull();
     expect(locator!.highlightPath).not.toBe("");
   });
@@ -69,6 +106,37 @@ describe("getPlaceLocator (real public/geo files)", () => {
     expect(locator).not.toBeNull();
     expect(locator!.highlightIsParent).toBe(true);
     expect(locator!.highlightName).toBe("Apalit");
+  });
+
+  it("renders a citymun whose province file contains a null-geometry sibling (Palawan, #60)", async () => {
+    // public/geo/citymun/17053.json ships the Kalayaan citymun (1705321) with a
+    // null geometry. Before the fix this crashed every citymun/barangay page
+    // under Palawan (and 4 other provinces) with "Cannot read properties of
+    // null (reading 'type')". A normal sibling must still render its locator.
+    const locator = await getPlaceLocator(
+      geo("1705301", "citymun"), // Aborlan
+      ancestors({ region: region17, province: palawan }),
+    );
+    expect(locator).not.toBeNull();
+    expect(locator!.highlightPath).not.toBe("");
+  });
+
+  it("returns null (not a crash) for the null-geometry citymun's own page (Kalayaan, #60)", async () => {
+    const locator = await getPlaceLocator(
+      geo("1705321", "citymun"),
+      ancestors({ region: region17, province: palawan }),
+    );
+    expect(locator).toBeNull();
+  });
+
+  it("renders a barangay under a null-geometry province file without crashing (#60)", async () => {
+    // Barangay pages highlight their parent citymun from the same province file.
+    const locator = await getPlaceLocator(
+      geo("170530100", "barangay"),
+      ancestors({ region: region17, province: palawan, citymun: aborlan }),
+    );
+    expect(locator).not.toBeNull();
+    expect(locator!.highlightIsParent).toBe(true);
   });
 
   it("skips the national level", async () => {

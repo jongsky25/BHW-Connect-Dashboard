@@ -97,6 +97,32 @@ describe("buildLocatorMap", () => {
     expect(map.contextPath).toBe("");
   });
 
+  it("ignores features with a null geometry in the context set", () => {
+    // The boundary pipeline emits a null-geometry feature for geos it can't
+    // source a shape for (e.g. the Kalayaan citymun, 1705321). Every citymun/
+    // barangay page under such a province loads this file for its locator, so
+    // a null geometry must be skipped, not crash the render.
+    const collection: BoundaryCollection = {
+      features: [
+        square("01", 0, 0, 1),
+        { properties: { geo_code: "nullgeo" }, geometry: null },
+        square("02", 1, 0, 1),
+      ],
+    };
+    const map = buildLocatorMap(collection, "02");
+    expect(map).not.toBeNull();
+    expect(map!.highlightPath).toMatch(/^M[\d .L]+Z$/);
+  });
+
+  it("returns null (no locator) when the highlight itself has a null geometry", () => {
+    // The Kalayaan citymun's own page: the feature exists but has no shape, so
+    // there's nothing to outline — omit the thumbnail rather than throw.
+    const collection: BoundaryCollection = {
+      features: [square("01", 0, 0, 1), { properties: { geo_code: "nullgeo" }, geometry: null }],
+    };
+    expect(buildLocatorMap(collection, "nullgeo")).toBeNull();
+  });
+
   it("keeps y pointing down (north at the top)", () => {
     const collection: BoundaryCollection = {
       features: [square("north", 0, 1, 1), square("south", 0, -2, 1)],
