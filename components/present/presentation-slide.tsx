@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { usePresentation } from "./presentation-context";
+import { useFitScale } from "./use-fit-scale";
+
+/** Layout width (px) content slides are composed at before the fit-to-screen
+ * zoom — matches the former `max-w-5xl` (64rem) cap. */
+const SLIDE_DESIGN_WIDTH = 1024;
 
 /**
  * Marks a page section as one presentation slide. The children always render
@@ -28,19 +33,21 @@ export function PresentationSlide({
   children: ReactNode;
 }) {
   const { register, activeSlideId } = usePresentation();
-  const ref = useRef<HTMLDivElement>(null);
+  const isActive = activeSlideId === id;
+
+  // frameRef doubles as the registration element (the promoted fullscreen box);
+  // contentRef is the centred inner wrapper the fit-to-screen zoom scales up.
+  const { frameRef, contentRef } = useFitScale(isActive, SLIDE_DESIGN_WIDTH);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = frameRef.current;
     if (!el) return;
     return register({ id, title, el });
-  }, [id, title, register]);
-
-  const isActive = activeSlideId === id;
+  }, [id, title, register, frameRef]);
 
   return (
     <div
-      ref={ref}
+      ref={frameRef}
       data-slide-active={isActive || undefined}
       className={
         isActive
@@ -50,13 +57,16 @@ export function PresentationSlide({
           : undefined
       }
     >
-      <div className={isActive ? "m-auto w-full max-w-5xl" : undefined}>
-        {/* Presentation chrome: a labeled slide header + generous spacing so a
-            promoted slide reads as a deliberate presentation, not the in-page
-            card at the same size (user feedback #9). Rendered as a stable
-            leading slot (false when inactive) so `children` keep the same array
-            index across promotion — preserving chart/tab/map state, per the
-            no-reparenting note above. */}
+      {/* When active, useFitScale sets an explicit width + zoom inline; the
+          m-auto keeps the scaled block centred. Inactive, it's a plain
+          pass-through div so the in-page layout is untouched. */}
+      <div ref={contentRef} className={isActive ? "m-auto" : undefined}>
+        {/* Presentation chrome: a labeled slide header so a promoted slide reads
+            as a deliberate presentation, not the in-page card (user feedback
+            #9). It lives inside the fit-scaled content so it zooms with the
+            slide, and is a stable leading slot (false when inactive) so
+            `children` keep the same array index across promotion — preserving
+            chart/tab/map state, per the no-reparenting note above. */}
         {isActive && (
           <div className="mb-8 border-b border-border pb-4 sm:mb-10">
             <p className="text-xs font-medium tracking-wide text-muted uppercase">BHW Connect</p>

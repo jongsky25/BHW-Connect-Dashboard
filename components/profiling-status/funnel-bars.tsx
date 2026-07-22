@@ -26,13 +26,15 @@ export function FunnelBars({ status }: { status: ProfilingStatus }) {
             <div className="flex items-baseline justify-between text-sm">
               <span className="font-medium">{s.label}</span>
               <span className="text-muted">
-                {formatCount(step.count)} <span aria-hidden="true">·</span> {pctLabel(step.pct)}
+                {formatCount(step.count)} <span aria-hidden="true">·</span> {pctLabel(step.pct)}{" "}
+                <span aria-hidden="true">·</span>{" "}
+                <span className="text-muted/80">{formatCount(step.remaining)} to go</span>
               </span>
             </div>
             <div
               className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-surface"
               role="img"
-              aria-label={`${s.label}: ${formatCount(step.count)} (${pctLabel(step.pct)} of total)`}
+              aria-label={`${s.label}: ${formatCount(step.count)} (${pctLabel(step.pct)} of total), ${formatCount(step.remaining)} to go`}
             >
               <div
                 className="h-full rounded-full"

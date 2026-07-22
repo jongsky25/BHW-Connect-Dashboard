@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { NATIONAL_GEO_CODE } from "@/lib/filters/schema";
 import { getProfilingStatus, getProfilingStatusChildren } from "@/lib/db/profiling-status";
-import { formatCount } from "@/lib/format";
 import { GeoSearch } from "@/components/home/geo-search";
+import { StatusHero } from "@/components/profiling-status/status-hero";
 import { FunnelBars } from "@/components/profiling-status/funnel-bars";
+import { BottleneckBars } from "@/components/profiling-status/bottleneck-bars";
+import { AreaRanking } from "@/components/profiling-status/area-ranking";
+import { CoverageFlags } from "@/components/profiling-status/coverage-flags";
 import { ChildBreakdown } from "@/components/profiling-status/child-breakdown";
 
 export const revalidate = 86_400;
@@ -52,12 +55,15 @@ export default async function ProfilingStatusLanding() {
 
       {/* National funnel */}
       <section className="rounded-lg border border-border bg-background p-5 sm:p-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">Philippines</h2>
-          <p className="text-sm text-muted">{formatCount(status.totalBhw)} BHWs to profile</p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <StatusHero status={status} />
+          <h2 className="text-lg font-semibold tracking-tight text-muted">Philippines</h2>
         </div>
-        <div className="mt-4">
+        <div className="mt-6">
           <FunnelBars status={status} />
+        </div>
+        <div className="mt-6 border-t border-border pt-5">
+          <BottleneckBars status={status} />
         </div>
         <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
           <p className="text-xs text-muted">Encode → Validate → Certify · 2026 profiling</p>
@@ -70,11 +76,17 @@ export default async function ProfilingStatusLanding() {
         </div>
       </section>
 
+      {/* Region ranking (renders only when there's real spread to show) */}
+      <AreaRanking heading="Regions" items={children} />
+
       {/* Region breakdown */}
       <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
         <ChildBreakdown heading="Regions" items={children} />
+        <div className="mt-4 border-t border-border pt-4">
+          <CoverageFlags items={children} />
+        </div>
         {coverage && (
-          <p className="mt-4 text-xs text-muted">
+          <p className="mt-3 text-xs text-muted">
             Coverage so far: {coverage}. More regions are added as their encoding data is loaded.
           </p>
         )}

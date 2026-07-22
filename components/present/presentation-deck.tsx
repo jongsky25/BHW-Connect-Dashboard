@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { DeckMeta, SlideInfo } from "./presentation-context";
+import { useFitScale } from "./use-fit-scale";
+
+/** The generated title/closing slides are composed at max-w-3xl (48rem) before
+ * the fit-to-screen zoom. */
+const TEXT_SLIDE_DESIGN_WIDTH = 768;
 
 /**
  * All presentation chrome: the opaque backdrop the inactive page sits under,
@@ -43,6 +48,17 @@ export function PresentationDeck({
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
 
+  // Fit-to-screen zoom for the generated title/closing slides, mirroring the
+  // content slides so every slide reads at the same large size on an LED wall.
+  const { frameRef: titleFrameRef, contentRef: titleContentRef } = useFitScale(
+    index === 0,
+    TEXT_SLIDE_DESIGN_WIDTH,
+  );
+  const { frameRef: closingFrameRef, contentRef: closingContentRef } = useFitScale(
+    index === count - 1,
+    TEXT_SLIDE_DESIGN_WIDTH,
+  );
+
   const slideLabel =
     index === 0 ? "Title" : index === count - 1 ? "Closing" : (slides[index - 1]?.title ?? "");
   const presentedDate = new Date().toLocaleDateString(undefined, {
@@ -61,8 +77,14 @@ export function PresentationDeck({
       </div>
 
       {index === 0 && (
-        <div className="fixed inset-0 z-[60] flex overflow-y-auto bg-background px-6 py-16 sm:px-12">
-          <div className="m-auto flex w-full max-w-3xl flex-col items-center gap-4 text-center">
+        <div
+          ref={titleFrameRef}
+          className="fixed inset-0 z-[60] flex overflow-y-auto bg-background px-6 py-16 sm:px-12"
+        >
+          <div
+            ref={titleContentRef}
+            className="m-auto flex w-full max-w-3xl flex-col items-center gap-4 text-center"
+          >
             <p className="text-sm font-medium tracking-wide text-muted uppercase">
               {meta.pageLabel}
             </p>
@@ -91,8 +113,14 @@ export function PresentationDeck({
       )}
 
       {index === count - 1 && (
-        <div className="fixed inset-0 z-[60] flex overflow-y-auto bg-background px-6 py-16 sm:px-12">
-          <div className="m-auto flex w-full max-w-3xl flex-col items-center gap-4 text-center">
+        <div
+          ref={closingFrameRef}
+          className="fixed inset-0 z-[60] flex overflow-y-auto bg-background px-6 py-16 sm:px-12"
+        >
+          <div
+            ref={closingContentRef}
+            className="m-auto flex w-full max-w-3xl flex-col items-center gap-4 text-center"
+          >
             <h1 className="text-3xl font-bold tracking-tight">Thank you</h1>
             <p className="text-sm text-muted">
               Data: BHW Connect · {meta.captionLine} · presented {presentedDate}

@@ -29,6 +29,12 @@ export type ProfilingStatusStep = {
   /** `pct` capped at 100 for display; the raw ratio can exceed 100 when the encoding
    * snapshot drifts above the headcount denominator (two independently-collected figures). */
   pctCapped: number | null;
+  /** How many BHWs still have to reach this step to hit the goal — `total - count`, floored
+   * at 0 (an overshooting snapshot has nothing left to do, not a negative gap). */
+  remaining: number;
+  /** `remaining` as a % of `totalBhw` (100 - `pctCapped`), or null when the denominator is
+   * 0/unknown. The "how far to go" complement of `pctCapped`. */
+  pctToGo: number | null;
 };
 
 export type ProfilingStatus = {
@@ -73,9 +79,13 @@ const SELECT_COLS =
 
 /** A funnel step from a reached-count and the denominator. Exported for unit tests. */
 export function step(count: number, total: number): ProfilingStatusStep {
-  if (total <= 0) return { count, pct: null, pctCapped: null };
+  const remaining = Math.max(0, total - count);
+  if (total <= 0) {
+    return { count, pct: null, pctCapped: null, remaining, pctToGo: null };
+  }
   const pct = Math.round((100 * count) / total);
-  return { count, pct, pctCapped: Math.min(100, pct) };
+  const pctCapped = Math.min(100, pct);
+  return { count, pct, pctCapped, remaining, pctToGo: 100 - pctCapped };
 }
 
 /** Pure count-row → funnel mapping. Exported for unit tests. */
