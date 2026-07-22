@@ -1,7 +1,6 @@
 "use client";
 
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 import { NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { logEvent } from "@/lib/usage/log-client";
 import { useExploreNav } from "@/components/explore/explore-nav";
@@ -66,11 +65,7 @@ export type GeoCascadeProps = {
  */
 export function GeoCascade({ regions, provinces, citymuns, barangays, selected }: GeoCascadeProps) {
   const { startTransition } = useExploreNav();
-  const [, setFilters] = useQueryStates(filterParsers, {
-    shallow: false,
-    history: "push",
-    startTransition,
-  });
+  const [, setFilters] = useFilterState({ startTransition });
 
   function navigateTo(geoLevel: GeoLevel, geoCode: string) {
     setFilters({ geoLevel, geoCode });

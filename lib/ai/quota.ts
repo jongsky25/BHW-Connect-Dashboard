@@ -171,11 +171,19 @@ export async function completeWithCascade(
       return { allCapped: false, provider: providerId, completion };
     } catch (err) {
       if (err instanceof ProviderRateLimitedError) {
+        console.warn(`[ai] ${providerId} rate-limited (retryAfter=${err.retryAfterSeconds ?? "n/a"}s) — pausing`);
         await recordRateLimited(providerId, err.retryAfterSeconds, now);
         continue;
       }
+      // No API key configured — expected for providers the operator hasn't set up; not worth logging.
       if (err instanceof ProviderUnavailableError) continue;
-      if (err instanceof ProviderRequestError) continue;
+      // A real non-2xx / transport failure from a configured provider — the diagnostic that actually
+      // matters, otherwise invisible: the cascade turns it into a silent "all capped" downstream.
+      if (err instanceof ProviderRequestError) {
+        console.error(`[ai] ${providerId} request failed (status=${err.status ?? "n/a"}): ${err.message}`);
+        continue;
+      }
+      console.error(`[ai] ${providerId} unexpected error:`, err);
       continue;
     }
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadFilterState, serializeFilterState } from "./codec";
+import { filterUrlKeys, loadFilterState, serializeFilterState } from "./codec";
 import { NATIONAL_GEO_CODE, normalizeMapIndicator } from "./schema";
 
 describe("filter codec", () => {
@@ -80,6 +80,16 @@ describe("filter codec", () => {
     const parsed = loadFilterState(new URLSearchParams("breakdowns=sex,not-a-real-dimension"));
     // nuqs drops entries that fail to parse rather than throwing.
     expect(parsed.breakdowns).toEqual(["sex"]);
+  });
+
+  it("ignores the compareGeos state key when it leaks into a URL as a param name", () => {
+    // Regression: client hooks that skipped urlKeys wrote `?compareGeos=` while
+    // the server read `?geos=` — every interactive control on /compare updated
+    // the URL without changing the page. The state-key spelling must never be
+    // accepted as a URL param, or the mismatch would be masked instead of fixed.
+    const parsed = loadFilterState(new URLSearchParams("compareGeos=04,05"));
+    expect(parsed.compareGeos).toBeNull();
+    expect(filterUrlKeys.compareGeos).toBe("geos");
   });
 
   it("never throws on garbage input", () => {

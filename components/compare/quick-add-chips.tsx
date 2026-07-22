@@ -1,7 +1,6 @@
 "use client";
 
-import { useQueryStates } from "nuqs";
-import { filterParsers } from "@/lib/filters/codec";
+import { useFilterState } from "@/lib/filters/use-filter-state";
 
 export type QuickAddSuggestion = { geoCode: string; geoName: string };
 
@@ -19,7 +18,7 @@ export function QuickAddChips({
   label: string;
   suggestions: QuickAddSuggestion[];
 }) {
-  const [filters, setFilters] = useQueryStates(filterParsers, { shallow: false, history: "push" });
+  const [filters, setFilters] = useFilterState();
   const current = filters.compareGeos ?? [];
   const available = suggestions.filter((s) => !current.includes(s.geoCode));
 
