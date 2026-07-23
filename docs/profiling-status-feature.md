@@ -5,8 +5,9 @@ progressed, plus a downloadable one-page summary. Each Barangay Health Worker mo
 three-step encoding pipeline **Encode → Validate → Certify**, measured against the total
 number of BHWs to be profiled.
 
-Starts with **Region VIII (Eastern Visayas)** and is designed to grow region-by-region to all
-of the Philippines.
+Covers all **18 regions** of the Philippines (1,655 city/municipalities; ~310K BHWs to profile),
+loaded from the national grouped-by-citymun export. (The first load was Region VIII only; the
+national seed superseded it.)
 
 ## Decisions
 
@@ -53,18 +54,21 @@ of the Philippines.
 The Encode/Validate/Certify totals are **derived in the read layer**, not stored, so the funnel
 definition lives in one place (`lib/db/profiling-status.ts`).
 
-## Adding a new region
+## Refreshing / adding data
 
-1. Obtain the region's "Encoding Status" sheet (same columns as Region VIII).
+1. Obtain the "Encoding Status" export (same 15 columns; national grouped-by-citymun, or a
+   single region).
 2. Regenerate the seed migration:
    ```
    python ingestion/ingest_encoding_status.py \
-     --src ingestion/data/<region>.csv \
-     --out supabase/migrations/<timestamp>_seed_bhw_profiling_status_<region>.sql
+     --src ingestion/data/encoding_status_national.csv \
+     --out supabase/migrations/<timestamp>_seed_bhw_profiling_status_national.sql \
+     --exclude 1380602,1380607,1380608,1380609
    ```
-   The upsert (`on conflict … do update`) makes re-running safe; new regions append their own
-   rows. Every `geo_code` must exist in `dim_geo` (the generator's QA output flags any that
-   don't — e.g. a High Urbanized City treated as its own province, like Tacloban `08316`).
+   The upsert (`on conflict … do update`) makes re-running safe. Every citymun `geo_code` must
+   exist in `dim_geo` (`agg_bhw_profiling_status.geo_code` is a FK); use `--exclude` for codes it
+   lacks — currently the 4 all-zero City-of-Manila districts `1380602/1380607/1380608/1380609`.
+   Excluded citymuns are still counted in the province/region/national rollups.
 3. Apply the migration (Supabase MCP `apply_migration`, or the repo's migration flow).
 
 ## Key files
@@ -73,17 +77,18 @@ definition lives in one place (`lib/db/profiling-status.ts`).
 | --- | --- |
 | Read layer + funnel helpers | `lib/db/profiling-status.ts` (+ `.test.ts`) |
 | Dataset slug | `lib/db/dataset.ts` (`DATASET_SLUGS.profilingStatus`) |
-| Card (server) | `components/home/profiling-status-card.tsx` |
-| Card drill-down (client) | `components/home/profiling-status-panel.tsx` |
-| Drill-down JSON API | `app/api/profiling-status/route.ts` |
+| Section landing + sub-pages | `app/profiling-status/` (`page.tsx`, `[geoLevel]/[geoCode]/page.tsx`, `methodology/`, `layout.tsx`) |
+| Section components | `components/profiling-status/` (funnel-bars, child-breakdown, status-hero, bottleneck-bars, area-ranking, coverage-flags) |
 | PNG one-pager | `lib/exports/profiling-status-figure.ts` + `app/api/export/profiling-status/route.ts` |
 | Seed generator | `ingestion/ingest_encoding_status.py` |
-| Source data | `ingestion/data/encoding_status_region08.csv` |
+| Source data | `ingestion/data/encoding_status_national.csv` (+ `encoding_status_region08.csv`) |
 
 ## Verification
 
-- Seed: 143 city/municipalities for Region VIII; rollups checked (national == Σ cities,
-  province == Σ its cities). Spot-checks: ABUYOG `0803701`, JARO `0803723`, SANTO NIÑO `0806018`.
+- Seed: 1,788 rows (1,651 city/municipalities + 118 provinces + 18 regions + national); rollups
+  checked (national == Σ cities == 310,493; province == Σ its cities). Spot-checks: ABUYOG
+  `0803701`, JARO `0803723`, SANTO NIÑO `0806018`. National funnel encoded 275,343 / validated
+  53,442 / certified 36,883.
 - Funnel math unit-tested in `lib/db/profiling-status.test.ts`.
 - Routes verified end-to-end: `/api/profiling-status` (JSON drill-down, 404 on unknown geo)
   and `/api/export/profiling-status` (valid PNG, correct numbers).

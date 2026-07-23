@@ -33,7 +33,7 @@ export default async function ProfilingStatusLanding() {
     );
   }
 
-  const coverage = children.map((c) => c.geoName).join(", ");
+  const regionCount = children.length;
   const downloadHref = "/api/export/profiling-status?geoLevel=national&geoCode=PH";
 
   return (
@@ -85,9 +85,10 @@ export default async function ProfilingStatusLanding() {
         <div className="mt-4 border-t border-border pt-4">
           <CoverageFlags items={children} />
         </div>
-        {coverage && (
+        {regionCount > 0 && (
           <p className="mt-3 text-xs text-muted">
-            Coverage so far: {coverage}. More regions are added as their encoding data is loaded.
+            Covering {regionCount} region{regionCount === 1 ? "" : "s"} of the Philippines. Drill
+            into any region for its provinces and city/municipalities.
           </p>
         )}
       </div>
