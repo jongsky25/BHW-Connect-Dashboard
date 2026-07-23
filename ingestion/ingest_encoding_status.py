@@ -20,16 +20,21 @@ Encode/Validate/Certify funnel (Encode = all five, Validate = validated + approv
 
 Usage:
 
-  # First region (already committed): generate the seed migration from the source sheet.
+  # National load (current): every region, from the grouped-by-citymun export. Four City-of-
+  # Manila districts (1380602/1380607/1380608/1380609) are absent from dim_geo and all-zero in
+  # the source, so they're excluded at the citymun level (still counted in the rollups).
   python ingestion/ingest_encoding_status.py \
-      --src ingestion/data/encoding_status_region08.csv \
-      --out supabase/migrations/20260722120200_seed_bhw_profiling_status.sql
+      --src ingestion/data/encoding_status_national.csv \
+      --out supabase/migrations/20260723010000_seed_bhw_profiling_status_national.sql \
+      --exclude 1380602,1380607,1380608,1380609
 
-  # A later region: pass its sheet and a new migration path; the on-conflict upsert means
-  # re-running is safe and new regions simply append their own rows.
+  # A single region: pass its sheet and a new migration path; the on-conflict upsert means
+  # re-running is safe and geos simply upsert their own rows.
 
-The source may be .xlsx or .csv (both carry the same columns). The committed first region ships
-as a .csv (encoding_status_region08.csv); pass an .xlsx directly if that is what you receive.
+The source may be .xlsx or .csv (both carry the same columns). The committed sources ship as
+.csv (encoding_status_region08.csv, encoding_status_national.csv); pass an .xlsx directly if
+that is what you receive. Use --exclude for citymun codes absent from dim_geo (they'd violate
+the geo_code FK); their counts still roll up because the rollups sum the full sheet.
 """
 
 import argparse
@@ -108,16 +113,24 @@ def rollup(df: pd.DataFrame, group_col: str, code_width: int, geo_level: str) ->
     return rows
 
 
-def build_rows(df: pd.DataFrame) -> list:
+def build_rows(df: pd.DataFrame, exclude: set[str] | None = None) -> list:
+    exclude = exclude or set()
     rows = []
-    # National (PH) — sum of everything on the sheet.
+    # National (PH) — sum of everything on the sheet. Rollups are computed from the FULL
+    # sheet (including any `exclude`d citymuns), so excluding a citymun row never changes a
+    # province/region/national total — it only omits that one citymun-level row.
     national = df[COUNT_COLS].sum()
     rows.append(("PH", "national", counts(national)))
     # Region / province rollups on the sheet's own code columns.
     rows += rollup(df, "regcode", 2, "region")
     rows += rollup(df, "provcode", 5, "province")
-    # City/municipality — each sheet row as-is.
+    # City/municipality — each sheet row as-is, minus any excluded codes. `exclude` is for
+    # citymun codes the sheet reports but `dim_geo` doesn't have (agg_bhw_profiling_status.
+    # geo_code is a dim_geo FK), mirroring ingest_stepzero.py's "skip unmatched citymun, keep
+    # in rollups" handling.
     for d in df.to_dict(orient="records"):
+        if pad(d["citycode"], 7) in exclude:
+            continue
         rows.append((d["citycode"], "citymun", counts(d)))
     return rows
 
@@ -165,14 +178,24 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--src", required=True, help="Path to the encoding-status sheet (.xlsx or .csv)")
     parser.add_argument("--out", required=True, help="Path to write the seed .sql migration")
+    parser.add_argument(
+        "--exclude",
+        default="",
+        help="Comma-separated citymun geo_codes to omit at the citymun level (e.g. codes absent "
+        "from dim_geo). They stay in the province/region/national rollups.",
+    )
     args = parser.parse_args()
 
+    exclude = {pad(c, 7) for c in args.exclude.split(",") if c.strip()}
     df = load_source(Path(args.src))
-    rows = build_rows(df)
+    rows = build_rows(df, exclude)
     sql = emit_sql(rows)
     Path(args.out).write_text(sql)
     n_city = sum(1 for _, lvl, _ in rows if lvl == "citymun")
-    print(f"Wrote {args.out}: {len(rows)} rows ({n_city} city/municipalities + rollups)")
+    print(
+        f"Wrote {args.out}: {len(rows)} rows ({n_city} city/municipalities + rollups"
+        f"{f', {len(exclude)} citymun excluded' if exclude else ''})"
+    )
 
 
 if __name__ == "__main__":
