@@ -16,7 +16,10 @@ import { AreaRanking } from "@/components/profiling-status/area-ranking";
 import { CoverageFlags } from "@/components/profiling-status/coverage-flags";
 import { ChildBreakdown } from "@/components/profiling-status/child-breakdown";
 
-export const revalidate = 86_400; // ISR: citymun render on-demand; region/province are SSG.
+// 1 hour, not 24. ISR: citymun render on-demand; region/province are SSG. As on the landing page,
+// a shorter window bounds how long a transient empty read (getProfilingStatus returns null on any
+// read miss) can stay cached as a "no data yet" state; the dataset only changes on the daily cron.
+export const revalidate = 3_600;
 
 const CHILD_HEADING: Record<GeoLevel, string | null> = {
   national: "Regions",

@@ -10,7 +10,14 @@ import { AreaRanking } from "@/components/profiling-status/area-ranking";
 import { CoverageFlags } from "@/components/profiling-status/coverage-flags";
 import { ChildBreakdown } from "@/components/profiling-status/child-breakdown";
 
-export const revalidate = 86_400;
+// 1 hour, not 24. This page is statically prerendered, so whatever it renders is cached for the
+// whole window — including the "data is not available" empty state, which `getProfilingStatus`
+// returns on *any* read miss (a genuinely-absent row OR a transient Supabase error; see
+// lib/db/profiling-status.ts `if (error || !data) return null`). A 24h window meant a single
+// transient miss during (re)generation froze the landing page as empty for a full day even though
+// the data was present and readable. An hourly window bounds that blast radius; the underlying
+// dataset only changes on the daily ingestion cron, so nothing is lost by refreshing more often.
+export const revalidate = 3_600;
 
 export const metadata: Metadata = {
   title: { absolute: "BHW Profiling Status 2026 · Overview" },
