@@ -15,7 +15,7 @@ const querySchema = z.object({
 });
 
 /** One-page PNG summary of the 2026 BHW profiling status for a chosen geo level:
- * header + meta, the Encode → Validate → Certify funnel, a child-unit breakdown, and bars. */
+ * header + meta, the Encode → Validate → Attest stages, a child-unit breakdown, and bars. */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const parsed = querySchema.safeParse({

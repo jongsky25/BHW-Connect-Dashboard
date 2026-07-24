@@ -2,25 +2,23 @@ import { formatCount } from "@/lib/format";
 import type { ProfilingStatus } from "@/lib/db/profiling-status";
 
 /**
- * Where the work actually sits *right now*. The Encode → Validate → Certify funnel is cumulative
- * (each step counts everyone who has passed it), which hides the bottleneck: a record counts as
- * "Encoded" whether it is a fresh draft or stuck in rework. This breaks the same population into
- * mutually-exclusive current states so the pile-up is visible — the raw pipeline buckets are
- * already collected on `ProfilingStatus`, they were just never surfaced. A server component.
+ * A drill-down of the headline "Encoded" stage — the records that have been encoded but have not
+ * yet passed validation. The four-stage bar above collapses these into one segment; here we split
+ * that segment into the states work actually sits in, so a pile-up is visible: drafted (not yet
+ * submitted), awaiting validation, or sent back to the encoder for rework. `back_to_encoder` is
+ * called out in the warning color — it is the quality signal buried in the "Encoded" bucket.
  *
- * Segments are ordered finish-line → start (certified first) and sum to the denominator, so the
- * bar reads as a share of all BHWs to profile. `back_to_encoder` (rework) is called out in the
- * warning color — it is the quality signal buried in the funnel.
+ * Segments here sum to the Encoded stage's count (not the whole denominator); the four top-level
+ * stages already partition all BHWs on the bar above. A server component. Renders nothing when no
+ * records are in the encoding stage.
  */
 export function BottleneckBars({ status }: { status: ProfilingStatus }) {
-  const notEncoded = Math.max(0, status.totalBhw - status.encode.count);
   const segments = [
-    { key: "certified", label: "Certified", value: status.nApproved, color: "var(--seq-6)" },
     {
-      key: "awaiting-cert",
-      label: "Validated, awaiting certification",
-      value: status.nValidated,
-      color: "var(--seq-4)",
+      key: "awaiting-val",
+      label: "Awaiting validation",
+      value: status.nForValidation,
+      color: "var(--seq-2)",
     },
     {
       key: "rework",
@@ -29,13 +27,11 @@ export function BottleneckBars({ status }: { status: ProfilingStatus }) {
       color: "var(--warning)",
     },
     {
-      key: "awaiting-val",
-      label: "Awaiting validation",
-      value: status.nForValidation,
-      color: "var(--seq-2)",
+      key: "drafted",
+      label: "Drafted, not yet submitted",
+      value: status.nDrafted,
+      color: "var(--seq-1)",
     },
-    { key: "drafted", label: "Drafted, not yet submitted", value: status.nDrafted, color: "var(--seq-1)" },
-    { key: "not-encoded", label: "Not yet encoded", value: notEncoded, color: "var(--surface)" },
   ].filter((s) => s.value > 0);
 
   const total = segments.reduce((sum, s) => sum + s.value, 0);
@@ -44,10 +40,12 @@ export function BottleneckBars({ status }: { status: ProfilingStatus }) {
   const ariaLabel = segments.map((s) => `${s.label} ${formatCount(s.value)}`).join(", ");
 
   return (
-    <section aria-label="Where records sit now">
+    <section aria-label="Where encoded records sit now">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Where records sit now</h2>
-        <span className="text-xs text-muted">Current status of every BHW to profile</span>
+        <h2 className="text-sm font-semibold">Where encoded records sit</h2>
+        <span className="text-xs text-muted">
+          Breakdown of the {formatCount(total)} encoded, not yet validated
+        </span>
       </div>
 
       <div

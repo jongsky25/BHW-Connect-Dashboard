@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Methodology",
   description:
-    "How the 2026 BHW Profiling Status is measured — the Encode → Validate → Certify pipeline, the denominator, and the data source.",
+    "How the 2026 BHW Profiling Status is measured — the Encode → Validate → Attest pipeline, the four mutually-exclusive stages, the denominator, and the data source.",
 };
 
 export default function ProfilingStatusMethodology() {
@@ -30,43 +30,50 @@ export default function ProfilingStatusMethodology() {
         <p className="text-muted">
           Each BHW record moves through a sequence of statuses: <em>drafted</em> →{" "}
           <em>for validation</em> → (<em>back to encoder</em> if it needs rework) →{" "}
-          <em>validated</em> → <em>approved</em>. We roll these into three cumulative steps:
+          <em>validated</em> → <em>approved</em>. We group these into four{" "}
+          <strong>mutually-exclusive stages</strong> — every BHW to be profiled sits in exactly one,
+          so the four shares always add up to 100% of the total:
         </p>
         <ul className="ml-5 list-disc space-y-1 text-muted">
           <li>
-            <strong>Encode</strong> — every record that has entered the pipeline (drafted, for
-            validation, back to encoder, validated, or approved).
+            <strong>Encoded</strong> — in the pipeline but not yet validated (drafted, for
+            validation, or back to the encoder for rework).
           </li>
           <li>
-            <strong>Validate</strong> — records that have passed validation (validated + approved).
+            <strong>Validated</strong> — validated, but not yet attested.
           </li>
           <li>
-            <strong>Certify</strong> — records that have been approved.
+            <strong>Attested</strong> — approved. This is the finish line (formerly labelled
+            &ldquo;Certified&rdquo;).
+          </li>
+          <li>
+            <strong>Not yet encoded</strong> — BHWs in the headcount who have not entered the
+            pipeline at all.
           </li>
         </ul>
         <p className="text-muted">
-          Because the steps are cumulative, Encoded ≥ Validated ≥ Certified always holds.
+          Because the stages are mutually exclusive rather than cumulative, Encoded + Validated +
+          Attested + Not-yet-encoded = 100% of all BHWs to profile.
         </p>
       </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">How far there is to go</h2>
         <p className="text-muted">
-          Alongside each step&rsquo;s progress we show the <strong>remaining</strong> count — how
-          many BHWs still have to reach it — and the headline &ldquo;still to certify&rdquo; gap,
-          which is the total to profile minus those already certified. When an encoding snapshot
-          runs slightly ahead of the headcount, the remaining figure is floored at zero (there is
-          nothing left to do, not a negative gap).
+          The headline &ldquo;still to attest&rdquo; gap is the total to profile minus those already
+          attested — everyone in the first three-plus-remaining stages who has not yet reached the
+          finish line. When an encoding snapshot runs slightly ahead of the headcount, this gap is
+          floored at zero (there is nothing left to do, not a negative gap).
         </p>
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Where records sit now</h2>
+        <h2 className="text-lg font-semibold">Where encoded records sit</h2>
         <p className="text-muted">
-          The cumulative funnel hides <em>where</em> work is stuck, so we also break the same
-          population into mutually-exclusive current states — drafted, awaiting validation, sent
-          back for rework, validated but not yet certified, certified, and not yet encoded. Records
-          sent back to the encoder are a rework/quality signal worth watching.
+          The single &ldquo;Encoded&rdquo; stage can hide <em>where</em> work is stuck, so we break
+          it into the states it is made of — drafted (not yet submitted), awaiting validation, and
+          sent back to the encoder for rework. Records sent back to the encoder are a rework/quality
+          signal worth watching.
         </p>
       </section>
 

@@ -11,30 +11,30 @@ import type { GeoLevel } from "@/lib/filters/schema";
  * snapshot (dataset `bhw-profiling-status-2026`), deliberately kept apart from the 2025
  * datasets (the per-person `agg_bhw_counts` and the StepZero headcount baseline).
  *
- * The five pipeline buckets are the mutually-exclusive current status of each record:
+ * The five raw pipeline buckets are the mutually-exclusive current status of each *record*:
  *   drafted → for_validation → (back_to_encoder ⟲) → validated → approved
- * From them we derive a cumulative Encode → Validate → Certify funnel, each measured
- * against `totalBhw` (registered + accredited + unregistered — the 2026 denominator, since
- * every BHW is to be profiled this year):
- *   - Encoded   = all five buckets (every record that has entered the pipeline)
- *   - Validated = validated + approved (records that have passed validation)
- *   - Certified = approved
- * so Encoded ≥ Validated ≥ Certified.
+ * From them — and the headcount denominator — we derive four mutually-exclusive stages that
+ * partition every BHW to be profiled, so they always sum to 100% of `totalBhw`:
+ *   - Encoded    = drafted + for_validation + back_to_encoder (in the pipeline, awaiting validation)
+ *   - Validated  = validated                                  (validated, awaiting attestation)
+ *   - Attested   = approved                                   (the finish line)
+ *   - NotEncoded = totalBhw − (Encoded + Validated + Attested)(not yet entered the pipeline)
+ * so Encoded + Validated + Attested + NotEncoded = totalBhw. `totalBhw` = registered + accredited +
+ * unregistered (the 2026 denominator, since every BHW is to be profiled this year).
+ *
+ * These stages are deliberately *not* cumulative: each BHW is counted in exactly one, which is why
+ * the four shares add up to the whole. "Attested" was formerly labelled "Certified".
  */
-export type ProfilingStatusStep = {
-  /** Records that have reached (or passed) this step. */
+export type ProfilingStage = {
+  /** BHWs whose current stage is this one (mutually exclusive across the four stages). */
   count: number;
-  /** `count` as a % of `totalBhw`, rounded, or null when the denominator is 0/unknown. */
+  /** `count` as a % of `totalBhw`, rounded, or null when the denominator is 0/unknown. The four
+   * stages' percentages sum to ~100 (exactly, give or take integer rounding). */
   pct: number | null;
-  /** `pct` capped at 100 for display; the raw ratio can exceed 100 when the encoding
-   * snapshot drifts above the headcount denominator (two independently-collected figures). */
-  pctCapped: number | null;
-  /** How many BHWs still have to reach this step to hit the goal — `total - count`, floored
-   * at 0 (an overshooting snapshot has nothing left to do, not a negative gap). */
-  remaining: number;
-  /** `remaining` as a % of `totalBhw` (100 - `pctCapped`), or null when the denominator is
-   * 0/unknown. The "how far to go" complement of `pctCapped`. */
-  pctToGo: number | null;
+  /** `count` as a share of the stacked bar (0..1). Normalized against the larger of the headcount
+   * and the in-pipeline total, so the four stages fill the bar exactly once even when an encoding
+   * snapshot overshoots the headcount (two independently-collected figures). */
+  fraction: number;
 };
 
 export type ProfilingStatus = {
@@ -51,13 +51,18 @@ export type ProfilingStatus = {
   nBackToEncoder: number;
   nValidated: number;
   nApproved: number;
-  /** Cumulative funnel steps. */
-  encode: ProfilingStatusStep;
-  validate: ProfilingStatusStep;
-  certify: ProfilingStatusStep;
+  /** Four mutually-exclusive stages that partition `totalBhw` (encoded + validated + attested +
+   * notEncoded = totalBhw). */
+  encoded: ProfilingStage;
+  validated: ProfilingStage;
+  attested: ProfilingStage;
+  notEncoded: ProfilingStage;
+  /** Finish-line gap: every BHW not yet attested (`totalBhw − attested`, floored at 0), with its
+   * % of the denominator. The headline "still to attest" number. */
+  toAttest: { count: number; pct: number | null };
 };
 
-/** One child unit (e.g. a province's cities) with its funnel counts, for the breakdown. */
+/** One child unit (e.g. a province's cities) with its stage counts, for the breakdown. */
 export type ProfilingStatusChild = ProfilingStatus & { geoName: string };
 
 export type Row = {
@@ -77,28 +82,29 @@ export type Row = {
 const SELECT_COLS =
   "geo_code, geo_level, n_registered, n_accredited, n_unregistered, n_total_bhw, n_drafted, n_for_validation, n_back_to_encoder, n_validated, n_approved" as const;
 
-/** A funnel step from a reached-count and the denominator. Exported for unit tests. */
-export function step(count: number, total: number): ProfilingStatusStep {
-  const remaining = Math.max(0, total - count);
-  if (total <= 0) {
-    return { count, pct: null, pctCapped: null, remaining, pctToGo: null };
-  }
-  const pct = Math.round((100 * count) / total);
-  const pctCapped = Math.min(100, pct);
-  return { count, pct, pctCapped, remaining, pctToGo: 100 - pctCapped };
+/** `count` as a rounded % of `total`, or null when the denominator is 0/unknown. */
+function roundPct(count: number, total: number): number | null {
+  return total <= 0 ? null : Math.round((100 * count) / total);
 }
 
-/** Pure count-row → funnel mapping. Exported for unit tests. */
+/** Pure count-row → four-stage mapping. Exported for unit tests. */
 export function toProfilingStatus(row: Row): ProfilingStatus {
   const total = row.n_total_bhw;
-  const encoded =
-    row.n_drafted +
-    row.n_for_validation +
-    row.n_back_to_encoder +
-    row.n_validated +
-    row.n_approved;
-  const validated = row.n_validated + row.n_approved;
-  const certified = row.n_approved;
+  const encodedN = row.n_drafted + row.n_for_validation + row.n_back_to_encoder;
+  const validatedN = row.n_validated;
+  const attestedN = row.n_approved;
+  const inPipeline = encodedN + validatedN + attestedN;
+  const notEncodedN = Math.max(0, total - inPipeline);
+  // Bar widths are normalized against whichever is larger — the headcount or the pipeline — so an
+  // overshooting snapshot (pipeline > headcount) still fills the bar exactly once instead of
+  // overflowing. The `pct` labels stay against the headcount, reported honestly even when > 100.
+  const barBase = Math.max(total, inPipeline);
+  const stage = (count: number): ProfilingStage => ({
+    count,
+    pct: roundPct(count, total),
+    fraction: barBase > 0 ? count / barBase : 0,
+  });
+  const toAttestN = Math.max(0, total - attestedN);
   return {
     geoCode: row.geo_code,
     geoLevel: row.geo_level,
@@ -111,9 +117,14 @@ export function toProfilingStatus(row: Row): ProfilingStatus {
     nBackToEncoder: row.n_back_to_encoder,
     nValidated: row.n_validated,
     nApproved: row.n_approved,
-    encode: step(encoded, total),
-    validate: step(validated, total),
-    certify: step(certified, total),
+    encoded: stage(encodedN),
+    validated: stage(validatedN),
+    attested: stage(attestedN),
+    notEncoded: stage(notEncodedN),
+    toAttest: {
+      count: toAttestN,
+      pct: total <= 0 ? null : Math.min(100, Math.round((100 * toAttestN) / total)),
+    },
   };
 }
 

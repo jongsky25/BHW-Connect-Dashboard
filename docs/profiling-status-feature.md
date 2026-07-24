@@ -1,9 +1,10 @@
 # BHW Connect Profiling Status (2026)
 
 A public, at-a-glance view of how far the **2026 individual-profiling** exercise has
-progressed, plus a downloadable one-page summary. Each Barangay Health Worker moves through a
-three-step encoding pipeline **Encode → Validate → Certify**, measured against the total
-number of BHWs to be profiled.
+progressed, plus a downloadable one-page summary. Each Barangay Health Worker moves through an
+encoding pipeline **Encode → Validate → Attest**, measured against the total number of BHWs to be
+profiled. Every BHW sits in exactly one of four mutually-exclusive stages, so the shares add up to
+100%.
 
 Covers all **18 regions** of the Philippines (1,655 city/municipalities; ~310K BHWs to profile),
 loaded from the national grouped-by-citymun export. (The first load was Region VIII only; the
@@ -16,21 +17,24 @@ national seed superseded it.)
 - **Placement:** a dedicated card on `/bhw`, kept visually separate from the 2025 figures.
 - **Denominator = ALL BHWs** = `registered + accredited + unregistered` (the 2026 goal is to
   profile every BHW — this overrides the 2025 "registered-only eligible base" logic).
-- **Pipeline = cumulative funnel** over the five mutually-exclusive status buckets:
-  - **Encoded** = drafted + for_validation + back_to_encoder + validated + approved
-  - **Validated** = validated + approved
-  - **Certified** = approved
-  - Invariant: Encoded ≥ Validated ≥ Certified; each shown as % of the total-BHW denominator.
-- **Denominator is the hero** on every page (`StatusHero`), with the headline "still to certify"
-  gap (`total − certified`) beneath it. Each funnel step also carries its **remaining** count and
-  **% to go** — the complement of `pctCapped`, derived once in `step()` (`remaining` floored at 0
-  on overshoot).
-- **Bottleneck view** (`BottleneckBars`) re-splits the same population into mutually-exclusive
-  *current* states (drafted / awaiting validation / rework / awaiting certification / certified /
-  not yet encoded) to show where records pile up — `back_to_encoder` is the rework/quality signal.
-- **Rankings & flags:** `AreaRanking` (furthest-along vs. most-still-to-do child areas, only when
-  there's real spread) and `CoverageFlags` (areas reporting, areas at 0% certified, and the >100%
-  encoded-exceeds-headcount artefact).
+- **Stages = four mutually-exclusive buckets** derived from the five raw status buckets. Every BHW
+  to profile is counted in exactly one, so they **partition the denominator and sum to 100%**:
+  - **Encoded** = drafted + for_validation + back_to_encoder (in the pipeline, awaiting validation)
+  - **Validated** = validated (validated, awaiting attestation)
+  - **Attested** = approved (the finish line; formerly "Certified")
+  - **Not yet encoded** = `total − (encoded + validated + attested)`
+  - Each stage carries its count, its % of the total-BHW denominator, and a `fraction` for the
+    stacked bar (normalized against the larger of the headcount and the pipeline so an overshooting
+    snapshot still fills the bar exactly once).
+- **Denominator is the hero** on every page (`StatusHero`), with the headline "still to attest"
+  gap (`toAttest` = `total − attested`, floored at 0 on overshoot) beneath it.
+- **Headline bar** (`FunnelBars`) is a single stacked 100% bar over the four stages, with a legend
+  of count · %. The **bottleneck view** (`BottleneckBars`) then drills into just the *Encoded*
+  bucket — drafted / awaiting validation / sent back for rework — where `back_to_encoder` is the
+  rework/quality signal.
+- **Rankings & flags:** `AreaRanking` (furthest-along vs. most-still-to-do child areas by % attested,
+  only when there's real spread) and `CoverageFlags` (areas reporting, areas with none attested, and
+  the >100% pipeline-exceeds-headcount artefact).
 - **Drill-down** goes national → region → province → city/municipality. The **barangay** level is
   wired in the UI (heading + graceful "no barangay data yet" note) but has no rows, since the
   source sheets are city/municipality-grain.
@@ -51,8 +55,8 @@ national seed superseded it.)
   `…120100_seed_dim_dataset_profiling_status.sql` (dataset), `…120200_seed_bhw_profiling_status.sql`
   (seed, generated).
 
-The Encode/Validate/Certify totals are **derived in the read layer**, not stored, so the funnel
-definition lives in one place (`lib/db/profiling-status.ts`).
+The Encoded/Validated/Attested/Not-encoded stage totals are **derived in the read layer**, not
+stored, so the stage definition lives in one place (`lib/db/profiling-status.ts`).
 
 ## Refreshing / adding data
 
@@ -87,8 +91,8 @@ definition lives in one place (`lib/db/profiling-status.ts`).
 
 - Seed: 1,788 rows (1,651 city/municipalities + 118 provinces + 18 regions + national); rollups
   checked (national == Σ cities == 310,493; province == Σ its cities). Spot-checks: ABUYOG
-  `0803701`, JARO `0803723`, SANTO NIÑO `0806018`. National funnel encoded 275,343 / validated
-  53,442 / certified 36,883.
-- Funnel math unit-tested in `lib/db/profiling-status.test.ts`.
+  `0803701`, JARO `0803723`, SANTO NIÑO `0806018`. National stages (mutually exclusive, sum to
+  310,493): encoded 221,901 / validated 16,559 / attested 36,883 / not-yet-encoded 35,150.
+- Stage math unit-tested in `lib/db/profiling-status.test.ts`.
 - Routes verified end-to-end: `/api/profiling-status` (JSON drill-down, 404 on unknown geo)
   and `/api/export/profiling-status` (valid PNG, correct numbers).

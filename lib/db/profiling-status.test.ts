@@ -1,50 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { step, toProfilingStatus, type Row } from "./profiling-status";
+import { toProfilingStatus, type Row } from "./profiling-status";
 
-describe("step", () => {
-  it("computes the rounded percentage and the remaining-to-goal gap", () => {
-    expect(step(50, 200)).toEqual({
-      count: 50,
-      pct: 25,
-      pctCapped: 25,
-      remaining: 150,
-      pctToGo: 75,
-    });
-  });
-
-  it("reports a zero gap when the step is exactly complete", () => {
-    expect(step(100, 100)).toEqual({
-      count: 100,
-      pct: 100,
-      pctCapped: 100,
-      remaining: 0,
-      pctToGo: 0,
-    });
-  });
-
-  it("caps pctCapped at 100 and floors the gap at 0 when the count drifts above the base", () => {
-    // Raw pct is kept for transparency, but there is nothing left to do (remaining 0, 0% to go).
-    expect(step(120, 100)).toEqual({
-      count: 120,
-      pct: 120,
-      pctCapped: 100,
-      remaining: 0,
-      pctToGo: 0,
-    });
-  });
-
-  it("returns null percentages when the denominator is zero", () => {
-    expect(step(5, 0)).toEqual({
-      count: 5,
-      pct: null,
-      pctCapped: null,
-      remaining: 0,
-      pctToGo: null,
-    });
-  });
-});
-
-/** ABUYOG (0803701): 116/96/175 headcount, 211 drafted + 1 for_validation encoded. */
+/** ABUYOG (0803701): 116/96/175 headcount, 211 drafted + 1 for_validation encoded, none further. */
 const abuyog: Row = {
   geo_code: "0803701",
   geo_level: "citymun",
@@ -59,7 +16,7 @@ const abuyog: Row = {
   n_approved: 0,
 };
 
-/** JARO (0803723): mostly approved — exercises the far end of the funnel. */
+/** JARO (0803723): mostly approved, and its pipeline (243) overshoots its headcount (238). */
 const jaro: Row = {
   geo_code: "0803723",
   geo_level: "citymun",
@@ -75,43 +32,81 @@ const jaro: Row = {
 };
 
 describe("toProfilingStatus", () => {
-  it("maps the five pipeline buckets into the cumulative Encode → Validate → Certify funnel", () => {
+  it("splits the raw buckets into four mutually-exclusive stages", () => {
     const s = toProfilingStatus(abuyog);
-    // Encoded = all five buckets = 211 + 1 = 212; nothing validated/certified yet.
-    expect(s.encode.count).toBe(212);
-    expect(s.validate.count).toBe(0);
-    expect(s.certify.count).toBe(0);
-    // Percentages are against totalBhw (387).
-    expect(s.encode.pct).toBe(55);
+    // Encoded = drafted + for_validation + back_to_encoder = 211 + 1 + 0 = 212 (not cumulative:
+    // it excludes validated/attested). Nothing validated or attested yet.
+    expect(s.encoded.count).toBe(212);
+    expect(s.validated.count).toBe(0);
+    expect(s.attested.count).toBe(0);
+    // Not encoded = totalBhw − everything in the pipeline = 387 − 212 = 175.
+    expect(s.notEncoded.count).toBe(175);
+    // Percentages are against totalBhw (387): 212/387 ≈ 55%, 175/387 ≈ 45%.
+    expect(s.encoded.pct).toBe(55);
+    expect(s.notEncoded.pct).toBe(45);
   });
 
-  it("counts validated + approved as validated, and approved as certified", () => {
+  it("makes the four stages partition the denominator (counts and shares sum to the whole)", () => {
+    const s = toProfilingStatus(abuyog);
+    const counts = s.encoded.count + s.validated.count + s.attested.count + s.notEncoded.count;
+    expect(counts).toBe(s.totalBhw);
+    const pcts =
+      (s.encoded.pct ?? 0) + (s.validated.pct ?? 0) + (s.attested.pct ?? 0) + (s.notEncoded.pct ?? 0);
+    expect(pcts).toBe(100);
+    const fraction =
+      s.encoded.fraction + s.validated.fraction + s.attested.fraction + s.notEncoded.fraction;
+    expect(fraction).toBeCloseTo(1, 10);
+  });
+
+  it("counts validated as validated and approved as attested", () => {
     const s = toProfilingStatus(jaro);
-    expect(s.encode.count).toBe(1 + 0 + 2 + 7 + 233); // 243
-    expect(s.validate.count).toBe(7 + 233); // 240
-    expect(s.certify.count).toBe(233);
+    expect(s.encoded.count).toBe(1 + 0 + 2); // 3, awaiting validation
+    expect(s.validated.count).toBe(7);
+    expect(s.attested.count).toBe(233);
   });
 
-  it("preserves the funnel invariant Encoded ≥ Validated ≥ Certified", () => {
-    for (const row of [abuyog, jaro]) {
-      const s = toProfilingStatus(row);
-      expect(s.encode.count).toBeGreaterThanOrEqual(s.validate.count);
-      expect(s.validate.count).toBeGreaterThanOrEqual(s.certify.count);
-    }
+  it("floors not-encoded at zero and still fills the bar when the pipeline overshoots", () => {
+    // JARO's pipeline (3 + 7 + 233 = 243) exceeds its headcount (238), so nobody is "not encoded"
+    // and the bar is normalized against the pipeline so the stages fill it exactly once.
+    const s = toProfilingStatus(jaro);
+    expect(s.notEncoded.count).toBe(0);
+    const fraction =
+      s.encoded.fraction + s.validated.fraction + s.attested.fraction + s.notEncoded.fraction;
+    expect(fraction).toBeCloseTo(1, 10);
   });
 
   it("derives the denominator as registered + accredited + unregistered", () => {
     expect(toProfilingStatus(abuyog).totalBhw).toBe(387);
   });
 
-  it("exposes the remaining-to-certify gap against the denominator", () => {
-    // JARO: 238 to profile, 233 certified → 5 still to certify (~2% to go).
+  it("exposes the still-to-attest gap against the denominator", () => {
+    // JARO: 238 to profile, 233 attested → 5 still to attest (~2% to go).
     const s = toProfilingStatus(jaro);
-    expect(s.certify.remaining).toBe(5);
-    expect(s.certify.pctToGo).toBe(2);
-    // ABUYOG: nothing certified yet → the whole denominator is still to go.
+    expect(s.toAttest.count).toBe(5);
+    expect(s.toAttest.pct).toBe(2);
+    // ABUYOG: nothing attested yet → the whole denominator is still to go.
     const a = toProfilingStatus(abuyog);
-    expect(a.certify.remaining).toBe(387);
-    expect(a.certify.pctToGo).toBe(100);
+    expect(a.toAttest.count).toBe(387);
+    expect(a.toAttest.pct).toBe(100);
+  });
+
+  it("returns null percentages when the denominator is zero", () => {
+    const empty: Row = {
+      geo_code: "9999999",
+      geo_level: "citymun",
+      n_registered: 0,
+      n_accredited: 0,
+      n_unregistered: 0,
+      n_total_bhw: 0,
+      n_drafted: 0,
+      n_for_validation: 0,
+      n_back_to_encoder: 0,
+      n_validated: 0,
+      n_approved: 0,
+    };
+    const s = toProfilingStatus(empty);
+    expect(s.encoded.pct).toBeNull();
+    expect(s.notEncoded.pct).toBeNull();
+    expect(s.toAttest.pct).toBeNull();
   });
 });

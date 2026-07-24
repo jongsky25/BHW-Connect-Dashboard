@@ -22,7 +22,7 @@ export const revalidate = 3_600;
 export const metadata: Metadata = {
   title: { absolute: "BHW Profiling Status 2026 · Overview" },
   description:
-    "Nationwide progress of the 2026 Barangay Health Worker individual-profiling exercise: how many BHWs have been encoded, validated, and certified.",
+    "Nationwide progress of the 2026 Barangay Health Worker individual-profiling exercise: how many BHWs have been encoded, validated, and attested.",
 };
 
 export default async function ProfilingStatusLanding() {
@@ -51,9 +51,10 @@ export default async function ProfilingStatusLanding() {
           How far along is 2026 BHW profiling?
         </h1>
         <p className="max-w-2xl text-muted">
-          Every Barangay Health Worker is being individually profiled this year. Each record moves
-          through a three-step pipeline — <strong>Encode → Validate → Certify</strong>. Progress
-          below is measured against all BHWs to be profiled.
+          Every Barangay Health Worker is being individually profiled this year, moving through the
+          pipeline <strong>Encode → Validate → Attest</strong>. Every BHW sits in exactly one stage —
+          encoded, validated, attested, or not yet encoded — so the four shares below add up to 100%
+          of all BHWs to profile.
         </p>
         <div className="max-w-md">
           <GeoSearch mode="profiling" />
@@ -73,7 +74,7 @@ export default async function ProfilingStatusLanding() {
           <BottleneckBars status={status} />
         </div>
         <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-          <p className="text-xs text-muted">Encode → Validate → Certify · 2026 profiling</p>
+          <p className="text-xs text-muted">Encode → Validate → Attest · 2026 profiling</p>
           <a
             href={downloadHref}
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"

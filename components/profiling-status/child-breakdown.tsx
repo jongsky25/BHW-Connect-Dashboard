@@ -8,8 +8,9 @@ function pctLabel(pct: number | null): string {
 
 /**
  * The child-unit breakdown for a profiling-status page (a region's provinces, a province's
- * cities). Each row links to that child's own profiling-status page, and shows Total / Encoded
- * / Validated / Certified. A server component — the drill-down is real navigation, not a
+ * cities). Each row links to that child's own profiling-status page, and shows how its BHWs are
+ * split across the four mutually-exclusive stages — Encoded / Validated / Attested / Not encoded —
+ * which sum to that area's Total. A server component — the drill-down is real navigation, not a
  * client fetch.
  */
 export function ChildBreakdown({
@@ -25,7 +26,7 @@ export function ChildBreakdown({
     <section aria-label={heading}>
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{heading}</h2>
-        <span className="text-xs text-muted">Encoded · % of total</span>
+        <span className="text-xs text-muted">Count · % of total — stages sum to 100%</span>
       </div>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
@@ -44,10 +45,10 @@ export function ChildBreakdown({
                 Validated
               </th>
               <th scope="col" className="py-2 pr-3 text-right font-medium">
-                Certified
+                Attested
               </th>
               <th scope="col" className="py-2 text-right font-medium">
-                To certify
+                Not encoded
               </th>
             </tr>
           </thead>
@@ -66,16 +67,16 @@ export function ChildBreakdown({
                   {formatCount(c.totalBhw)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">
-                  {formatCount(c.encode.count)} · {pctLabel(c.encode.pct)}
+                  {formatCount(c.encoded.count)} · {pctLabel(c.encoded.pct)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">
-                  {formatCount(c.validate.count)} · {pctLabel(c.validate.pct)}
+                  {formatCount(c.validated.count)} · {pctLabel(c.validated.pct)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">
-                  {formatCount(c.certify.count)} · {pctLabel(c.certify.pct)}
+                  {formatCount(c.attested.count)} · {pctLabel(c.attested.pct)}
                 </td>
                 <td className="py-2 text-right tabular-nums text-muted">
-                  {formatCount(c.certify.remaining)} · {pctLabel(c.certify.pctToGo)}
+                  {formatCount(c.notEncoded.count)} · {pctLabel(c.notEncoded.pct)}
                 </td>
               </tr>
             ))}

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s · BHW Profiling Status 2026",
   },
   description:
-    "How far the 2026 Barangay Health Worker individual-profiling exercise has progressed — Encode → Validate → Certify — across the Philippines.",
+    "How far the 2026 Barangay Health Worker individual-profiling exercise has progressed — Encode → Validate → Attest — across the Philippines.",
 };
 
 function SectionHeader() {

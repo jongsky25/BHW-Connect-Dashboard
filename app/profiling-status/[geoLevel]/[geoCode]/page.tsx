@@ -58,9 +58,9 @@ export async function generateMetadata({
   const status = await getProfilingStatus(geo.geoCode, geo.geoLevel);
   const description =
     status && status.totalBhw > 0
-      ? `2026 profiling status for ${geo.geoName}: ${status.encode.pct ?? 0}% encoded, ${
-          status.validate.pct ?? 0
-        }% validated, ${status.certify.pct ?? 0}% certified of ${formatCount(status.totalBhw)} BHWs.`
+      ? `2026 profiling status for ${geo.geoName}: ${status.encoded.pct ?? 0}% encoded, ${
+          status.validated.pct ?? 0
+        }% validated, ${status.attested.pct ?? 0}% attested of ${formatCount(status.totalBhw)} BHWs.`
       : `2026 BHW profiling status for ${geo.geoName}.`;
 
   return { title: geo.geoName, description };
@@ -120,7 +120,7 @@ export default async function ProfilingStatusAreaPage({ params }: { params: Prom
               <BottleneckBars status={status} />
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
-              <p className="text-xs text-muted">Encode → Validate → Certify · 2026 profiling</p>
+              <p className="text-xs text-muted">Encode → Validate → Attest · 2026 profiling</p>
               <a
                 href={downloadHref}
                 className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"
