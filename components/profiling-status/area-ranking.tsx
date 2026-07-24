@@ -18,13 +18,13 @@ function Row({ child }: { child: ProfilingStatusChild }) {
       >
         {child.geoName}
       </Link>
-      <span className="tabular-nums font-medium">{pctLabel(child.certify.pct)}</span>
+      <span className="tabular-nums font-medium">{pctLabel(child.attested.pct)}</span>
     </li>
   );
 }
 
 /**
- * A neutral leaderboard of the child areas by certification progress — who is furthest along and
+ * A neutral leaderboard of the child areas by attestation progress — who is furthest along and
  * who has the most still to do. Framed as facts about where the work stands, not a merit ranking
  * (matching the `leaderLabel`/`MIN_LEADER_N` conventions elsewhere). A server component fed by the
  * `children` the page already loaded; renders nothing until there is real spread to show.
@@ -39,11 +39,11 @@ export function AreaRanking({
 }) {
   // Need at least a few areas, and a real spread, or a ranking is noise.
   const ranked = items
-    .filter((c) => c.certify.pct !== null)
-    .sort((a, b) => (b.certify.pct ?? 0) - (a.certify.pct ?? 0));
+    .filter((c) => c.attested.pct !== null)
+    .sort((a, b) => (b.attested.pct ?? 0) - (a.attested.pct ?? 0));
   if (ranked.length < 3) return null;
 
-  const spread = regionalSpread(ranked, (c) => c.certify.pct);
+  const spread = regionalSpread(ranked, (c) => c.attested.pct);
   if (!spread || spread.max === spread.min) return null;
 
   const leaders = ranked.slice(0, Math.min(TOP_N, ranked.length));
@@ -53,13 +53,13 @@ export function AreaRanking({
 
   return (
     <section
-      aria-label={`${heading} ranked by certification`}
+      aria-label={`${heading} ranked by attestation`}
       className="rounded-lg border border-border bg-background p-5 sm:p-6"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Furthest along vs. most still to do</h2>
         <span className="text-xs text-muted">
-          {heading}: {spread.min}%–{spread.max}% certified
+          {heading}: {spread.min}%–{spread.max}% attested
         </span>
       </div>
       <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
