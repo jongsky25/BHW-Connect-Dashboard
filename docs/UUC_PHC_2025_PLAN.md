@@ -28,10 +28,73 @@ The two files use three names for one thing. Settle on the policy name:
 | UUA | Unserved and Underserved Areas | The Excel's `DECISION` column values |
 | GIDA / SEDA | Geographically Isolated and Disadvantaged Areas / Socio-Economically Disadvantaged Areas (urban poor) | Former names, superseded (cue cards p48) |
 
-Policy basis: **DC No. 2025-0549** (cited on cue cards p37).
+Policy basis: **DOH AO No. 2020-0023** defines the criteria (§1a below); **DC No. 2025-0549**
+issues the 2025 list (cited on cue cards p37).
 
 Proposed slug **`uuc-phc-2025`**, `geo_join_level = 'barangay'`, `as_of_date = 2025-01-01`.
 Keep `UUA` only as the raw column value inside the fact table, never in UI copy.
+
+---
+
+## 1a. Where the criteria come from
+
+`ingestion/data/DOH_AO_2020-0023_GIDA_guidelines.pdf` — *Guidelines on Identifying
+Geographically-Isolated and Disadvantaged Areas and Strengthening their Health Systems*, signed
+27 May 2020 by Sec. Francisco T. Duque III. Issued under RA 11223 (UHC Act) IRR §29.2, which
+mandates the DOH to develop guidelines for identifying GIDA barangays; it repeals AO 185 s. 2004.
+
+**This document is why the dataset has the shape it has.** Every assessment column in the
+workbook is a criterion from §VI.A, and every threshold below was verified against the file
+itself, not inferred.
+
+A barangay qualifies only if **both** a physical **and** a socio-economic factor are present.
+
+**Physical factor** — at least **25%** of sitios/puroks have no access to an RHU or hospital
+within **60 minutes** of travel in any form of transport, *including walking*.
+
+**Socio-economic factor** — at least **one** of:
+
+| # | Condition | Workbook column |
+|---|---|---|
+| a | ≥ 10% of population are IPs | `IP POP` → `IP POPN` |
+| b | ≥ 10% affected by armed conflict or internally displaced, **or** the barangay is designated a CTG/LEG area by NICA | `ARMED CONF`, `IDP` → `AC/ IDP`; `ELCAC BRGY` → `ELCAC PASS` |
+| c | ≥ 50% of population enrolled in 4Ps/CCT | `4PS` → `4Ps/CCTs` |
+| d | Performs worse than the **latest provincial data** on at least **4 of 8** health indicators | the seven `* Prov Ref` / `High or Low*` pairs → `Health Indicators` → `HI` |
+
+The eight indicators under (d) are: Infant Mortality Rate, Under-Five Mortality Rate, Fully
+Immunized Child, Adolescent (10–19) Birth Rate, **Contraceptive Prevalence Rate**, proportion of
+pregnant women with 4+ pre-natal visits, proportion of deliveries with a skilled birth attendant,
+and households with access to improved water supply.
+
+### What this explains
+
+- **The `* Prov Ref` columns are the AO's provincial comparators.** They are not barangay
+  measurements and must never be cleaned as if they were — §2 of the cleaning report holds.
+- **`Health Indicators` (0–7) is the AO's count under (d)**, and `HI` passes at ≥ 4. Verified: the
+  score equals the number of `High or Low*` columns reading `Pass` in all 5,991 rows.
+- **`Physical Factor` has a floor of 25 and every row passes**, because the file is the
+  *post-selection* list — barangays below 25% never entered it.
+- **The units the owner set match the AO's own definitions.** IMR, UFMR and ABR are rates; FIC,
+  pre-natal, SBA and water are proportions. The cap-at-100 / cap-at-1,000 split follows the policy,
+  not a convention chosen here.
+
+### Two discrepancies worth recording
+
+**FP CU is the AO's Contraceptive Prevalence Rate** — criterion (d)(v). Its removal from the
+reconciled file leaves **7 of the AO's 8 indicators**, while the `≥ 4` threshold appears unchanged.
+Four-of-seven is a stricter test than four-of-eight. It does not affect this list, which is already
+selected, but it matters for the next profiling round and should be settled with BLHSD before then.
+
+**Criterion (b) is implemented as a sum, not an either/or.** The file marks `AC/ IDP` as Pass when
+`ARMED CONF + IDP ≥ 10`, matching all 5,991 rows; reading the AO's "or" as either-alone disagrees
+on 15. Summing double-counts anyone both conflict-affected and displaced. Minor, but it is an
+implementation choice rather than the text of the order.
+
+### Cadence
+
+CHDs and LGUs conduct mandatory profiling **once every three years** (§VI.B.6); BLHSD issues the
+official list **annually** (§VI.B.2). So the dataset has two different refresh rhythms — the
+underlying profile and the published list — which the dashboard's `as_of_date` should reflect.
 
 ---
 

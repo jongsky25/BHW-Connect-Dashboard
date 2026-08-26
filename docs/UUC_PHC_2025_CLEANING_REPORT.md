@@ -23,6 +23,11 @@ or a corrected measurement — for a rate, that distinction still matters.
 column in the file. Confirmed by the owner as intentional. The cleaned dataset carries
 **12 indicators, not 13**.
 
+FP CU is **Contraceptive Prevalence Rate**, criterion (d)(v) of AO 2020-0023. Dropping it leaves
+7 of the 8 indicators the order names, against an unchanged `≥ 4` threshold — a stricter test.
+That does not affect this already-selected list, but it is a live question for the next profiling
+round; see `UUC_PHC_2025_PLAN.md` §1a.
+
 ## 2. Rules applied
 
 The bound depends on what the indicator measures. This is the substance of the rule set: a share
@@ -34,6 +39,10 @@ both would corrupt one of them.
 | **Water, Pre-natal, SBA, FIC** | 100 | Coverage percentages — households with safe water, mothers reached, children fully immunised. A share cannot exceed 100%. |
 | **IMR, UFMR, ABR** | 1,000 | Rates per 1,000 births or women. They may legitimately exceed 100, but not 1,000. |
 | Any indicator below 0 | 0 | Safeguard; matched nothing (§1). |
+
+This split is not a local convention — it follows the definitions in **DOH AO No. 2020-0023**
+§VI.A.2(d), which names these as rates and proportions respectively. See
+`UUC_PHC_2025_PLAN.md` §1a.
 
 **Nothing is removed and no barangay is dropped.** All 5,991 rows are present with every
 indicator populated.
