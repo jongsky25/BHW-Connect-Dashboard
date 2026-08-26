@@ -48,6 +48,26 @@ export type UucPhcBarangay = {
   listed: boolean;
 };
 
+/**
+ * Section name this dataset presents under (plan U6). The deck chrome defaults to "BHW Connect";
+ * this section is a different dataset with its own header, footer and title template, so it says
+ * so rather than borrowing the census's name.
+ */
+export const UUC_PHC_BRAND_LABEL = "UUC for PHC";
+
+/**
+ * The deck's caption line, in the Person/Place/Time form the rest of the site uses.
+ *
+ * The N is the *area's* listed count, not the national 5,991: a deck presented on Mayoyao is about
+ * Mayoyao's 27 barangays, and quoting the national figure over a city's slides would state a
+ * number none of the figures on screen support. At national the two coincide, which is the case
+ * the plan's example shows.
+ */
+export function uucDeckCaption(counts: UucPhcCounts | null, areaLabel: string): string {
+  const n = counts ? counts.nListed.toLocaleString() : "—";
+  return `N = ${n} listed barangays · ${areaLabel} · 2025 list (DC No. 2025-0549)`;
+}
+
 export type Row = {
   geo_code: string;
   geo_level: GeoLevel;

@@ -27,6 +27,12 @@ export type DeckMeta = {
   filterChips: string[];
   /** The page's WPSAR caption line, e.g. "N = 270,917 validated profiles · …". */
   captionLine: string;
+  /**
+   * Section name above every promoted slide and on the closing slide. Optional: omitted, the deck
+   * presents as "BHW Connect" (`DEFAULT_BRAND_LABEL`), so every caller that predates this field is
+   * unchanged. A section with its own identity — /uuc-phc — passes its own.
+   */
+  brandLabel?: string;
 };
 
 export type SlideInfo = { id: string; title: string };

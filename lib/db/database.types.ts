@@ -1800,6 +1800,7 @@ export type Database = {
           category: Database["public"]["Enums"]["feedback_category_enum"];
           context: Json | null;
           created_at: string;
+          dataset_slug: string | null;
           email: string | null;
           id: number;
           message: string;
@@ -1814,6 +1815,7 @@ export type Database = {
           category: Database["public"]["Enums"]["feedback_category_enum"];
           context?: Json | null;
           created_at?: string;
+          dataset_slug?: string | null;
           email?: string | null;
           id?: never;
           message: string;
@@ -1828,6 +1830,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["feedback_category_enum"];
           context?: Json | null;
           created_at?: string;
+          dataset_slug?: string | null;
           email?: string | null;
           id?: never;
           message?: string;

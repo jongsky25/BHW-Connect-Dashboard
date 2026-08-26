@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { usePresentation } from "./presentation-context";
+import { brandLabelOf } from "./deck-logic";
 import { useFitScale } from "./use-fit-scale";
 
 /** Layout width (px) content slides are composed at before the fit-to-screen
@@ -32,7 +33,7 @@ export function PresentationSlide({
   title: string;
   children: ReactNode;
 }) {
-  const { register, activeSlideId } = usePresentation();
+  const { register, activeSlideId, meta } = usePresentation();
   const isActive = activeSlideId === id;
 
   // frameRef doubles as the registration element (the promoted fullscreen box);
@@ -66,10 +67,15 @@ export function PresentationSlide({
             #9). It lives inside the fit-scaled content so it zooms with the
             slide, and is a stable leading slot (false when inactive) so
             `children` keep the same array index across promotion — preserving
-            chart/tab/map state, per the no-reparenting note above. */}
+            chart/tab/map state, per the no-reparenting note above. The section
+            name comes from DeckMeta rather than a literal: this header is the
+            page's own claim about which dataset is on screen, and hard-coding
+            it put the BHW Census's name above every other section's slides. */}
         {isActive && (
           <div className="mb-8 border-b border-border pb-4 sm:mb-10">
-            <p className="text-xs font-medium tracking-wide text-muted uppercase">BHW Connect</p>
+            <p className="text-xs font-medium tracking-wide text-muted uppercase">
+              {brandLabelOf(meta)}
+            </p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
           </div>
         )}

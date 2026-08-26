@@ -2220,3 +2220,101 @@ database, on the same reasoning as the lineage generator, and asserts among othe
 registered relation has a `create table`/`create view` somewhere in `supabase/migrations`, the
 invariant whose absence let the false note ship — and 3 in `lib/ai/query-dataset.test.ts` proving
 the dataset became queryable by registration alone.
+
+## 2026-08-26 — UUC for PHC 2025: U6, present mode, section chrome, and dataset-aware feedback
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U6. The section's first parity increment: the two existing pages
+gain the chrome the BHW pages carry, and the one shared-machinery defect that blocked it is fixed
+in a form `/profiling-status` can adopt unchanged.
+
+**`brandLabel` on `DeckMeta` (§8 defect 1).** `PresentationSlide` printed the literal
+`BHW Connect` above every promoted slide, and `PresentationDeck`'s closing slide printed
+`Data: BHW Connect`. Both are right for `/bhw`, `/place/*`, `/explore` and `/compare` and wrong for
+every other section — a UUC deck would have carried the census's name above each of its slides and
+then attributed this dataset's figures to it. The field is **optional and defaults to
+`"BHW Connect"`**, so all four existing callers are untouched by construction rather than by
+inspection; `/uuc-phc` passes `"UUC for PHC"`.
+
+The resolution lives in `deck-logic.ts` (`brandLabelOf`) rather than as a `??` at each use site, so
+it unit-tests in the node environment alongside the rest of the pure deck logic and a third
+consumer cannot quietly reintroduce a literal. Blank is treated as unset: an empty header reads as
+a rendering bug, never as a choice.
+
+**I fixed the closing slide as well as the header**, which the plan named only as the header. It is
+the same wrong-section claim in a worse place — "Data: BHW Connect" under a UUC caption line
+asserts a provenance that is false — and leaving one of the two literals would have made the field
+look decorative.
+
+**Present mode on both routes**, four slides: the coverage card (hero + share bar), the child
+breakdown, and — at city/municipality — the barangay list. Two judgment calls:
+
+- **The barangay list is one slide, not one per barangay.** The indicator disclosures inside it are
+  `<details>` and stay closed on promotion, so a capped value cannot reach a projected screen
+  without the † footnote that travels with it. Promoting each barangay would have inverted U3.
+- **The deck caption's N is the *area's* listed count, not the national 5,991.** The plan writes
+  `N = 5,991 listed barangays · <area> · …`, which is exactly right for the landing page and would
+  be a number none of the figures support on a city's deck. Verified reading
+  `N = 27 listed barangays · MAYOYAO · 2025 list (DC No. 2025-0549)`.
+
+`PresentButton` sits beside the page's own `<h1>`, not in the section header in `layout.tsx`: the
+button must be inside the provider, and the provider needs page-specific `DeckMeta`. This is where
+`/bhw` and `/place/*` put it too.
+
+**`feedback.dataset_slug`, derived server-side.** `feedback` has carried only `page_path` since
+July, so a correction about this list arrived indistinguishable from a UI bug on `/explore` except
+by string-matching a URL. The column is nullable and additive (no backfill), and **derived from
+`page_path` in the API route** rather than sent by the client — one derivation for the spot widget
+and the form alike, and a slug nobody can set is a slug nobody can set wrongly. A test asserts a
+caller-supplied `dataset_slug` is ignored.
+
+**Null is a real answer.** Only sections that *are* one dataset's surface get a slug — `/uuc-phc`,
+`/profiling-status`, `/bhw`, `/place`. `/explore` and `/compare` render BHW figures beside census
+population and SAE poverty; naming one dataset there would be a claim the page does not support,
+and a wrong slug is worse than none precisely because it is filterable. Those stay null and are
+triaged by path as before. No foreign key to `dim_dataset`: this records what was on screen and
+must outlive a dataset being renamed or retired.
+
+**The UUC entry point is not a second widget.** `SpotFeedback` already renders here (it is mounted
+globally and gated off `/admin` and `/` only), and confirmed still exactly one widget on the page.
+What was missing is an entry point that names the correction in the reader's words —
+*"Is a barangay missing from this list, or listed in error?"* — in the section footer. Pin-and-
+comment is the right shape for "this chart looks wrong" and the wrong shape for "this list is wrong
+about my barangay".
+
+It **says plainly that we cannot change the list**: this is DC No. 2025-0549 reproduced as issued,
+and a correction is the source office's to make. It also names the two things already known and not
+worth reporting — the 5,991 vs 5,987 gap and the one unresolvable source row — so nobody spends
+effort telling us what `docs/UUC_PHC_2025_CLEANING_REPORT.md` already says. Implemented by giving
+`FeedbackForm` a starting category and an id namespace rather than writing a second form; the form
+already reads `usePathname`, so a correction from `/uuc-phc/citymun/…` lands tagged with both the
+dataset and the exact area.
+
+**`opengraph-image.tsx` for both routes**, count as the headline, no indicator values — U4's rule,
+since a 1200×630 card has nowhere to put a † footnote. A zero renders as a zero: NCR reads
+"0 of 1,675 barangays", never an omission.
+
+**Both OG images had real bugs that only rendering found**, and neither is catchable by lint,
+typecheck or any test in this repo:
+
+1. Satori throws on a `<div>` with more than one child unless it declares an explicit `display`.
+   The landing card's headline interpolated a number beside literal text and 500'd. Every line is
+   now composed as one string.
+2. `params` is a Promise on this Next version. The area card read `params.geoCode` synchronously;
+   it happened to work and logged an error on every request. Now awaited.
+   (`app/place/[geoLevel]/[geoCode]/opengraph-image.tsx` has the same synchronous read — noted, not
+   changed here, since it is outside this increment and works today.)
+
+**Verify.** Deck driven end to end in a real browser on seven routes: `/uuc-phc`,
+`/uuc-phc/region/14` and `/uuc-phc/citymun/1402706` all start, advance through their slides, show
+**"UUC FOR PHC"** in the promoted-slide header and `Data: UUC for PHC · …` on the closing slide, and
+exit on Escape; `/bhw`, `/place/citymun/0102804`, `/explore` and `/compare?geos=14,01` all still
+read **"BHW Connect"** on both. Feedback POSTed from `/uuc-phc/citymun/1402706` landed with
+`dataset_slug = 'uuc-phc-2025'` and from `/explore` with null, and both came back through the exact
+projection `listFeedback()` issues; the two synthetic rows were then deleted rather than left in the
+real inbox. (The admin page itself needs the service-role key, which this environment does not
+have — the read layer and its projection were exercised, the rendered page was not.) OG images
+render 1200×630 at national, region (including NCR's zero), province and city/municipality, and
+were **looked at**, not just status-checked. Exactly one `SpotFeedback` widget and one correction
+entry point on the page. The one console error on `/uuc-phc` is the pre-existing theme-script
+hydration warning, identical on `/bhw` and `/explore`. `npm run lint`, `npm run typecheck` and
+`npm test` (309 tests, 14 new) all clean.

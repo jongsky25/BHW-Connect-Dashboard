@@ -27,7 +27,15 @@ export default async function AdminFeedbackPage() {
               <li key={item.id} className="rounded-lg border border-border p-4">
                 <p className="text-xs text-muted">
                   {new Date(item.createdAt).toLocaleString()} · {item.category} · {item.pagePath}
-                  {isSpot && <span className="ml-1 rounded bg-accent-subtle px-1 text-accent">spot</span>} ·{" "}
+                  {isSpot && <span className="ml-1 rounded bg-accent-subtle px-1 text-accent">spot</span>}
+                  {/* Which dataset this is about, so a correction to a published list is
+                      distinguishable from a UI bug without reading the path (U6). */}
+                  {item.datasetSlug && (
+                    <span className="ml-1 rounded bg-surface px-1 font-medium text-foreground">
+                      {item.datasetSlug}
+                    </span>
+                  )}{" "}
+                  ·{" "}
                   <span className="font-medium">{STATUS_LABEL[item.status]}</span>
                 </p>
                 <p className="mt-2 text-sm">{item.message}</p>

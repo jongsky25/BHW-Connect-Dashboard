@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getGeoAncestors, getGeoByCode } from "@/lib/db/geo";
 import {
+  UUC_PHC_BRAND_LABEL,
   getUucPhcBarangays,
   getUucPhcChildren,
   getUucPhcCounts,
   getUucPhcStaticParams,
+  uucDeckCaption,
 } from "@/lib/db/uuc-phc";
 import { GEO_LEVELS, type GeoLevel } from "@/lib/filters/schema";
 import { formatCount } from "@/lib/format";
@@ -15,6 +17,9 @@ import { ShareBar } from "@/components/uuc-phc/share-bar";
 import { ChildBreakdown } from "@/components/uuc-phc/child-breakdown";
 import { BarangayList } from "@/components/uuc-phc/barangay-list";
 import { getUucPhcBarangayDetails } from "@/lib/db/uuc-phc-indicators";
+import { PresentationProvider } from "@/components/present/presentation-context";
+import { PresentationSlide } from "@/components/present/presentation-slide";
+import { PresentButton } from "@/components/present/present-button";
 
 // 1 hour. ISR: citymun render on demand; region/province are prerendered. Same reasoning as the
 // landing page — a shorter window bounds how long a transient empty read can stay cached.
@@ -89,78 +94,105 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
 
   const childHeading = CHILD_HEADING[geo.geoLevel];
 
+  // Title-slide facts for presentation mode. The chips are this area's ancestry, the same context
+  // the breadcrumb carries — a deck opened on a city should say which province it is in.
+  const deckMeta = {
+    pageLabel: "Area profile",
+    areaName: geo.geoName,
+    filterChips: crumbAncestors.map((a) => a.geoName),
+    captionLine: uucDeckCaption(counts, geo.geoName),
+    brandLabel: UUC_PHC_BRAND_LABEL,
+  };
+
   return (
-    <div className="flex flex-col gap-8">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm text-muted">
-        <Link href="/uuc-phc" className="hover:text-accent hover:underline">
-          Overview
-        </Link>
-        {crumbAncestors.map((a) => (
-          <span key={a.geoCode} className="flex items-center gap-1">
-            <span aria-hidden="true">›</span>
-            <Link
-              href={`/uuc-phc/${a.geoLevel}/${a.geoCode}`}
-              className="hover:text-accent hover:underline"
-            >
-              {a.geoName}
-            </Link>
-          </span>
-        ))}
-        <span aria-hidden="true">›</span>
-        <span className="font-medium text-foreground">{geo.geoName}</span>
-      </nav>
-
-      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geo.geoName}</h1>
-
-      {counts ? (
-        <>
-          <section className="rounded-lg border border-border bg-background p-5 sm:p-6">
-            <CoverageHero counts={counts} areaLabel={geo.geoName} />
-            <div className="mt-6">
-              <ShareBar counts={counts} />
-            </div>
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-              <p className="text-xs text-muted">
-                Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
-              </p>
-              <a
-                href={`/api/export/uuc-phc?geoLevel=${geo.geoLevel}&geoCode=${encodeURIComponent(geo.geoCode)}`}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"
-              >
-                Download summary (PNG)
-              </a>
-            </div>
-            {counts.nListed === 0 && (
-              // A real zero, not a gap: this dataset is a single national publication, so an
-              // area with nothing listed was covered and assessed, not left out.
-              <p className="mt-4 text-sm text-muted">
-                No barangay in {geo.geoName} is on the 2025 list. The list is national and complete
-                as published, so this is a result rather than missing data.
-              </p>
-            )}
-          </section>
-
-          {childHeading && children.length > 0 && (
-            <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-              <ChildBreakdown heading={childHeading} items={children} />
-            </div>
-          )}
-
-          {isCitymun && barangays.length > 0 && (
-            <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-              <BarangayList items={barangays} details={details} />
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="rounded-lg border border-border bg-surface p-5 text-sm text-muted sm:p-6">
-          <p>UUC for PHC data for {geo.geoName} could not be loaded right now.</p>
-          <Link href="/uuc-phc" className="mt-3 inline-block underline hover:text-accent">
-            ← Back to overview
+    <PresentationProvider meta={deckMeta}>
+      <div className="flex flex-col gap-8">
+        {/* Breadcrumb */}
+        <nav
+          aria-label="Breadcrumb"
+          className="flex flex-wrap items-center gap-1 text-sm text-muted"
+        >
+          <Link href="/uuc-phc" className="hover:text-accent hover:underline">
+            Overview
           </Link>
+          {crumbAncestors.map((a) => (
+            <span key={a.geoCode} className="flex items-center gap-1">
+              <span aria-hidden="true">›</span>
+              <Link
+                href={`/uuc-phc/${a.geoLevel}/${a.geoCode}`}
+                className="hover:text-accent hover:underline"
+              >
+                {a.geoName}
+              </Link>
+            </span>
+          ))}
+          <span aria-hidden="true">›</span>
+          <span className="font-medium text-foreground">{geo.geoName}</span>
+        </nav>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geo.geoName}</h1>
+          <PresentButton variant="secondary" />
         </div>
-      )}
-    </div>
+
+        {counts ? (
+          <>
+            <PresentationSlide id="coverage" title="Barangays on the 2025 list">
+              <section className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                <CoverageHero counts={counts} areaLabel={geo.geoName} />
+                <div className="mt-6">
+                  <ShareBar counts={counts} />
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                  <p className="text-xs text-muted">
+                    Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
+                  </p>
+                  <a
+                    href={`/api/export/uuc-phc?geoLevel=${geo.geoLevel}&geoCode=${encodeURIComponent(geo.geoCode)}`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"
+                  >
+                    Download summary (PNG)
+                  </a>
+                </div>
+                {counts.nListed === 0 && (
+                  // A real zero, not a gap: this dataset is a single national publication, so an
+                  // area with nothing listed was covered and assessed, not left out.
+                  <p className="mt-4 text-sm text-muted">
+                    No barangay in {geo.geoName} is on the 2025 list. The list is national and
+                    complete as published, so this is a result rather than missing data.
+                  </p>
+                )}
+              </section>
+            </PresentationSlide>
+
+            {childHeading && children.length > 0 && (
+              <PresentationSlide id="children" title={childHeading}>
+                <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                  <ChildBreakdown heading={childHeading} items={children} />
+                </div>
+              </PresentationSlide>
+            )}
+
+            {isCitymun && barangays.length > 0 && (
+              // The barangay list is one slide, not one per barangay: the indicator disclosures
+              // inside it stay closed on promotion, so a capped value cannot reach a screen
+              // without the † footnote that travels with it (U3).
+              <PresentationSlide id="barangays" title="Listed barangays">
+                <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                  <BarangayList items={barangays} details={details} />
+                </div>
+              </PresentationSlide>
+            )}
+          </>
+        ) : (
+          <div className="rounded-lg border border-border bg-surface p-5 text-sm text-muted sm:p-6">
+            <p>UUC for PHC data for {geo.geoName} could not be loaded right now.</p>
+            <Link href="/uuc-phc" className="mt-3 inline-block underline hover:text-accent">
+              ← Back to overview
+            </Link>
+          </div>
+        )}
+      </div>
+    </PresentationProvider>
   );
 }

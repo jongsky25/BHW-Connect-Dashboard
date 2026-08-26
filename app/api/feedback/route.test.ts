@@ -111,3 +111,46 @@ describe("POST /api/feedback", () => {
     expect(row.screenshot_path).toBeNull();
   });
 });
+
+describe("POST /api/feedback — dataset routing (plan U6)", () => {
+  it("tags a submission from the UUC section with that dataset, from the path alone", async () => {
+    const res = await POST(
+      post({
+        sessionId: SESSION_ID,
+        pagePath: "/uuc-phc/citymun/1402706",
+        category: "data_question",
+        message: "Barangay X should not be on this list",
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(insertMock.mock.calls[0][0]).toMatchObject({
+      page_path: "/uuc-phc/citymun/1402706",
+      dataset_slug: "uuc-phc-2025",
+    });
+  });
+
+  it("leaves the slug null on a multi-dataset page rather than guessing one", async () => {
+    // /explore renders BHW figures beside census population and SAE poverty; a slug here would be
+    // filterable and wrong, which is worse than none.
+    const res = await POST(post(baseSpotBody));
+    expect(res.status).toBe(200);
+    expect(insertMock.mock.calls[0][0]).toMatchObject({ dataset_slug: null });
+  });
+
+  it("ignores a dataset_slug a caller tries to supply", async () => {
+    // The column is derived, never accepted: the request body schema has no such field, so an
+    // extra key is dropped at parse time and the path still decides.
+    const res = await POST(
+      post({
+        sessionId: SESSION_ID,
+        pagePath: "/explore",
+        category: "bug",
+        message: "hello",
+        datasetSlug: "uuc-phc-2025",
+        dataset_slug: "uuc-phc-2025",
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(insertMock.mock.calls[0][0]).toMatchObject({ dataset_slug: null });
+  });
+});
