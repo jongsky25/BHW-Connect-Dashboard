@@ -18,7 +18,7 @@ Emits two seeds from the same checked extract:
 Geography. The PSGC codes come from the workbook and are joined to dim_geo IN SQL, via
 map_psgc_to_dim_geo(), rather than being remapped here. 87 of the 5,991 are Sulu's '09066…'
 codes, which exist in dim_geo only as '19066…'; the crosswalk rows that resolve them are
-seeded by 20260826120200_crosswalk_sulu_region_ix.sql. Doing the resolution in SQL means a
+seeded by 20260826121200_crosswalk_sulu_region_ix.sql. Doing the resolution in SQL means a
 missing crosswalk row fails the insert on fact_uuc_phc_barangay.geo_code's NOT NULL rather
 than silently dropping barangays, and keeps the remap in one place instead of two.
 
@@ -29,7 +29,7 @@ Usage:
 
   python ingestion/ingest_uuc_phc.py \
       --src ingestion/data/uuc_phc_2025_cleaned.csv \
-      --out supabase/migrations/20260826120300_seed_fact_uuc_phc_barangay.sql
+      --out supabase/migrations/20260826121300_seed_fact_uuc_phc_barangay.sql
 
 Regenerate the source extract first if the reconciled workbook changes:
 

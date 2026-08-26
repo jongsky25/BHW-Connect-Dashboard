@@ -334,10 +334,10 @@ Shipped as:
 
 | Artefact | What it is |
 |---|---|
-| `20260826120000_fact_uuc_phc_barangay.sql` | Table: `geo_code`, `source_geo_code`, `source_region/province/citymun/barangay`; RLS public-read |
-| `20260826120100_seed_dim_dataset_uuc_phc.sql` | `dim_dataset` row, slug `uuc-phc-2025`, `geo_join_level = 'barangay'` |
-| `20260826120200_crosswalk_sulu_region_ix.sql` | Sulu vintage map, derived FROM `dim_geo` — all 430 Sulu geos, not just the 87 needed |
-| `20260826120300_seed_fact_uuc_phc_barangay.sql` | 5,991 rows, generated |
+| `20260826121000_fact_uuc_phc_barangay.sql` | Table: `geo_code`, `source_geo_code`, `source_region/province/citymun/barangay`; RLS public-read |
+| `20260826121100_seed_dim_dataset_uuc_phc.sql` | `dim_dataset` row, slug `uuc-phc-2025`, `geo_join_level = 'barangay'` |
+| `20260826121200_crosswalk_sulu_region_ix.sql` | Sulu vintage map, derived FROM `dim_geo` — all 430 Sulu geos, not just the 87 needed |
+| `20260826121300_seed_fact_uuc_phc_barangay.sql` | 5,991 rows, generated |
 | `ingestion/ingest_uuc_phc.py` | Loader; reads the cleaned CSV, checks it, emits the seed |
 | `ingestion/data/uuc_phc_2025_cleaned.csv` | Committed machine-readable extract the loader reads |
 
