@@ -3,10 +3,10 @@
 A dedicated dashboard card and section for the **2025 list of Unserved and Underserved
 Communities for Primary Health Care**, built from `ingestion/data/Submissions_UUA_2025_filled_1.xlsx`.
 
-**Status:** **U1, U2 and U3 shipped** (2026-08-26) — the 5,991 rows are loaded, rolled up to every
-geo level, rendered at `/uuc-phc` from national down to city/municipality, and each listed barangay
-now shows the factors it qualified on and its health indicators with capped values marked. U4 (PNG
-one-pager) is optional and unbuilt. Feature write-up: `docs/uuc-phc-feature.md`.
+**Status:** **complete — U1 through U4 shipped** (2026-08-26). The 5,991 rows are loaded, rolled up
+to every geo level, rendered at `/uuc-phc` from national down to city/municipality with each listed
+barangay showing the factors it qualified on and its health indicators (capped values marked), and
+every area has a downloadable PNG one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
 
 **Verdict on scoping: build this outside `AI_ASSISTANT_PLAN.md`.** It is a normal dataset
 increment on the path that already exists — ingest → `dim_dataset` → fact → aggregate → card —
@@ -439,8 +439,26 @@ Two things the build found that the plan had not:
 A schema bug was caught in the process: `numeric(7,2)` silently rounded the 15 source values that
 carry three decimals. The columns are unconstrained `numeric` — rounding is a display decision.
 
-**U4 — PNG one-pager.** Optional; reuses `@resvg/resvg-js` and
-`lib/exports/profiling-status-figure.ts`.
+**U4 — PNG one-pager. Shipped 2026-08-26.**
+
+`lib/exports/uuc-phc-figure.ts` + `app/api/export/uuc-phc`, mirroring
+`profiling-status-figure.ts` — same canvas, same resvg path, same bundled-font constraint — but
+rendering a membership list rather than a funnel: the count against its denominator, a single
+two-state bar, and a child table ordered by share. A city/municipality sheet names its listed
+barangays instead of a child table.
+
+**No indicator values on the sheet.** A one-pager cannot carry the † marker's footnote, and
+reproducing bounded values without it would be exactly the unmarked artefact U3 was built to
+avoid. The sheet stays at the level the caveat is not needed.
+
+**Nothing is dropped silently.** A province with more cities than fit (Cebu has 50, the cap is 42)
+prints "+ 8 more with a lower share, 0 listed barangays between them" — naming both the count
+omitted and what they contribute, so a reader can see the cap did not hide anything material.
+
+*Verify:* rendered and visually inspected at every level — national, region, province, a
+fully-listed city, a mixed one, a zero region, and Cebu's truncation line. 400 on bad parameters,
+404 on an unknown geo. Line-packing unit-tested (`wrapNames`), since SVG does not wrap text and an
+over-long line runs off the page with no error.
 
 **Placement.** Own section `/uuc-phc` with the same national → region → province → citymun
 drill-down, since this is a targeting dataset rather than a BHW measure. It is also a natural

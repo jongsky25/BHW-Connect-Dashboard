@@ -60,9 +60,17 @@ export default async function UucPhcLanding() {
         <div className="mt-6">
           <ShareBar counts={counts} />
         </div>
-        <p className="mt-5 border-t border-border pt-4 text-xs text-muted">
-          Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
-        </p>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <p className="text-xs text-muted">
+            Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
+          </p>
+          <a
+            href="/api/export/uuc-phc?geoLevel=national&geoCode=PH"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"
+          >
+            Download summary (PNG)
+          </a>
+        </div>
       </section>
 
       {/* Region breakdown */}

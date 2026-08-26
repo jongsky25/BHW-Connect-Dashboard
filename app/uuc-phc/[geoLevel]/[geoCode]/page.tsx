@@ -120,10 +120,21 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
             <div className="mt-6">
               <ShareBar counts={counts} />
             </div>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              <p className="text-xs text-muted">
+                Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
+              </p>
+              <a
+                href={`/api/export/uuc-phc?geoLevel=${geo.geoLevel}&geoCode=${encodeURIComponent(geo.geoCode)}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"
+              >
+                Download summary (PNG)
+              </a>
+            </div>
             {counts.nListed === 0 && (
               // A real zero, not a gap: this dataset is a single national publication, so an
               // area with nothing listed was covered and assessed, not left out.
-              <p className="mt-5 border-t border-border pt-4 text-sm text-muted">
+              <p className="mt-4 text-sm text-muted">
                 No barangay in {geo.geoName} is on the 2025 list. The list is national and complete
                 as published, so this is a result rather than missing data.
               </p>

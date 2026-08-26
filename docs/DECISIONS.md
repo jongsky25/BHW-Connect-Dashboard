@@ -1799,3 +1799,37 @@ factors and correctly-directional comparisons; BITONG (Galimuyod, Ilocos Sur) sh
 with the footnote and its FIC as "not comparable — province reads 102.2" rather than a false
 "worse than province". The temporary `security definer` loader used to stream the rows from the
 committed CSV was dropped immediately after each load and verified gone.
+
+## 2026-08-26 — UUC for PHC 2025: U4, the PNG one-pager — and why it carries no indicators
+
+Final increment of `docs/UUC_PHC_2025_PLAN.md`. Every area on `/uuc-phc` now has a downloadable
+one-page PNG, reusing the `@resvg/resvg-js` path and bundled-font handling of
+`lib/exports/profiling-status-figure.ts`.
+
+- **The sheet renders the list, not the measurements.** It carries the count against its barangay
+  denominator, the listed/not-listed split, and either a child table ordered by share or — for a
+  city/municipality — its listed barangays by name. It deliberately carries **no indicator
+  values**: a one-pager has nowhere to put the † marker's footnote, and a bounded value reproduced
+  without that context is exactly the unmarked artefact U3 was built to prevent. Indicators stay on
+  screen, at the grain where the caveat travels with the number.
+- **Caps are stated, never silent.** The child table stops at 42 rows and a city/municipality names
+  at most 60 barangays. Where a cap binds — Cebu has 50 cities — the sheet prints "+ 8 more with a
+  lower share, 0 listed barangays between them", naming both how many were omitted and what they
+  contribute, so a reader can see whether the cap hid anything. Reporting the omitted rows' listed
+  count is the part that matters: it turns a truncation into a checkable statement.
+- **Two-state bar, not a funnel.** Same reasoning as the on-screen `ShareBar` — membership is
+  binary, and drawing stages the data does not have would be an invention.
+- **The legend is two anchored text elements, not one padded string.** SVG collapses runs of
+  whitespace, so the first cut rendered as "…14% Not on the list…" with nothing separating the
+  halves. Caught by rendering the PNG and looking at it, which is the only way this class of bug
+  surfaces — it raises no error and passes every type and lint check.
+
+**Verify.** Exports rendered **and visually inspected** at national (18 regions, CAR first at 52%),
+region, province, MAYOYAO (27 of 27) and BANGUI (2 of 14, both barangays named), NCR (0 of 1,675
+with its "result, not missing data" note and an empty bar), and CEBU (21 of 1,066, 42 rows plus the
+truncation line). 400 on invalid parameters, 404 on an unknown geo. `npm run lint`,
+`npm run typecheck` and `npm test` (224 tests, 5 new for `wrapNames` — SVG has no text wrapping, so
+an over-long line runs off the page with no error to catch it) all clean.
+
+That completes `docs/UUC_PHC_2025_PLAN.md`: U1 (load), U2 (rollup + section), U3 (indicators),
+U4 (one-pager). The remaining idea in the plan is an `/explore` overlay, which is out of its scope.

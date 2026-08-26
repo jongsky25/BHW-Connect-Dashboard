@@ -34,7 +34,11 @@ it or not. Every figure on the section is therefore one count against one denomi
   each is on the list. A barangay page would be a single yes/no, so `/uuc-phc/barangay/*` 404s.
 - **Indicators render at barangay grain only, never as averages** (U3). A capped value carries a †
   marker; a marker cannot survive a mean. See "The indicators" below.
-- **Not built:** PNG one-pager (U4, optional) and an `/explore` overlay (worth doing, after this).
+- **A PNG one-pager per area** (U4), reusing the profiling-status export machinery. It carries the
+  count, the two-state split and the child table — **but no indicator values**: a one-pager cannot
+  carry the † marker's footnote, and reproducing bounded values without it is exactly the unmarked
+  artefact U3 was built to avoid.
+- **Not built:** an `/explore` overlay (worth doing, after this).
 
 ## The indicators (U3)
 
@@ -115,6 +119,7 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Dataset slug | `lib/db/dataset.ts` (`DATASET_SLUGS.uucPhc`) |
 | Section landing + sub-pages | `app/uuc-phc/` (`page.tsx`, `[geoLevel]/[geoCode]/page.tsx`, `methodology/`, `layout.tsx`) |
 | Section components | `components/uuc-phc/` (coverage-hero, share-bar, child-breakdown, barangay-list, barangay-detail) |
+| PNG one-pager | `lib/exports/uuc-phc-figure.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/route.ts` |
 | Fact loader | `ingestion/ingest_uuc_phc.py` |
 | Cleaning step | `ingestion/clean_uuc_phc_indicators.py` |
 | Source data | `ingestion/data/uuc_phc_2025_cleaned.csv` |
@@ -146,3 +151,8 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 - Indicator rendering checked live: BACSIL (Bangui) shows its factors and a correctly-directional
   comparison; BITONG (Galimuyod, Ilocos Sur) shows two † marks with the footnote and its FIC as
   "not comparable — province reads 102.2" rather than a false "worse than province".
+- PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
+  52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
+  an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,
+  0 listed barangays between them" rather than truncating silently. 400 on bad parameters, 404 on
+  an unknown geo.
