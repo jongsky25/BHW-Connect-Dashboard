@@ -86,8 +86,8 @@ per DC No. 2025-0549", and the file is named `Submissions_UUA_2025_filled_1`, wh
 later revision. This is inference from the file name and the internal agreement, not something
 either file states — confirm it rather than assuming it.
 
-**Recommendation, reversing the earlier draft of this document:** publish the workbook's **5,991**
-as the card's figure, and footnote p37's 5,987 with its circular reference and as-of date. The
+**Decision — confirmed by the owner:** publish the workbook's **5,991** as the card's figure, and
+footnote p37's 5,987 with its circular reference and as-of date. The
 deck is what has been briefed to budget audiences, so the footnote is not optional — but a
 dashboard should render its own source, and that source corroborates itself three times. Record
 the decision and the two affected regions in `DECISIONS.md`, following
@@ -237,15 +237,25 @@ scaling concern; the §5 opt-in aggregate discipline of the AI plan still applie
   33 were never barangays, and the loader skips them as layout. The one real row remains below.
 - **Hosting clearance** for the cue cards corpus — cleared. `AI_ASSISTANT_PLAN.md` §12.5 updated.
 
-**Still open, both needing the source office rather than a decision here:**
+- **Indicator bounds** — settled. Water, Pre-natal, SBA and FIC are coverage percentages capped at
+  100; IMR, UFMR and ABR are rates per 1,000 capped at 1,000. Applied and reported in
+  `UUC_PHC_2025_CLEANING_REPORT.md`. The negatives question is moot — the reconciled file had
+  already removed them.
+- **`SORSOGON / PILAR / SAN ANTONIO`** — resolved to `0506213048`. **All 5,991 barangays now carry
+  a PSGC code**, so §4's last geography gap is closed and nothing is held back from U1.
+- **FP CU** — confirmed dropped. The dataset carries 12 indicators, not 13.
+- **Pass/Fail columns** — not to be used. All 15 are dropped from the cleaned dataset.
+- **`#N/A` reference values** — left blank.
+- **The published total** — **5,991**, with cue cards p37's 5,987 as a footnote citing DC No.
+  2025-0549 (§3).
 
-1. **Units for the eight indicator columns** (§5) — per column, plus confirmation of whether the
-   `−1`/`−2` values are no-data sentinels. Blocks U3 only.
-2. **`SORSOGON / PILAR / SAN ANTONIO`** (§4) — which of `0506213047` or `0506213048`. One barangay;
-   U1 can ship with it held back and added on the next load.
+**No questions remain open.** U1 and U3 are both unblocked.
 
-**Not a question, but flag it when the numbers are briefed:** the card will publish 5,991 where
-cue cards p37 publishes 5,987 (§3).
+**One thing to carry into the build, not a question:** capped values are indistinguishable from
+genuine ones once rendered. 886 Water and 456 FIC values now read as exactly 100%. The
+`Values capped` column separates them, and any aggregate over those two indicators must exclude
+or footnote the capped rows — at 15% of barangays for Water, it is large enough to move a national
+figure. See `UUC_PHC_2025_CLEANING_REPORT.md` §6.
 
 ---
 

@@ -1,7 +1,7 @@
 # UUC for PHC 2025 — indicator cleaning report
 
 What was done to the indicator values, why, and what it leaves open. Companion to
-`UUC_PHC_2025_PLAN.md` §5, which recorded the problem this addresses.
+`UUC_PHC_2025_PLAN.md` §5, which recorded the problem this resolves.
 
 **Input:** `ingestion/data/GIDA reconciled data.xlsx`, sheet `Reconciled` — 5,991 UUA barangays ×
 42 columns, supplied by the source office as the reconciled replacement for the original
@@ -12,115 +12,117 @@ What was done to the indicator values, why, and what it leaves open. Companion t
 
 ## 1. What the reconciliation already fixed
 
-Two problems from `UUC_PHC_2025_PLAN.md` §5 were resolved before any rule ran here. Both change
-what the plan says, so both are recorded rather than quietly absorbed.
+Two problems from `UUC_PHC_2025_PLAN.md` §5 were resolved before any rule ran here.
 
 **Every negative value is gone.** The original carried 15 values below zero across four columns.
 The reconciled file has a minimum of 0 in every indicator, so the below-zero rule matched nothing.
-Note it was resolved by *replacement*: the file does not say whether those cells became a true
-zero or a corrected measurement. For a rate, that distinction still matters.
+It was resolved by *replacement*, and the file does not say whether those cells became a true zero
+or a corrected measurement — for a rate, that distinction still matters.
 
-**The FP CU column was dropped entirely.** It was the worst column in the original — 1,043 values
-above 100, 17.4% of all barangays. It is absent from the reconciled file, so the cleaned dataset
-carries **12 indicators, not 13**. Anything downstream expecting Family Planning Current Users
-must be told; this is a schema change, not a data correction.
+**The FP CU column was dropped entirely** — 1,043 values above 100 in the original, the worst
+column in the file. Confirmed by the owner as intentional. The cleaned dataset carries
+**12 indicators, not 13**.
 
 ## 2. Rules applied
 
-The treatment depends on what each indicator measures. This is the substance of the rule set: a
-share of a population and a rate per 1,000 are different kinds of number, and a single threshold
-applied to both would corrupt one of them.
+The bound depends on what the indicator measures. This is the substance of the rule set: a share
+of a population and a rate per 1,000 are different kinds of number, and one threshold applied to
+both would corrupt one of them.
 
-| Indicators | Treatment | Why |
+| Indicators | Cap | Why |
 |---|---|---|
-| **Water, Pre-natal, SBA** | Capped at 100 | Coverage percentages — households with safe water, mothers reached. A share cannot exceed 100%. |
-| **FIC** | Left exactly as encoded | Immunisation coverage legitimately exceeds 100 where the eligible-infant denominator is understated. The actual value is the informative one. |
-| **IMR, UFMR, ABR** | Left exactly as encoded | Rates per 1,000. Not bounded by 100, so a cap would be meaningless. |
-| Any indicator below 0 | Set to 0 | Safeguard; matched nothing (§1). |
+| **Water, Pre-natal, SBA, FIC** | 100 | Coverage percentages — households with safe water, mothers reached, children fully immunised. A share cannot exceed 100%. |
+| **IMR, UFMR, ABR** | 1,000 | Rates per 1,000 births or women. They may legitimately exceed 100, but not 1,000. |
+| Any indicator below 0 | 0 | Safeguard; matched nothing (§1). |
 
 **Nothing is removed and no barangay is dropped.** All 5,991 rows are present with every
-indicator populated. This supersedes an earlier rule set that removed values above 200; no values
-are removed under these rules.
+indicator populated.
 
-**Not touched:** the `* Prov Ref` columns are provincial reference values rather than barangay
-measurements, and some legitimately exceed 100 (`ABR Prov Ref` reaches 277). The `Pass or Fail` /
-`High or Low*` assessment columns were carried over unchanged — see §5.
+## 3. Also applied
 
-## 3. What happened
+**The 15 Pass/Fail and High/Low assessment columns are dropped.** They were computed by the source
+office against the *uncapped* values, so they no longer describe the data beside them. Listed in
+full on the *Dropped columns* sheet. This removes the inconsistency flagged in the previous
+revision of this report rather than leaving it as a caveat.
 
-| Indicator | Treatment | Values above 100 | Capped to 100 | Kept as encoded | Max before | Max after |
-|---|---|---:|---:|---:|---:|---:|
-| Water | Capped | 886 | 886 | 0 | 9,594 | 100 |
-| Pre-natal | Capped | 208 | 208 | 0 | 1,950 | 100 |
-| SBA | Capped | 30 | 30 | 0 | 300 | 100 |
-| FIC | As encoded | 456 | 0 | 456 | 18,088 | 18,088 |
-| ABR | As encoded | 100 | 0 | 100 | 1,429 | 1,429 |
-| UFMR | As encoded | 80 | 0 | 80 | 3,000 | 3,000 |
-| IMR | As encoded | 60 | 0 | 60 | 3,000 | 3,000 |
-| **Total** | | **1,820** | **1,124** | **696** | | |
+**`#N/A` reference values are now blank** — 399 cells across the seven retained `Prov Ref` columns
+(57 barangays × 7). A further 399 sat in the dropped assessment columns and went with them.
 
-The five remaining columns — Physical Factor, IP POP, ARMED CONF, IDP, 4PS — were already within
-0–100 and needed no action.
+**`SORSOGON / PILAR / SAN ANTONIO` resolves to PSGC `0506213048`.** All 5,991 barangays now carry
+a 10-digit PSGC code; the last open geography item from `UUC_PHC_2025_PLAN.md` §4 is closed.
 
-- **1,124** values capped, across **1,061** of 5,991 barangays (17.7%).
-- **696** values above 100 retained by design, listed in full on the *Above 100 kept* sheet.
+**The 5,991 total is confirmed for publication**, with cue cards p37's 5,987 as a footnote citing
+DC No. 2025-0549 — see `UUC_PHC_2025_PLAN.md` §3.
+
+## 4. What happened
+
+| Indicator | Cap | Values capped | Max before | Max after |
+|---|---:|---:|---:|---:|
+| Water | 100 | 886 | 9,594 | 100 |
+| FIC | 100 | 456 | 18,088 | 100 |
+| Pre-natal | 100 | 208 | 1,950 | 100 |
+| SBA | 100 | 30 | 300 | 100 |
+| ABR | 1,000 | 2 | 1,429 | 1,000 |
+| IMR | 1,000 | 1 | 3,000 | 1,000 |
+| UFMR | 1,000 | 1 | 3,000 | 1,000 |
+| **Total** | | **1,584** | | |
+
+Physical Factor, IP POP, ARMED CONF, IDP and 4PS were already within 0–100 and needed no action.
+
+- **1,584** values capped, across **1,397** of 5,991 barangays (23.3%).
 - **0** values removed, **0** negatives found, **0** barangays dropped.
+- The 1,000 cap barely binds — only **4 values** exceed it. The 240 rate values between 100 and
+  1,000 are retained as encoded, which is the point of the separate bound.
 
-## 4. Verification
+## 5. Verification
 
 Checked by re-reading the output against the source, cell by cell:
 
-- 5,991 rows in, 5,991 rows out; no indicator cell left blank.
-- Water, Pre-natal and SBA now max at exactly 100. FIC, IMR, UFMR and ABR retain their original
-  maxima (18,088 / 3,000 / 3,000 / 1,429), confirming they were not silently altered.
-- Every value at or below 100 is byte-identical to the source. **Zero rule violations.**
-- No cell outside the 12 indicator columns differs from the source.
-- The actions log holds exactly 1,124 rows and the kept-values sheet exactly 696, matching the
-  transformations applied.
-- PSGC joined from the original `2025 LIST` on province/citymun/barangay, with a citymun+barangay
-  fallback for the 7 Zamboanga City HUC rows whose province field is blank. **5,990 of 5,991
-  matched.**
+- 5,991 rows in, 5,991 rows out; 29 columns retained, 15 dropped, none left blank in error.
+- Every capped column now maxes at exactly its cap; every value at or below its cap is
+  byte-identical to the source. **Zero rule violations.**
+- No cell outside the indicator columns differs from the source, apart from the intended `#N/A`
+  blanking.
+- The actions log holds exactly 1,584 rows, matching the transformations applied.
+- **5,991 of 5,991 barangays carry a 10-digit PSGC**, and Pilar's San Antonio resolves to
+  `0506213048` as instructed.
 
-The one unmatched row is `SORSOGON / PILAR / SAN ANTONIO`, unresolved for the reason in
-`UUC_PHC_2025_PLAN.md` §4: PSGC carries two identically named barangays in that municipality and
-nothing in either file separates them.
-
-## 5. What this does not fix
+## 6. What this does not fix
 
 **Capping bounds a value; it does not validate it.** A Water figure encoded as 9,594 is not a
 household-coverage percentage by any reading, and recording it as 100 asserts full coverage for a
-barangay whose true figure is unknown. The cap is defensible — the alternative renderings are
-worse — but 886 Water values, 15% of the dataset, now read as exactly 100% with no way to tell
-them from barangays genuinely at 100%. **The `Values capped` column on the cleaned sheet is what
-separates them, and any aggregate built on Water should exclude or footnote them.**
+barangay whose true figure is unknown. The cap is the right call — every alternative rendering is
+worse — but **886 Water values and 456 FIC values now read as exactly 100% with nothing to
+distinguish them from barangays genuinely at 100%.**
 
-**The kept values are unexplained, not endorsed.** Retaining FIC 18,088 is the right call — it
-preserves the evidence rather than hiding it — but it is not a plausible coverage figure, and it
-will look like a bug on any chart. These need either a denominator fix or a display rule.
+The `Values capped` column on the cleaned sheet is what separates them. **Any aggregate over
+Water or FIC should exclude or footnote the capped rows**, or it will report near-universal
+coverage that the source data does not support. At 15% of barangays for Water, this is large
+enough to move a national figure.
 
-**The Pass/Fail columns no longer agree with the values beside them.** The source office computed
-`High or Low`, `High or Low2` … against the *original* values, so where a value was capped its
-assessment still reflects the uncapped number. Either recompute them downstream or treat them as
-source-office output that is not derivable from the cleaned data — do not present both as if they
-agree.
+**The underlying encoding problem is unresolved.** These values were wrong at entry — a
+denominator error, a count entered where a percentage was wanted, or a units mismatch. Capping
+contains the symptom. If a corrected extract ever arrives, regenerate rather than patch.
 
-**`dataentry_comment` is unreliable as a flag.** It marks 1,895 rows "With values above 100", but
-381 of those have no such value, and 9 rows marked "Recheck entry" do. Everything here was
-computed from the values themselves.
+**`dataentry_comment` is unreliable as a flag** and was not used: it marks 1,895 rows "With values
+above 100", but 381 of those have no such value, and 9 rows marked "Recheck entry" do. Everything
+here was computed from the values themselves.
 
-**57 rows have `#N/A` reference values**, so their Pass/Fail assessments are `#N/A` too. Untouched
-here; they need a decision before those assessments are rendered anywhere.
+**`Health Indicators` (0–7) is retained but not derivable from this data.** It counts how many
+health assessments passed, so it depends entirely on the dropped Pass/Fail columns and on the
+uncapped values. Drop it or recompute it before use — flagged rather than removed, since removing
+it was not part of the instruction.
 
-## 6. Effect on the build
+## 7. Effect on the build
 
-`UUC_PHC_2025_PLAN.md` **U1 is unaffected** — it ships the classification, which is unchanged at
-5,991 UUA barangays.
+`UUC_PHC_2025_PLAN.md` **U1 is unaffected and fully unblocked** — it ships the classification,
+unchanged at 5,991 UUA barangays, and every one now has a PSGC.
 
-**U3 is now materially closer.** The five bounded columns plus the three capped ones are
-renderable. FIC, IMR, UFMR and ABR are not, until their unit and denominator are confirmed — the
-plan's §7 question 1 narrows to those four rather than all eight.
+**U3 is unblocked.** All 12 indicators are now bounded and renderable. The remaining constraint is
+presentational, not blocking: capped values need a display rule so a rendered 100% is not read as
+a measurement.
 
 ---
 
-*Regenerate with `python ingestion/clean_uuc_phc_indicators.py`. Every figure in §3 was recomputed
+*Regenerate with `python ingestion/clean_uuc_phc_indicators.py`. Every figure in §4 was recomputed
 from the source file.*
