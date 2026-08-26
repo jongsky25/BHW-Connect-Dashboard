@@ -1138,6 +1138,131 @@ export type Database = {
         };
         Relationships: [];
       };
+      dataset_column: {
+        Row: {
+          allowed_values: string[] | null;
+          column_id: number;
+          column_name: string;
+          data_type: string;
+          distinct_count: number | null;
+          is_join_key: boolean;
+          is_queryable: boolean;
+          joins_to: string | null;
+          max_value: string | null;
+          meaning: string;
+          min_value: string | null;
+          null_rate: number | null;
+          ordinal: number;
+          profiled_at: string | null;
+          registry_id: number;
+          role: string;
+          sample_values: string[] | null;
+          status: string;
+          unit: string | null;
+        };
+        Insert: {
+          allowed_values?: string[] | null;
+          column_id?: never;
+          column_name: string;
+          data_type: string;
+          distinct_count?: number | null;
+          is_join_key?: boolean;
+          is_queryable?: boolean;
+          joins_to?: string | null;
+          max_value?: string | null;
+          meaning: string;
+          min_value?: string | null;
+          null_rate?: number | null;
+          ordinal: number;
+          profiled_at?: string | null;
+          registry_id: number;
+          role: string;
+          sample_values?: string[] | null;
+          status?: string;
+          unit?: string | null;
+        };
+        Update: {
+          allowed_values?: string[] | null;
+          column_id?: never;
+          column_name?: string;
+          data_type?: string;
+          distinct_count?: number | null;
+          is_join_key?: boolean;
+          is_queryable?: boolean;
+          joins_to?: string | null;
+          max_value?: string | null;
+          meaning?: string;
+          min_value?: string | null;
+          null_rate?: number | null;
+          ordinal?: number;
+          profiled_at?: string | null;
+          registry_id?: number;
+          role?: string;
+          sample_values?: string[] | null;
+          status?: string;
+          unit?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "dataset_column_registry_id_fkey";
+            columns: ["registry_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_registry";
+            referencedColumns: ["registry_id"];
+          },
+        ];
+      };
+      dataset_registry: {
+        Row: {
+          created_at: string;
+          dataset_slug: string | null;
+          doc_path: string | null;
+          exposure: string;
+          grain: string;
+          notes_md: string | null;
+          registry_id: number;
+          row_estimate: number | null;
+          source_kind: string;
+          status: string;
+          summary: string;
+          table_name: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          dataset_slug?: string | null;
+          doc_path?: string | null;
+          exposure?: string;
+          grain: string;
+          notes_md?: string | null;
+          registry_id?: never;
+          row_estimate?: number | null;
+          source_kind?: string;
+          status?: string;
+          summary: string;
+          table_name: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          dataset_slug?: string | null;
+          doc_path?: string | null;
+          exposure?: string;
+          grain?: string;
+          notes_md?: string | null;
+          registry_id?: never;
+          row_estimate?: number | null;
+          source_kind?: string;
+          status?: string;
+          summary?: string;
+          table_name?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       dim_dataset: {
         Row: {
           as_of_date: string | null;
@@ -1556,6 +1681,117 @@ export type Database = {
         };
         Relationships: [];
       };
+      kb_edge: {
+        Row: {
+          created_at: string;
+          dst_node_id: number;
+          edge_id: number;
+          note: string | null;
+          origin: string;
+          relation: string;
+          source_chunk_id: number | null;
+          source_kind: string;
+          source_ref: string;
+          src_node_id: number;
+          status: string;
+          updated_at: string;
+          valid_from: string | null;
+          valid_to: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          dst_node_id: number;
+          edge_id?: never;
+          note?: string | null;
+          origin?: string;
+          relation: string;
+          source_chunk_id?: number | null;
+          source_kind: string;
+          source_ref: string;
+          src_node_id: number;
+          status?: string;
+          updated_at?: string;
+          valid_from?: string | null;
+          valid_to?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          dst_node_id?: number;
+          edge_id?: never;
+          note?: string | null;
+          origin?: string;
+          relation?: string;
+          source_chunk_id?: number | null;
+          source_kind?: string;
+          source_ref?: string;
+          src_node_id?: number;
+          status?: string;
+          updated_at?: string;
+          valid_from?: string | null;
+          valid_to?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "kb_edge_src_node_id_fkey";
+            columns: ["src_node_id"];
+            isOneToOne: false;
+            referencedRelation: "kb_node";
+            referencedColumns: ["node_id"];
+          },
+          {
+            foreignKeyName: "kb_edge_dst_node_id_fkey";
+            columns: ["dst_node_id"];
+            isOneToOne: false;
+            referencedRelation: "kb_node";
+            referencedColumns: ["node_id"];
+          },
+        ];
+      };
+      kb_node: {
+        Row: {
+          created_at: string;
+          key: string;
+          kind: string;
+          label: string;
+          node_id: number;
+          origin: string;
+          source_chunk_id: number | null;
+          source_kind: string;
+          source_ref: string;
+          status: string;
+          summary: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          key: string;
+          kind: string;
+          label: string;
+          node_id?: never;
+          origin?: string;
+          source_chunk_id?: number | null;
+          source_kind: string;
+          source_ref: string;
+          status?: string;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          key?: string;
+          kind?: string;
+          label?: string;
+          node_id?: never;
+          origin?: string;
+          source_chunk_id?: number | null;
+          source_kind?: string;
+          source_ref?: string;
+          status?: string;
+          summary?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       usage_events: {
         Row: {
           created_at: string;
@@ -1625,6 +1861,34 @@ export type Database = {
           match_rank: number;
           n_total: number;
           parent_chain: Json | null;
+        }[];
+      };
+      traverse_geo: {
+        Args: { direction?: string; max_depth?: number; row_cap?: number; start_code: string };
+        Returns: {
+          depth: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          geo_name: string;
+          path: string[];
+        }[];
+      };
+      traverse_kb: {
+        Args: {
+          direction?: string;
+          max_depth?: number;
+          relations?: string[];
+          row_cap?: number;
+          start_key: string;
+        };
+        Returns: {
+          depth: number;
+          key: string;
+          kind: string;
+          label: string;
+          path: string[];
+          relation_path: string[];
+          source_path: string[];
         }[];
       };
       wilson_high: { Args: { k: number; n: number }; Returns: number };

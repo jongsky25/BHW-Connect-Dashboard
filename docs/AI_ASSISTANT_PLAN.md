@@ -9,8 +9,11 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** proposed — awaiting owner approval of the decisions in §0. Phases ship in order; each
-increment is an independently shippable PR-sized unit.
+**Status:** Phase 1 complete — Increments 1.1–1.6 are built (see `DECISIONS.md`, 2026-08-26), on
+the §0 defaults for decisions 2, 3 and 4, which the owner confirmed. Decision 1 (Supabase Pro) is
+still open and nothing built so far depends on it; decision 7 (embedding provider) is the next one
+that matters, at Phase 2. Phases ship in order; each increment is an independently shippable
+PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -319,28 +322,29 @@ Each increment is independently shippable and must pass its Verify before the ne
 
 ### Phase 1 — Query and traverse anything (no new data sources)
 
-**1.1 — Enable pgvector, add registry tables.**
+**1.1 — Enable pgvector, add registry tables.** *(built — 2026-08-26)*
 Migrations for `dataset_registry`, `dataset_column`, service-role RLS in the same statement as
 each `CREATE TABLE` (per the `DECISIONS.md` 0.3 guardrail — never created open then locked).
 *Verify:* migrations apply cleanly; advisors report no new RLS findings.
 
-**1.2 — Backfill the registry for existing datasets.**
+**1.2 — Backfill the registry for existing datasets.** *(built — 2026-08-26; 22 tables, 230
+columns)*
 Describe the current `agg_*`/`fact_*` tables as registry rows. Hand-written, not inferred — this
 is the reference example every later auto-profile is measured against.
 *Verify:* every table the public tools query has a registry row with a complete dictionary.
 
-**1.3 — `queryDataset` tool.**
+**1.3 — `queryDataset` tool.** *(built — 2026-08-26; shipped with `listDatasets`, its discovery half)*
 One generic tool reading the registry. Parameterized, allowlisted to registered tables and
 columns, hard row and time limits. Never string-concatenates user input into SQL.
 *Verify:* answers a question about a registered dataset with no dataset-specific code; a query
 against an unregistered table is refused.
 
-**1.4 — Internal assistant page.**
+**1.4 — Internal assistant page.** *(built — 2026-08-26)*
 `app/admin/(dashboard)/assistant/`. Reuses `runToolLoop` and the NDJSON stream; own system prompt;
 relaxed rate limits; cache bypassed; audit retained.
 *Verify:* reachable only with an admin session; anonymous request returns 401/redirect.
 
-**1.5 — `kb_node` / `kb_edge`, seeded with lineage.**
+**1.5 — `kb_node` / `kb_edge`, seeded with lineage.** *(built — 2026-08-26; 160 nodes, 259 edges)*
 Create the graph tables (service-role RLS in the same statement, per 1.1) and populate them from
 structure this repository already asserts — no extraction, no model in the loop. Nodes: datasets,
 tables, columns, migrations, reconciliation documents. Edges: `derived-from` (`agg_bhw_counts` ←
@@ -359,7 +363,7 @@ plays for the registry.
 migration that built it; every edge has a provenance pointer; no edge in this increment was
 authored by a model.
 
-**1.6 — `traverseGraph` over `dim_geo` and `kb_edge`.**
+**1.6 — `traverseGraph` over `dim_geo` and `kb_edge`.** *(built — 2026-08-26)*
 The traversal primitive, and the first recursive CTE in the project: bounded depth, visited-set
 cycle guard, row cap, statement timeout (§9.8), returning **paths with provenance** rather than
 bare endpoints. Two edge sources from the start — the `dim_geo` containment tree and the 1.5

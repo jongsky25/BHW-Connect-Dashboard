@@ -1630,3 +1630,301 @@ most of a 1920px+ LED wall. The ask was "the biggest font that still doesn't ove
 (`deck-logic.test.ts`) all clean. No DB/env available in this environment for a live screenshot, so
 the fit is derived from the layout mechanics (fixed design width + uniform zoom) rather than
 measured against rendered data.
+
+## 2026-08-26 — Internal AI assistant, Increments 1.1–1.2: pgvector + the dataset registry
+
+First code for `docs/AI_ASSISTANT_PLAN.md`. Phase 1 opens with the two increments that add no new
+data source: the registry schema (1.1) and the hand-written backfill that describes every table
+the public read layer already queries (1.2). Nothing calls the registry yet — `queryDataset` is
+1.3 — but 1.2 is the reference example every later auto-profiled entry is measured against, so it
+ships before the tool that consumes it rather than alongside it.
+
+- **Two tables, service-role only.** `dataset_registry` (one row per queryable table: title,
+  summary, grain, exposure, status) and `dataset_column` (name, type, allowed values, meaning,
+  unit, role, join key, plus null profile-statistic columns for Phase 4). RLS enabled in the same
+  statement block as each `CREATE TABLE` with no anon/authenticated policy — the 0.3 guardrail,
+  and the plan's own rule that new tables match `ai_ask_cache`. **Verified live** by
+  `set local role anon`: 0 rows from both tables while a control read of `agg_bhw_counts` returns
+  its row. Security advisors show the two new tables only under the existing INFO
+  `rls_enabled_no_policy` lint, alongside `ai_ask_cache`/`fact_*` — no new WARN or ERROR.
+- **`exposure` is part of the schema, not a later filter.** Each registry row is `public` (the
+  `agg_*`/`dim_*` layer anon can already read) or `internal` (`fact_*`/raw). This is what lets one
+  generic query tool serve both the public tools and the internal assistant without a second
+  allowlist — and it is why the registry itself must not be public-readable: it is the map of what
+  is meant to stay internal.
+- **`role` per column, and `is_queryable`.** `key` / `dimension` / `measure` / `meta`. A stated
+  number may only come from a `measure`; surrogate ids, `search_text` (tsvector) and
+  `parent_chain` (jsonb) are `meta` and marked not queryable, so a generic tool cannot select or
+  filter on them at all. The allowlist is per column, not per table.
+- **What was registered: 22 tables, 230 columns — every column of every registered table.**
+  Verified against `information_schema` live: no undocumented column, no phantom column, no
+  ordinal mismatch, and every hand-written `data_type` matches the live type (enums compared by
+  `udt_name`). That covers all nine tables the public tools query plus the analytic tables no tool
+  reaches today (peer ranks, workload, cohorts, honorarium sufficiency/inequality, income class,
+  population, poverty, UUC).
+- **The dictionary records the traps, not just the columns.** Where two tables use one word for
+  differently-measured things, the meaning says so: `agg_bhw_stepzero_counts.n_registered_accredited`
+  is a self-reported barangay tally, not `agg_bhw_counts`' per-person verified flag;
+  `agg_honorarium_inequality` is denominated on recipients while `agg_honorarium_cumulative` is
+  denominated on all profiled BHWs; `agg_cohorts.n` is a milestone year of today's roster, never a
+  headcount as of that year; `agg_poverty` is deliberately not rolled up above city/municipality.
+  Suppression rules and missing geographic levels are on the rows that carry them. A generic query
+  tool has no other way to learn any of this.
+- **Registry rows are `hand_written` / `approved`, not `auto`.** Owner decision 5 puts only
+  extraction output through review; a description asserted in a migration is asserted, not
+  inferred. `source_kind` keeps the two distinguishable once Phase 4 starts writing rows.
+- **Profile statistics deliberately left null.** `distinct_count`, `null_rate`, `min_value`,
+  `max_value`, `sample_values`, `profiled_at` are in the schema but unfilled: they are outputs of
+  the ingest-time profiling pass, and a hand-typed cardinality would go stale silently while
+  looking authoritative. `row_estimate` is filled from live counts and documented as advisory.
+- **pgvector installed now, unused now.** `create extension vector` into `extensions` (0.8.2,
+  `halfvec` present) so the extension question is settled before Phase 2 embedding work starts.
+  No column stores a vector yet, and no embedding dimension is committed anywhere — per §4 that
+  gets confirmed against the live model at implementation time.
+- **`lib/db/dataset-registry.ts`** is the typed read layer: `listRegisteredDatasets` /
+  `getRegisteredDataset` (service-role client, `status = 'approved'` filtered in the query so no
+  caller can forget), `queryableColumns` / `measureColumns`, and `describeDataset` — the compact
+  dictionary rendering a model is shown, with caveats last so a long column list cannot push a
+  suppression rule out of sight. Unknown `role` or `exposure` values are dropped rather than
+  coerced, and a registry entry with no approved dictionary is not handed out at all (there would
+  be nothing to allowlist against). Reads degrade to an empty list, never a throw.
+- **`fact_uuc_phc_barangay` is registered with a flag on it.** The table is live and public-read
+  but has no committed migration in `supabase/migrations/`, so its `notes_md` records the gap
+  rather than inferring a source — that is Increment 1.5's to resolve, and it is exactly the kind
+  of lineage the graph seeding is meant to make queryable.
+- **One live table is deliberately not registered: `agg_uuc_phc_counts`.** It was created on the
+  live project by the concurrent UUC for PHC work while this backfill was being written, after the
+  table enumeration behind it, and its migration is not in this branch. No public tool queries it
+  yet, so 1.2's Verify still holds; describing it from a live table comment rather than its own
+  migration would be exactly the inference this increment exists to avoid. The seed is idempotent,
+  so registering it is a few added rows once that branch lands.
+
+- **Owner decisions in §0 are still open**, decision 1 (Supabase Pro) included. Nothing here
+  depends on them: both tables together hold 252 metadata rows, and the plan only requires the
+  decisions be settled before 1.2 changes what gets *built* — the schema and the backfill are the
+  same either way. 1.3 (`queryDataset`) and 1.4 (the internal page) are the first increments that
+  need decisions 2–4 answered.
+
+**Verify.** Both migrations applied live via the Supabase MCP and committed to
+`supabase/migrations/`; re-running them is idempotent (`on conflict do update`). `npm run lint`,
+`npm run typecheck`, `npm test` (212 tests, 12 new in `lib/db/dataset-registry.test.ts`) all clean.
+`database.types.ts` hand-extended for the two new tables, matching the existing practice for
+surgical schema additions.
+
+## 2026-08-26 — Internal AI assistant, Increment 1.3: `queryDataset`, one tool over every registered table
+
+The ceiling this removes: `lib/ai/tools.ts` is hardcoded around BHW indicators, so a new dataset
+means a new hand-written tool, a new Zod schema and new prompt copy. `queryDataset` reads the
+registry from 1.2 instead, which makes adding a dataset a data operation.
+
+- **Two tools, not one — discovery is load-bearing.** `createDatasetTools(exposure)`
+  (`lib/ai/dataset-tools.ts`) returns `listDatasets` and `queryDataset`. The plan names one tool,
+  but the registry is what the model is *shown*, and it cannot write a correct query against a
+  table it has never seen described: `listDatasets` with no arguments returns the catalogue,
+  `listDatasets { table }` returns that table's full dictionary via `describeDataset`. Counting
+  them as one increment is the plan's own framing (§3: "the registry is also what the model is
+  shown").
+- **Filter, order, project — deliberately no aggregation.** Every registered table is already an
+  `agg_*` or a dimension, so a generic GROUP BY would let the model re-derive a figure the
+  pipeline already computed, by a different definition, with no way to tell the two apart in the
+  answer. `mode: 'count'` is the single exception, because "how many rows match" cannot be
+  misdefined. This is a narrowing of what "query anything" could have meant, and it is the reason
+  the tool needs no SQL at all.
+- **No SQL is composed anywhere.** Identifiers come from the registry and go to PostgREST through
+  supabase-js; values go through as parameters. The plan's "never string-concatenates user input
+  into SQL" is structural here rather than a review rule. The one cost is that the generated
+  `Database` type pins `.from()` to known table literals, so `runPlan` casts the client to the
+  untyped `SupabaseClient` — confined to that function, and sound precisely because every
+  identifier reaching it was resolved against `dataset_column` first.
+- **Refusals teach the vocabulary.** An unknown or non-queryable column is refused with the list
+  of columns that *are* queryable; a value outside a column's `allowed_values` is refused with the
+  real values (`geo_level = 'municipality'` → "only takes: national, region, province, citymun,
+  barangay"); text on a numeric column and a non-boolean on a boolean column are refused before
+  the query is issued. A refusal that returns zero rows instead teaches the model nothing and
+  invites it to state the emptiness as a finding.
+- **Two warnings ride with every payload.** The table's `notes_md` caveat, and — when the table
+  has a `dataset_id` the query did not filter on — an explicit "rows may span several source
+  datasets or vintages". `agg_population` holds two censuses and `agg_poverty` three SAE years;
+  ranking across them silently mixes vintages, so the payload says so rather than relying on the
+  caveat being read.
+- **Limits:** 100 rows hard cap (20 default), 25 columns, 8 filters, 20 `in` values, 8s request
+  timeout via `AbortSignal.timeout`. All enforced before the query is issued.
+- **`runToolLoop` now takes a tool set** (defaulting to the public `TOOLS`, so the public chat,
+  narrative generator and ask-refresh are byte-for-byte unchanged), and `executeToolFrom` runs a
+  call against a given set. Scope becomes a property of which tools exist in the loop rather than
+  of what a system prompt asks the model not to call — the seam Increment 1.4 needs.
+- **Not wired to any surface yet, on purpose.** The public "Ask the data" chat keeps exactly the
+  tools it had. `queryDataset` reaches tables the public tools deliberately never touch, and the
+  place it belongs is the admin-gated assistant of 1.4; adding it to the public route would be a
+  product change this increment has no mandate for.
+
+**Verify.** Against the live project: every one of the 22 registry projections executes and
+returns rows (209 queryable columns probed via `query_to_xml`, 0 failures), and two representative
+plans — an `agg_peer_ranks` outlier question and an `agg_workload` caseload question, both against
+tables no hand-written tool reaches — return correct rows. In tests: 21 new cases covering the
+refusal paths and, with a recording stand-in for the query builder, the exact PostgREST call the
+tool issues (projection, each filter, ordering, limit, head-only count) — a filter silently dropped
+is the failure a payload assertion alone would miss. `npm run lint`, `npm run typecheck`,
+`npm test` (233 tests) all clean.
+
+**What is not yet verified:** the increment's "the assistant selects the tool and answers a
+question" half. That needs a surface and a provider key, neither of which exists until 1.4 — this
+environment has no AI provider credentials — so it is deferred to 1.4's verification rather than
+claimed here.
+
+## 2026-08-26 — Internal AI assistant, Increment 1.4: the admin-only assistant
+
+The surface the §0 decisions describe, built on the defaults the plan proposed (owner confirmed):
+admin session only (2), numeric audit retained (3), answer cache bypassed (4). That closes Phase 1
+except the graph work (1.5–1.6).
+
+- **`app/api/ai/assistant/route.ts` re-checks the admin session itself.** `proxy.ts` matches
+  `/admin/:path*` only, so it never sees an `/api/*` request, and a route handler is reachable
+  without ever loading the page that links to it. `getAdminUser()` is therefore the security
+  boundary for this endpoint, and it runs *before the body is parsed* — nothing about the request
+  can influence whether the gate opens. It fails closed, per the posture already documented in
+  `lib/db/require-admin.ts`.
+- **Scope is the tool set, not the prompt.** `createInternalTools()` = the six public indicator
+  tools plus `listDatasets`/`queryDataset` at `internal` exposure, passed into `runToolLoop`. A
+  tool the model may not use is *absent* from its set rather than merely undescribed — which is
+  why 1.3 made the loop take a tool set at all. The public chat still gets the default `TOOLS` and
+  is unchanged.
+- **The hand-written tools were kept alongside the generic one.** `searchGeo` resolves a place
+  name to a geo_code in one call — the registry path would need a `like` scan of `dim_geo` and
+  would still have to guess between namesakes — and the indicator tools return the same shaped
+  figures the dashboard renders, which is what keeps "the number in the answer matches the number
+  on screen" true for internal users too. `queryDataset` covers everything they do not.
+- **Nothing internal is written to `ai_ask_log`.** Decision 4 removes the cache; the log is a
+  separate question, and the answer is also no. That log is explicitly the corpus the *public*
+  answer bank is curated from (`ASK_CACHE_PLAN.md` §3), so seeding it with internal exploration
+  would corrupt what eventually gets offered to visitors. Internal turns are counted in
+  `usage_events` under their own `ai_assistant_message` type, which keeps the rate limit working
+  and keeps internal volume out of the public chat's usage figures.
+- **Relaxed rate limit = 60 turns / 10 minutes, keyed on the admin's user id** (public chat: 20 per
+  browser session). Relaxed rather than removed: the provider quota an internal turn spends is the
+  same free-tier budget the public chat depends on, so a runaway loop must still hit a wall. The
+  existing `usage_events` counter is reused — `session_id` is a uuid column and an admin user id is
+  a uuid, so no schema change was needed.
+- **A separate system prompt, not a variant.** `INTERNAL_SYSTEM_PROMPT` relaxes style and scope
+  (many datasets, technical register, table names in the answer, longer answers) and keeps every
+  grounding rule, adding three the registry makes possible: read the dictionary before querying,
+  respect the stated grain, and report the payload's `warnings` rather than absorbing them. What
+  differs between the two surfaces is scope, and scope drift is exactly what one shared prompt
+  with conditional paragraphs invites.
+- **The UI shows tool calls with their arguments,** not the public chat's friendly labels. An
+  internal answer is only as good as the query behind it, and the difference between right and
+  wrong is usually a filter — a missing `dataset_id`, a `geo_level` one step off. A reader who can
+  see `queryDataset {"table":"agg_poverty",…}` can catch that; one shown "Looked up poverty
+  figures" cannot. The page also lists the registered datasets server-side, so what the assistant
+  can reach is visible before asking rather than discovered by being refused.
+
+**Verify.** 9 new route tests: an anonymous request returns 401 with no provider call and no usage
+event; the admin check runs on the route itself; a malformed body is 400; the per-admin limit
+returns 429 before any provider call; the loop is invoked with the internal tool set and the
+internal prompt; tool calls stream with their arguments. Grounding is covered by two tests that run
+the *real* `auditNarrative` through the route — an answer whose figure is in no tool payload has
+that sentence stripped before it reaches the stream, while a figure that is in a payload survives.
+`npm run lint`, `npm run typecheck`, `npm test` (242 tests) clean, and `next build` succeeds with
+`/admin/assistant` and `/api/ai/assistant` both dynamic (no prerender attempt on an auth-gated
+page — the failure mode the layout's `force-dynamic` note warns about).
+
+**Still not verified end-to-end:** a real question answered by a live provider. This environment
+has no AI provider keys, so the model-selects-the-tool half of 1.3's and 1.4's Verify needs a run
+against the deployed preview with `GEMINI_API_KEY` set. Everything up to the provider boundary is
+covered; the boundary itself is not, and that is the one claim not made here.
+
+## 2026-08-26 — Internal AI assistant, Increments 1.5–1.6: the graph, and the first traversal
+
+Phase 1 complete. 1.5 creates `kb_node`/`kb_edge` and populates them from structure this
+repository already asserts; 1.6 adds the traversal primitive over two edge shapes — the `dim_geo`
+containment tree and those lineage edges.
+
+### 1.5 — lineage, generated rather than hand-written
+
+- **A committed generator, not a hand-authored seed.** `ingestion/build_kb_lineage.py` reads the
+  migrations, the ingestion scripts and the 1.2 registry and emits
+  `supabase/migrations/20260826120100_seed_kb_lineage.sql`. The plan asks for edges "no model
+  authored"; a generated seed is the strongest available form of that, because every edge is
+  reproducible by re-running the script and checkable by opening the file it names. It also means
+  the graph stays current: add a migration, re-run, re-apply.
+- **160 nodes, 259 edges**, all `origin = 'asserted'`, all `status = 'approved'`, all carrying a
+  provenance pointer, none sourced from a model chunk. Relations: `built-by` 73, `derived-from` 69,
+  `has-column` 44, `joins-on` 42, `reconciled-in` 31.
+- **`origin` is a column, not a convention** (§9.9). It defaults to `'extracted'`, so a row that
+  does not explicitly claim to be asserted is not treated as one — the safe direction for a table
+  Phase 3 will write into.
+- **`has-column` was added to the plan's four relations.** Nodes include columns, and a column has
+  to attach to its table or a lineage walk from a table can never reach its join keys. The `joins-on`
+  edges the plan does name are between columns, so without it they are unreachable.
+- **Geographies are deliberately not materialized as nodes.** `dim_geo` is already a containment
+  tree over 43,746 rows with its own index; copying it into `kb_node` would create a second copy to
+  keep in sync for no gain. The traversal reads `dim_geo` directly instead.
+- **`derived-from` is emitted from SQL files only.** In a `.sql` file a read can be scoped to the
+  statement that writes; in a Python module the whole file is one blob, so every table it mentions
+  anywhere would attach to every table it writes. That is co-occurrence, not lineage, and an edge
+  nobody can check by reading one statement is what this increment exists not to produce. Python
+  scripts still yield `built-by` edges, which are file-scoped by nature.
+- **Working tables are resolved through.** `build_aggregates.sql` builds `_agg_base` from
+  `fact_bhw_raw`, then builds `agg_bhw_counts` from `_agg_base`; the generator follows that one hop
+  so lineage reaches the fact table rather than stopping at a table that is dropped at the end of
+  the run.
+- **Two generator bugs worth recording, both found by reading the output rather than by tests.**
+  (1) A quote-tracking SQL splitter desynchronizes on the apostrophes in this repository's prose
+  migration headers, silently producing zero registry edges — comments are now stripped before any
+  statement parsing. (2) The `kb_graph.sql` header used a real path (`docs/POVERTY_SAE.md`) as an
+  illustrative node key, and the generator dutifully asserted a `reconciled-in` edge from it; the
+  example is now a placeholder. Both are the same class of error: a parser reading prose as data.
+- **The generator reports what it cannot establish.** A table node with no `built-by` edge is
+  printed to stderr; today that is exactly one — `fact_uuc_phc_barangay`, the live table with no
+  committed migration that 1.2 flagged. The gap is surfaced, not filled by guessing.
+
+### 1.6 — `traverse_geo` / `traverse_kb`, the project's first recursive CTE
+
+- **The recursion lives in Postgres, the refusals in both places.** §9.8's guardrails — depth cap,
+  visited-set cycle guard, row cap, statement timeout — are enforced in the functions, where they
+  hold however the function is called; `lib/ai/traverse-graph.ts` adds an earlier refusal so a bad
+  request never reaches the database.
+- **Excessive depth is refused, not clamped.** A traversal silently served at a lower depth than
+  asked produces an answer nobody can reproduce. Hard caps: geo 5, lineage 6.
+- **Results are paths with provenance, never bare endpoints.** A lineage row carries the node
+  chain, the relation at each step and the file asserting it, rendered as one quotable line. A
+  provenance claim without its chain is not checkable, and an unverifiable one reads as authority.
+- **`search_path` is pinned** on both functions, and EXECUTE is revoked from `public` and granted
+  only to `service_role` — these functions read service-role-only tables, and PostgREST would
+  otherwise expose them to `anon`.
+- **Registered in the internal tool set and described in the internal prompt in the same
+  increment**, per the plan: a traversal the model never selects has not shipped.
+
+**Verify (all live against the project).**
+
+- Lineage chain: `traverse_kb('table:agg_honorarium', 'out', …)` returns its three migrations, its
+  ingestion script, and `fact_honorarium`/`fact_bhw_raw`, each step citing the file that asserts it.
+- The depth-1 check in 1.5 showed `agg_geo_summary` with no direct fact source; the traversal shows
+  why that was the wrong question — it reaches `fact_bhw_raw` at depth 2 via `agg_bhw_counts` and
+  via `agg_training`. Transitive resolution is the capability, and it is what makes every table the
+  public tools query resolve to its source fact table.
+- Subtree: cities and municipalities inside Cebu (`07022`) below their peer median on accreditation
+  — GINATILAN 11.02% and ARGAO 22.17% against a peer median of 76.89% — each row carrying its path
+  to the queried ancestor. This is the question that has been unanswerable at any depth against
+  data in production for a month.
+- Ancestors: a barangay walks up citymun → province → region → national at depth 4, each row
+  carrying its path.
+- Excessive depth: `traverse_geo('PH','down',9,10)` raises `max_depth 9 exceeds the limit of 5`
+  rather than running.
+- Cycle: two synthetic nodes pointing at each other terminate after one step at `max_depth 6`,
+  returning one row rather than recursing. Test rows deleted afterwards; 259 edges before and after,
+  zero leftovers.
+- Advisors: `kb_node`/`kb_edge` appear only under the existing INFO `rls_enabled_no_policy` lint,
+  and neither new function appears under `function_search_path_mutable`. No new WARN or ERROR from
+  this work.
+- `npm run lint`, `npm run typecheck`, `npm test` (257 tests, 15 new) clean.
+
+**Unrelated advisor finding, not fixed here.** A new ERROR-level lint appeared during this work —
+`public.ref_uuc_phc_provincial` is a SECURITY DEFINER view — created on the live project by the
+concurrent UUC work. It is not in this branch and not this increment's to change; recorded so it
+is not mistaken for fallout from the graph work.
+
+**Still not verified end-to-end:** the model actually selecting `traverseGraph` for a subtree
+question and `queryDataset` for a single-geography one, with both answers passing `auditNarrative`.
+That needs a live provider key, which this environment does not have. Every layer below the
+provider — the SQL, the guardrails, the tool contract — is verified above.
