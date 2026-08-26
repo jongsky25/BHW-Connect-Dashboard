@@ -391,9 +391,9 @@ retrieval paths are live and a change to one can silently degrade another.
 
 ## 11. Open questions
 
-- ~~**Document corpus.** Which documents go in first?~~ **Answered — see §12.** The 2027 Budget
-  Cue Cards are the first corpus. The DOH hosting clearance question is *not* answered and is
-  restated in §12.5.
+- ~~**Document corpus.** Which documents go in first, and does the DOH hosting clearance gate
+  apply?~~ **Both answered — see §12.** The 2027 Budget Cue Cards are the first corpus, and the
+  owner has cleared loading them (§12.5). The admin-only exposure rule is unchanged.
 - **Embedding model and dimensions.** Confirm against the provider's live model at implementation
   and record in `DECISIONS.md`.
 - **Retention.** How long do `doc_chunk` rows live for a document that is later withdrawn?
@@ -480,8 +480,10 @@ budget discussion actually turns on.
 
 Internal budget material, and slide 26 records that "the BHW Connect web site [is] under system
 hold by KMITS due to security threat." The admin-only constraint (§0 #2, §9.1) is load-bearing for
-this corpus specifically — it must not reach a public surface. The DOH hosting clearance question
-from §11 is unresolved and applies to loading it at all; confirm before Increment 2.1 runs.
+this corpus specifically — it must not reach a public surface.
+
+**Hosting clearance: cleared by the owner.** Increment 2.1 is unblocked. Clearance to *load* the
+corpus is not clearance to expose it: §9.1 stands unchanged, and this deck is the reason it does.
 
 ---
 
