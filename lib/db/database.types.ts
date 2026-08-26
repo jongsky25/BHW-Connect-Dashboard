@@ -1138,6 +1138,131 @@ export type Database = {
         };
         Relationships: [];
       };
+      dataset_column: {
+        Row: {
+          allowed_values: string[] | null;
+          column_id: number;
+          column_name: string;
+          data_type: string;
+          distinct_count: number | null;
+          is_join_key: boolean;
+          is_queryable: boolean;
+          joins_to: string | null;
+          max_value: string | null;
+          meaning: string;
+          min_value: string | null;
+          null_rate: number | null;
+          ordinal: number;
+          profiled_at: string | null;
+          registry_id: number;
+          role: string;
+          sample_values: string[] | null;
+          status: string;
+          unit: string | null;
+        };
+        Insert: {
+          allowed_values?: string[] | null;
+          column_id?: never;
+          column_name: string;
+          data_type: string;
+          distinct_count?: number | null;
+          is_join_key?: boolean;
+          is_queryable?: boolean;
+          joins_to?: string | null;
+          max_value?: string | null;
+          meaning: string;
+          min_value?: string | null;
+          null_rate?: number | null;
+          ordinal: number;
+          profiled_at?: string | null;
+          registry_id: number;
+          role: string;
+          sample_values?: string[] | null;
+          status?: string;
+          unit?: string | null;
+        };
+        Update: {
+          allowed_values?: string[] | null;
+          column_id?: never;
+          column_name?: string;
+          data_type?: string;
+          distinct_count?: number | null;
+          is_join_key?: boolean;
+          is_queryable?: boolean;
+          joins_to?: string | null;
+          max_value?: string | null;
+          meaning?: string;
+          min_value?: string | null;
+          null_rate?: number | null;
+          ordinal?: number;
+          profiled_at?: string | null;
+          registry_id?: number;
+          role?: string;
+          sample_values?: string[] | null;
+          status?: string;
+          unit?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "dataset_column_registry_id_fkey";
+            columns: ["registry_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_registry";
+            referencedColumns: ["registry_id"];
+          },
+        ];
+      };
+      dataset_registry: {
+        Row: {
+          created_at: string;
+          dataset_slug: string | null;
+          doc_path: string | null;
+          exposure: string;
+          grain: string;
+          notes_md: string | null;
+          registry_id: number;
+          row_estimate: number | null;
+          source_kind: string;
+          status: string;
+          summary: string;
+          table_name: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          dataset_slug?: string | null;
+          doc_path?: string | null;
+          exposure?: string;
+          grain: string;
+          notes_md?: string | null;
+          registry_id?: never;
+          row_estimate?: number | null;
+          source_kind?: string;
+          status?: string;
+          summary: string;
+          table_name: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          dataset_slug?: string | null;
+          doc_path?: string | null;
+          exposure?: string;
+          grain?: string;
+          notes_md?: string | null;
+          registry_id?: never;
+          row_estimate?: number | null;
+          source_kind?: string;
+          status?: string;
+          summary?: string;
+          table_name?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       dim_dataset: {
         Row: {
           as_of_date: string | null;

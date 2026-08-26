@@ -9,8 +9,9 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** proposed — awaiting owner approval of the decisions in §0. Phases ship in order; each
-increment is an independently shippable PR-sized unit.
+**Status:** in progress — Increments 1.1 and 1.2 are built (see `DECISIONS.md`, 2026-08-26); the
+decisions in §0 are still open and 1.3 is the first increment that needs them answered. Phases ship
+in order; each increment is an independently shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -319,12 +320,13 @@ Each increment is independently shippable and must pass its Verify before the ne
 
 ### Phase 1 — Query and traverse anything (no new data sources)
 
-**1.1 — Enable pgvector, add registry tables.**
+**1.1 — Enable pgvector, add registry tables.** *(built — 2026-08-26)*
 Migrations for `dataset_registry`, `dataset_column`, service-role RLS in the same statement as
 each `CREATE TABLE` (per the `DECISIONS.md` 0.3 guardrail — never created open then locked).
 *Verify:* migrations apply cleanly; advisors report no new RLS findings.
 
-**1.2 — Backfill the registry for existing datasets.**
+**1.2 — Backfill the registry for existing datasets.** *(built — 2026-08-26; 22 tables, 230
+columns)*
 Describe the current `agg_*`/`fact_*` tables as registry rows. Hand-written, not inferred — this
 is the reference example every later auto-profile is measured against.
 *Verify:* every table the public tools query has a registry row with a complete dictionary.

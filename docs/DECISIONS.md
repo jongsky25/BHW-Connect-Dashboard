@@ -1630,3 +1630,83 @@ most of a 1920px+ LED wall. The ask was "the biggest font that still doesn't ove
 (`deck-logic.test.ts`) all clean. No DB/env available in this environment for a live screenshot, so
 the fit is derived from the layout mechanics (fixed design width + uniform zoom) rather than
 measured against rendered data.
+
+## 2026-08-26 — Internal AI assistant, Increments 1.1–1.2: pgvector + the dataset registry
+
+First code for `docs/AI_ASSISTANT_PLAN.md`. Phase 1 opens with the two increments that add no new
+data source: the registry schema (1.1) and the hand-written backfill that describes every table
+the public read layer already queries (1.2). Nothing calls the registry yet — `queryDataset` is
+1.3 — but 1.2 is the reference example every later auto-profiled entry is measured against, so it
+ships before the tool that consumes it rather than alongside it.
+
+- **Two tables, service-role only.** `dataset_registry` (one row per queryable table: title,
+  summary, grain, exposure, status) and `dataset_column` (name, type, allowed values, meaning,
+  unit, role, join key, plus null profile-statistic columns for Phase 4). RLS enabled in the same
+  statement block as each `CREATE TABLE` with no anon/authenticated policy — the 0.3 guardrail,
+  and the plan's own rule that new tables match `ai_ask_cache`. **Verified live** by
+  `set local role anon`: 0 rows from both tables while a control read of `agg_bhw_counts` returns
+  its row. Security advisors show the two new tables only under the existing INFO
+  `rls_enabled_no_policy` lint, alongside `ai_ask_cache`/`fact_*` — no new WARN or ERROR.
+- **`exposure` is part of the schema, not a later filter.** Each registry row is `public` (the
+  `agg_*`/`dim_*` layer anon can already read) or `internal` (`fact_*`/raw). This is what lets one
+  generic query tool serve both the public tools and the internal assistant without a second
+  allowlist — and it is why the registry itself must not be public-readable: it is the map of what
+  is meant to stay internal.
+- **`role` per column, and `is_queryable`.** `key` / `dimension` / `measure` / `meta`. A stated
+  number may only come from a `measure`; surrogate ids, `search_text` (tsvector) and
+  `parent_chain` (jsonb) are `meta` and marked not queryable, so a generic tool cannot select or
+  filter on them at all. The allowlist is per column, not per table.
+- **What was registered: 22 tables, 230 columns — every column of every registered table.**
+  Verified against `information_schema` live: no undocumented column, no phantom column, no
+  ordinal mismatch, and every hand-written `data_type` matches the live type (enums compared by
+  `udt_name`). That covers all nine tables the public tools query plus the analytic tables no tool
+  reaches today (peer ranks, workload, cohorts, honorarium sufficiency/inequality, income class,
+  population, poverty, UUC).
+- **The dictionary records the traps, not just the columns.** Where two tables use one word for
+  differently-measured things, the meaning says so: `agg_bhw_stepzero_counts.n_registered_accredited`
+  is a self-reported barangay tally, not `agg_bhw_counts`' per-person verified flag;
+  `agg_honorarium_inequality` is denominated on recipients while `agg_honorarium_cumulative` is
+  denominated on all profiled BHWs; `agg_cohorts.n` is a milestone year of today's roster, never a
+  headcount as of that year; `agg_poverty` is deliberately not rolled up above city/municipality.
+  Suppression rules and missing geographic levels are on the rows that carry them. A generic query
+  tool has no other way to learn any of this.
+- **Registry rows are `hand_written` / `approved`, not `auto`.** Owner decision 5 puts only
+  extraction output through review; a description asserted in a migration is asserted, not
+  inferred. `source_kind` keeps the two distinguishable once Phase 4 starts writing rows.
+- **Profile statistics deliberately left null.** `distinct_count`, `null_rate`, `min_value`,
+  `max_value`, `sample_values`, `profiled_at` are in the schema but unfilled: they are outputs of
+  the ingest-time profiling pass, and a hand-typed cardinality would go stale silently while
+  looking authoritative. `row_estimate` is filled from live counts and documented as advisory.
+- **pgvector installed now, unused now.** `create extension vector` into `extensions` (0.8.2,
+  `halfvec` present) so the extension question is settled before Phase 2 embedding work starts.
+  No column stores a vector yet, and no embedding dimension is committed anywhere — per §4 that
+  gets confirmed against the live model at implementation time.
+- **`lib/db/dataset-registry.ts`** is the typed read layer: `listRegisteredDatasets` /
+  `getRegisteredDataset` (service-role client, `status = 'approved'` filtered in the query so no
+  caller can forget), `queryableColumns` / `measureColumns`, and `describeDataset` — the compact
+  dictionary rendering a model is shown, with caveats last so a long column list cannot push a
+  suppression rule out of sight. Unknown `role` or `exposure` values are dropped rather than
+  coerced, and a registry entry with no approved dictionary is not handed out at all (there would
+  be nothing to allowlist against). Reads degrade to an empty list, never a throw.
+- **`fact_uuc_phc_barangay` is registered with a flag on it.** The table is live and public-read
+  but has no committed migration in `supabase/migrations/`, so its `notes_md` records the gap
+  rather than inferring a source — that is Increment 1.5's to resolve, and it is exactly the kind
+  of lineage the graph seeding is meant to make queryable.
+- **One live table is deliberately not registered: `agg_uuc_phc_counts`.** It was created on the
+  live project by the concurrent UUC for PHC work while this backfill was being written, after the
+  table enumeration behind it, and its migration is not in this branch. No public tool queries it
+  yet, so 1.2's Verify still holds; describing it from a live table comment rather than its own
+  migration would be exactly the inference this increment exists to avoid. The seed is idempotent,
+  so registering it is a few added rows once that branch lands.
+
+- **Owner decisions in §0 are still open**, decision 1 (Supabase Pro) included. Nothing here
+  depends on them: both tables together hold 252 metadata rows, and the plan only requires the
+  decisions be settled before 1.2 changes what gets *built* — the schema and the backfill are the
+  same either way. 1.3 (`queryDataset`) and 1.4 (the internal page) are the first increments that
+  need decisions 2–4 answered.
+
+**Verify.** Both migrations applied live via the Supabase MCP and committed to
+`supabase/migrations/`; re-running them is idempotent (`on conflict do update`). `npm run lint`,
+`npm run typecheck`, `npm test` (212 tests, 12 new in `lib/db/dataset-registry.test.ts`) all clean.
+`database.types.ts` hand-extended for the two new tables, matching the existing practice for
+surgical schema additions.
