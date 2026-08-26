@@ -38,7 +38,9 @@ it or not. Every figure on the section is therefore one count against one denomi
   count, the two-state split and the child table — **but no indicator values**: a one-pager cannot
   carry the † marker's footnote, and reproducing bounded values without it is exactly the unmarked
   artefact U3 was built to avoid.
-- **Not built:** an `/explore` overlay (worth doing, after this).
+- **Not built yet:** an `/explore` overlay, present mode, ask-the-data chat, an AI insight slot,
+  and the sub-pages that would show the criteria, the indicator distributions and the data-quality
+  caveats above barangay grain. All planned as U5–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
 
 ## The indicators (U3)
 

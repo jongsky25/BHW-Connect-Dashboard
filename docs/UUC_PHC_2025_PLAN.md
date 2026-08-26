@@ -3,10 +3,17 @@
 A dedicated dashboard card and section for the **2025 list of Unserved and Underserved
 Communities for Primary Health Care**, built from `ingestion/data/Submissions_UUA_2025_filled_1.xlsx`.
 
-**Status:** **complete — U1 through U4 shipped** (2026-08-26). The 5,991 rows are loaded, rolled up
-to every geo level, rendered at `/uuc-phc` from national down to city/municipality with each listed
-barangay showing the factors it qualified on and its health indicators (capped values marked), and
-every area has a downloadable PNG one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
+**Status:** **the dataset is shipped; the section is not yet at parity.** U1 through U4 landed
+2026-08-26 (PR #75): the 5,991 rows are loaded, rolled up to every geo level, rendered at `/uuc-phc`
+from national down to city/municipality with each listed barangay showing the factors it qualified
+on and its health indicators (capped values marked), and every area has a downloadable PNG
+one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
+
+**What this revision adds (2026-08-26): U5 through U12**, bringing the section up to the shape the
+2025 BHW Census section already has — present mode, ask-the-data chat, an AI insight slot,
+dataset-aware feedback, and sub-pages that show the data at levels the current two-page drill-down
+cannot reach. It also plans the `/explore` overlay U4 left as the one unbuilt idea, and clears the
+registry/lineage debt that two concurrently-merged branches left behind. See §8–§10.
 
 **Verdict on scoping: build this outside `AI_ASSISTANT_PLAN.md`.** It is a normal dataset
 increment on the path that already exists — ingest → `dim_dataset` → fact → aggregate → card —
@@ -492,7 +499,9 @@ scaling concern; the §5 opt-in aggregate discipline of the AI plan still applie
 - **The published total** — **5,991**, with cue cards p37's 5,987 as a footnote citing DC No.
   2025-0549 (§3).
 
-**No questions remain open.** U1 and U3 are both unblocked.
+**No questions remain open** *for U1–U4* — both were unblocked and both shipped. Questions that
+do not block a build but still need the source office are carried in §10; §7 is left as written,
+as the record of what was settled before U1.
 
 **One thing to carry into the build, not a question — now carried:** capped values are
 indistinguishable from genuine ones once rendered. 886 Water and 456 FIC values now read as exactly
@@ -500,6 +509,350 @@ indistinguishable from genuine ones once rendered. 886 Water and 456 FIC values 
 every affected value where it renders, and publishing no averages of these columns at all — the
 warning that "any aggregate over those two indicators must exclude or footnote the capped rows" is
 honoured by not building one. See `UUC_PHC_2025_CLEANING_REPORT.md` §6.
+
+---
+
+## 8. What the BHW Census section has that this one does not
+
+U1–U4 built a dataset and a drill-down. The 2025 BHW Census section (`/bhw` + `/place/*` +
+`/explore` + `/compare`) is a *reading surface* on top of a dataset, and the difference is most of
+what a visitor experiences. This is the gap, verified file by file rather than from memory:
+
+| Capability | BHW Census | `/uuc-phc` today |
+|---|---|---|
+| Landing page | `app/bhw/page.tsx` — hero + 4 stat tiles, each with a mini-viz and an enlarge chart | Hero + one two-state bar |
+| Area profile | `app/place/[geoLevel]/[geoCode]/page.tsx` — 10 figure cards, benchmark rows, peer-rank chips, locator map, completeness | Hero + bar + child list + (at citymun) barangay list |
+| Present mode | `PresentationProvider` / `PresentationSlide` / `PresentButton` on `/bhw`, `/place/*`, `/explore`, `/compare` | **none** |
+| Ask the data (chat) | `ChatLauncher` → `/api/ai/chat` on `/bhw`, `/explore` | **none** |
+| AI insight slot | `AiInsight` → `getOrGenerateNarrative` on `/bhw`, `/place/*` | **none** |
+| Curated insight cards | `InsightsGrid` ← `lib/db/insights.ts` (718 lines of generators) | **none** |
+| Spot feedback | `SpotFeedback`, mounted globally in `app/layout.tsx` | **already renders** — it is gated off `/admin` and `/` only |
+| Map / filters | `/explore` — choropleth, geo cascade, breakdown picker, 15 figures | **none** |
+| Side-by-side | `/compare` | **none** |
+| Data downloads | CSV / XLSX / PNG / PPTX per figure via `ExportMenu` | One whole-area PNG one-pager |
+| Glossary hooks | `GlossaryTerm` throughout | **none** |
+| Social card | `opengraph-image.tsx` on `/bhw` and `/place/*` | **none** |
+
+`/profiling-status` has the same gaps. Where an increment below changes shared machinery, it is
+noted — the fix should land in a form that section can adopt too, not a `/uuc-phc` fork of it.
+
+### Four things the shared machinery cannot do yet
+
+These are not opinions about design; they are defects that would produce wrong output if the
+components were simply dropped onto `/uuc-phc`. Each is small, and each has to be fixed by the
+increment that first needs it.
+
+1. **`PresentationSlide` hard-codes the brand.** Its promoted-slide header prints the literal
+   `BHW Connect` (`components/present/presentation-slide.tsx`). Presenting a UUC deck would put
+   the wrong section's name above every slide. Fix: carry the label on `DeckMeta`, which already
+   crosses the server→client boundary as plain strings.
+2. **The AI narrative cache key has no dataset dimension.** `lib/ai/narrative.ts` keys on
+   `data_version|geo|narrative_type`, where `data_version` is `getActiveDataset()`'s — the *BHW*
+   dataset's. A UUC insight for Region VII would collide with the BHW insight for Region VII.
+   `narrative_type` is already in the key and is a free extension point (`'overview'` today), so
+   this costs one enum value, not a migration.
+3. **The ask-cache key has the same hole.** `askCacheKey(dataVersion, geoCode, questionNorm)`
+   (`lib/ai/ask-cache.ts:41`) would serve a BHW answer to an identically-worded UUC question, and
+   the answer would pass the audit — because it *is* grounded, just in the other dataset.
+4. **The chat's tools are BHW-shaped.** `lib/ai/tools.ts` exposes seven hand-written tools
+   (`getIndicatorByGeo`, `getTrainingCoverage`, …), none of which can see this dataset. The
+   generic path already exists — `runToolLoop` takes a `tools` argument
+   (`lib/ai/agent-loop.ts:29`) and `lib/ai/query-dataset.ts` queries any *registered* table under
+   a per-column allowlist. That path reaches this dataset only once the registry knows about it,
+   which is U5.
+
+---
+
+## 9. Increments U5 – U12
+
+Same discipline as U1–U4: each is independently shippable, each states its Verify, and none is
+started before its dependency lands. Dependencies: **U5 → U8**; **U7 → U9's factor view**;
+everything else is parallel.
+
+### U5 — Registry, lineage, and the SECURITY DEFINER view
+
+**Carried debt, not new work.** PRs #75 (this dataset) and #76 (the internal AI assistant) were
+written against each other's absence and both merged. Three statements committed to `main` are now
+false or incomplete:
+
+| Where | What it says | What is true after #75 |
+|---|---|---|
+| `20260826090100_seed_dataset_registry.sql:172` | `fact_uuc_phc_barangay` "has no committed migration in supabase/migrations" | `20260826121000_fact_uuc_phc_barangay.sql` is committed |
+| `DECISIONS.md` (1.2) | `agg_uuc_phc_counts` deliberately unregistered, "a few added rows once that branch lands" | it landed |
+| `DECISIONS.md` (1.5) | `table:fact_uuc_phc_barangay` is the one node with no `built-by` edge, printed to stderr | the migration that builds it now exists to point at |
+
+Scope:
+
+- Correct the `notes_md` on `fact_uuc_phc_barangay` and add registry entries + column dictionaries
+  for `agg_uuc_phc_counts`, `fact_uuc_phc_indicators` and `ref_uuc_phc_provincial`. The seed is
+  idempotent, so this is added rows, not a rewrite.
+- Add the missing `built-by` edges to `kb_lineage` for all four objects, and `derived-from` edges
+  from the indicators table to the cleaning report.
+- **Fix the ERROR-level advisor finding.** `ref_uuc_phc_provincial`
+  (`20260826150000_fact_uuc_phc_indicators.sql:111`) is created without
+  `with (security_invoker = true)`, so it runs as its owner and bypasses the RLS of the table
+  beneath it. `DECISIONS.md` (1.6) records it as "not this increment's to change" — it is this
+  one's. It is the repository's only view, so there is no local convention to follow; set
+  `security_invoker` and let the fact table's public-read policy be the thing that grants access.
+
+*Note on the dictionaries.* `queryDataset` refuses a table with no approved dictionary outright, so
+the column descriptions are not documentation here — they are the allowlist. `capped_indicators`
+in particular must carry the caveat in its `notes_md`, because a model reading a `100` with no
+adjacent explanation will report full coverage, which is exactly the failure U3 was built to stop.
+
+*Verify:* registry returns 4 UUC tables with dictionaries; `queryDataset` can select
+`agg_uuc_phc_counts` and is refused on an unregistered column; the lineage generator prints **no**
+table without a `built-by` edge; `get_advisors` returns no `security_definer_view` for
+`ref_uuc_phc_provincial`; a public read of the view still works as `anon`.
+
+### U6 — Present mode, section chrome, and dataset-aware feedback
+
+Bring the two existing pages up to the chrome the BHW pages carry.
+
+- **Present mode** on `/uuc-phc` and `/uuc-phc/[geoLevel]/[geoCode]`. Wrap each page in
+  `PresentationProvider`, mark the hero, the share bar, the child breakdown and (at citymun) the
+  barangay list as `PresentationSlide`s, and add `PresentButton` to the section header.
+  `DeckMeta.captionLine` reads `N = 5,991 listed barangays · <area> · 2025 list (DC No.
+  2025-0549)`, matching the Person/Place/Time discipline the rest of the site uses.
+- **De-brand the slide chrome** (§8 defect 1): add `brandLabel` to `DeckMeta`, default it to
+  `"BHW Connect"` so every existing caller is unchanged, and pass `"UUC for PHC"` here. This is
+  the shared-machinery change `/profiling-status` should also pick up.
+- **Feedback.** `SpotFeedback` already renders on these pages; nothing is missing at the widget
+  level. What is missing is that `feedback` carries only `page_path`
+  (`20260719101400_feedback.sql`), so a correction about this list arrives indistinguishable from
+  a UI bug on `/explore` except by string-matching a URL. Add a nullable `dataset_slug` and set it
+  from the section, and add one section-specific entry point in the UUC footer: **"Is a barangay
+  missing from this list, or listed in error?"** That is the correction this dataset actually
+  attracts — it has a known ambiguous row (§4's San Antonio, Pilar) and a published figure four
+  higher than the deck's (§3) — and routing it to the source office is a different action from
+  triaging a bug.
+- **`opengraph-image.tsx`** for both routes, mirroring `app/bhw/opengraph-image.tsx`. The share
+  count is the headline; this list gets circulated in exactly the settings where a link preview
+  matters.
+
+*Verify:* deck starts, advances and exits on both routes, and the slide header reads "UUC for PHC";
+every existing `/bhw`, `/place/*`, `/explore` and `/compare` deck still reads "BHW Connect";
+feedback submitted from `/uuc-phc` lands with `dataset_slug = 'uuc-phc-2025'` and is visible in the
+admin inbox; OG images render at 1200×630 at national, a region and a citymun.
+
+### U7 — `/uuc-phc/criteria`: why these barangays qualified
+
+**The single largest analytical gap.** §1a establishes that a barangay qualifies on a physical
+factor *and* one of four socio-economic routes — and today that "why" is visible only inside a
+`<details>` on one city page at a time. There is no way to ask "how many of BARMM's 399 qualified
+on the 4Ps route?" without reading 399 disclosures.
+
+New aggregate `agg_uuc_phc_criteria`, keyed `(dataset_id, geo_code, geo_level)` at
+national/region/province/citymun, with one count per qualifying route: IP ≥ 10%, armed
+conflict/IDP ≥ 10% or ELCAC-designated, 4Ps ≥ 50%, and health indicators ≥ 4 of 7.
+
+**This aggregate is safe where the indicator ones were not, and the reason is worth stating.** U3
+declined per-indicator aggregates because a mean absorbs the capped ceilings and reports coverage
+the source does not support. A route count is a count of *classifications*, not of measurements:
+it never averages a bounded value, so the † problem does not arise. The one route that touches the
+capped columns is the health-indicator route, and it inherits §1a's caveat rather than a new one —
+which is why the page names the 238 barangays where criterion (d) is not evaluable at all
+(U10 renders the same set).
+
+Two things the page must say plainly:
+
+- **The routes overlap and the counts do not sum to the total.** A barangay can qualify on three
+  routes at once. Render as four independent shares of the area's listed count, never as a
+  stacked bar or a pie, both of which assert a partition that does not exist.
+- **Computed in SQL from `fact_uuc_phc_indicators` + `dim_geo`**, on U2's precedent: re-running
+  the migration recomputes every row, so the aggregate cannot drift and re-running is the refresh
+  procedure.
+
+*Verify:* every area's per-route counts are ≤ its `n_listed` and ≥ 0; the national count for each
+route matches a direct count over the fact table; the health-indicator route count equals the
+number of rows with `health_indicators >= 4`; at least one area is shown where routes overlap and
+the four shares sum above 100%, confirming the rendering does not imply a partition; the 238
+not-evaluable barangays are excluded from the health route's denominator and the exclusion is
+stated on the page.
+
+### U8 — Ask the data: chat and an AI insight slot
+
+**Depends on U5.** Both surfaces the BHW section has, scoped so they cannot answer from the wrong
+dataset.
+
+- **`ChatLauncher` on `/uuc-phc` and the area pages**, running `runToolLoop` with the registry
+  tools from `lib/ai/dataset-tools.ts` instead of `lib/ai/tools.ts`. No new tool code: the model
+  reaches this dataset through `queryDataset` over the four tables U5 registers. The existing
+  rate limit, provider cascade and `auditNarrative` pass are unchanged — `auditNarrative` is
+  already dataset-agnostic, since it checks numbers against the tool payloads it was given.
+- **Fix both cache keys first** (§8 defects 2 and 3). Add the dataset to `askCacheKey` and add a
+  `'uuc_overview'` `NarrativeType`. Without this the two sections silently serve each other's
+  answers, and the failure is invisible — a cross-dataset hit is fluent, grounded and wrong.
+- **Starter questions** replaced for this section: `ChatLauncher`'s three hard-coded prompts are
+  BHW questions ("What's the biggest training gap nationally?"). Make them a prop.
+- **`AiInsight`** on the area pages, once `narrative_type` separates the caches.
+
+*Refusals matter more here than on `/bhw`.* This dataset is a targeting list, so the questions it
+invites ("should my barangay be on this list?", "why was this one included?") are ones the data
+cannot answer — presence is recorded, the assessment behind it is not. The system prompt must say
+so, and the answer must point at the source office rather than reasoning from the indicators.
+
+*Verify:* the same question asked on `/bhw` and `/uuc-phc` returns two different grounded answers
+and two distinct cache rows; a question about a barangay not on the list gets "not on the 2025
+list", never an inferred one; a question about *why* a barangay qualified is answered from
+`fact_uuc_phc_indicators` where the data supports it and refused where it does not; a capped value
+is never reported without its caveat; rate limiting and the audit behave as on `/bhw`.
+
+### U9 — `/uuc-phc/indicators`: the indicators above barangay grain, without averaging
+
+U3 established a rule — *mark the value, never average it* — and honoured it by publishing no
+aggregates, which leaves the 12 indicators visible only one barangay at a time. That is stricter
+than the rule requires. **A distribution is not a mean:** a histogram renders every value at its
+own position, so a capped value stays where the cap put it instead of being absorbed into a
+figure that hides it.
+
+One page, one section per indicator, scoped to any geo level:
+
+- A histogram of the area's listed barangays, with **the top bin drawn and labelled distinctly**
+  where it contains capped values ("886 of these are values the source recorded above 100%,
+  bounded at 100 — their true figures are unknown"). The pile-up becomes the visible artefact it
+  is, which is the opposite of what a mean does to it.
+- The provincial benchmark from `ref_uuc_phc_provincial` drawn as a reference line, absent where
+  the province has none, and **omitted entirely where the benchmark exceeds the indicator's own
+  maximum** — the same `comparesWorse` rule U3 applied per barangay, applied to the axis.
+- A count, never a percentage, of barangays worse than their province — with the 238
+  not-evaluable barangays named and excluded.
+
+**No mean, median or national "average water coverage" anywhere on this page**, and the page says
+why in one line. The temptation this page creates is exactly the one U3 refused; building it
+without stating the refusal would re-open the hole.
+
+*Verify:* every histogram's bin counts sum to the area's listed count; the capped bin's label
+count matches `capped_indicators` for that indicator and area, per the cleaning report; no
+benchmark line renders for Ilocos Sur or City of Butuan on FIC; no summary statistic appears in
+the DOM; the page renders at national, a region, a province and a citymun, and at a zero area
+(NCR) shows an empty state rather than an empty chart.
+
+### U10 — `/uuc-phc/data-quality`: the cleaning report as a surface
+
+`UUC_PHC_2025_CLEANING_REPORT.md` §6 is the most important thing written about this dataset and
+it is invisible to anyone using it. `/data-quality` already exists as the pattern for the BHW
+dataset. Render, from the data rather than transcribed:
+
+- **What was bounded**: 1,584 values across 1,397 barangays, per indicator, with the share of the
+  list each represents (Water 886 = 14.8%).
+- **Where the comparison cannot be made**: the 5 provinces / 238 barangays whose references are
+  placeholders, zeroes, `#N/A` or fractions, and the 113 barangays in 2 provinces with an
+  impossible FIC benchmark.
+- **The published-total reconciliation**: 5,991 vs the cue cards' 5,987, the two affected regions,
+  and the vintage reading — with §3's caveat that it is inference from the file name and internal
+  agreement, *not* something either source states.
+- **What is known to be unresolved**: the underlying encoding error that capping only contains,
+  and `Health Indicators` being retained but not recomputable from the published columns.
+
+**This page is a claim about our own data, so every figure on it must be computed, not typed.** A
+hand-written "1,584" drifts the first time the extract is regenerated, and a stale data-quality
+page is worse than none.
+
+*Verify:* every figure on the page recomputes from `fact_uuc_phc_indicators` and matches the
+cleaning report; regenerating the extract with an altered cap changes the page; the province and
+barangay lists are rendered from the data, not from a constant; links from `/uuc-phc/indicators`
+and the methodology page resolve here.
+
+### U11 — Downloads: the list as CSV and XLSX
+
+The one-pager is a picture. Anyone doing work with this list needs the rows.
+
+`parseExportQuery` (`lib/exports/query.ts`) is keyed to the BHW `indicatorSchema`, so this does
+**not** extend `/api/export/csv`; it is `/api/export/uuc-phc/data` with its own contract
+(`geoLevel`, `geoCode`, `format`). Scoped to any area, it emits one row per listed barangay:
+PSGC, the four source name fields, the qualifying routes, the 12 indicators, the 7 benchmarks, and
+**`capped_indicators` as an explicit column**.
+
+That last column is the point. U4 refused to put indicator values on the PNG because a one-pager
+has nowhere to carry the † footnote. A spreadsheet does — a column, plus a header comment block
+carrying the source, the DC number, the retrieval date and the capping caveat, exactly as
+`/api/export/csv` already does. This is not a relaxation of U4's rule; it is the same rule
+reaching a format that can satisfy it.
+
+*Verify:* the national CSV has 5,991 data rows and round-trips against the committed extract with
+zero mismatches; a citymun export matches that page's barangay list exactly; the capped column is
+non-empty for exactly 1,397 barangays; the header block carries the source, licence, DC number and
+caveat; XLSX opens in Excel and Sheets with the caveat visible without scrolling; a zero area
+returns a valid empty file with its header, not a 404.
+
+### U12 — The `/explore` overlay, and the question that needs both datasets
+
+The idea U4 left unbuilt, in two halves that ship separately.
+
+**U12a — Context, everywhere a place appears.** A chip on `/explore` and `/place/*`: *"31 of this
+area's 118 barangays are on the 2025 UUC for PHC list →"*, reading `agg_uuc_phc_counts` with no
+new aggregate. Cheap, and it is how anyone looking at BHW figures discovers this dataset exists.
+
+**Deliberately not a new option in the map's indicator switcher.** `MAP_BASE_INDICATOR_META`'s
+entries are all shares of *BHW profiles*; "% of barangays listed" is a share of *barangays*.
+Dropping it into the same `<select>` puts two different universes behind one legend and one
+colour ramp, and nothing on the map would tell a reader they had changed denominators. If the
+choropleth is to carry it, it is a **second, separately-legended layer** with its own caption —
+that is a design decision to take with the map, not a line in a `Record`.
+
+**U12b — `agg_bhw_by_uuc_status`: are BHWs thinner on the ground where communities are unserved?**
+This is the reason both datasets sit in one dashboard, and it is answerable: `agg_bhw_counts` is
+built at **all five levels including barangay** (`ingestion/build_aggregates.sql` §2), and
+`fact_uuc_phc_barangay` is barangay-grain, so the join key exists. Per geo and level, BHW
+indicators split listed vs. not-listed.
+
+Three things to settle before building it, all of which change what the figure means:
+
+1. **What "not listed" is.** U1 loaded only the 5,991; the workbook's 9,395 assessed-but-not-listed
+   rows were scoped out. So the comparison group is *every other barangay in the area*, not
+   *assessed and not listed*. That is the right denominator on this section's existing reasoning
+   — but the label has to say "all other barangays", because a reader will otherwise hear
+   "assessed and found adequate".
+2. **Disclosure.** Individual barangay cells in `agg_bhw_counts` can carry small n. Aggregating
+   *across* thousands of barangays is safer than the per-barangay view already published, but the
+   split must not become a way to read a single barangay's figures — suppress any cell whose
+   contributing barangay count is below the §4.1 threshold.
+3. **Causal reading.** UUC status is defined partly by *health-system access*, so a gap in BHW
+   coverage between the two groups is in part definitional, not a finding. The figure's caption
+   has to say this. Publishing "unserved barangays have fewer BHWs per household" as a discovery,
+   when the list was drawn partly on distance to a health facility, would be circular.
+
+*Verify:* the chip's counts match the UUC section for the same geo; listed + not-listed barangay
+counts sum to `dim_geo`'s total for every area; the split reproduces the unsplit `agg_bhw_counts`
+figure when recombined; suppressed cells render as suppressed, not as zero; the caption carries
+the definitional caveat; national, a region, a province and NCR (nothing listed) all render.
+
+### Considered and not planned
+
+- **`/uuc-phc/compare`.** `/compare` earns its place because a BHW profile has ten dimensions to
+  line up. A membership list has two numbers and a share; a side-by-side of four areas is a table
+  the child breakdown already renders, ranked. Revisit after U7 — comparing *qualifying routes*
+  across areas is a real question, and it belongs on the criteria page rather than a new route.
+- **A barangay page.** Unchanged from U2: it would be one yes/no plus a `<details>` that already
+  renders on the citymun page. `/uuc-phc/barangay/*` continues to 404.
+- **Per-indicator map choropleths.** The values are capped in 15% of barangays for Water; a colour
+  ramp cannot carry a † and a map is the format most likely to be screenshotted away from its
+  caveat. U9's histograms are the honest version of this.
+
+---
+
+## 10. Carried questions, unchanged by this revision
+
+§7 closed the questions that blocked U1–U4. These remain open, none of them blocking, all of them
+for the source office (BLHSD) rather than for the build:
+
+- **FP CU's removal leaves 7 of the AO's 8 indicators with the `≥ 4` threshold apparently
+  unchanged** — a stricter test than the order specifies. Does not affect this already-selected
+  list; settle before the next profiling round (§1a).
+- **FIC's provincial benchmark is uncapped while barangay FIC is capped**, so 113 barangays in 2
+  provinces read as worse-than-province by construction. U3 made this render as "no verdict";
+  capping the reference to 100 would close it properly, and was outside the instruction given.
+- **Criterion (b) is implemented as a sum, not the order's "or"** — matches all 5,991 rows, but
+  disagrees with an either-alone reading on 15 (§1a).
+- **Five provinces / 238 barangays cannot support criterion (d) at all.** U7 and U9 exclude them
+  and say so; the references themselves still need fixing at source.
+- **The 5,991 vs 5,987 vintage reading is inference, not a statement either source makes** (§3).
+  U10 renders it as such. Worth confirming.
+- **`Health Indicators` (0–7) is retained but not recomputable** from the published columns —
+  drop or recompute before anything depends on it.
+- **The encoding error behind the capping is unresolved.** If a corrected extract arrives,
+  regenerate rather than patch.
 
 ---
 
