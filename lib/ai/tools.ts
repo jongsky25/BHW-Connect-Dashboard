@@ -55,7 +55,10 @@ export const TOOLS: Tool[] = [
       parameters: {
         type: "object",
         properties: {
-          geoCode: { type: "string", description: "Exact geo_code — 'PH' for national, or a PSGC code." },
+          geoCode: {
+            type: "string",
+            description: "Exact geo_code — 'PH' for national, or a PSGC code.",
+          },
           geoLevel: { type: "string", enum: [...GEO_LEVELS] },
           indicator: { type: "string", enum: [...INDICATORS] },
         },
@@ -67,7 +70,10 @@ export const TOOLS: Tool[] = [
       if (!parsed.success) return { error: "Invalid arguments for getIndicatorByGeo." };
       const { geoCode, geoLevel, indicator } = parsed.data;
 
-      const [summary, overview] = await Promise.all([getGeoSummary(geoCode), getBhwOverview(geoCode, geoLevel)]);
+      const [summary, overview] = await Promise.all([
+        getGeoSummary(geoCode),
+        getBhwOverview(geoCode, geoLevel),
+      ]);
       if (!summary) return { error: `No data found for geo_code ${geoCode} at level ${geoLevel}.` };
 
       const base = {
@@ -86,7 +92,10 @@ export const TOOLS: Tool[] = [
         return { ...base, counts: await getBhwCounts(geoCode, geoLevel) };
       }
       if (indicator === "demographics") {
-        return { ...base, demographics: await getDemographics(geoCode, geoLevel, [...DEMOGRAPHIC_DIMENSIONS]) };
+        return {
+          ...base,
+          demographics: await getDemographics(geoCode, geoLevel, [...DEMOGRAPHIC_DIMENSIONS]),
+        };
       }
       if (indicator === "training") {
         return { ...base, training: await getTrainingCoverageDb(geoCode, geoLevel) };
@@ -101,7 +110,11 @@ export const TOOLS: Tool[] = [
       parameters: {
         type: "object",
         properties: {
-          geoCodes: { type: "array", items: { type: "string" }, description: "2 to 4 exact geo_codes." },
+          geoCodes: {
+            type: "array",
+            items: { type: "string" },
+            description: "2 to 4 exact geo_codes.",
+          },
           geoLevel: { type: "string", enum: [...GEO_LEVELS] },
           indicator: { type: "string", enum: [...INDICATORS] },
         },
@@ -110,23 +123,36 @@ export const TOOLS: Tool[] = [
     },
     async execute(args) {
       const parsed = z
-        .object({ geoCodes: z.array(z.string().min(1).max(20)).min(2).max(4), geoLevel: geoLevelSchema, indicator: z.enum(INDICATORS) })
+        .object({
+          geoCodes: z.array(z.string().min(1).max(20)).min(2).max(4),
+          geoLevel: geoLevelSchema,
+          indicator: z.enum(INDICATORS),
+        })
         .safeParse(args);
-      if (!parsed.success) return { error: "Invalid arguments for compareGeos — provide 2 to 4 geo_codes at the same level." };
+      if (!parsed.success)
+        return {
+          error: "Invalid arguments for compareGeos — provide 2 to 4 geo_codes at the same level.",
+        };
       const { geoCodes, geoLevel, indicator } = parsed.data;
 
       const getIndicatorByGeo = TOOLS.find((t) => t.definition.name === "getIndicatorByGeo")!;
-      const results = await Promise.all(geoCodes.map((geoCode) => getIndicatorByGeo.execute({ geoCode, geoLevel, indicator })));
+      const results = await Promise.all(
+        geoCodes.map((geoCode) => getIndicatorByGeo.execute({ geoCode, geoLevel, indicator })),
+      );
       return { geoLevel, indicator, results };
     },
   },
   {
     definition: {
       name: "getTrainingCoverage",
-      description: "Training-topic coverage for one geography (not available at barangay level — falls back to its city/municipality).",
+      description:
+        "Training-topic coverage for one geography (not available at barangay level — falls back to its city/municipality).",
       parameters: {
         type: "object",
-        properties: { geoCode: { type: "string" }, geoLevel: { type: "string", enum: [...GEO_LEVELS] } },
+        properties: {
+          geoCode: { type: "string" },
+          geoLevel: { type: "string", enum: [...GEO_LEVELS] },
+        },
         required: ["geoCode", "geoLevel"],
       },
     },
@@ -143,10 +169,14 @@ export const TOOLS: Tool[] = [
   {
     definition: {
       name: "getHonorariumStats",
-      description: "Honorarium (cash allowance) receipt for one geography, broken down by which administrative level pays it.",
+      description:
+        "Honorarium (cash allowance) receipt for one geography, broken down by which administrative level pays it.",
       parameters: {
         type: "object",
-        properties: { geoCode: { type: "string" }, geoLevel: { type: "string", enum: [...GEO_LEVELS] } },
+        properties: {
+          geoCode: { type: "string" },
+          geoLevel: { type: "string", enum: [...GEO_LEVELS] },
+        },
         required: ["geoCode", "geoLevel"],
       },
     },
@@ -159,7 +189,8 @@ export const TOOLS: Tool[] = [
   {
     definition: {
       name: "getDataCompleteness",
-      description: "National field-level missingness in the source dataset — which fields have gaps and how large they are.",
+      description:
+        "National field-level missingness in the source dataset — which fields have gaps and how large they are.",
       parameters: { type: "object", properties: {} },
     },
     async execute() {
@@ -169,10 +200,13 @@ export const TOOLS: Tool[] = [
   {
     definition: {
       name: "searchGeo",
-      description: "Look up a place by name (region, province, city/municipality, or barangay — exact or approximate spelling) to get its exact geo_code and geo_level.",
+      description:
+        "Look up a place by name (region, province, city/municipality, or barangay — exact or approximate spelling) to get its exact geo_code and geo_level.",
       parameters: {
         type: "object",
-        properties: { query: { type: "string", description: "Place name, e.g. 'Quezon City' or 'CALABARZON'." } },
+        properties: {
+          query: { type: "string", description: "Place name, e.g. 'Quezon City' or 'CALABARZON'." },
+        },
         required: ["query"],
       },
     },
@@ -187,15 +221,29 @@ export const TOOLS: Tool[] = [
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = TOOLS.map((tool) => tool.definition);
 
-/** Runs a model-issued tool call by name, returning a JSON-serializable payload or an error object. */
-export async function executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-  const tool = TOOLS.find((t) => t.definition.name === name);
+/**
+ * Runs a model-issued tool call by name against a given tool set, returning a JSON-serializable
+ * payload or an error object. The set is a parameter because the internal assistant composes a
+ * different one (the registry-driven tools in `dataset-tools.ts`) over the same loop — a tool the
+ * model may not use must be absent from its set, not merely undescribed in its prompt.
+ */
+export async function executeToolFrom(
+  tools: Tool[],
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const tool = tools.find((t) => t.definition.name === name);
   if (!tool) return { error: `Unknown tool: ${name}` };
   try {
     return await tool.execute(args);
   } catch {
     return { error: `Tool ${name} failed.` };
   }
+}
+
+/** Runs a tool call against the public tool set. */
+export async function executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+  return executeToolFrom(TOOLS, name, args);
 }
 
 /** Confirms a geo_code exists before it's used to seed a narrative/chat context — 404s cleanly rather than letting a stale/hand-typed code reach the model as if it were valid. */

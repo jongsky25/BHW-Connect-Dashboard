@@ -1710,3 +1710,64 @@ ships before the tool that consumes it rather than alongside it.
 `npm run typecheck`, `npm test` (212 tests, 12 new in `lib/db/dataset-registry.test.ts`) all clean.
 `database.types.ts` hand-extended for the two new tables, matching the existing practice for
 surgical schema additions.
+
+## 2026-08-26 — Internal AI assistant, Increment 1.3: `queryDataset`, one tool over every registered table
+
+The ceiling this removes: `lib/ai/tools.ts` is hardcoded around BHW indicators, so a new dataset
+means a new hand-written tool, a new Zod schema and new prompt copy. `queryDataset` reads the
+registry from 1.2 instead, which makes adding a dataset a data operation.
+
+- **Two tools, not one — discovery is load-bearing.** `createDatasetTools(exposure)`
+  (`lib/ai/dataset-tools.ts`) returns `listDatasets` and `queryDataset`. The plan names one tool,
+  but the registry is what the model is *shown*, and it cannot write a correct query against a
+  table it has never seen described: `listDatasets` with no arguments returns the catalogue,
+  `listDatasets { table }` returns that table's full dictionary via `describeDataset`. Counting
+  them as one increment is the plan's own framing (§3: "the registry is also what the model is
+  shown").
+- **Filter, order, project — deliberately no aggregation.** Every registered table is already an
+  `agg_*` or a dimension, so a generic GROUP BY would let the model re-derive a figure the
+  pipeline already computed, by a different definition, with no way to tell the two apart in the
+  answer. `mode: 'count'` is the single exception, because "how many rows match" cannot be
+  misdefined. This is a narrowing of what "query anything" could have meant, and it is the reason
+  the tool needs no SQL at all.
+- **No SQL is composed anywhere.** Identifiers come from the registry and go to PostgREST through
+  supabase-js; values go through as parameters. The plan's "never string-concatenates user input
+  into SQL" is structural here rather than a review rule. The one cost is that the generated
+  `Database` type pins `.from()` to known table literals, so `runPlan` casts the client to the
+  untyped `SupabaseClient` — confined to that function, and sound precisely because every
+  identifier reaching it was resolved against `dataset_column` first.
+- **Refusals teach the vocabulary.** An unknown or non-queryable column is refused with the list
+  of columns that *are* queryable; a value outside a column's `allowed_values` is refused with the
+  real values (`geo_level = 'municipality'` → "only takes: national, region, province, citymun,
+  barangay"); text on a numeric column and a non-boolean on a boolean column are refused before
+  the query is issued. A refusal that returns zero rows instead teaches the model nothing and
+  invites it to state the emptiness as a finding.
+- **Two warnings ride with every payload.** The table's `notes_md` caveat, and — when the table
+  has a `dataset_id` the query did not filter on — an explicit "rows may span several source
+  datasets or vintages". `agg_population` holds two censuses and `agg_poverty` three SAE years;
+  ranking across them silently mixes vintages, so the payload says so rather than relying on the
+  caveat being read.
+- **Limits:** 100 rows hard cap (20 default), 25 columns, 8 filters, 20 `in` values, 8s request
+  timeout via `AbortSignal.timeout`. All enforced before the query is issued.
+- **`runToolLoop` now takes a tool set** (defaulting to the public `TOOLS`, so the public chat,
+  narrative generator and ask-refresh are byte-for-byte unchanged), and `executeToolFrom` runs a
+  call against a given set. Scope becomes a property of which tools exist in the loop rather than
+  of what a system prompt asks the model not to call — the seam Increment 1.4 needs.
+- **Not wired to any surface yet, on purpose.** The public "Ask the data" chat keeps exactly the
+  tools it had. `queryDataset` reaches tables the public tools deliberately never touch, and the
+  place it belongs is the admin-gated assistant of 1.4; adding it to the public route would be a
+  product change this increment has no mandate for.
+
+**Verify.** Against the live project: every one of the 22 registry projections executes and
+returns rows (209 queryable columns probed via `query_to_xml`, 0 failures), and two representative
+plans — an `agg_peer_ranks` outlier question and an `agg_workload` caseload question, both against
+tables no hand-written tool reaches — return correct rows. In tests: 21 new cases covering the
+refusal paths and, with a recording stand-in for the query builder, the exact PostgREST call the
+tool issues (projection, each filter, ordering, limit, head-only count) — a filter silently dropped
+is the failure a payload assertion alone would miss. `npm run lint`, `npm run typecheck`,
+`npm test` (233 tests) all clean.
+
+**What is not yet verified:** the increment's "the assistant selects the tool and answers a
+question" half. That needs a surface and a provider key, neither of which exists until 1.4 — this
+environment has no AI provider credentials — so it is deferred to 1.4's verification rather than
+claimed here.

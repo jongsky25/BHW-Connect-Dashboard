@@ -9,9 +9,10 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** in progress — Increments 1.1 and 1.2 are built (see `DECISIONS.md`, 2026-08-26); the
-decisions in §0 are still open and 1.3 is the first increment that needs them answered. Phases ship
-in order; each increment is an independently shippable PR-sized unit.
+**Status:** in progress — Increments 1.1, 1.2 and 1.3 are built (see `DECISIONS.md`, 2026-08-26).
+The decisions in §0 are still open; 1.4 is the first increment that cannot proceed without them,
+since it is the surface they describe. Phases ship in order; each increment is an independently
+shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -331,7 +332,7 @@ Describe the current `agg_*`/`fact_*` tables as registry rows. Hand-written, not
 is the reference example every later auto-profile is measured against.
 *Verify:* every table the public tools query has a registry row with a complete dictionary.
 
-**1.3 — `queryDataset` tool.**
+**1.3 — `queryDataset` tool.** *(built — 2026-08-26; shipped with `listDatasets`, its discovery half)*
 One generic tool reading the registry. Parameterized, allowlisted to registered tables and
 columns, hard row and time limits. Never string-concatenates user input into SQL.
 *Verify:* answers a question about a registered dataset with no dataset-specific code; a query
