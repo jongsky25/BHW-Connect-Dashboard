@@ -309,11 +309,32 @@ Hard constraints. Do not trade them for convenience.
 
 ---
 
-## 9. Open questions
+## 9. Regression questions (not an up-front evaluation set)
 
-- **Evaluation set.** Which dataset is the first test target? It should be one the owner knows
-  well enough to distinguish a correct answer from a plausible one. Without that, quality is
-  unmeasurable. Proposed: the BHW indicators, since expected answers are already on the dashboard.
+Sources arrive incrementally and are not known in advance, so a fixed evaluation corpus chosen at
+the start would be stale by Phase 2 and is not what this plan asks for. What is needed instead is
+a **growing list of questions with known-correct answers**, used to tell whether a change — chunk
+size, retrieval count, prompt wording, traversal depth — made answers better or worse. Without
+one, every tuning change after Phase 2 is unverifiable: three answers read by hand say nothing
+about the other forty.
+
+It costs nothing up front and requires no advance knowledge of the corpus:
+
+1. **Seed from the dashboard.** Roughly ten questions whose answers are already rendered on
+   public pages ("accreditation rate in Region VII"). The expected answers are not authored —
+   they are on screen.
+2. **Grow from failures.** Every wrong answer found in normal use becomes a permanent case:
+   the question, the correct answer, and the source that supports it. The list therefore tracks
+   whatever data has actually been loaded, rather than anticipating it.
+3. **Harvest what already exists.** `ai_ask_cache` rows at `status = 'approved'` are
+   human-verified question/answer pairs — an unused regression set already accumulating in
+   production.
+
+**Not a prerequisite.** Phase 1 ships without it. It becomes load-bearing at Phase 3, when three
+retrieval paths are live and a change to one can silently degrade another.
+
+## 10. Open questions
+
 - **Document corpus.** Which documents go in first, and does the DOH hosting clearance gate
   referenced elsewhere in this project's planning apply to loading them?
 - **Embedding model and dimensions.** Confirm against the provider's live model at implementation
