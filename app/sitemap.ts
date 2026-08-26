@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllGeosAtLevels } from "@/lib/db/geo";
 import { getProfilingStatusStaticParams } from "@/lib/db/profiling-status";
+import { getUucPhcStaticParams } from "@/lib/db/uuc-phc";
 
 const BASE_URL = "https://bhw-connect-jongsky25s-projects.vercel.app";
 
@@ -17,6 +18,8 @@ const STATIC_PATHS = [
   "/roadmap",
   "/profiling-status",
   "/profiling-status/methodology",
+  "/uuc-phc",
+  "/uuc-phc/methodology",
 ];
 
 /**
@@ -28,16 +31,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Region + province + citymun is ~1,775 rows — past the platform's hard
   // 1,000-row-per-request cap (BUILD_PLAN.md pitfall P9), so this paginates
   // internally rather than a single query, which would silently truncate.
-  const [geos, profilingGeos] = await Promise.all([
+  const [geos, profilingGeos, uucPhcGeos] = await Promise.all([
     getAllGeosAtLevels(["region", "province", "citymun"]),
     // Only region/province profiling pages that actually have data (city/mun is ISR).
     getProfilingStatusStaticParams(),
+    // Region + province UUC for PHC pages (city/mun is ISR, as above).
+    getUucPhcStaticParams(),
   ]);
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_PATHS.map((path) => ({
     url: `${BASE_URL}${path}`,
     changeFrequency: "monthly",
-    priority: path === "" || path === "/bhw" || path === "/profiling-status" ? 1 : 0.6,
+    priority:
+      path === "" || path === "/bhw" || path === "/profiling-status" || path === "/uuc-phc"
+        ? 1
+        : 0.6,
   }));
 
   const placeEntries: MetadataRoute.Sitemap = geos.map((geo) => ({
@@ -52,5 +60,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: geo.geoLevel === "region" ? 0.8 : 0.6,
   }));
 
-  return [...staticEntries, ...placeEntries, ...profilingEntries];
+  // Annual publication, so a monthly change frequency rather than the profiling section's weekly.
+  const uucPhcEntries: MetadataRoute.Sitemap = uucPhcGeos.map((geo) => ({
+    url: `${BASE_URL}/uuc-phc/${geo.geoLevel}/${geo.geoCode}`,
+    changeFrequency: "monthly",
+    priority: geo.geoLevel === "region" ? 0.8 : 0.6,
+  }));
+
+  return [...staticEntries, ...placeEntries, ...profilingEntries, ...uucPhcEntries];
 }

@@ -34,9 +34,15 @@ export function Header() {
   }
 
   // The Equity in Health portal ("/") and the 2026 BHW Profiling Status section
-  // ("/profiling-status/*") each supply their own slim chrome, so the census
+  // ("/profiling-status/*") and the UUC for PHC section ("/uuc-phc/*") each supply their own
+  // slim chrome, so the census
   // (BHW Connect) header is suppressed on both.
-  if (pathname === "/" || pathname.startsWith("/profiling-status")) return null;
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/profiling-status") ||
+    pathname.startsWith("/uuc-phc")
+  )
+    return null;
 
   return (
     <header className="border-b border-border bg-background">

@@ -961,6 +961,48 @@ export type Database = {
           },
         ];
       };
+      agg_uuc_phc_counts: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          n_barangays: number;
+          n_listed: number;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_barangays?: number;
+          n_listed?: number;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_barangays?: number;
+          n_listed?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_uuc_phc_counts_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_uuc_phc_counts_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       ai_ask_cache: {
         Row: {
           answer_md: string;
@@ -1481,6 +1523,54 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "fact_bhw_raw";
             referencedColumns: ["bhw_id"];
+          },
+        ];
+      };
+      fact_uuc_phc_barangay: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          id: number;
+          source_barangay: string | null;
+          source_citymun: string | null;
+          source_geo_code: string;
+          source_province: string | null;
+          source_region: string | null;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          id?: never;
+          source_barangay?: string | null;
+          source_citymun?: string | null;
+          source_geo_code: string;
+          source_province?: string | null;
+          source_region?: string | null;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          id?: never;
+          source_barangay?: string | null;
+          source_citymun?: string | null;
+          source_geo_code?: string;
+          source_province?: string | null;
+          source_region?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_uuc_phc_barangay_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "fact_uuc_phc_barangay_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
           },
         ];
       };

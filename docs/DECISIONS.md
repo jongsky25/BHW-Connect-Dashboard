@@ -1688,3 +1688,54 @@ count, PSGC format, duplicates, `UUA`-only, Sulu count, all 17 regional counts �
 committed extract, and `clean_uuc_phc_indicators.py` reproduces its report figures exactly
 (`rows=5991 psgc_missing=0 cap100=1580 cap1000=4 neg=0 cols_dropped=15 provinces=88
 prov_ref_capped=24`).
+
+## 2026-08-26 — UUC for PHC 2025: U2, the aggregate and the `/uuc-phc` section
+
+Second increment of `docs/UUC_PHC_2025_PLAN.md`, on top of U1's load. The 5,991 listed barangays
+are now rolled up to every geo level and rendered as their own section. Feature write-up:
+`docs/uuc-phc-feature.md`.
+
+- **`agg_uuc_phc_counts` is computed in SQL from `fact_uuc_phc_barangay` + `dim_geo`, not from a
+  generated seed.** Every other aggregate in this repo is seeded from a Python-generated migration
+  because its source is an external sheet; this one's source is already in the database, so a
+  generated seed would be a second copy that can drift from the first. Re-running the migration
+  recomputes all 1,788 rows, which makes re-running it the refresh procedure rather than a
+  regeneration step.
+- **The denominator is `dim_geo`'s barangay count, not the workbook's assessed set.** The reader's
+  question is "how many of this town's barangays are unserved or underserved", and the town's
+  barangay count is a fact about the town. Using the workbook's assessed subset would silently
+  answer a different question — share of *assessed* barangays — with a denominator missing the 769
+  barangays it could not resolve (U1).
+- **A row exists for every geo, including those with none listed.** NCR renders "0 of 1,675" with
+  an explicit note that the list is national and complete as published. Omitting those rows would
+  render complete data as "no data" — the failure mode the profiling-status card has to message
+  around, and which does not apply here: that dataset is loaded region by region, this one is a
+  single national publication. Affordable because the aggregate is 1,788 rows.
+- **No barangay-level aggregate rows.** They would be 41,958 rows of `n_listed` in {0,1} restating
+  the fact table. The city/municipality page instead reads `fact_uuc_phc_barangay` directly and
+  names every barangay with its status — including the ones *not* on the list, so a reader can tell
+  an unlisted barangay from one the dataset never covered. `/uuc-phc/barangay/*` 404s.
+- **The share is derived in the read layer, not stored** (`lib/db/uuc-phc.ts`), keeping the
+  definition in one place — the same discipline as `profiling-status.ts`'s stage totals.
+- **The listed count is the hero, not the denominator** — the reverse of `StatusHero`. There the
+  denominator is the story ("every BHW must be profiled; here is the gap"); here the list is the
+  story and the barangay count is context for reading it.
+- **Child tables sort by share, not raw count.** A list ordered by count alone re-ranks areas by
+  how many barangays they happen to have. By share, CAR leads the regions at 52%.
+- **Its own section, not a card on `/bhw`.** This is a targeting list of places rather than a BHW
+  measure, so it gets `/uuc-phc` with its own chrome, methodology page and portal card, following
+  `/profiling-status`.
+
+**Verify.** Aggregate: 1,788 rows (1 national + 18 regions + 118 provinces + 1,651 citymuns);
+national 5,991 of 41,958; regions, provinces and citymuns each sum to 5,991; every province equals
+the sum of its citymuns and every region the sum of its provinces (0 mismatches); no area has
+`n_listed > n_barangays`; exactly one region (NCR) reads zero. `npm run lint`, `npm run typecheck`
+and `npm test` (206 tests, including 6 new in `lib/db/uuc-phc.test.ts` covering the
+zero-denominator and none-listed cases that must not collapse into each other) all clean. Pages
+were rendered against live data and checked number by number: `/uuc-phc` (5,991 / 41,958 / 14%,
+CAR first at 52%), `/uuc-phc/region/14`, `/uuc-phc/province/14027` (11 cities ranked by share),
+`/uuc-phc/citymun/1402706` (MAYOYAO 27 of 27, every barangay named), `/uuc-phc/citymun/0102804`
+(BANGUI 2 of 14, both groups named), `/uuc-phc/region/13` (NCR 0 of 1,675 with the "result, not
+missing data" note) and `/uuc-phc/methodology`; unknown geos and barangay URLs 404. The hand-added
+`database.types.ts` entries for both new tables were checked column-by-column against
+`information_schema` — names, types and nullability all match.

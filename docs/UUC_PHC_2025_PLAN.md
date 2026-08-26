@@ -3,9 +3,10 @@
 A dedicated dashboard card and section for the **2025 list of Unserved and Underserved
 Communities for Primary Health Care**, built from `ingestion/data/Submissions_UUA_2025_filled_1.xlsx`.
 
-**Status:** **U1 shipped** (2026-08-26) — table, dataset row, Sulu crosswalk and all 5,991
-rows are loaded and verified live. U2 (aggregates + card) is next; U3 (indicators) is unblocked
-but needs a display rule for capped values first (§7).
+**Status:** **U1 and U2 shipped** (2026-08-26) — the 5,991 rows are loaded, rolled up to every
+geo level, and rendered at `/uuc-phc` from national down to city/municipality. U3 (indicators) is
+unblocked but needs a display rule for capped values first (§7); U4 (PNG one-pager) is optional.
+Feature write-up: `docs/uuc-phc-feature.md`.
 
 **Verdict on scoping: build this outside `AI_ASSISTANT_PLAN.md`.** It is a normal dataset
 increment on the path that already exists — ingest → `dim_dataset` → fact → aggregate → card —
@@ -362,14 +363,40 @@ The loader re-checks the extract before emitting: row count, PSGC format, duplic
 the 87-code Sulu count, and all 17 regional counts — each a hard failure, since a silently short
 load is worse than a failed one when 5,991 is a headline figure.
 
-**U2 — Aggregates and the card.** Next.
-`agg_uuc_phc_counts` keyed `(dataset_id, geo_code, geo_level)` with barangay → citymun →
-province → region → national rollups, mirroring `agg_bhw_stepzero_counts`. Card renders count
-of UUC-for-PHC barangays, share of all barangays in the area, and child-area drill-down.
-The share's denominator is `dim_geo`'s barangay count for the area (see U1's scope note), and the
-rollups group on `dim_geo`'s parent chain, which §4 confirms reproduces the workbook's own regional
-table exactly.
-*Verify:* national == Σ regions == 5,991; province == Σ its citymuns; spot-checks against p37.
+**U2 — Aggregates and the section. Shipped 2026-08-26.**
+
+`agg_uuc_phc_counts` keyed `(dataset_id, geo_code, geo_level)`, **1,788 rows** at national /
+region / province / citymun. Two columns — `n_listed` and `n_barangays` — with the share derived
+in the read layer, since a membership list is one count against one denominator rather than a
+measurement.
+
+Three choices worth recording:
+
+- **Computed in SQL from the fact table + `dim_geo`, not from a generated seed.** Re-running the
+  migration recomputes every row, so the aggregate cannot drift from the facts and re-running *is*
+  the refresh procedure.
+- **A row for every geo, including those with none listed.** NCR reads "0 of 1,675" with an
+  explicit note, rather than rendering as "no data". This list is a single national publication, so
+  a zero is a result — the opposite of the profiling-status section, whose region-by-region rollout
+  genuinely does have not-yet-loaded areas.
+- **No barangay-level rows.** 41,958 rows of `n_listed` in {0,1} would restate the fact table; a
+  city/municipality page reads its own barangays from `fact_uuc_phc_barangay` and names each one's
+  status. `/uuc-phc/barangay/*` therefore 404s.
+
+*Verify — all green:*
+
+| Check | Result |
+|---|---|
+| Aggregate rows | **1,788** (1 + 18 + 118 + 1,651) |
+| National | **5,991** of 41,958 |
+| Σ regions / Σ provinces / Σ citymuns | **5,991** each |
+| Province == Σ its citymuns; region == Σ its provinces | **0 mismatches** |
+| `n_listed > n_barangays` anywhere | **0** |
+| Regions reading zero | **1** (NCR) |
+
+Rendered pages were checked against live data at every level — national, region, province, a
+fully-listed city (MAYOYAO 27 of 27), a mixed one (BANGUI 2 of 14) and a zero region (NCR) — plus
+404s for unknown geos and barangay URLs. See `docs/uuc-phc-feature.md`.
 
 **U3 — Indicators.** Blocked on §5. Adds the 13 columns to the fact table plus per-indicator
 aggregates only for those a page renders.
