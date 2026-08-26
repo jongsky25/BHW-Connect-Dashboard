@@ -418,8 +418,14 @@ keyword-only search is visibly degraded rather than quietly thinner (§1: degrad
 
 *Verify:* a question answerable only from a document returns a correct, cited answer.
 
-**2.3 — Citations in the UI.** Extend the stream events so document answers render their source —
-document title, page, and the quoted span — each one clickable through to the stored chunk.
+**2.3 — Citations in the UI.** *(built — 2026-08-26)*
+Extend the stream events so document answers render their source — document title, page, and the
+quoted span — each one clickable through to the stored chunk.
+
+Built on one inversion worth stating: **the citation is emitted from the retrieval payload, never
+authored by the model.** A model cannot mis-cite a passage it was never handed. What the model
+*can* still do is name a page in prose that it was not given, so a second audit sits beside the
+numeric one and drops those sentences — the citation-shaped version of an untraceable figure.
 
 Per §7 this is a correctness feature, not presentation: for prose claims the citation is the only
 check, since `auditNarrative` covers numbers alone. A citation that points at the wrong page is

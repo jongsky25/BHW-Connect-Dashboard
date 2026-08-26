@@ -2396,3 +2396,93 @@ about the other forty, and it is the next thing worth having.
 words were actually taken from rather than collapsing them, and table-heavy slides extract in poor
 reading order (`662 M1,383 M1,497 M`), which is acceptable for *retrieval* and not acceptable as a
 *quoted span*. Both are constraints on how 2.3 quotes, not defects to fix in extraction.
+
+## 2026-08-26 — Internal AI assistant, Increment 2.3: citations
+
+§7 calls this a correctness feature rather than presentation, and the reasoning inverts the usual
+instinct, so it is worth restating: `auditNarrative` strips sentences whose **numbers** are absent
+from the tool payloads, which means numbers are checked and prose is not. "A highly technical
+request has a 20-working-day deadline" carries no figure, passes the audit untouched, and is
+believed. For that claim the citation is the only check there is — and a citation pointing at the
+wrong page is *worse* than none, because it reads as verified.
+
+Two rules follow, and this increment is both of them.
+
+- **The citation comes from retrieval, never from the model's prose.** `collectCitations` reads
+  what `searchDocuments` actually returned this turn and the route emits it as a `citations`
+  stream event. The model never authors a citation, so it cannot mis-cite a passage it was never
+  handed. This is the same move the numeric audit makes — the model proposes an answer, the system
+  supplies the evidence — and it is why the source list is trustworthy without anyone checking it.
+
+- **A page the model names in prose must be a page it was given.** Rule 1 secures the source list
+  but not the sentence: nothing stops the model writing "slide 42 says" when it was handed 26, 27
+  and 37. `auditCitations` drops those sentences, exactly as `auditNarrative` drops a sentence
+  with an untraceable number. When *nothing* was retrieved, any page reference at all is
+  fabricated — a document claim made without ever opening a document — and the same pass catches
+  it.
+
+  It audits pages only, never paraphrase. A sentence that restates a retrieved passage without
+  naming a slide is left alone: this pass cannot judge whether prose is supported, and pretending
+  to would drop good answers while proving nothing. What it can do exactly is refuse to let a
+  specific, checkable, wrong pointer through.
+
+**The two audits interact, and the order decides what the reader is told.** Found by a test that
+failed for the right reason. A slide number *is* a number, so `auditNarrative` strips "per slide
+42" for containing an untraceable 42 before the citation pass ever sees it — the removal is
+correct, but the reader is told the figures were ungrounded when the actual fault was a fabricated
+citation. Citations therefore run **first**: a sentence still has to pass both, so which sentences
+survive is unchanged, but the specific failure gets to explain itself and name the slide.
+
+That ordering also exposes where the citation pass is genuinely load-bearing rather than
+redundant: when a fabricated page number happens to appear elsewhere in the payloads — 42 as a row
+count — the numeric audit has no objection and only this check catches it. There is a test for
+exactly that case, because it is the one that would otherwise rot silently.
+
+- **Click-through resolves from the database, not from the stream.**
+  `/admin/assistant/source/[chunkId]` re-reads the chunk **by id** and renders the stored text
+  verbatim, rather than re-showing what the answer was built from. A check nobody can perform is
+  not a check; this is where a reader performs it, and if the assistant's copy ever disagreed with
+  the stored row, this page is what would reveal it. It also shows the offsets 2.1 asserted at
+  ingest, which are what make a quotation resolvable to a position in the source PDF rather than
+  merely plausible.
+
+- **The passage is shown, not summarised.** Each source expands in place to the exact stored text.
+  A citation is only a check if the reader can compare the claim against the words it came from,
+  and a title-and-page footnote asks to be trusted instead.
+
+- **`lib/db/doc-chunks.ts` is service-role only and degrades to null.** `doc_chunk` holds internal
+  budget material (§12.5); the click-through page is admin-gated by the `(dashboard)` layout, the
+  same boundary the assistant sits behind. A citation that cannot be resolved renders as "not
+  found", never as a stack trace on an admin page — matching `lib/db/dataset-registry.ts`.
+
+- **`collectCitations` identifies search results by shape, not by tool name.** `runToolLoop`
+  records payloads as a bare array and does not carry which tool produced which; widening its
+  result type would change a surface shared with the public chat, which this increment has no
+  business touching. `chunkId` + `citation` together are unique to `searchDocuments` across the
+  whole tool set.
+
+**Verify (live against the project, and in tests).**
+
+- **Ten sampled citations resolve to text that actually supports the claim — 10/10.** Each probe
+  pairs a claim a reader might make with the search that would ground it, and asserts the returned
+  passage contains the supporting words: the published BHW count (slide 26), the honorarium split
+  by income class (27), the UUC total and its circular (37), the retention JMC (160), the UUC
+  physical-factor criterion (139), the SHF legal basis (99), the accreditation requirement (159),
+  PuroKalusugan site selection (149), and the Magna Carta priority-bill line (12). All ten also
+  satisfy `char_end - char_start = length(content)`, so every citation's offsets are internally
+  consistent as well as pointing at the right slide.
+- The click-through read returns the chunk with its document, as-of date, source path, extractor
+  and offsets — verified against the same chunk a search returns.
+- `next build` puts `/admin/assistant`, `/admin/assistant/source/[chunkId]` and
+  `/api/ai/assistant` all under `ƒ` (dynamic): no prerender attempt on an auth-gated page.
+- 30 new tests. `citations.test.ts` (23) covers collection, page-reference parsing and the audit,
+  including a bug it found on the way: a single "slide 37" was parsed as two references, because
+  the range branch handled `to === from` by pushing both endpoints. `route.test.ts` gains 6 that
+  run the **real** `collectCitations` and `auditCitations` through the route — mocking them would
+  test that the route calls two functions, which is not the claim §7 makes.
+- `npm run lint`, `npm run typecheck`, `npm test` (343 tests) clean.
+
+**Not verified.** Whether a live model, given the tool and rules 10–11, actually cites well — that
+needs a provider key this environment does not have. What is verified is the property that does
+not depend on the model: a citation it emits is one it was handed, and a page it invents does not
+reach the reader.
