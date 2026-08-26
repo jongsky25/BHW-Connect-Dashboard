@@ -1630,3 +1630,61 @@ most of a 1920px+ LED wall. The ask was "the biggest font that still doesn't ove
 (`deck-logic.test.ts`) all clean. No DB/env available in this environment for a live screenshot, so
 the fit is derived from the layout mechanics (fixed design width + uniform zoom) rather than
 measured against rendered data.
+
+## 2026-08-26 — UUC for PHC 2025: U1 (classification) loaded, 5,991 barangays
+
+First increment of `docs/UUC_PHC_2025_PLAN.md`. The 2025 list of Unserved and Underserved
+Communities for Primary Health Care (DC No. 2025-0549; criteria per DOH AO No. 2020-0023) is now a
+dataset: `fact_uuc_phc_barangay`, slug `uuc-phc-2025`, `geo_join_level = 'barangay'`.
+
+- **Scope: the listed barangays only.** The workbook's `NEW` sheet also carries 9,395 assessed-but-
+  not-listed (`NOT UUA`) barangays; the owner scoped the dataset to the 5,991 that are on the list.
+  So the table has **no `decision` column** — membership is presence, and the column would read
+  `UUA` on every row — and any "share of barangays in this area" takes its denominator from
+  `dim_geo`'s complete 41,958, never from the workbook's partial assessed set. This also retired a
+  gap rather than leaving it: `NEW` carries no PSGC column, and name-matching its `NOT UUA` rows
+  against `dim_geo` leaves **769 of 9,395 unresolved**, concentrated in BARMM (Tawi-Tawi, Basilan,
+  Lanao del Sur). Loading them would have meant either publishing a knowingly incomplete
+  denominator or doing fuzzy geographic matching on the strength of names alone.
+- **The published total is 5,991**, per the plan §3 decision, with the 2027 Budget Cue Cards p37's
+  5,987 as a footnote citing DC No. 2025-0549. The workbook corroborates 5,991 three independent
+  ways (the `NEW` classification, the `2025 LIST` row count, and the embedded `TOTAL` subtotals);
+  the two contested regions are BARMM (399 vs p37's 400) and CALABARZON (200 vs p37's 195).
+- **Sulu resolves through `dim_psgc_crosswalk`, not a `dim_geo` edit.** 87 of the 5,991 carry
+  `09066…` codes (Sulu under Region IX, after its 2024 removal from BARMM) while `dim_geo` is fixed
+  on the vintage that holds Sulu as `19066…` under region 19. Seeded as 430 crosswalk rows derived
+  FROM `dim_geo` (1 province + 19 citymuns + 410 barangays — the whole vintage difference, not just
+  the 87 this dataset needs), following the NIR precedent in `docs/PSGC_CROSSWALK.md`. Editing
+  `dim_geo` instead would have retroactively moved every existing BHW figure for Sulu between
+  regions. Note the direction is the reverse of every crosswalk row seeded so far: here the
+  *source* vintage is newer than `dim_geo`'s, so `old_vintage` is
+  `'post-2024 Sulu transfer (Sulu under Region IX)'`.
+- **Correction to the plan's §4.** An earlier draft recorded that "the workbook and the cue cards
+  agree — p37's Region IX count of 523 includes Sulu". That is wrong. The workbook files Sulu's 87
+  barangays under **BARMM by name** (`region_name = …(BARMM)`, `province_name = SULU`) while giving
+  them **Region IX codes** (`09066…`) — it is internally inconsistent about Sulu, and p37's 523 is
+  Zamboanga Peninsula alone. This decides which side the rollups take: resolving the codes to
+  `19066…` puts Sulu under BARMM, which is what the workbook's own region column says, and
+  **grouping the loaded 5,991 by `dim_geo.region_code` then reproduces the workbook's regional
+  table at all 17 regions with no adjustment**. Honouring the code's region instead would give
+  Region IX 610 / BARMM 312 and break the §3 reconciliation.
+- **`geo_code` is resolved in SQL, not in Python.** The generated seed calls
+  `map_psgc_to_dim_geo(source_geo_code, …)` and writes both codes, so a missing crosswalk row fails
+  the insert on `geo_code`'s `NOT NULL` rather than silently dropping barangays, and the remap
+  lives in one place. `source_geo_code` keeps the workbook's own code visible in the data.
+- **Indicators stay out until U3.** The 12 cleaned indicators are bounded and loadable
+  (`ingestion/data/uuc_phc_2025_cleaned.csv`), but 886 Water and 456 FIC values now read as exactly
+  100% because they were capped, and nothing on a rendered page would distinguish them from
+  barangays genuinely at 100%. U3 needs that display rule first — see
+  `docs/UUC_PHC_2025_CLEANING_REPORT.md` §6.
+
+**Verify.** Applied live via the Supabase MCP, then checked against the loaded table: 5,991 rows =
+5,991 distinct `geo_code`; **0** codes unresolved in `dim_geo`; **0** rows at a non-barangay level;
+87 rows remapped, each exactly `09066…` → `19066…`; all 17 regional counts exact against the
+workbook (total 5,991); 430 Sulu crosswalk rows. Security advisors show nothing new (the table has
+RLS with a public-read policy; the pre-existing `rls_enabled_no_policy` and
+`function_search_path_mutable` notices are unchanged). The loader's own pre-emit checks — row
+count, PSGC format, duplicates, `UUA`-only, Sulu count, all 17 regional counts — pass on the
+committed extract, and `clean_uuc_phc_indicators.py` reproduces its report figures exactly
+(`rows=5991 psgc_missing=0 cap100=1580 cap1000=4 neg=0 cols_dropped=15 provinces=88
+prov_ref_capped=24`).

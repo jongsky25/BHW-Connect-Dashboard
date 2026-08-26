@@ -3,8 +3,9 @@
 A dedicated dashboard card and section for the **2025 list of Unserved and Underserved
 Communities for Primary Health Care**, built from `ingestion/data/Submissions_UUA_2025_filled_1.xlsx`.
 
-**Status:** proposed. Increment U1 is unblocked; U3 is blocked on a units question for the
-source office (§5).
+**Status:** **U1 shipped** (2026-08-26) — table, dataset row, Sulu crosswalk and all 5,991
+rows are loaded and verified live. U2 (aggregates + card) is next; U3 (indicators) is unblocked
+but needs a display rule for capped values first (§7).
 
 **Verdict on scoping: build this outside `AI_ASSISTANT_PLAN.md`.** It is a normal dataset
 increment on the path that already exists — ingest → `dim_dataset` → fact → aggregate → card —
@@ -219,9 +220,21 @@ is already 10-digit. No crosswalk work is needed for the bulk of the file.
 
 **The Sulu exception.** 87 codes carry the prefix `09066` — Sulu under **Region IX**, following
 its 2024 removal from BARMM. `dim_geo` still holds Sulu as **`19066`** under region 19 (410
-barangays, `psgc_vintage = '2023 series (>=2024 release, includes NIR)'`). The workbook and the
-cue cards agree with each other here — p37's Region IX count of 523 includes Sulu — so the
-dashboard's geography is the side on the older vintage.
+barangays, `psgc_vintage = '2023 series (>=2024 release, includes NIR)'`).
+
+**Correction (found while loading U1): the workbook does not file Sulu under Region IX — only its
+codes do.** All 87 Sulu rows carry `region_name = BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO
+(BARMM)` and `province_name = SULU` while carrying `09066…` codes. The file is internally
+inconsistent about Sulu: the name column says BARMM, the code column says Region IX. So an earlier
+draft's "p37's Region IX count of 523 includes Sulu" was **wrong** — the workbook's 523 Region IX
+rows are Zamboanga Peninsula alone, and Sulu's 87 sit inside BARMM's 399.
+
+**This decides which side the rollups take, and the answer is the reassuring one.** Resolving
+`09066… → 19066…` through the crosswalk puts Sulu under BARMM in `dim_geo`, which is what the
+workbook's own region column says. Verified live after the U1 load: grouping the 5,991 rows by
+`dim_geo.region_code` reproduces the workbook's regional table at **all 17 regions**, BARMM 399 and
+Region IX 523 included, with no adjustment. Honouring the *code's* region instead would give Region
+IX 610 / BARMM 312 and break the §3 reconciliation.
 
 The remap is mechanical: region digits `19` → `09`, province and barangay digits unchanged
 (`19066NNBBB` → `09066NNBBB`). **Do it as `dim_psgc_crosswalk` rows, not as a hand-edit of
@@ -306,23 +319,56 @@ office.
 
 Mirrors `bhw-profiling-status-2026`. Each is independently shippable and must pass its Verify.
 
-**U1 — Classification, national.**
-`dim_dataset` row (`uuc-phc-2025`); `fact_uuc_phc_barangay` (`geo_code`, `decision`,
-`source_region/province/citymun/barangay` as given); `dim_psgc_crosswalk` rows for the 87 Sulu
-codes. Loader `ingestion/ingest_uuc_phc.py`, generating a seed migration, following
-`ingest_encoding_status.py`. The loader must **skip the 32 layout rows** (§4) — column A `TOTAL`,
-or PSGC and citymun both empty — and hold back the single unresolved San Antonio row.
+**U1 — Classification, national. Shipped 2026-08-26.**
 
-*Verify:* 5,990 UUA rows loaded (5,991 less the held-back San Antonio) + 9,395 NOT UUA; **every**
-`geo_code` resolves in `dim_geo` after the crosswalk — this is where §4's 150-row sample becomes
-an exhaustive check; regional counts reproduce the §3 table exactly; and the loader's per-region
-counts equal the workbook's own embedded `TOTAL` rows, which is a check the source data provides
-for free.
+**Scope narrowed by the owner: only the 5,991 listed barangays load.** The workbook's 9,395
+`NOT UUA` rows are not ingested, so `fact_uuc_phc_barangay` carries no `decision` column —
+membership is presence, and it would read `UUA` on every row. Anything needing "share of barangays
+in this area" takes its denominator from `dim_geo`'s complete 41,958, not from the workbook's
+partial assessed set. This also retires a gap that would otherwise have needed solving: the `NEW`
+sheet carries no PSGC column at all, and name-matching its `NOT UUA` rows against `dim_geo` leaves
+**769 of 9,395 unresolved** (mostly BARMM — Tawi-Tawi, Basilan, Lanao del Sur).
 
-**U2 — Aggregates and the card.**
+Shipped as:
+
+| Artefact | What it is |
+|---|---|
+| `20260826120000_fact_uuc_phc_barangay.sql` | Table: `geo_code`, `source_geo_code`, `source_region/province/citymun/barangay`; RLS public-read |
+| `20260826120100_seed_dim_dataset_uuc_phc.sql` | `dim_dataset` row, slug `uuc-phc-2025`, `geo_join_level = 'barangay'` |
+| `20260826120200_crosswalk_sulu_region_ix.sql` | Sulu vintage map, derived FROM `dim_geo` — all 430 Sulu geos, not just the 87 needed |
+| `20260826120300_seed_fact_uuc_phc_barangay.sql` | 5,991 rows, generated |
+| `ingestion/ingest_uuc_phc.py` | Loader; reads the cleaned CSV, checks it, emits the seed |
+| `ingestion/data/uuc_phc_2025_cleaned.csv` | Committed machine-readable extract the loader reads |
+
+Two implementation notes worth keeping. **The seed resolves `geo_code` in SQL**, through
+`map_psgc_to_dim_geo(source_geo_code, …)`, rather than remapping Sulu in Python — so a missing
+crosswalk row fails the insert on `geo_code`'s `NOT NULL` instead of silently dropping barangays,
+and the remap lives in one place. **The 32 layout rows need no handling**: the loader reads the
+cleaned CSV, not `2025 LIST`, and the cleaning step already dropped them. San Antonio, Pilar is
+resolved (`0506213048`), so nothing is held back.
+
+*Verify — all green, run live against the loaded table:*
+
+| Check | Result |
+|---|---|
+| Rows loaded | **5,991** (= 5,991 distinct `geo_code`) |
+| Every `geo_code` resolves in `dim_geo` | **0 unresolved** — §4's 150-row sample is now exhaustive |
+| Every row is barangay-level | **0 non-barangay** |
+| Sulu remapped | **87**, each exactly `09066…` → `19066…` |
+| Regional counts vs §3 | **17 of 17 exact**, total 5,991 |
+| Crosswalk rows seeded | **430** (1 province + 19 citymuns + 410 barangays) |
+
+The loader re-checks the extract before emitting: row count, PSGC format, duplicates, `UUA`-only,
+the 87-code Sulu count, and all 17 regional counts — each a hard failure, since a silently short
+load is worse than a failed one when 5,991 is a headline figure.
+
+**U2 — Aggregates and the card.** Next.
 `agg_uuc_phc_counts` keyed `(dataset_id, geo_code, geo_level)` with barangay → citymun →
 province → region → national rollups, mirroring `agg_bhw_stepzero_counts`. Card renders count
 of UUC-for-PHC barangays, share of all barangays in the area, and child-area drill-down.
+The share's denominator is `dim_geo`'s barangay count for the area (see U1's scope note), and the
+rollups group on `dim_geo`'s parent chain, which §4 confirms reproduces the workbook's own regional
+table exactly.
 *Verify:* national == Σ regions == 5,991; province == Σ its citymuns; spot-checks against p37.
 
 **U3 — Indicators.** Blocked on §5. Adds the 13 columns to the fact table plus per-indicator
