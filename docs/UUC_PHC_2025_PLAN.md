@@ -3,8 +3,10 @@
 A dedicated dashboard card and section for the **2025 list of Unserved and Underserved
 Communities for Primary Health Care**, built from `ingestion/data/Submissions_UUA_2025_filled_1.xlsx`.
 
-**Status:** proposed. Increment U1 is unblocked; U3 is blocked on a units question for the
-source office (§5).
+**Status:** **complete — U1 through U4 shipped** (2026-08-26). The 5,991 rows are loaded, rolled up
+to every geo level, rendered at `/uuc-phc` from national down to city/municipality with each listed
+barangay showing the factors it qualified on and its health indicators (capped values marked), and
+every area has a downloadable PNG one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
 
 **Verdict on scoping: build this outside `AI_ASSISTANT_PLAN.md`.** It is a normal dataset
 increment on the path that already exists — ingest → `dim_dataset` → fact → aggregate → card —
@@ -219,9 +221,21 @@ is already 10-digit. No crosswalk work is needed for the bulk of the file.
 
 **The Sulu exception.** 87 codes carry the prefix `09066` — Sulu under **Region IX**, following
 its 2024 removal from BARMM. `dim_geo` still holds Sulu as **`19066`** under region 19 (410
-barangays, `psgc_vintage = '2023 series (>=2024 release, includes NIR)'`). The workbook and the
-cue cards agree with each other here — p37's Region IX count of 523 includes Sulu — so the
-dashboard's geography is the side on the older vintage.
+barangays, `psgc_vintage = '2023 series (>=2024 release, includes NIR)'`).
+
+**Correction (found while loading U1): the workbook does not file Sulu under Region IX — only its
+codes do.** All 87 Sulu rows carry `region_name = BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO
+(BARMM)` and `province_name = SULU` while carrying `09066…` codes. The file is internally
+inconsistent about Sulu: the name column says BARMM, the code column says Region IX. So an earlier
+draft's "p37's Region IX count of 523 includes Sulu" was **wrong** — the workbook's 523 Region IX
+rows are Zamboanga Peninsula alone, and Sulu's 87 sit inside BARMM's 399.
+
+**This decides which side the rollups take, and the answer is the reassuring one.** Resolving
+`09066… → 19066…` through the crosswalk puts Sulu under BARMM in `dim_geo`, which is what the
+workbook's own region column says. Verified live after the U1 load: grouping the 5,991 rows by
+`dim_geo.region_code` reproduces the workbook's regional table at **all 17 regions**, BARMM 399 and
+Region IX 523 included, with no adjustment. Honouring the *code's* region instead would give Region
+IX 610 / BARMM 312 and break the §3 reconciliation.
 
 The remap is mechanical: region digits `19` → `09`, province and barangay digits unchanged
 (`19066NNBBB` → `09066NNBBB`). **Do it as `dim_psgc_crosswalk` rows, not as a hand-edit of
@@ -306,30 +320,145 @@ office.
 
 Mirrors `bhw-profiling-status-2026`. Each is independently shippable and must pass its Verify.
 
-**U1 — Classification, national.**
-`dim_dataset` row (`uuc-phc-2025`); `fact_uuc_phc_barangay` (`geo_code`, `decision`,
-`source_region/province/citymun/barangay` as given); `dim_psgc_crosswalk` rows for the 87 Sulu
-codes. Loader `ingestion/ingest_uuc_phc.py`, generating a seed migration, following
-`ingest_encoding_status.py`. The loader must **skip the 32 layout rows** (§4) — column A `TOTAL`,
-or PSGC and citymun both empty — and hold back the single unresolved San Antonio row.
+**U1 — Classification, national. Shipped 2026-08-26.**
 
-*Verify:* 5,990 UUA rows loaded (5,991 less the held-back San Antonio) + 9,395 NOT UUA; **every**
-`geo_code` resolves in `dim_geo` after the crosswalk — this is where §4's 150-row sample becomes
-an exhaustive check; regional counts reproduce the §3 table exactly; and the loader's per-region
-counts equal the workbook's own embedded `TOTAL` rows, which is a check the source data provides
-for free.
+**Scope narrowed by the owner: only the 5,991 listed barangays load.** The workbook's 9,395
+`NOT UUA` rows are not ingested, so `fact_uuc_phc_barangay` carries no `decision` column —
+membership is presence, and it would read `UUA` on every row. Anything needing "share of barangays
+in this area" takes its denominator from `dim_geo`'s complete 41,958, not from the workbook's
+partial assessed set. This also retires a gap that would otherwise have needed solving: the `NEW`
+sheet carries no PSGC column at all, and name-matching its `NOT UUA` rows against `dim_geo` leaves
+**769 of 9,395 unresolved** (mostly BARMM — Tawi-Tawi, Basilan, Lanao del Sur).
 
-**U2 — Aggregates and the card.**
-`agg_uuc_phc_counts` keyed `(dataset_id, geo_code, geo_level)` with barangay → citymun →
-province → region → national rollups, mirroring `agg_bhw_stepzero_counts`. Card renders count
-of UUC-for-PHC barangays, share of all barangays in the area, and child-area drill-down.
-*Verify:* national == Σ regions == 5,991; province == Σ its citymuns; spot-checks against p37.
+Shipped as:
 
-**U3 — Indicators.** Blocked on §5. Adds the 13 columns to the fact table plus per-indicator
-aggregates only for those a page renders.
+| Artefact | What it is |
+|---|---|
+| `20260826121000_fact_uuc_phc_barangay.sql` | Table: `geo_code`, `source_geo_code`, `source_region/province/citymun/barangay`; RLS public-read |
+| `20260826121100_seed_dim_dataset_uuc_phc.sql` | `dim_dataset` row, slug `uuc-phc-2025`, `geo_join_level = 'barangay'` |
+| `20260826121200_crosswalk_sulu_region_ix.sql` | Sulu vintage map, derived FROM `dim_geo` — all 430 Sulu geos, not just the 87 needed |
+| `20260826121300_seed_fact_uuc_phc_barangay.sql` | 5,991 rows, generated |
+| `ingestion/ingest_uuc_phc.py` | Loader; reads the cleaned CSV, checks it, emits the seed |
+| `ingestion/data/uuc_phc_2025_cleaned.csv` | Committed machine-readable extract the loader reads |
 
-**U4 — PNG one-pager.** Optional; reuses `@resvg/resvg-js` and
-`lib/exports/profiling-status-figure.ts`.
+Two implementation notes worth keeping. **The seed resolves `geo_code` in SQL**, through
+`map_psgc_to_dim_geo(source_geo_code, …)`, rather than remapping Sulu in Python — so a missing
+crosswalk row fails the insert on `geo_code`'s `NOT NULL` instead of silently dropping barangays,
+and the remap lives in one place. **The 32 layout rows need no handling**: the loader reads the
+cleaned CSV, not `2025 LIST`, and the cleaning step already dropped them. San Antonio, Pilar is
+resolved (`0506213048`), so nothing is held back.
+
+*Verify — all green, run live against the loaded table:*
+
+| Check | Result |
+|---|---|
+| Rows loaded | **5,991** (= 5,991 distinct `geo_code`) |
+| Every `geo_code` resolves in `dim_geo` | **0 unresolved** — §4's 150-row sample is now exhaustive |
+| Every row is barangay-level | **0 non-barangay** |
+| Sulu remapped | **87**, each exactly `09066…` → `19066…` |
+| Regional counts vs §3 | **17 of 17 exact**, total 5,991 |
+| Crosswalk rows seeded | **430** (1 province + 19 citymuns + 410 barangays) |
+
+The loader re-checks the extract before emitting: row count, PSGC format, duplicates, `UUA`-only,
+the 87-code Sulu count, and all 17 regional counts — each a hard failure, since a silently short
+load is worse than a failed one when 5,991 is a headline figure.
+
+**U2 — Aggregates and the section. Shipped 2026-08-26.**
+
+`agg_uuc_phc_counts` keyed `(dataset_id, geo_code, geo_level)`, **1,788 rows** at national /
+region / province / citymun. Two columns — `n_listed` and `n_barangays` — with the share derived
+in the read layer, since a membership list is one count against one denominator rather than a
+measurement.
+
+Three choices worth recording:
+
+- **Computed in SQL from the fact table + `dim_geo`, not from a generated seed.** Re-running the
+  migration recomputes every row, so the aggregate cannot drift from the facts and re-running *is*
+  the refresh procedure.
+- **A row for every geo, including those with none listed.** NCR reads "0 of 1,675" with an
+  explicit note, rather than rendering as "no data". This list is a single national publication, so
+  a zero is a result — the opposite of the profiling-status section, whose region-by-region rollout
+  genuinely does have not-yet-loaded areas.
+- **No barangay-level rows.** 41,958 rows of `n_listed` in {0,1} would restate the fact table; a
+  city/municipality page reads its own barangays from `fact_uuc_phc_barangay` and names each one's
+  status. `/uuc-phc/barangay/*` therefore 404s.
+
+*Verify — all green:*
+
+| Check | Result |
+|---|---|
+| Aggregate rows | **1,788** (1 + 18 + 118 + 1,651) |
+| National | **5,991** of 41,958 |
+| Σ regions / Σ provinces / Σ citymuns | **5,991** each |
+| Province == Σ its citymuns; region == Σ its provinces | **0 mismatches** |
+| `n_listed > n_barangays` anywhere | **0** |
+| Regions reading zero | **1** (NCR) |
+
+Rendered pages were checked against live data at every level — national, region, province, a
+fully-listed city (MAYOYAO 27 of 27), a mixed one (BANGUI 2 of 14) and a zero region (NCR) — plus
+404s for unknown geos and barangay URLs. See `docs/uuc-phc-feature.md`.
+
+**U3 — Indicators. Shipped 2026-08-26.**
+
+`fact_uuc_phc_indicators`, one row per listed barangay: 12 indicators (not 13 — FP CU was dropped
+before reconciliation), the 7 provincial benchmarks criterion (d) compares against, and
+`capped_indicators` naming which of that barangay's values were bounded during cleaning.
+
+**The display rule §7 asked for, resolved: mark the value, and never average it.** A capped value
+is a ceiling the source overshot, so it carries a † wherever it is rendered, with a footnote saying
+the true figure is unknown. That mark can travel with one rendered value but cannot survive a mean,
+which is why this increment adds **no per-indicator aggregates** — the plan's original "aggregates
+only for those a page renders" resolves to *none*. An average water figure would absorb 886
+ceilings and report near-universal coverage the source does not support.
+
+Two things the build found that the plan had not:
+
+- **A benchmark can be impossible.** FIC's provincial reference was left uncapped in 2 provinces
+  (Ilocos Sur 102.15, City of Butuan 101.00) while every barangay FIC was capped at 100 — so all
+  **113** of their barangays would have read "worse than province" by construction. `comparesWorse`
+  now returns null for a benchmark above the indicator's own maximum and the UI shows the figure
+  with no verdict. The cleaning report's §6 caveat is now behaviour rather than a footnote.
+- **The source's 88 provinces are 87.** Two of its name-groups are both Zamboanga City — 7
+  barangays under a *blank* province name with no reference, and 1 under "CITY OF ZAMBOANGA" with a
+  full set. `dim_geo` files all 8 under province `09317`. The `ref_uuc_phc_provincial` view is keyed
+  on `dim_geo.province_code` for this reason (9 of the source's 88 names do not match `dim_geo` at
+  all), and exposes `n_with_reference` so that 1-of-8 coverage is visible instead of a bare `max()`
+  reporting one barangay's value as the whole province's benchmark.
+
+*Verify — all green:*
+
+| Check | Result |
+|---|---|
+| Indicator rows | **5,991**, one per listed barangay, none missing |
+| Capped flags | **1,584** values across **1,397** barangays, matching the cleaning report per indicator |
+| Bounds | `physical_factor` never below the AO's floor of 25; no coverage value > 100; no rate > 1,000 |
+| Loaded values vs committed CSV | all 5,991 rows × 21 fields compared as decimals — **0 mismatches** |
+| Provincial reference consistency | **0** provinces carry two different values (asserted in the migration, which aborts otherwise) |
+| Provinces in the view | **87**; 1 with partial coverage (`09317`, 1 of 8), 1 with none (`02050`) |
+
+A schema bug was caught in the process: `numeric(7,2)` silently rounded the 15 source values that
+carry three decimals. The columns are unconstrained `numeric` — rounding is a display decision.
+
+**U4 — PNG one-pager. Shipped 2026-08-26.**
+
+`lib/exports/uuc-phc-figure.ts` + `app/api/export/uuc-phc`, mirroring
+`profiling-status-figure.ts` — same canvas, same resvg path, same bundled-font constraint — but
+rendering a membership list rather than a funnel: the count against its denominator, a single
+two-state bar, and a child table ordered by share. A city/municipality sheet names its listed
+barangays instead of a child table.
+
+**No indicator values on the sheet.** A one-pager cannot carry the † marker's footnote, and
+reproducing bounded values without it would be exactly the unmarked artefact U3 was built to
+avoid. The sheet stays at the level the caveat is not needed.
+
+**Nothing is dropped silently.** A province with more cities than fit (Cebu has 50, the cap is 42)
+prints "+ 8 more with a lower share, 0 listed barangays between them" — naming both the count
+omitted and what they contribute, so a reader can see the cap did not hide anything material.
+
+*Verify:* rendered and visually inspected at every level — national, region, province, a
+fully-listed city, a mixed one, a zero region, and Cebu's truncation line. 400 on bad parameters,
+404 on an unknown geo. Line-packing unit-tested (`wrapNames`), since SVG does not wrap text and an
+over-long line runs off the page with no error.
 
 **Placement.** Own section `/uuc-phc` with the same national → region → province → citymun
 drill-down, since this is a targeting dataset rather than a BHW measure. It is also a natural
@@ -365,11 +494,12 @@ scaling concern; the §5 opt-in aggregate discipline of the AI plan still applie
 
 **No questions remain open.** U1 and U3 are both unblocked.
 
-**One thing to carry into the build, not a question:** capped values are indistinguishable from
-genuine ones once rendered. 886 Water and 456 FIC values now read as exactly 100%. The
-`Values capped` column separates them, and any aggregate over those two indicators must exclude
-or footnote the capped rows — at 15% of barangays for Water, it is large enough to move a national
-figure. See `UUC_PHC_2025_CLEANING_REPORT.md` §6.
+**One thing to carry into the build, not a question — now carried:** capped values are
+indistinguishable from genuine ones once rendered. 886 Water and 456 FIC values now read as exactly
+100%. U3 resolves this by naming the capped indicators per barangay (`capped_indicators`), marking
+every affected value where it renders, and publishing no averages of these columns at all — the
+warning that "any aggregate over those two indicators must exclude or footnote the capped rows" is
+honoured by not building one. See `UUC_PHC_2025_CLEANING_REPORT.md` §6.
 
 ---
 

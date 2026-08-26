@@ -58,6 +58,11 @@ export default function Portal() {
             href="/profiling-status"
           />
           <DatasetCard
+            title="2025 UUC for PHC"
+            description="The barangays on the 2025 list of Unserved and Underserved Communities for Primary Health Care — where primary care is hardest to reach, from national down to city/municipality level."
+            href="/uuc-phc"
+          />
+          <DatasetCard
             title="Ways forward"
             description="Analyses and innovations built on these datasets will join the repository as they mature."
           />

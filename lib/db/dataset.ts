@@ -77,6 +77,10 @@ export const DATASET_SLUGS = {
    * (Encode → Validate → Certify). Read only by slug; kept separate from the 2025
    * datasets (see lib/db/profiling-status.ts). */
   profilingStatus: "bhw-profiling-status-2026",
+  /** 2025 list of Unserved and Underserved Communities for Primary Health Care
+   * (DC No. 2025-0549). A targeting list of barangays, not a BHW measure — read
+   * only by slug, like the other companion datasets (see lib/db/uuc-phc.ts). */
+  uucPhc: "uuc-phc-2025",
 } as const;
 
 /**

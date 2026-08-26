@@ -25,6 +25,8 @@ Usage:
     python ingestion/clean_uuc_phc_indicators.py
 """
 import argparse
+import csv
+import re
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -50,11 +52,29 @@ DROP_COLS = {5, 7, 11, 12, 14, 17, 20, 23, 26, 29, 32, 35, 38, 39, 40}
 # One-off PSGC resolution supplied by the owner
 PSGC_OVERRIDE = {('SORSOGON', 'PILAR', 'SAN ANTONIO'): '0506213048'}
 
+# Machine-readable column names for the --data-csv extract (the loader's committed source).
+# Explicit rather than slugified: the four geography columns carry the workbook's own pull-names,
+# which are not usable as identifiers, and '4PS' cannot lead with a digit.
+CSV_RENAME = {
+    'Region': 'region_name',
+    'province': 'province_name',
+    'profile-brgy/muncity_pull': 'citymun_name',
+    'profile-brgy/barangay_pull': 'barangay_name',
+    '4PS': 'four_ps',
+}
+
 NEG_ACTION = 'Negative set to 0'
 
 
 def norm(x):
     return str(x).strip().upper() if x is not None else ''
+
+
+def csv_name(label):
+    """Workbook header -> snake_case CSV column name."""
+    if label in CSV_RENAME:
+        return CSV_RENAME[label]
+    return re.sub(r'_+', '_', re.sub(r'[^a-z0-9]+', '_', str(label).lower())).strip('_')
 
 
 def is_na(v):
@@ -145,7 +165,7 @@ def head(ws, labels, row=1, height=34):
     ws.row_dimensions[row].height = height
 
 
-def build(src, psgc_src, out_path, ref_csv=None):
+def build(src, psgc_src, out_path, ref_csv=None, data_csv=None):
     rec = openpyxl.load_workbook(src, read_only=True, data_only=True)['Reconciled']
     allr = list(rec.iter_rows(min_row=1, values_only=True))
     HDR = list(allr[0])
@@ -398,8 +418,31 @@ def build(src, psgc_src, out_path, ref_csv=None):
     out.save(out_path)
     print('written:', out_path)
 
+    if data_csv:
+        # Same content as the "Cleaned data" sheet, in the form a loader reads:
+        # ingestion/ingest_uuc_phc.py builds the seed migration from this file, so the
+        # committed CSV — not the styled .xlsx — is what the database is reproducible from.
+        act_cells = {(a[0], a[1]) for a in actions}
+        # Which indicators were capped on each row, not just how many. A capped value is
+        # indistinguishable from a genuine one once rendered -- 886 Water and 456 FIC values now
+        # read as exactly 100% -- so the dashboard needs the flag per indicator to mark them
+        # individually. `values_capped` (the count) stays for continuity with the workbook.
+        capped_by_row = {}
+        for ri, ci, label, _orig, action, _new in actions:
+            if action.startswith('Capped'):
+                capped_by_row.setdefault(ri, set()).add(csv_name(label))
+        with open(data_csv, 'w', newline='', encoding='utf-8') as fh:
+            w = csv.writer(fh)
+            w.writerow(['psgc'] + [csv_name(HDR[i]) for i in keep_idx]
+                       + ['values_capped', 'capped_indicators'])
+            for ri, r in enumerate(rows):
+                n = sum(1 for ci in INDICATORS if (ri, ci) in act_cells)
+                w.writerow([psgc_list[ri]]
+                           + ['' if r[ci] is None else r[ci] for ci in keep_idx]
+                           + [n, '|'.join(sorted(capped_by_row.get(ri, ())))])
+        print(f'written: {data_csv} ({len(rows):,} barangays, {len(keep_idx) + 2} columns)')
+
     if ref_csv:
-        import csv
         with open(ref_csv, 'w', newline='', encoding='utf-8') as fh:
             w = csv.writer(fh)
             w.writerow(['region', 'province', 'barangays_in_list']
@@ -420,5 +463,8 @@ if __name__ == '__main__':
     ap.add_argument('--out', default='UUC_PHC_2025_cleaned.xlsx')
     ap.add_argument('--ref-csv', default='ingestion/data/uuc_phc_2025_provincial_reference.csv',
                     help='where to write the one-row-per-province reference table')
+    ap.add_argument('--data-csv', default='ingestion/data/uuc_phc_2025_cleaned.csv',
+                    help='where to write the machine-readable cleaned extract that '
+                         'ingestion/ingest_uuc_phc.py loads')
     args = ap.parse_args()
-    build(args.src, args.psgc_src, args.out, args.ref_csv)
+    build(args.src, args.psgc_src, args.out, args.ref_csv, args.data_csv)
