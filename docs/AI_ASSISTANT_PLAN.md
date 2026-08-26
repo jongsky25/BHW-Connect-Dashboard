@@ -54,6 +54,7 @@ not introduce a second AI system.
 | 5 | Auto-generated KB entries: served or reviewed? | **Proposed, then approved.** Ingest-time extraction writes rows with `status = 'auto'`; only `status = 'approved'` rows are citable. Mirrors `ai_ask_cache`'s existing pattern. |
 | 6 | Do new datasets get pre-computed aggregates? | **Only when a dashboard page renders them.** See §5 — this is the load-bearing decision of the whole plan. |
 | 7 | Embedding provider | **Gemini**, same key and cascade as chat. The model name lives in the environment, never as a code constant (see §1). |
+| 8 | Are answers human-reviewed before use? | **No queue.** Review happens at ingestion, which is one-time per source and compounds; reviewing every answer is unbounded and degrades to rubber-stamping. See §7 for the reasoning and the three layers that cover answers instead. |
 
 ---
 
@@ -228,7 +229,45 @@ engineering attention for $25/month indefinitely. §5 should be implemented eith
 
 ---
 
-## 7. Phases
+## 7. Verification model — review at write-time, not read-time
+
+**Decision: there is no queue of answers awaiting human approval.** Recorded here because it is
+the obvious thing to propose later, and the reasons it is wrong are not obvious.
+
+Reviewing every answer is unbounded work that grows with usage, and it is the same judgment call
+every time. In practice it gets done for a fortnight and then rubber-stamped — which is worse than
+no review, because a checkmark then implies someone looked. This project has already settled the
+identical question once, in `ASK_CACHE_PLAN.md` §0 #3: *"Auto entries are served — they already
+passed the numeric audit, which is the real safety gate. Admin curation is for promoting,
+editing, and blocking, not a prerequisite for serving."*
+
+**Ingestion review is the opposite trade.** It is one-time per source and compounds: a document's
+extraction is checked once, and every future answer drawing on it inherits that check. Bounded
+work, permanent return. That is why the review queue in this plan sits at Increment 3.2, on
+extraction — not on answers.
+
+Three layers cover answers instead, none of them a queue:
+
+1. **The numeric audit** (`lib/ai/audit.ts`, already built). Strips any sentence whose numbers
+   are absent from the tool payloads. Automatic, every answer, no human time.
+2. **Citations.** Verification becomes something done *when it matters* — before a figure goes
+   into a briefing — rather than in advance for every answer, including the many never used.
+3. **Failure capture.** One click marks an answer wrong and files the question into the §10
+   regression list. Effort is spent only on answers that were actually wrong, and that effort
+   permanently guards against a repeat.
+
+### The gap this leaves, and why Phase 2 closes it
+
+The numeric audit only covers **numbers**. A prose claim drawn from a document — "a highly
+technical request has a 20-working-day deadline" — carries no figure to check against a tool
+payload and passes through unaudited.
+
+**For documents, the citation is the check.** That makes citation *accuracy* a correctness
+requirement rather than a presentation nicety: a citation pointing at the wrong page is worse
+than none at all, because it reads as verified. Increments 2.3 and 2.4 exist to close this, and
+neither is optional polish.
+
+## 8. Phases
 
 Each increment is independently shippable and must pass its Verify before the next begins.
 
@@ -268,8 +307,25 @@ per the README, which sidesteps serverless timeouts entirely.
 codes and memo numbers. Returns text with a document and page citation.
 *Verify:* a question answerable only from a document returns a correct, cited answer.
 
-**2.3 — Citations in the UI.** Extend the stream events so document answers render their source.
-*Verify:* every document-grounded sentence shows a traceable citation.
+**2.3 — Citations in the UI.** Extend the stream events so document answers render their source —
+document title, page, and the quoted span — each one clickable through to the stored chunk.
+
+Per §7 this is a correctness feature, not presentation: for prose claims the citation is the only
+check, since `auditNarrative` covers numbers alone. A citation that points at the wrong page is
+worse than no citation, so the stored page/offset must be asserted, not assumed.
+
+*Verify:* every document-grounded sentence shows a traceable citation; on a document with known
+page numbers, ten sampled citations resolve to text that actually supports the sentence.
+
+**2.4 — Failure capture.** A "this is wrong" control on any answer, writing the question, the
+answer given, the tools called, and the provider into a regression table. Optional free-text note
+for the correct answer.
+
+This is what makes §10 self-sustaining: the regression list grows from real failures rather than
+from an authoring session, so it tracks whatever sources have actually been loaded.
+
+*Verify:* marking an answer wrong stores a replayable case — question plus tool calls — that can
+be re-run against a later build.
 
 ### Phase 3 — The graph
 
@@ -292,7 +348,7 @@ as `status = 'auto'`, with `source_chunk_id` on every edge.
 
 ---
 
-## 8. Guardrails
+## 9. Guardrails
 
 Hard constraints. Do not trade them for convenience.
 
@@ -309,7 +365,7 @@ Hard constraints. Do not trade them for convenience.
 
 ---
 
-## 9. Regression questions (not an up-front evaluation set)
+## 10. Regression questions (not an up-front evaluation set)
 
 Sources arrive incrementally and are not known in advance, so a fixed evaluation corpus chosen at
 the start would be stale by Phase 2 and is not what this plan asks for. What is needed instead is
@@ -333,7 +389,7 @@ It costs nothing up front and requires no advance knowledge of the corpus:
 **Not a prerequisite.** Phase 1 ships without it. It becomes load-bearing at Phase 3, when three
 retrieval paths are live and a change to one can silently degrade another.
 
-## 10. Open questions
+## 11. Open questions
 
 - **Document corpus.** Which documents go in first, and does the DOH hosting clearance gate
   referenced elsewhere in this project's planning apply to loading them?
