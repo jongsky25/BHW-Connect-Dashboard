@@ -32,14 +32,51 @@ it or not. Every figure on the section is therefore one count against one denomi
   how many barangays they happen to have.
 - **The drill-down ends at city/municipality**, which names every one of its barangays and whether
   each is on the list. A barangay page would be a single yes/no, so `/uuc-phc/barangay/*` 404s.
-- **Not built:** PNG one-pager (U4, optional), indicator views (U3 — blocked on a display rule for
-  capped values), and an `/explore` overlay (worth doing, after this).
+- **Indicators render at barangay grain only, never as averages** (U3). A capped value carries a †
+  marker; a marker cannot survive a mean. See "The indicators" below.
+- **Not built:** PNG one-pager (U4, optional) and an `/explore` overlay (worth doing, after this).
+
+## The indicators (U3)
+
+Each listed barangay on a city/municipality page expands (`<details>`, no client JS) to show the
+factors it qualified on and its seven health indicators, each compared against its province — the
+comparison criterion (d) is built on.
+
+- **The comparison respects each indicator's direction.** Higher infant mortality is worse; higher
+  immunisation coverage is better. One comparison applied to all seven would invert half of them.
+- **Capped values are marked wherever they appear.** 1,584 values across 1,397 barangays were
+  bounded during cleaning (Water 886, FIC 456, Pre-natal 208, SBA 30, ABR 2, IMR 1, UFMR 1). A
+  bounded value is a ceiling the source overshot, not a measurement, and 886 Water and 456 FIC
+  values now read as exactly 100% because of it. The † mark and its footnote are what make these
+  columns publishable.
+- **No indicator averages, deliberately.** A mark travels with one rendered value; it cannot
+  survive a mean or a median. An average water figure would absorb 886 ceilings and report
+  near-universal coverage the source does not support.
+- **Two cases render as "no verdict" rather than a result:**
+  - *No provincial figure* — 57 barangays whose province supplied none. Criterion (d) is not
+    evaluable there, which is not the same as passing it.
+  - *A benchmark above the indicator's own maximum* — FIC's provincial reference was left uncapped
+    in 2 provinces (Ilocos Sur 102.15, City of Butuan 101.00) while every barangay FIC was capped
+    at 100. No barangay there can match it, so "worse than province" would be true by construction.
+    **113 barangays**; `comparesWorse` returns null and the UI shows the benchmark with no verdict.
+    This turns the cleaning report's §6 caveat into behaviour instead of a footnote.
 
 ## Data model
 
 - Table **`fact_uuc_phc_barangay`** — one row per listed barangay: resolved `geo_code`,
   `source_geo_code` as the workbook supplies it, and the source's own region/province/citymun/
   barangay names for provenance. Public-read.
+- Table **`fact_uuc_phc_indicators`** — one row per listed barangay: 12 indicators, the 7
+  provincial benchmarks criterion (d) compares against, and `capped_indicators` (a `text[]` naming
+  which of that barangay's values were bounded). Columns are unconstrained `numeric`, not
+  `numeric(p,2)`: 15 source values carry three decimals and a scale of 2 would round them at
+  insert. Public-read.
+- View **`ref_uuc_phc_provincial`** — the benchmarks one row per province (**87**, not the source's
+  88: two of its name-groups are both Zamboanga City). Derived from the fact table, keyed on
+  `dim_geo.province_code` rather than the source's province names, 9 of which do not match
+  `dim_geo`. `n_with_reference` against `n_listed_barangays` exposes partial coverage — in province
+  `09317` only 1 of 8 listed barangays carries a reference, and a bare `max()` would have reported
+  that single value as the whole province's benchmark.
 - Table **`agg_uuc_phc_counts`** — public-read aggregate keyed `(dataset_id, geo_code, geo_level)`
   at national / region / province / citymun. Two columns: `n_listed` and `n_barangays`. **1,788
   rows** (1 + 18 + 118 + 1,651).
@@ -74,9 +111,10 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Area | Path |
 | --- | --- |
 | Read layer + share helper | `lib/db/uuc-phc.ts` (+ `.test.ts`) |
+| Indicator read layer + comparison | `lib/db/uuc-phc-indicators.ts` (+ `.test.ts`) |
 | Dataset slug | `lib/db/dataset.ts` (`DATASET_SLUGS.uucPhc`) |
 | Section landing + sub-pages | `app/uuc-phc/` (`page.tsx`, `[geoLevel]/[geoCode]/page.tsx`, `methodology/`, `layout.tsx`) |
-| Section components | `components/uuc-phc/` (coverage-hero, share-bar, child-breakdown, barangay-list) |
+| Section components | `components/uuc-phc/` (coverage-hero, share-bar, child-breakdown, barangay-list, barangay-detail) |
 | Fact loader | `ingestion/ingest_uuc_phc.py` |
 | Cleaning step | `ingestion/clean_uuc_phc_indicators.py` |
 | Source data | `ingestion/data/uuc_phc_2025_cleaned.csv` |
@@ -91,9 +129,20 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 - Regional counts reproduce the source workbook's own table at **all 17 regions** — see
   `docs/UUC_PHC_2025_PLAN.md` §4 for why Sulu's placement decides this.
 - Share math unit-tested in `lib/db/uuc-phc.test.ts`, including the zero-denominator and
-  "none listed" cases that must not collapse into each other.
+  "none listed" cases that must not collapse into each other. Indicator comparison logic in
+  `lib/db/uuc-phc-indicators.test.ts` (13 tests): per-indicator direction, the null-not-false
+  answer when a benchmark is missing, the impossible-benchmark rule, and criterion (b)'s summed
+  conflict/displacement.
+- Indicators: 5,991 rows; 1,397 barangays carry a capped flag totalling 1,584 values, matching the
+  cleaning report per indicator; `physical_factor` never below the AO's floor of 25; no coverage
+  value above 100 and no rate above 1,000; every listed barangay has an indicator row. All 5,991
+  rows × 21 fields were read back from the database and compared to the committed CSV as decimals
+  — **0 mismatches**.
 - Routes verified against live data: `/uuc-phc` (5,991 / 41,958 / 14%, regions ranked with CAR at
   52%), `/uuc-phc/region/14`, `/uuc-phc/province/14027` (11 cities ranked by share),
   `/uuc-phc/citymun/1402706` (MAYOYAO, 27 of 27, all named), `/uuc-phc/citymun/0102804` (BANGUI,
   2 of 14, both groups named), `/uuc-phc/region/13` (NCR, 0 of 1,675 with the "result, not missing
   data" note), `/uuc-phc/methodology`. Unknown geos and `/uuc-phc/barangay/*` 404.
+- Indicator rendering checked live: BACSIL (Bangui) shows its factors and a correctly-directional
+  comparison; BITONG (Galimuyod, Ilocos Sur) shows two † marks with the footnote and its FIC as
+  "not comparable — province reads 102.2" rather than a false "worse than province".

@@ -3,10 +3,10 @@
 A dedicated dashboard card and section for the **2025 list of Unserved and Underserved
 Communities for Primary Health Care**, built from `ingestion/data/Submissions_UUA_2025_filled_1.xlsx`.
 
-**Status:** **U1 and U2 shipped** (2026-08-26) — the 5,991 rows are loaded, rolled up to every
-geo level, and rendered at `/uuc-phc` from national down to city/municipality. U3 (indicators) is
-unblocked but needs a display rule for capped values first (§7); U4 (PNG one-pager) is optional.
-Feature write-up: `docs/uuc-phc-feature.md`.
+**Status:** **U1, U2 and U3 shipped** (2026-08-26) — the 5,991 rows are loaded, rolled up to every
+geo level, rendered at `/uuc-phc` from national down to city/municipality, and each listed barangay
+now shows the factors it qualified on and its health indicators with capped values marked. U4 (PNG
+one-pager) is optional and unbuilt. Feature write-up: `docs/uuc-phc-feature.md`.
 
 **Verdict on scoping: build this outside `AI_ASSISTANT_PLAN.md`.** It is a normal dataset
 increment on the path that already exists — ingest → `dim_dataset` → fact → aggregate → card —
@@ -398,8 +398,46 @@ Rendered pages were checked against live data at every level — national, regio
 fully-listed city (MAYOYAO 27 of 27), a mixed one (BANGUI 2 of 14) and a zero region (NCR) — plus
 404s for unknown geos and barangay URLs. See `docs/uuc-phc-feature.md`.
 
-**U3 — Indicators.** Blocked on §5. Adds the 13 columns to the fact table plus per-indicator
-aggregates only for those a page renders.
+**U3 — Indicators. Shipped 2026-08-26.**
+
+`fact_uuc_phc_indicators`, one row per listed barangay: 12 indicators (not 13 — FP CU was dropped
+before reconciliation), the 7 provincial benchmarks criterion (d) compares against, and
+`capped_indicators` naming which of that barangay's values were bounded during cleaning.
+
+**The display rule §7 asked for, resolved: mark the value, and never average it.** A capped value
+is a ceiling the source overshot, so it carries a † wherever it is rendered, with a footnote saying
+the true figure is unknown. That mark can travel with one rendered value but cannot survive a mean,
+which is why this increment adds **no per-indicator aggregates** — the plan's original "aggregates
+only for those a page renders" resolves to *none*. An average water figure would absorb 886
+ceilings and report near-universal coverage the source does not support.
+
+Two things the build found that the plan had not:
+
+- **A benchmark can be impossible.** FIC's provincial reference was left uncapped in 2 provinces
+  (Ilocos Sur 102.15, City of Butuan 101.00) while every barangay FIC was capped at 100 — so all
+  **113** of their barangays would have read "worse than province" by construction. `comparesWorse`
+  now returns null for a benchmark above the indicator's own maximum and the UI shows the figure
+  with no verdict. The cleaning report's §6 caveat is now behaviour rather than a footnote.
+- **The source's 88 provinces are 87.** Two of its name-groups are both Zamboanga City — 7
+  barangays under a *blank* province name with no reference, and 1 under "CITY OF ZAMBOANGA" with a
+  full set. `dim_geo` files all 8 under province `09317`. The `ref_uuc_phc_provincial` view is keyed
+  on `dim_geo.province_code` for this reason (9 of the source's 88 names do not match `dim_geo` at
+  all), and exposes `n_with_reference` so that 1-of-8 coverage is visible instead of a bare `max()`
+  reporting one barangay's value as the whole province's benchmark.
+
+*Verify — all green:*
+
+| Check | Result |
+|---|---|
+| Indicator rows | **5,991**, one per listed barangay, none missing |
+| Capped flags | **1,584** values across **1,397** barangays, matching the cleaning report per indicator |
+| Bounds | `physical_factor` never below the AO's floor of 25; no coverage value > 100; no rate > 1,000 |
+| Loaded values vs committed CSV | all 5,991 rows × 21 fields compared as decimals — **0 mismatches** |
+| Provincial reference consistency | **0** provinces carry two different values (asserted in the migration, which aborts otherwise) |
+| Provinces in the view | **87**; 1 with partial coverage (`09317`, 1 of 8), 1 with none (`02050`) |
+
+A schema bug was caught in the process: `numeric(7,2)` silently rounded the 15 source values that
+carry three decimals. The columns are unconstrained `numeric` — rounding is a display decision.
 
 **U4 — PNG one-pager.** Optional; reuses `@resvg/resvg-js` and
 `lib/exports/profiling-status-figure.ts`.
@@ -438,11 +476,12 @@ scaling concern; the §5 opt-in aggregate discipline of the AI plan still applie
 
 **No questions remain open.** U1 and U3 are both unblocked.
 
-**One thing to carry into the build, not a question:** capped values are indistinguishable from
-genuine ones once rendered. 886 Water and 456 FIC values now read as exactly 100%. The
-`Values capped` column separates them, and any aggregate over those two indicators must exclude
-or footnote the capped rows — at 15% of barangays for Water, it is large enough to move a national
-figure. See `UUC_PHC_2025_CLEANING_REPORT.md` §6.
+**One thing to carry into the build, not a question — now carried:** capped values are
+indistinguishable from genuine ones once rendered. 886 Water and 456 FIC values now read as exactly
+100%. U3 resolves this by naming the capped indicators per barangay (`capped_indicators`), marking
+every affected value where it renders, and publishing no averages of these columns at all — the
+warning that "any aggregate over those two indicators must exclude or footnote the capped rows" is
+honoured by not building one. See `UUC_PHC_2025_CLEANING_REPORT.md` §6.
 
 ---
 

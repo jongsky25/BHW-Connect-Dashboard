@@ -1526,6 +1526,102 @@ export type Database = {
           },
         ];
       };
+      fact_uuc_phc_indicators: {
+        Row: {
+          abr: number | null;
+          abr_prov_ref: number | null;
+          armed_conf: number | null;
+          capped_indicators: string[];
+          dataset_id: number;
+          elcac_brgy: boolean | null;
+          fic: number | null;
+          fic_prov_ref: number | null;
+          four_ps: number | null;
+          geo_code: string;
+          id: number;
+          idp: number | null;
+          imr: number | null;
+          imr_prov_ref: number | null;
+          ip_pop: number | null;
+          physical_factor: number | null;
+          pre_natal: number | null;
+          pre_natal_prov_ref: number | null;
+          sba: number | null;
+          sba_prov_ref: number | null;
+          ufmr: number | null;
+          ufmr_prov_ref: number | null;
+          water: number | null;
+          water_prov_ref: number | null;
+        };
+        Insert: {
+          abr?: number | null;
+          abr_prov_ref?: number | null;
+          armed_conf?: number | null;
+          capped_indicators?: string[];
+          dataset_id: number;
+          elcac_brgy?: boolean | null;
+          fic?: number | null;
+          fic_prov_ref?: number | null;
+          four_ps?: number | null;
+          geo_code: string;
+          id?: never;
+          idp?: number | null;
+          imr?: number | null;
+          imr_prov_ref?: number | null;
+          ip_pop?: number | null;
+          physical_factor?: number | null;
+          pre_natal?: number | null;
+          pre_natal_prov_ref?: number | null;
+          sba?: number | null;
+          sba_prov_ref?: number | null;
+          ufmr?: number | null;
+          ufmr_prov_ref?: number | null;
+          water?: number | null;
+          water_prov_ref?: number | null;
+        };
+        Update: {
+          abr?: number | null;
+          abr_prov_ref?: number | null;
+          armed_conf?: number | null;
+          capped_indicators?: string[];
+          dataset_id?: number;
+          elcac_brgy?: boolean | null;
+          fic?: number | null;
+          fic_prov_ref?: number | null;
+          four_ps?: number | null;
+          geo_code?: string;
+          id?: never;
+          idp?: number | null;
+          imr?: number | null;
+          imr_prov_ref?: number | null;
+          ip_pop?: number | null;
+          physical_factor?: number | null;
+          pre_natal?: number | null;
+          pre_natal_prov_ref?: number | null;
+          sba?: number | null;
+          sba_prov_ref?: number | null;
+          ufmr?: number | null;
+          ufmr_prov_ref?: number | null;
+          water?: number | null;
+          water_prov_ref?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_uuc_phc_indicators_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "fact_uuc_phc_indicators_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       fact_uuc_phc_barangay: {
         Row: {
           dataset_id: number;

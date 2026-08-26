@@ -1739,3 +1739,63 @@ CAR first at 52%), `/uuc-phc/region/14`, `/uuc-phc/province/14027` (11 cities ra
 missing data" note) and `/uuc-phc/methodology`; unknown geos and barangay URLs 404. The hand-added
 `database.types.ts` entries for both new tables were checked column-by-column against
 `information_schema` — names, types and nullability all match.
+
+## 2026-08-26 — UUC for PHC 2025: U3, the indicators, and the capped-value display rule
+
+Third increment of `docs/UUC_PHC_2025_PLAN.md`. The 12 cleaned indicators are loaded and rendered
+per barangay. `fact_uuc_phc_indicators` carries the values, the 7 provincial benchmarks criterion
+(d) compares against, and `capped_indicators` — which of that barangay's values were bounded during
+cleaning.
+
+- **The display rule the plan was blocked on: mark the value, and never average it.** 1,584 values
+  across 1,397 barangays were bounded during cleaning, and afterwards 886 Water and 456 FIC values
+  read as exactly 100% with nothing separating them from genuine full coverage. Every bounded value
+  now renders with a † and a footnote saying the true figure is unknown. That mark travels with a
+  single rendered value but **cannot survive a mean**, so U3 publishes **no per-indicator
+  aggregates** at all. The plan's "aggregates only for those a page renders" resolves to *none*,
+  and the cleaning report's warning that any aggregate over Water or FIC must exclude or footnote
+  the capped rows is honoured by not building one.
+- **Indicators render at barangay grain only.** A city/municipality page expands each listed
+  barangay (`<details>`, no client JS) to show its qualifying factors and seven health indicators.
+  This is the only grain at which a caveat can stay attached to the number it qualifies.
+- **The comparison respects each indicator's direction.** Higher infant mortality is worse; higher
+  immunisation coverage is better. A single comparison applied to all seven would invert half of
+  them. Where either side is missing the answer is null — "not evaluable" — never "not worse":
+  57 barangays sit in provinces that supplied no reference, and criterion (d) not being evaluable
+  is not the same as passing it.
+- **A benchmark above an indicator's own maximum is refused.** FIC's provincial reference was left
+  uncapped in 2 provinces (Ilocos Sur 102.15, City of Butuan 101.00) while every barangay FIC was
+  capped at 100 — so all **113** of their barangays would have read "worse than province" by
+  construction, an artefact of the cleaning rather than a finding. `comparesWorse` returns null
+  above the maximum and the UI shows the benchmark with no verdict. This turns
+  `UUC_PHC_2025_CLEANING_REPORT.md` §6's caveat into behaviour.
+- **The source's 88 provinces are 87.** Two of its name-groups are both Zamboanga City: 7 barangays
+  filed under a *blank* province name with no reference at all, and 1 under "CITY OF ZAMBOANGA"
+  with a full set. `dim_geo` files all 8 under province `09317`. `ref_uuc_phc_provincial` is
+  therefore keyed on `dim_geo.province_code`, never on the source's names — 9 of its 88 do not
+  match `dim_geo` (the HUCs, BARMM's Special Geographic Area, and the blank).
+- **That view exposes `n_with_reference`, not just a value.** A bare `max()` would have reported
+  Zamboanga City's single referenced barangay as the whole province's benchmark, quietly making
+  criterion (d) look evaluable for the other 7. The migration also asserts, after loading, that no
+  province carries two *different* reference values, aborting if one ever does (0 do).
+- **Indicator columns are unconstrained `numeric`.** The first cut used `numeric(7,2)`, which
+  silently rounded the 15 source values carrying three decimals (an ABR of 48.912, an IMR of
+  4.347). Rounding is a display decision; the table stores what the source supplied. Caught by a
+  checksum comparison against the committed CSV.
+- **Criterion (b) is summed, following the file.** The source marks conflict/displacement met when
+  `armed_conf + idp ≥ 10`, which reproduces its own Pass/Fail on all 5,991 rows; reading the AO's
+  "or" as either-alone disagrees on 15. Implemented as the file does, with the divergence recorded
+  (`UUC_PHC_2025_PLAN.md` §1a).
+
+**Verify.** 5,991 indicator rows, one per listed barangay, none missing; 1,397 barangays carry a
+capped flag totalling 1,584 values, matching the cleaning report per indicator (Water 886, FIC 456,
+Pre-natal 208, SBA 30, ABR 2, IMR 1, UFMR 1); `physical_factor` never below the AO's floor of 25;
+no coverage value above 100 and no rate above 1,000. All 5,991 rows × 21 fields were read back from
+the database and compared to the committed CSV **as decimals — 0 mismatches** (an md5 comparison
+disagreed first, which is what exposed the `numeric(7,2)` rounding). The provincial-consistency
+assertion passes. `npm run lint`, `npm run typecheck` and `npm test` (219 tests, 13 new in
+`lib/db/uuc-phc-indicators.test.ts`) all clean. Rendering checked live: BACSIL (Bangui) shows its
+factors and correctly-directional comparisons; BITONG (Galimuyod, Ilocos Sur) shows two † marks
+with the footnote and its FIC as "not comparable — province reads 102.2" rather than a false
+"worse than province". The temporary `security definer` loader used to stream the rows from the
+committed CSV was dropped immediately after each load and verified gone.

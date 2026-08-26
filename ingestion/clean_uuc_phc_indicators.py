@@ -423,13 +423,23 @@ def build(src, psgc_src, out_path, ref_csv=None, data_csv=None):
         # ingestion/ingest_uuc_phc.py builds the seed migration from this file, so the
         # committed CSV — not the styled .xlsx — is what the database is reproducible from.
         act_cells = {(a[0], a[1]) for a in actions}
+        # Which indicators were capped on each row, not just how many. A capped value is
+        # indistinguishable from a genuine one once rendered -- 886 Water and 456 FIC values now
+        # read as exactly 100% -- so the dashboard needs the flag per indicator to mark them
+        # individually. `values_capped` (the count) stays for continuity with the workbook.
+        capped_by_row = {}
+        for ri, ci, label, _orig, action, _new in actions:
+            if action.startswith('Capped'):
+                capped_by_row.setdefault(ri, set()).add(csv_name(label))
         with open(data_csv, 'w', newline='', encoding='utf-8') as fh:
             w = csv.writer(fh)
-            w.writerow(['psgc'] + [csv_name(HDR[i]) for i in keep_idx] + ['values_capped'])
+            w.writerow(['psgc'] + [csv_name(HDR[i]) for i in keep_idx]
+                       + ['values_capped', 'capped_indicators'])
             for ri, r in enumerate(rows):
                 n = sum(1 for ci in INDICATORS if (ri, ci) in act_cells)
                 w.writerow([psgc_list[ri]]
-                           + ['' if r[ci] is None else r[ci] for ci in keep_idx] + [n])
+                           + ['' if r[ci] is None else r[ci] for ci in keep_idx]
+                           + [n, '|'.join(sorted(capped_by_row.get(ri, ())))])
         print(f'written: {data_csv} ({len(rows):,} barangays, {len(keep_idx) + 2} columns)')
 
     if ref_csv:

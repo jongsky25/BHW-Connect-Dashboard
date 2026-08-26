@@ -14,6 +14,7 @@ import { CoverageHero } from "@/components/uuc-phc/coverage-hero";
 import { ShareBar } from "@/components/uuc-phc/share-bar";
 import { ChildBreakdown } from "@/components/uuc-phc/child-breakdown";
 import { BarangayList } from "@/components/uuc-phc/barangay-list";
+import { getUucPhcBarangayDetails } from "@/lib/db/uuc-phc-indicators";
 
 // 1 hour. ISR: citymun render on demand; region/province are prerendered. Same reasoning as the
 // landing page — a shorter window bounds how long a transient empty read can stay cached.
@@ -70,10 +71,14 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
   // barangay and its status, so that is where the drill-down ends.
   if (geo.geoLevel === "barangay") notFound();
 
-  const [counts, children, barangays, ancestors] = await Promise.all([
+  const isCitymun = geo.geoLevel === "citymun";
+  const [counts, children, barangays, details, ancestors] = await Promise.all([
     getUucPhcCounts(geo.geoCode, geo.geoLevel),
     getUucPhcChildren(geo.geoCode, geo.geoLevel),
-    geo.geoLevel === "citymun" ? getUucPhcBarangays(geo.geoCode) : Promise.resolve([]),
+    isCitymun ? getUucPhcBarangays(geo.geoCode) : Promise.resolve([]),
+    // Indicators render only here, at barangay grain, where a capped value can carry its own
+    // marker — see lib/db/uuc-phc-indicators.ts on why there are no indicator aggregates.
+    isCitymun ? getUucPhcBarangayDetails(geo.geoCode) : Promise.resolve([]),
     getGeoAncestors(geo.geoCode, geo.geoLevel),
   ]);
 
@@ -131,9 +136,9 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
             </div>
           )}
 
-          {geo.geoLevel === "citymun" && barangays.length > 0 && (
+          {isCitymun && barangays.length > 0 && (
             <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-              <BarangayList items={barangays} />
+              <BarangayList items={barangays} details={details} />
             </div>
           )}
         </>

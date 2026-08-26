@@ -100,14 +100,59 @@ export default function UucPhcMethodology() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">What is not here yet</h2>
+        <h2 className="text-lg font-semibold">The indicator values</h2>
         <p className="text-muted">
-          The source also carries per-barangay indicator values — mortality rates, immunisation,
-          pre-natal and skilled-birth-attendance coverage, water access. They are not shown yet: a
-          substantial number were recorded out of range and had to be bounded, and a bounded value
-          is indistinguishable from a genuine one once rendered. They will be published once they
-          can be shown with that distinction intact.
+          Open any barangay on a city or municipality page to see the factors it qualified on and
+          its seven health indicators, each compared against its province — which is the comparison
+          criterion (d) is built on.
         </p>
+        <p className="text-muted">
+          The direction differs by indicator, and the comparison respects it: a <em>higher</em>{" "}
+          infant mortality is worse, while a <em>higher</em> immunisation coverage is better.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">Reading a value marked †</h2>
+        <p className="text-muted">
+          Some values arrived recorded above the maximum their indicator can take — water coverage
+          as high as 9,594%, immunisation at 18,088. These were bounded to the maximum: 100% for
+          coverage indicators, 1,000 for rates per 1,000. In total{" "}
+          <strong>1,584 values across 1,397 barangays</strong> were bounded, most of them water
+          supply (886) and immunisation (456).
+        </p>
+        <p className="text-muted">
+          A bounded value is <strong>a ceiling, not a measurement</strong>. A barangay marked † at
+          100% is not known to have full coverage — its recorded figure was impossible and the true
+          one is unknown. Every bounded value carries the mark wherever it appears, which is the
+          only reason these columns can be published at all.
+        </p>
+        <p className="text-muted">
+          For the same reason this dashboard publishes{" "}
+          <strong>no averages of these indicators</strong>. A mark can travel with a single value;
+          it cannot survive a mean. An average water-coverage figure would silently absorb 886
+          ceilings and report near-universal coverage the data does not support.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">When a comparison is not made</h2>
+        <p className="text-muted">
+          Two cases show as unavailable rather than as a result, because in neither does the source
+          support a conclusion:
+        </p>
+        <ul className="ml-5 list-disc space-y-1 text-muted">
+          <li>
+            <strong>No provincial figure</strong> — 57 barangays sit in provinces that supplied
+            none. Criterion (d) cannot be evaluated for them; that is not the same as passing it.
+          </li>
+          <li>
+            <strong>A benchmark above the indicator&rsquo;s maximum</strong> — in two provinces the
+            immunisation benchmark was left above 100% while every barangay&rsquo;s own figure was
+            bounded to 100%. No barangay there could match it, so &ldquo;worse than province&rdquo;
+            would be true by construction. Those 113 barangays show the benchmark and no verdict.
+          </li>
+        </ul>
       </section>
 
       <p className="text-sm text-muted">
