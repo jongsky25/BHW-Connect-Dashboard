@@ -158,7 +158,7 @@ distinguishes them. This one needs the source office. It is 1 barangay in 5,991.
 **This is not a scatter of typos.** Counting how many of the 5,991 barangays exceed 100 in each
 column shows the problem is structural:
 
-| Column | > 100 | share | < 0 | Worst value |
+| Column | > 100 | share | < 0 | Maximum |
 |---|---:|---:|---:|---|
 | FP CU | 1,043 | 17.4% | 0 | 11,072 — San Isidro, City of San Jose del Monte, Bulacan |
 | Water | 902 | 15.1% | 1 | 9,594 — Demang, Sadanga, Mountain Province |
