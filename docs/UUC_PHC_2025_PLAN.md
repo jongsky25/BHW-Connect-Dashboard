@@ -74,12 +74,24 @@ Cue cards p37 publishes *Distribution of UUC for PHC Barangays by Region (as of 
 | *Other 15 regions* | *exact match* | *exact match* | 0 |
 | **Total** | **5,987** | **5,991** | **+4** |
 
-Two localized discrepancies, no systemic drift. **Resolve before publishing a headline number** —
-a card that says 5,991 next to a briefing deck that says 5,987 will be read as a dashboard bug.
-Recommend treating p37 as authoritative for the published total (it cites the department circular)
-and referring the 6 affected barangays back to the source office, then recording the outcome in
-`DECISIONS.md`. This follows the pattern already set by `POPULATION_RECONCILIATION.md` and
-`BOUNDARY_RECONCILIATION.md`.
+Two localized discrepancies, no systemic drift.
+
+**The workbook is internally consistent; the deck is the outlier.** Three independent places in
+the workbook agree on both contested figures — the `NEW` classification sheet, the row count of
+`2025 LIST`, and the `TOTAL` subtotal rows embedded in `2025 LIST` (§4) — all give CALABARZON 200
+and BARMM 399. There is no counting artifact on the workbook side to find.
+
+That makes the likeliest reading a **vintage difference**: p37 is a published snapshot "as of 2025
+per DC No. 2025-0549", and the file is named `Submissions_UUA_2025_filled_1`, which reads as a
+later revision. This is inference from the file name and the internal agreement, not something
+either file states — confirm it rather than assuming it.
+
+**Recommendation, reversing the earlier draft of this document:** publish the workbook's **5,991**
+as the card's figure, and footnote p37's 5,987 with its circular reference and as-of date. The
+deck is what has been briefed to budget audiences, so the footnote is not optional — but a
+dashboard should render its own source, and that source corroborates itself three times. Record
+the decision and the two affected regions in `DECISIONS.md`, following
+`POPULATION_RECONCILIATION.md` and `BOUNDARY_RECONCILIATION.md`.
 
 ---
 
@@ -103,9 +115,23 @@ The remap is mechanical: region digits `19` → `09`, province and barangay digi
 every later entity-resolution problem should follow. A silent `dim_geo` edit would also
 retroactively move every existing BHW figure for Sulu between regions.
 
-Also: **~33 rows in `2025 LIST` have a barangay name but no PSGC.** They need codes from the
-source office or explicit exclusion, the same way the profiling-status loader takes `--exclude`
-for the four all-zero City-of-Manila districts.
+### The 33 codeless rows — 32 are not barangays
+
+An earlier draft of this document recorded "~33 rows with a barangay name but no PSGC, needing
+codes or exclusion." That was wrong, and the correction matters for the loader.
+
+**32 of the 33 are layout, not data**: 16 region-header rows (region name in column A, everything
+else empty) and 16 `TOTAL <count>` subtotal rows embedded between the regional blocks. A loader
+that reads `2025 LIST` as a flat table ingests all 32 as barangays. Skip any row whose column A is
+`TOTAL` or whose PSGC and citymun are both empty.
+
+Those subtotal rows are useful in their own right — they are the workbook stating its own regional
+counts, and §3 uses them as a third independent check.
+
+**One row is a genuine missing code:** `SORSOGON / PILAR / SAN ANTONIO`. It cannot be resolved
+automatically — PSGC has **two** barangays named SAN ANTONIO in Pilar, Sorsogon (`0506213047` and
+`0506213048`), neither already present in the list, and the workbook carries no field that
+distinguishes them. This one needs the source office. It is 1 barangay in 5,991.
 
 ---
 
@@ -129,9 +155,31 @@ for the four all-zero City-of-Manila districts.
 | SBA | **−1** – 300 | out of range, negative |
 | Water | **−1** – **9,594** | out of range, negative |
 
-The eight are units-ambiguous — some values read as counts, some as percentages, some as rates
-per 1,000 — and negatives are impossible under every one of those readings. Publishing them
-unresolved would put unexplainable figures on a public page.
+**This is not a scatter of typos.** Counting how many of the 5,991 barangays exceed 100 in each
+column shows the problem is structural:
+
+| Column | > 100 | share | < 0 | Worst value |
+|---|---:|---:|---:|---|
+| FP CU | 1,043 | 17.4% | 0 | 11,072 — San Isidro, City of San Jose del Monte, Bulacan |
+| Water | 902 | 15.1% | 1 | 9,594 — Demang, Sadanga, Mountain Province |
+| FIC | 457 | 7.6% | 0 | 18,088 — Villamiemban, Cordon, Isabela |
+| Pre-natal | 211 | 3.5% | 0 | 1,950 — Borlongan, Dipaculao, Aurora |
+| ABR | 100 | 1.7% | 6 | 1,429 — Nadawisan, Cataingan, Masbate |
+| UFMR | 80 | 1.3% | 7 | 3,000 — Sua, Masantol, Pampanga |
+| IMR | 60 | 1.0% | 0 | 3,000 — Sua, Masantol, Pampanga |
+| SBA | 29 | 0.5% | 1 | 300 — Guitol, Santa Elena, Camarines Norte |
+
+Two hypotheses worth putting to the source office directly, since they imply different fixes:
+
+1. **Mixed units inside one column.** At 17% and 15%, FP CU and Water look like some encoders
+   entered a raw count and others a percentage of the same denominator. If so the column is
+   recoverable — with the denominator, per row.
+2. **Negatives are "no data" sentinels.** The `−1` and `−2` values are few (15 in total across
+   four columns) and sit exactly where a sentinel convention would put them. If confirmed they
+   map to NULL, not to a value.
+
+Neither is safe to assume. Publishing these columns unresolved would put unexplainable figures on
+a public page — and silently coercing 17% of a column would be worse.
 
 **This does not block the card.** The classification (*which* barangays are UUC for PHC) is
 clean, is the part the cue cards actually publish, and is the part with a policy citation. Ship
@@ -147,11 +195,15 @@ Mirrors `bhw-profiling-status-2026`. Each is independently shippable and must pa
 **U1 — Classification, national.**
 `dim_dataset` row (`uuc-phc-2025`); `fact_uuc_phc_barangay` (`geo_code`, `decision`,
 `source_region/province/citymun/barangay` as given); `dim_psgc_crosswalk` rows for the 87 Sulu
-codes; a `--exclude` path for the ~33 codeless rows. Loader `ingestion/ingest_uuc_phc.py`,
-generating a seed migration, following `ingest_encoding_status.py`.
-*Verify:* 5,991 UUA + 9,395 NOT UUA loaded; **every** `geo_code` resolves in `dim_geo` after the
-crosswalk (this is where the 150-row sample of §4 becomes an exhaustive check); regional counts
-reproduce the §3 table exactly, including the two known deltas.
+codes. Loader `ingestion/ingest_uuc_phc.py`, generating a seed migration, following
+`ingest_encoding_status.py`. The loader must **skip the 32 layout rows** (§4) — column A `TOTAL`,
+or PSGC and citymun both empty — and hold back the single unresolved San Antonio row.
+
+*Verify:* 5,990 UUA rows loaded (5,991 less the held-back San Antonio) + 9,395 NOT UUA; **every**
+`geo_code` resolves in `dim_geo` after the crosswalk — this is where §4's 150-row sample becomes
+an exhaustive check; regional counts reproduce the §3 table exactly; and the loader's per-region
+counts equal the workbook's own embedded `TOTAL` rows, which is a check the source data provides
+for free.
 
 **U2 — Aggregates and the card.**
 `agg_uuc_phc_counts` keyed `(dataset_id, geo_code, geo_level)` with barangay → citymun →
@@ -175,13 +227,25 @@ scaling concern; the §5 opt-in aggregate discipline of the AI plan still applie
 
 ---
 
-## 7. Open questions for the owner
+## 7. Open questions
 
-1. **The 4-barangay delta** (§3) — is p37 or the workbook authoritative for the published total?
-2. **Units for the eight indicator columns** (§5), per column, from the source office.
-3. **The ~33 rows without a PSGC** (§4) — codes, or exclude?
-4. **Sulu's region** — confirm the dashboard should follow the source and the cue cards in placing
-   Sulu in Region IX, and that the crosswalk (not `dim_geo`) is where that is recorded.
+**Settled by the owner:**
+
+- **Sulu's region** — confirmed. Place Sulu in Region IX per the source and the cue cards, recorded
+  as `dim_psgc_crosswalk` rows, never as a `dim_geo` edit.
+- **Codeless rows** — include rather than exclude, and find the codes. §4 resolves this: 32 of the
+  33 were never barangays, and the loader skips them as layout. The one real row remains below.
+- **Hosting clearance** for the cue cards corpus — cleared. `AI_ASSISTANT_PLAN.md` §12.5 updated.
+
+**Still open, both needing the source office rather than a decision here:**
+
+1. **Units for the eight indicator columns** (§5) — per column, plus confirmation of whether the
+   `−1`/`−2` values are no-data sentinels. Blocks U3 only.
+2. **`SORSOGON / PILAR / SAN ANTONIO`** (§4) — which of `0506213047` or `0506213048`. One barangay;
+   U1 can ship with it held back and added on the next load.
+
+**Not a question, but flag it when the numbers are briefed:** the card will publish 5,991 where
+cue cards p37 publishes 5,987 (§3).
 
 ---
 
