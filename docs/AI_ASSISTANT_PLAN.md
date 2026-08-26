@@ -391,11 +391,97 @@ retrieval paths are live and a change to one can silently degrade another.
 
 ## 11. Open questions
 
-- **Document corpus.** Which documents go in first, and does the DOH hosting clearance gate
-  referenced elsewhere in this project's planning apply to loading them?
+- ~~**Document corpus.** Which documents go in first?~~ **Answered — see §12.** The 2027 Budget
+  Cue Cards are the first corpus. The DOH hosting clearance question is *not* answered and is
+  restated in §12.5.
 - **Embedding model and dimensions.** Confirm against the provider's live model at implementation
   and record in `DECISIONS.md`.
 - **Retention.** How long do `doc_chunk` rows live for a document that is later withdrawn?
+
+---
+
+## 12. First document corpus — the 2027 Budget Cue Cards
+
+`ingestion/data/[BLHSD] 2027 Budget Cue Cards.pdf` is the base document this assistant should
+answer from. It settles §11's first open question and gives Phase 2 a concrete target.
+
+Loaded alongside it was the UUC-for-PHC 2025 workbook. That one is **not** part of this plan — it
+is an ordinary dataset increment with its own card, planned in `docs/UUC_PHC_2025_PLAN.md`. The
+two files are related: cue cards p37 publishes the regional distribution the workbook enumerates.
+
+### 12.1 What it is
+
+213 slides, 720×405, from the Bureau of Local Health Systems Development. Covers the 2027 NEP
+budget proposal, and per p47–48 the whole BLHSD program set: Local Health Systems Integration,
+HCPN, LIPH/AOP, Special Health Fund, LeadGov4Health, PuroKalusugan, Indigenous Peoples' Health,
+UUC for PHC, Support for Barangay Health Workers, and the LGU Health Scorecard.
+
+**Text-native — no OCR needed.** Only 2 of 213 pages fall below 20 extracted characters.
+146,448 characters total, averaging 687 per slide; 85 pages carry tables (95 tables).
+
+### 12.2 Why this is a good first corpus
+
+It is bounded, current, authoritative, and it **overlaps the existing structured data enough to
+exercise cross-source questions on day one** — which is what Phase 2 needs to be tested at all:
+
+- **p37** — UUC for PHC barangays by region, total 5,987, per DC No. 2025-0549. Cross-checks the
+  new `uuc-phc-2025` dataset.
+- **p27** — DOH honorarium allocation by income class: 3rd 35,645 / 4th 27,058 / 5th 7,541 BHWs
+  = 70,244 at ₱3,000/mo = ₱2.53 B/yr. Cross-checks `agg_honorarium` and the E3.7 income-class work.
+- **p160–168** — JMC 2023-001 BHW retention status by region, as of 18 Sept 2025. No structured
+  counterpart; document-only, which is precisely what `searchDocuments` is for.
+- **p25–37** — an FAQ section already written as question/answer pairs. Per §10.1 these seed the
+  regression list without anyone authoring expected answers.
+
+### 12.3 Chunking — one slide, one chunk
+
+A slide is the natural chunk and gives an exact citation ("cue cards, slide 37"). At 687 chars
+average, slides sit well under any embedding limit; merge consecutive slides within a section for
+retrieval context, but cite the range rather than flattening it.
+
+**Extraction hazard, evidenced.** The deck's own slide numbers sit in the text layer and bleed
+into extracted text mid-token:
+
+| Slide | Extracted | Should be |
+|---|---|---|
+| 37 | `MIMAROPA REG42ION 458` | `MIMAROPA REGION 458` (42 = the slide number) |
+| 157 | `w190orkshops` | `workshops` |
+| 163 | `report196ed` | `reported` |
+
+Naive extraction carries these into the embedding *and* into any quoted span. Per §7 the citation
+**is** the check for prose claims, so a corrupted quotation is a correctness failure, not a
+cosmetic one. Strip the slide-number element by position before chunking, and assert page and
+offset per Increment 2.3 rather than assuming them.
+
+### 12.4 A gap this corpus exposes in the audit model
+
+Slide 26 asserts: *"277,767 (Registered and Accredited BHWs) — Source: BHW Connect as of Dec
+2025."* §2 of this plan records 270,917 BHW records behind SQL.
+
+`auditNarrative` strips any sentence whose numbers are absent from the tool payloads. So a
+**correct, correctly-cited quotation of the department's own published figure would be stripped**,
+while the SQL number survives — and the assistant would silently drop the very number a briefing
+asks for. §7 anticipated that the audit covers numbers only and prose goes uncovered; this is the
+inverse case, and the plan has no rule for it.
+
+**Proposed rule, for `DECISIONS.md`:**
+
+1. A number carried by a document chunk is admissible when its citation resolves to that chunk.
+2. It must render **attributed and dated** — "the 2027 Budget Cue Cards state 277,767 registered
+   and accredited BHWs as of Dec 2025" — never as a bare fact.
+3. Where a document number and a SQL number disagree, the assistant surfaces **both** with their
+   as-of dates and does not silently prefer either.
+
+Rule 3 matters more than it looks: these two numbers are not a contradiction to resolve, they are
+different measures at different dates, and an assistant that picks one is hiding the distinction a
+budget discussion actually turns on.
+
+### 12.5 Sensitivity
+
+Internal budget material, and slide 26 records that "the BHW Connect web site [is] under system
+hold by KMITS due to security threat." The admin-only constraint (§0 #2, §9.1) is load-bearing for
+this corpus specifically — it must not reach a public surface. The DOH hosting clearance question
+from §11 is unresolved and applies to loading it at all; confirm before Increment 2.1 runs.
 
 ---
 
