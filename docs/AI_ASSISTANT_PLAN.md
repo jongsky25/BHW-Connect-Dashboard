@@ -9,10 +9,11 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** in progress — Increments 1.1, 1.2 and 1.3 are built (see `DECISIONS.md`, 2026-08-26).
-The decisions in §0 are still open; 1.4 is the first increment that cannot proceed without them,
-since it is the surface they describe. Phases ship in order; each increment is an independently
-shippable PR-sized unit.
+**Status:** in progress — Increments 1.1–1.4 are built (see `DECISIONS.md`, 2026-08-26), on the
+§0 defaults for decisions 2, 3 and 4, which the owner confirmed. Decision 1 (Supabase Pro) is
+still open and nothing built so far depends on it. Next: 1.5–1.6, the graph tables and the
+traversal primitive. Phases ship in order; each increment is an independently shippable PR-sized
+unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -338,7 +339,7 @@ columns, hard row and time limits. Never string-concatenates user input into SQL
 *Verify:* answers a question about a registered dataset with no dataset-specific code; a query
 against an unregistered table is refused.
 
-**1.4 — Internal assistant page.**
+**1.4 — Internal assistant page.** *(built — 2026-08-26)*
 `app/admin/(dashboard)/assistant/`. Reuses `runToolLoop` and the NDJSON stream; own system prompt;
 relaxed rate limits; cache bypassed; audit retained.
 *Verify:* reachable only with an admin session; anonymous request returns 401/redirect.

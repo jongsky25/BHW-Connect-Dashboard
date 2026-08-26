@@ -1771,3 +1771,64 @@ is the failure a payload assertion alone would miss. `npm run lint`, `npm run ty
 question" half. That needs a surface and a provider key, neither of which exists until 1.4 — this
 environment has no AI provider credentials — so it is deferred to 1.4's verification rather than
 claimed here.
+
+## 2026-08-26 — Internal AI assistant, Increment 1.4: the admin-only assistant
+
+The surface the §0 decisions describe, built on the defaults the plan proposed (owner confirmed):
+admin session only (2), numeric audit retained (3), answer cache bypassed (4). That closes Phase 1
+except the graph work (1.5–1.6).
+
+- **`app/api/ai/assistant/route.ts` re-checks the admin session itself.** `proxy.ts` matches
+  `/admin/:path*` only, so it never sees an `/api/*` request, and a route handler is reachable
+  without ever loading the page that links to it. `getAdminUser()` is therefore the security
+  boundary for this endpoint, and it runs *before the body is parsed* — nothing about the request
+  can influence whether the gate opens. It fails closed, per the posture already documented in
+  `lib/db/require-admin.ts`.
+- **Scope is the tool set, not the prompt.** `createInternalTools()` = the six public indicator
+  tools plus `listDatasets`/`queryDataset` at `internal` exposure, passed into `runToolLoop`. A
+  tool the model may not use is *absent* from its set rather than merely undescribed — which is
+  why 1.3 made the loop take a tool set at all. The public chat still gets the default `TOOLS` and
+  is unchanged.
+- **The hand-written tools were kept alongside the generic one.** `searchGeo` resolves a place
+  name to a geo_code in one call — the registry path would need a `like` scan of `dim_geo` and
+  would still have to guess between namesakes — and the indicator tools return the same shaped
+  figures the dashboard renders, which is what keeps "the number in the answer matches the number
+  on screen" true for internal users too. `queryDataset` covers everything they do not.
+- **Nothing internal is written to `ai_ask_log`.** Decision 4 removes the cache; the log is a
+  separate question, and the answer is also no. That log is explicitly the corpus the *public*
+  answer bank is curated from (`ASK_CACHE_PLAN.md` §3), so seeding it with internal exploration
+  would corrupt what eventually gets offered to visitors. Internal turns are counted in
+  `usage_events` under their own `ai_assistant_message` type, which keeps the rate limit working
+  and keeps internal volume out of the public chat's usage figures.
+- **Relaxed rate limit = 60 turns / 10 minutes, keyed on the admin's user id** (public chat: 20 per
+  browser session). Relaxed rather than removed: the provider quota an internal turn spends is the
+  same free-tier budget the public chat depends on, so a runaway loop must still hit a wall. The
+  existing `usage_events` counter is reused — `session_id` is a uuid column and an admin user id is
+  a uuid, so no schema change was needed.
+- **A separate system prompt, not a variant.** `INTERNAL_SYSTEM_PROMPT` relaxes style and scope
+  (many datasets, technical register, table names in the answer, longer answers) and keeps every
+  grounding rule, adding three the registry makes possible: read the dictionary before querying,
+  respect the stated grain, and report the payload's `warnings` rather than absorbing them. What
+  differs between the two surfaces is scope, and scope drift is exactly what one shared prompt
+  with conditional paragraphs invites.
+- **The UI shows tool calls with their arguments,** not the public chat's friendly labels. An
+  internal answer is only as good as the query behind it, and the difference between right and
+  wrong is usually a filter — a missing `dataset_id`, a `geo_level` one step off. A reader who can
+  see `queryDataset {"table":"agg_poverty",…}` can catch that; one shown "Looked up poverty
+  figures" cannot. The page also lists the registered datasets server-side, so what the assistant
+  can reach is visible before asking rather than discovered by being refused.
+
+**Verify.** 9 new route tests: an anonymous request returns 401 with no provider call and no usage
+event; the admin check runs on the route itself; a malformed body is 400; the per-admin limit
+returns 429 before any provider call; the loop is invoked with the internal tool set and the
+internal prompt; tool calls stream with their arguments. Grounding is covered by two tests that run
+the *real* `auditNarrative` through the route — an answer whose figure is in no tool payload has
+that sentence stripped before it reaches the stream, while a figure that is in a payload survives.
+`npm run lint`, `npm run typecheck`, `npm test` (242 tests) clean, and `next build` succeeds with
+`/admin/assistant` and `/api/ai/assistant` both dynamic (no prerender attempt on an auth-gated
+page — the failure mode the layout's `force-dynamic` note warns about).
+
+**Still not verified end-to-end:** a real question answered by a live provider. This environment
+has no AI provider keys, so the model-selects-the-tool half of 1.3's and 1.4's Verify needs a run
+against the deployed preview with `GEMINI_API_KEY` set. Everything up to the provider boundary is
+covered; the boundary itself is not, and that is the one claim not made here.
