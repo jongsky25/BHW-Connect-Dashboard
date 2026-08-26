@@ -12,6 +12,12 @@ built, what was decided, verify evidence).
 **Status:** proposed — awaiting owner approval of the decisions in §0. Phases ship in order; each
 increment is an independently shippable PR-sized unit.
 
+**Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
+primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
+than from model extraction, and Phase 3 narrows to the parts that genuinely need documents and a
+model. §2 records the graph-shaped structures already in production that motivated the change;
+§13 lists the agents the primitive supports and why two of them come first.
+
 ---
 
 ## Why this is a small build
@@ -37,8 +43,10 @@ not introduce a second AI system.
 2. **A dataset-agnostic query tool.** `TOOLS` is hardcoded around BHW indicators
    (`getIndicatorByGeo`, `compareGeos`). A new dataset today means a new hand-written tool, a new
    Zod schema, and new prompt copy. This is the ceiling.
-3. **A relationship layer.** Nothing records how datasets connect to each other, so no question
-   can span two of them without bespoke code.
+3. **A relationship layer, and any traversal at all.** Nothing records how datasets connect to
+   each other, so no question can span two of them without bespoke code. And although three
+   production structures are already graph-shaped (§2), nothing walks them: the repository
+   contains no recursive CTE, and both of its apparent "traversals" are precomputed flattenings.
 4. **An internal page** where the public-facing guardrails are relaxed for staff use.
 
 ---
@@ -51,7 +59,7 @@ not introduce a second AI system.
 | 2 | Who can reach the internal assistant? | **Admin session only**, reusing the existing `app/admin/(dashboard)` auth. Never linked from public navigation. |
 | 3 | Does the internal assistant keep the numeric audit? | **Yes.** Relaxing rate limits and dataset scope is the point; relaxing *grounding* is not. The audit is what makes answers usable in a briefing. |
 | 4 | Does the internal assistant use the answer cache? | **No.** Cache exists to save provider credits on repeated public questions. Internal use is exploratory and low-volume; a stale answer costs more than a call. |
-| 5 | Auto-generated KB entries: served or reviewed? | **Proposed, then approved.** Ingest-time extraction writes rows with `status = 'auto'`; only `status = 'approved'` rows are citable. Mirrors `ai_ask_cache`'s existing pattern. |
+| 5 | Auto-generated KB entries: served or reviewed? | **Proposed, then approved.** Ingest-time extraction writes rows with `status = 'auto'`; only `status = 'approved'` rows are citable. Mirrors `ai_ask_cache`'s existing pattern. *Applies to extraction only* — lineage edges derived from migrations and ingestion scripts (Increment 1.5) are asserted, not inferred, and land approved. |
 | 6 | Do new datasets get pre-computed aggregates? | **Only when a dashboard page renders them.** See §5 — this is the load-bearing decision of the whole plan. |
 | 7 | Embedding provider | **Gemini**, same key and cascade as chat. The model name lives in the environment, never as a code constant (see §1). |
 | 8 | Are answers human-reviewed before use? | **No queue.** Review happens at ingestion, which is one-time per source and compounds; reviewing every answer is unbounded and degrades to rubber-stamping. See §7 for the reasoning and the three layers that cover answers instead. |
@@ -116,6 +124,31 @@ retrieve "similar" rows to answer a quantitative question. It produces confident
 270,917 BHW records belong behind SQL. Only *text* is embedded: documents, column descriptions,
 dataset summaries.
 
+### The graph already in the database
+
+Phase 3 was written as though the graph starts from nothing. It does not. Three structures in
+production are already graph-shaped, and one of them is `kb_edge` in all but name:
+
+| Structure | Read as a graph | Where |
+|---|---|---|
+| `dim_geo.parent_code` | A containment tree over 43,746 geographies — national → region → province → citymun → barangay — with a self-referencing FK and its own index (`dim_geo_parent_code_idx`) | `20260719100200_dim_geo.sql` |
+| `dim_psgc_crosswalk` | 1,357 **typed, time-bounded identity edges**: `old_code → new_code`, a nine-value `change_kind` (`renamed`, `renumbered`, `merged`, `split`, `abolished`, `region_reassignment`, `reclassified`, `converted`, `created`), and a vintage on each endpoint | `20260721060000_e4_1_psgc_crosswalk.sql` |
+| `agg_peer_ranks` | Sibling edges: each geo positioned among its same-parent peers per indicator, with MAD outlier flags | `20260721041059_e2_3_peer_ranks.sql` |
+
+**None of them is traversed.** There is no recursive CTE anywhere in the repository:
+
+- `agg_geo_summary.parent_chain` is a *fixed three-level flatten*, built by explicit self-joins to
+  region/province/citymun (`ingestion/build_aggregates.sql` §8). `getGeoAncestors` likewise reads
+  the denormalized `region_code`/`province_code`/`citymun_code` columns rather than walking edges —
+  documented as deliberate at `lib/db/geo.ts:154`.
+- `map_psgc_to_dim_geo()` is a single-hop `coalesce(direct match, one crosswalk row)`. It resolves
+  a code; it cannot follow a chain of them across two successive vintage changes.
+
+Both flattenings were correct for their purpose — a page render must not pay for a traversal. But
+they mean the capability this assistant needs has never been built, at any depth, against any
+table. That is the real gap, and it is why the traversal primitive moves into Phase 1
+(Increments 1.5–1.6) instead of waiting for Phase 3.
+
 ---
 
 ## 3. The dataset registry (the core change)
@@ -142,6 +175,10 @@ Steps 3 and 4 are where the graph work lives: **proposed joins between datasets 
 
 `dim_psgc_crosswalk` already solves the hardest instance of this problem — entity resolution
 across PSGC vintages — and should be the model the registry follows, not a parallel mechanism.
+Concretely: it is a typed edge table carrying validity on both endpoints, which is exactly the
+shape §4 specifies for `kb_edge`. The graph work is therefore a generalization of something this
+project has already shipped and reconciled against real data, not a second mechanism — the main
+reason it can begin in Phase 1 rather than Phase 3.
 
 ---
 
@@ -155,8 +192,8 @@ New tables, all additive. No existing table is modified.
 | `dataset_column` | Per-column dictionary: name, type, cardinality, null rate, inferred meaning, is_join_key |
 | `doc_source` | One row per ingested document: title, origin, hash, ingested_at, status |
 | `doc_chunk` | Chunked text + embedding vector + page/offset for citation |
-| `kb_node` | Entities extracted from documents and datasets |
-| `kb_edge` | Typed relations, each with `source_chunk_id` provenance and validity dates |
+| `kb_node` | Entities: datasets, tables, columns, geographies, issuances — and, from Phase 3, entities extracted from documents |
+| `kb_edge` | Typed relations with validity dates and a provenance pointer: `source_chunk_id` for extracted edges, `(source_kind, source_ref)` for structurally derived ones |
 
 Notes:
 
@@ -164,6 +201,15 @@ Notes:
   assistant that cannot say "as of" will confidently quote a repealed circular.
 - `doc_chunk.embedding` uses `halfvec` where precision allows — half the storage of `vector` at
   negligible retrieval cost. pgvector 0.8.2 is available on this project (not yet installed).
+- `kb_node`/`kb_edge` are created in **Increment 1.5**, not Phase 3, and are first populated from
+  structure the repository already asserts, where every edge is derivable and checkable without a
+  model in the loop. Phase 3 then adds *extracted* rows to a schema that is already live and
+  exercised. Creating a graph schema and pointing an extractor at it in the same increment makes a
+  schema bug and an extraction bug indistinguishable.
+- Every edge carries a provenance pointer, but not every edge has a `source_chunk_id`: a lineage
+  edge is asserted by a migration or an ingestion script, not by a document chunk. Provenance is
+  therefore a discriminated pair — `source_kind` plus `source_ref` — with the chunk case one of
+  its values. The §1 ground rule is unchanged; it is only widened past "chunk".
 - All new tables are service-role only, matching `ai_ask_cache`.
 - Embedding dimensions must be confirmed against the provider's live model at implementation
   time and recorded in `DECISIONS.md`; do not copy a dimension count from this document.
@@ -271,7 +317,7 @@ neither is optional polish.
 
 Each increment is independently shippable and must pass its Verify before the next begins.
 
-### Phase 1 — Query anything (no new data sources)
+### Phase 1 — Query and traverse anything (no new data sources)
 
 **1.1 — Enable pgvector, add registry tables.**
 Migrations for `dataset_registry`, `dataset_column`, service-role RLS in the same statement as
@@ -294,7 +340,47 @@ against an unregistered table is refused.
 relaxed rate limits; cache bypassed; audit retained.
 *Verify:* reachable only with an admin session; anonymous request returns 401/redirect.
 
-**At the end of Phase 1 you have a working internal assistant over existing data.**
+**1.5 — `kb_node` / `kb_edge`, seeded with lineage.**
+Create the graph tables (service-role RLS in the same statement, per 1.1) and populate them from
+structure this repository already asserts — no extraction, no model in the loop. Nodes: datasets,
+tables, columns, migrations, reconciliation documents. Edges: `derived-from` (`agg_bhw_counts` ←
+`fact_bhw_raw`), `built-by` (table ← migration or ingestion script), `reconciled-in` (dataset ←
+the `docs/` write-up that reconciled it), and `joins-on` — the registry's join keys from 1.2
+restated as edges, so the registry and the graph are one structure rather than two.
+
+The lineage is not new information. It is in migration headers, `dim_dataset`, `ingestion/`, and
+~1,600 lines of `DECISIONS.md`. It is simply not queryable, which means the "every extracted fact
+carries its source" rule in §1 is today enforced by human memory. Seeding from it yields a
+populated, independently verifiable graph with no new data sources and no extraction risk, and it
+becomes the reference example every later extracted edge is measured against — the same role 1.2
+plays for the registry.
+
+*Verify:* every table the public tools query resolves to its source fact table and to the
+migration that built it; every edge has a provenance pointer; no edge in this increment was
+authored by a model.
+
+**1.6 — `traverseGraph` over `dim_geo` and `kb_edge`.**
+The traversal primitive, and the first recursive CTE in the project: bounded depth, visited-set
+cycle guard, row cap, statement timeout (§9.8), returning **paths with provenance** rather than
+bare endpoints. Two edge sources from the start — the `dim_geo` containment tree and the 1.5
+lineage edges — because a primitive proven against one edge shape is not proven. Registered in
+`TOOL_DEFINITIONS` and described in the internal system prompt in the same increment; a traversal
+the model never selects has not shipped.
+
+This is what the current tool set cannot do at any depth. `getIndicatorByGeo` fetches one
+geography and `compareGeos` fetches two named ones, so "which barangays in Cebu sit below their
+provincial peers" — a subtree walk joined to `agg_peer_ranks` — is unanswerable today, against
+data that has been in production for a month.
+
+*Verify:* a subtree question returns the correct set, each result carrying its path to the queried
+ancestor; a lineage question ("what built `agg_honorarium`") returns a cited chain; a request at
+excessive depth is refused rather than served slowly; a synthetic cycle terminates; the assistant
+selects `traverseGraph` unprompted for a subtree question and `queryDataset` for a
+single-geography one, and both answers pass `auditNarrative`.
+
+**At the end of Phase 1 you have a working internal assistant over existing data, and a traversal
+primitive proven against two edge shapes before anything depends on a model having extracted
+them.**
 
 ### Phase 2 — Documents
 
@@ -327,17 +413,41 @@ from an authoring session, so it tracks whatever sources have actually been load
 *Verify:* marking an answer wrong stores a replayable case — question plus tool calls — that can
 be re-run against a later build.
 
-### Phase 3 — The graph
+### Phase 3 — Extraction into the graph
 
-**3.1 — `kb_node` / `kb_edge` + extraction.** Typed extraction against a defined schema, written
-as `status = 'auto'`, with `source_chunk_id` on every edge.
-*Verify:* extracted triples on a known document are spot-checked; every edge resolves to a chunk.
+The tables and the traversal exist from Phase 1. Phase 3 adds the only part that genuinely needs
+documents and a model: edges nobody has written down.
+
+**3.1 — Document extraction.** Typed extraction against the 1.5 schema, written as
+`status = 'auto'` with `source_kind = 'chunk'` and a `source_chunk_id` on every edge. The
+extraction prompt restates the §1 rule that source text is data and never instructions.
+*Verify:* extracted triples on a known document are spot-checked; every edge resolves to a chunk
+whose text actually supports it; nothing at `status = 'auto'` is citable.
 
 **3.2 — Review queue.** Admin approves, edits, or rejects proposed nodes, edges, and joins.
-*Verify:* only approved rows are citable; auto rows are visibly marked.
+Lineage edges from 1.5 are exempt and land approved: they are derived from repository structure,
+not proposed by a model. The queue exists for inferences, not for what a migration asserts —
+routing both through it would bury the rows that need judgment among rows that do not.
+*Verify:* only approved rows are citable; auto rows are visibly marked; a 1.5 lineage edge is
+distinguishable from an extracted one by column, not by convention (§9.9).
 
-**3.3 — `traverseGraph` tool.** Recursive CTE, bounded depth, returns paths with provenance.
-*Verify:* a multi-hop question that no single tool can answer returns a correct, cited answer.
+**3.3 — Cross-source traversal.** Extend 1.6's primitive so one traversal can cross a registry
+join edge into a document-extracted edge and back. The recursion, the bounds, and the
+path-provenance contract are unchanged from 1.6; what changes is the edge population it runs over.
+*Verify:* a multi-hop question that no single tool can answer returns a correct, cited answer, and
+the rendered path names the source of each hop.
+
+**3.4 — Supersession.** Give issuances (RA 12000, DC No. 2025-0549, JMC 2023-001) their own nodes
+and `supersedes` / `amends` / `implements` edges with `valid_from` / `valid_to`, so a question
+about current policy excludes superseded text instead of ranking it slightly lower.
+
+§4 already gives `kb_edge` validity dates for this reason — *"an assistant that cannot say 'as of'
+will confidently quote a repealed circular"* — but nothing in the original phases used them.
+This increment is where that column starts doing work.
+
+*Verify:* a question whose answer changed between two issuances returns the current one and names
+the superseded one with its date; the same question against 2.2 retrieval alone is shown to return
+the superseded text, establishing that the edges — not the ranking — are what fixed it.
 
 ### Phase 4 — Auto-understanding
 
@@ -345,6 +455,19 @@ as `status = 'auto'`, with `source_chunk_id` on every edge.
 → registry rows at `status = 'auto'`.
 *Verify:* a genuinely new dataset becomes queryable through the assistant with no code change.
 **This is the plan's success condition.**
+
+**4.2 — Contradiction sweep.** A batch job rather than a chat tool: walk node pairs that assert
+the same measure from different sources, and file each disagreement as a reviewable row carrying
+both values with their as-of dates.
+
+Per §12.4 rule 3 these are not errors to resolve but distinctions to surface, and a rule that only
+fires when someone happens to ask the right question is not enforced. Sweeping for them makes it
+enforced. Output feeds the §10 regression list, which per §10.2 otherwise grows only from failures
+someone noticed.
+
+*Verify:* the sweep independently rediscovers both known cases — slide 26's 277,767 against SQL's
+270,917 (§12.4), and cue cards p37 against the `uuc-phc-2025` dataset (§12.2) — without either
+being seeded.
 
 ---
 
@@ -362,6 +485,13 @@ Hard constraints. Do not trade them for convenience.
    internal-assistant capability, not a general one.
 6. Auto-extracted rows are never citable until approved.
 7. Small-cell suppression still applies to anything that could reach a public surface.
+8. Every traversal is bounded at the tool, never left to the query: maximum depth, a visited-set
+   cycle guard, a row cap, and a statement timeout. Guardrail 4's reasoning applies with more
+   force to recursion than to a flat scan — an unbounded walk over 43,746 geographies joined to a
+   fact table is the same outage, reached faster.
+9. Structurally derived edges (lineage, registry joins) and model-extracted edges are
+   distinguishable by column, never by convention. An extracted edge that cannot be told apart
+   from an asserted one silently promotes a guess to a fact.
 
 ---
 
@@ -386,8 +516,9 @@ It costs nothing up front and requires no advance knowledge of the corpus:
    human-verified question/answer pairs — an unused regression set already accumulating in
    production.
 
-**Not a prerequisite.** Phase 1 ships without it. It becomes load-bearing at Phase 3, when three
-retrieval paths are live and a change to one can silently degrade another.
+**Not a prerequisite.** Phase 1 ships without it. It becomes load-bearing at **Phase 2**, when the
+third retrieval path goes live and a change to one can silently degrade another — one phase
+earlier than originally written, because Phase 1 now ends with two paths rather than one.
 
 ## 11. Open questions
 
@@ -397,6 +528,11 @@ retrieval paths are live and a change to one can silently degrade another.
 - **Embedding model and dimensions.** Confirm against the provider's live model at implementation
   and record in `DECISIONS.md`.
 - **Retention.** How long do `doc_chunk` rows live for a document that is later withdrawn?
+- **Traversal depth.** What maximum depth stays explainable? Set a low cap in 1.6 and raise it
+  against real questions rather than guessing upward — an answer whose path nobody can follow is
+  not usable in a briefing, whatever its depth.
+- **Edge dedup.** When extraction (3.1) proposes an edge that lineage (1.5) already asserts, is it
+  dropped, or kept as corroboration with a second provenance pointer?
 
 ---
 
@@ -484,6 +620,43 @@ this corpus specifically — it must not reach a public surface.
 
 **Hosting clearance: cleared by the owner.** Increment 2.1 is unblocked. Clearance to *load* the
 corpus is not clearance to expose it: §9.1 stands unchanged, and this deck is the reason it does.
+
+---
+
+## 13. What else the traversal makes possible
+
+The plan above builds one assistant. The primitive it leaves behind supports several distinct
+agents, listed here so the sequencing decision is visible rather than implicit. **In-plan** means
+an increment above already builds it; **deferred** means it is cheap once the primitive exists but
+is deliberately not scoped here.
+
+| # | Agent | What it traverses | Status |
+|---|---|---|---|
+| 1 | **Lineage** — "where does `pct_accredited` come from, what built it, what did reconciliation drop" | `derived-from` / `built-by` / `reconciled-in` edges | In-plan, 1.5 |
+| 2 | **Geo traversal** — subtree and sibling questions ("which barangays drag Cebu below its peers") | `dim_geo` tree × `agg_peer_ranks` | In-plan, 1.6 |
+| 3 | **Join-path** — "can I connect UUC for PHC 2025 to the poverty SAE, and on what key" | registry `joins-on` edges | In-plan, 1.3 + 4.1 |
+| 4 | **Vintage reconciliation** — "is this 2020 code the same place as this 2023 one", across a split *and* a region reassignment | `dim_psgc_crosswalk` as a multi-hop chain | Deferred |
+| 5 | **Supersession** — "what is the rule now", never the repealed one | issuance `supersedes` edges with validity | In-plan, 3.4 |
+| 6 | **Contradiction sweep** — finds source disagreements before a briefing does | same-measure node pairs | In-plan, 4.2 |
+| 7 | **Ingest profiling** — proposes join edges for each new dataset | writes edges rather than reading them | In-plan, 4.1 |
+
+Two notes, on the deferral and on the ordering.
+
+**Why vintage reconciliation is deferred rather than dropped.** `map_psgc_to_dim_geo()` handles
+the single-hop case, and every load in production today needs only that. The multi-hop case
+becomes real the first time a *second* vintage pair enters `dim_psgc_crosswalk` — which
+`ingestion/build_psgc_crosswalk.py` exists to do but has never run, because the PSA site is
+Cloudflare bot-challenged from this environment. Building a chain-walker against a table holding
+one vintage pair would be building against a fixture, and it would be verified against one too.
+The trigger to promote this is the first successful quarterly diff, not a date.
+
+**Agents 1 and 2 come first because they need nothing that does not exist.** No pgvector, no
+document corpus, no Pro upgrade, no owner decision from §0 — only a recursive CTE over tables that
+have been in production since July. They are also where a traversal bug is *cheap*: a wrong
+lineage edge is visibly wrong to anyone who opens the migration, whereas a wrong extracted edge
+looks exactly like a right one, and a traversal defect discovered on extracted edges is
+indistinguishable from an extraction defect. Proving the primitive on checkable edges first is the
+whole argument for the reordering — and it is why Phase 3 gets shorter under it, not longer.
 
 ---
 
