@@ -9,11 +9,11 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** in progress — Increments 1.1–1.4 are built (see `DECISIONS.md`, 2026-08-26), on the
-§0 defaults for decisions 2, 3 and 4, which the owner confirmed. Decision 1 (Supabase Pro) is
-still open and nothing built so far depends on it. Next: 1.5–1.6, the graph tables and the
-traversal primitive. Phases ship in order; each increment is an independently shippable PR-sized
-unit.
+**Status:** Phase 1 complete — Increments 1.1–1.6 are built (see `DECISIONS.md`, 2026-08-26), on
+the §0 defaults for decisions 2, 3 and 4, which the owner confirmed. Decision 1 (Supabase Pro) is
+still open and nothing built so far depends on it; decision 7 (embedding provider) is the next one
+that matters, at Phase 2. Phases ship in order; each increment is an independently shippable
+PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -344,7 +344,7 @@ against an unregistered table is refused.
 relaxed rate limits; cache bypassed; audit retained.
 *Verify:* reachable only with an admin session; anonymous request returns 401/redirect.
 
-**1.5 — `kb_node` / `kb_edge`, seeded with lineage.**
+**1.5 — `kb_node` / `kb_edge`, seeded with lineage.** *(built — 2026-08-26; 160 nodes, 259 edges)*
 Create the graph tables (service-role RLS in the same statement, per 1.1) and populate them from
 structure this repository already asserts — no extraction, no model in the loop. Nodes: datasets,
 tables, columns, migrations, reconciliation documents. Edges: `derived-from` (`agg_bhw_counts` ←
@@ -363,7 +363,7 @@ plays for the registry.
 migration that built it; every edge has a provenance pointer; no edge in this increment was
 authored by a model.
 
-**1.6 — `traverseGraph` over `dim_geo` and `kb_edge`.**
+**1.6 — `traverseGraph` over `dim_geo` and `kb_edge`.** *(built — 2026-08-26)*
 The traversal primitive, and the first recursive CTE in the project: bounded depth, visited-set
 cycle guard, row cap, statement timeout (§9.8), returning **paths with provenance** rather than
 bare endpoints. Two edge sources from the start — the `dim_geo` containment tree and the 1.5

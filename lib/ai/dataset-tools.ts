@@ -13,6 +13,7 @@ import {
   DEFAULT_ROWS,
 } from "./query-dataset";
 import { TOOLS, type Tool } from "./tools";
+import { createTraversalTool } from "./traverse-graph";
 
 /**
  * The registry-driven half of the tool set (docs/AI_ASSISTANT_PLAN.md §8, Increment 1.3): a
@@ -132,6 +133,10 @@ export function createDatasetTools(exposure: Exposure): Tool[] {
  * The internal assistant's tool set (Increment 1.4): the public indicator tools plus the
  * registry-driven pair at `internal` exposure.
  *
+ * `traverseGraph` (Increment 1.6) is internal-only for the same reason `queryDataset` is: it reads
+ * `kb_edge`, which is service-role only. A traversal the model never selects has not shipped, so it
+ * is registered here and described in the internal system prompt in the same increment.
+ *
  * The hand-written tools are kept rather than replaced. `searchGeo` resolves a place name to a
  * geo_code in one call — the registry path would need a `like` scan of `dim_geo` and still guess
  * between namesakes — and the indicator tools return the same shaped figures the dashboard shows,
@@ -139,5 +144,5 @@ export function createDatasetTools(exposure: Exposure): Tool[] {
  * users too. `queryDataset` covers everything they do not.
  */
 export function createInternalTools(): Tool[] {
-  return [...TOOLS, ...createDatasetTools("internal")];
+  return [...TOOLS, ...createDatasetTools("internal"), createTraversalTool()];
 }

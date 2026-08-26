@@ -1832,3 +1832,99 @@ page — the failure mode the layout's `force-dynamic` note warns about).
 has no AI provider keys, so the model-selects-the-tool half of 1.3's and 1.4's Verify needs a run
 against the deployed preview with `GEMINI_API_KEY` set. Everything up to the provider boundary is
 covered; the boundary itself is not, and that is the one claim not made here.
+
+## 2026-08-26 — Internal AI assistant, Increments 1.5–1.6: the graph, and the first traversal
+
+Phase 1 complete. 1.5 creates `kb_node`/`kb_edge` and populates them from structure this
+repository already asserts; 1.6 adds the traversal primitive over two edge shapes — the `dim_geo`
+containment tree and those lineage edges.
+
+### 1.5 — lineage, generated rather than hand-written
+
+- **A committed generator, not a hand-authored seed.** `ingestion/build_kb_lineage.py` reads the
+  migrations, the ingestion scripts and the 1.2 registry and emits
+  `supabase/migrations/20260826120100_seed_kb_lineage.sql`. The plan asks for edges "no model
+  authored"; a generated seed is the strongest available form of that, because every edge is
+  reproducible by re-running the script and checkable by opening the file it names. It also means
+  the graph stays current: add a migration, re-run, re-apply.
+- **160 nodes, 259 edges**, all `origin = 'asserted'`, all `status = 'approved'`, all carrying a
+  provenance pointer, none sourced from a model chunk. Relations: `built-by` 73, `derived-from` 69,
+  `has-column` 44, `joins-on` 42, `reconciled-in` 31.
+- **`origin` is a column, not a convention** (§9.9). It defaults to `'extracted'`, so a row that
+  does not explicitly claim to be asserted is not treated as one — the safe direction for a table
+  Phase 3 will write into.
+- **`has-column` was added to the plan's four relations.** Nodes include columns, and a column has
+  to attach to its table or a lineage walk from a table can never reach its join keys. The `joins-on`
+  edges the plan does name are between columns, so without it they are unreachable.
+- **Geographies are deliberately not materialized as nodes.** `dim_geo` is already a containment
+  tree over 43,746 rows with its own index; copying it into `kb_node` would create a second copy to
+  keep in sync for no gain. The traversal reads `dim_geo` directly instead.
+- **`derived-from` is emitted from SQL files only.** In a `.sql` file a read can be scoped to the
+  statement that writes; in a Python module the whole file is one blob, so every table it mentions
+  anywhere would attach to every table it writes. That is co-occurrence, not lineage, and an edge
+  nobody can check by reading one statement is what this increment exists not to produce. Python
+  scripts still yield `built-by` edges, which are file-scoped by nature.
+- **Working tables are resolved through.** `build_aggregates.sql` builds `_agg_base` from
+  `fact_bhw_raw`, then builds `agg_bhw_counts` from `_agg_base`; the generator follows that one hop
+  so lineage reaches the fact table rather than stopping at a table that is dropped at the end of
+  the run.
+- **Two generator bugs worth recording, both found by reading the output rather than by tests.**
+  (1) A quote-tracking SQL splitter desynchronizes on the apostrophes in this repository's prose
+  migration headers, silently producing zero registry edges — comments are now stripped before any
+  statement parsing. (2) The `kb_graph.sql` header used a real path (`docs/POVERTY_SAE.md`) as an
+  illustrative node key, and the generator dutifully asserted a `reconciled-in` edge from it; the
+  example is now a placeholder. Both are the same class of error: a parser reading prose as data.
+- **The generator reports what it cannot establish.** A table node with no `built-by` edge is
+  printed to stderr; today that is exactly one — `fact_uuc_phc_barangay`, the live table with no
+  committed migration that 1.2 flagged. The gap is surfaced, not filled by guessing.
+
+### 1.6 — `traverse_geo` / `traverse_kb`, the project's first recursive CTE
+
+- **The recursion lives in Postgres, the refusals in both places.** §9.8's guardrails — depth cap,
+  visited-set cycle guard, row cap, statement timeout — are enforced in the functions, where they
+  hold however the function is called; `lib/ai/traverse-graph.ts` adds an earlier refusal so a bad
+  request never reaches the database.
+- **Excessive depth is refused, not clamped.** A traversal silently served at a lower depth than
+  asked produces an answer nobody can reproduce. Hard caps: geo 5, lineage 6.
+- **Results are paths with provenance, never bare endpoints.** A lineage row carries the node
+  chain, the relation at each step and the file asserting it, rendered as one quotable line. A
+  provenance claim without its chain is not checkable, and an unverifiable one reads as authority.
+- **`search_path` is pinned** on both functions, and EXECUTE is revoked from `public` and granted
+  only to `service_role` — these functions read service-role-only tables, and PostgREST would
+  otherwise expose them to `anon`.
+- **Registered in the internal tool set and described in the internal prompt in the same
+  increment**, per the plan: a traversal the model never selects has not shipped.
+
+**Verify (all live against the project).**
+
+- Lineage chain: `traverse_kb('table:agg_honorarium', 'out', …)` returns its three migrations, its
+  ingestion script, and `fact_honorarium`/`fact_bhw_raw`, each step citing the file that asserts it.
+- The depth-1 check in 1.5 showed `agg_geo_summary` with no direct fact source; the traversal shows
+  why that was the wrong question — it reaches `fact_bhw_raw` at depth 2 via `agg_bhw_counts` and
+  via `agg_training`. Transitive resolution is the capability, and it is what makes every table the
+  public tools query resolve to its source fact table.
+- Subtree: cities and municipalities inside Cebu (`07022`) below their peer median on accreditation
+  — GINATILAN 11.02% and ARGAO 22.17% against a peer median of 76.89% — each row carrying its path
+  to the queried ancestor. This is the question that has been unanswerable at any depth against
+  data in production for a month.
+- Ancestors: a barangay walks up citymun → province → region → national at depth 4, each row
+  carrying its path.
+- Excessive depth: `traverse_geo('PH','down',9,10)` raises `max_depth 9 exceeds the limit of 5`
+  rather than running.
+- Cycle: two synthetic nodes pointing at each other terminate after one step at `max_depth 6`,
+  returning one row rather than recursing. Test rows deleted afterwards; 259 edges before and after,
+  zero leftovers.
+- Advisors: `kb_node`/`kb_edge` appear only under the existing INFO `rls_enabled_no_policy` lint,
+  and neither new function appears under `function_search_path_mutable`. No new WARN or ERROR from
+  this work.
+- `npm run lint`, `npm run typecheck`, `npm test` (257 tests, 15 new) clean.
+
+**Unrelated advisor finding, not fixed here.** A new ERROR-level lint appeared during this work —
+`public.ref_uuc_phc_provincial` is a SECURITY DEFINER view — created on the live project by the
+concurrent UUC work. It is not in this branch and not this increment's to change; recorded so it
+is not mistaken for fallout from the graph work.
+
+**Still not verified end-to-end:** the model actually selecting `traverseGraph` for a subtree
+question and `queryDataset` for a single-geography one, with both answers passing `auditNarrative`.
+That needs a live provider key, which this environment does not have. Every layer below the
+provider — the SQL, the guardrails, the tool contract — is verified above.
