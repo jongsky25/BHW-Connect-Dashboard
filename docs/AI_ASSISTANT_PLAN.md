@@ -407,8 +407,15 @@ not exist, land here.
 
 *Verify:* a known document ingests; chunk count and page offsets are correct.
 
-**2.2 — `searchDocuments` tool.** Vector search plus the already-installed `pg_trgm` for exact
-codes and memo numbers. Returns text with a document and page citation.
+**2.2 — `searchDocuments` tool.** *(built — 2026-08-26)*
+Vector search plus the already-installed `pg_trgm` for exact codes and memo numbers. Returns text
+with a document and page citation.
+
+Both halves are fused in Postgres by Reciprocal Rank Fusion rather than by blending scores — a
+cosine distance and a trigram similarity are not on the same scale, and normalising them would
+invent a comparison. The vector half is nullable and the payload reports which halves ran, so a
+keyword-only search is visibly degraded rather than quietly thinner (§1: degrade, never error).
+
 *Verify:* a question answerable only from a document returns a correct, cited answer.
 
 **2.3 — Citations in the UI.** Extend the stream events so document answers render their source —

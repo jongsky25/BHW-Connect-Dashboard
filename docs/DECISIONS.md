@@ -2278,3 +2278,121 @@ increment was in progress. Re-checked after the merge: **the project has no ERRO
 advisor at all.** Recorded here because 1.6 left it open and a reader following the thread would
 otherwise still be looking for it.
 
+
+## 2026-08-26 — Internal AI assistant, Increment 2.2: `searchDocuments`
+
+The tool over 2.1's corpus. With it the internal assistant spans all three retrieval paths §2
+names: SQL for numbers, edges for provenance, documents for prose. The model chooses; the loop is
+unchanged.
+
+- **Hybrid, because neither half is sufficient and their failures are opposite.** The corpus is a
+  budget deck, and roughly half the questions it answers are natural language ("what support does
+  DOH give BHWs") while half are identifier lookups ("what is DC No. 2025-0549"). Embeddings are
+  good at the first and quietly terrible at the second — a memo number is a near-random token
+  whose neighbours in embedding space are other numbers, so a vector-only search returns plausible
+  slides that do not contain the code. Trigram is the exact inverse. The plan already said
+  "vector plus pg_trgm"; this records *why* that is not belt-and-braces.
+
+- **Ranks are fused, scores are not blended.** Reciprocal Rank Fusion (`1/(k + rank)`, k = 60).
+  A cosine distance and a trigram similarity are not on the same scale and never will be;
+  normalising them into a weighted sum would invent a comparison and bury a tuning constant where
+  nobody would find it. RRF needs only that each half orders its own results, which is the one
+  thing both genuinely do. Verified: a chunk found by both halves scores 0.0328 against 0.0161 for
+  a single-half hit — being found twice, independently, is what ranks it first.
+
+- **The recursion of 1.6's argument: the search lives in Postgres.** `search_documents` carries the
+  row cap, the statement timeout, the `status = 'approved'` filter and the empty-chunk exclusion,
+  so they hold however the function is called rather than only when the one caller remembers them.
+  `search_path` is pinned and EXECUTE is revoked from `public` and granted only to `service_role` —
+  it reads `doc_chunk`, and PostgREST would otherwise expose internal budget material to `anon`.
+
+- **The vector half is nullable, and the payload says which halves ran.** Every reason the query
+  embedding can fail — no key, no model configured, nothing embedded yet, provider down or slow, a
+  width that disagrees with the corpus — collapses to "no vector this time", and the search runs
+  lexically with a warning naming the degradation. This is not a hypothetical path: **it is the
+  live state**, because 2.1 measures the dimension from a live provider response and this
+  environment has no key. A document search returning trigram hits is worth far more than one
+  returning an error, and `retrieval: { lexical, vector }` lets a reader tell a thin result from a
+  degraded one. Same reasoning as `queryDataset`'s warnings.
+
+- **Embedding the *query* in a request is not the thing the plan forbids.** §8 says chunk and embed
+  "in the Python pipeline, never in a Vercel function". That is about the corpus: 213 slides is a
+  batch workload that would blow a serverless timeout and belongs with the rest of ingestion. A
+  query embedding is one short call for text that does not exist until the request arrives, so
+  there is nowhere else it could happen — vector search inherently requires embedding the query.
+  Recorded because the rule reads absolute and a later reader would be right to check.
+
+- **Document and query embeddings use different task types.** `RETRIEVAL_DOCUMENT` at ingest,
+  `RETRIEVAL_QUERY` at search. Gemini's retrieval embeddings are asymmetric by design and the two
+  are easy to conflate, both being "just embedding some text"; using the document type for a query
+  degrades recall silently, which is the worst way for it to fail.
+
+- **The model the corpus was embedded with is read from the database, not from configuration.**
+  Searching with a different model than the chunks were embedded with returns confident nonsense —
+  the vectors are not in the same space. `doc_embedding_model` is the record of what was actually
+  used, and a mismatch against `GEMINI_EMBEDDING_MODEL` degrades to lexical rather than silently
+  embedding with something else: the environment is the record of what this deployment is
+  configured to call, and quietly calling another model would make a later migration impossible to
+  reason about.
+
+- **Citations are rendered as one quotable string, not as fields to reassemble.** An assistant that
+  has to build "cue cards, slide 37" out of three fields will eventually build it wrong, and per §7
+  a citation naming the wrong page is worse than none because it reads as verified. Each hit also
+  carries `chunkId`, `charStart`/`charEnd` and the document's `as_of`, which is what makes it
+  resolvable — and what 2.3 renders.
+
+- **An empty result is explained, not just empty.** "No chunk matched" means the words were not
+  found, not that the corpus lacks the topic; the payload says so, because a model handed zero rows
+  will otherwise state the emptiness as a finding about the corpus.
+
+- **Registered and described in the same increment**, per the plan. `createInternalTools()` gains
+  `searchDocuments`; the internal prompt gains rules 10 and 11. Rule 11 is §12.4's rule, now
+  enforceable: a figure carried by a document renders attributed and dated, and where it disagrees
+  with a SQL figure **both** are surfaced with their as-of dates rather than either being preferred.
+  `auditNarrative` cannot enforce that — it strips sentences whose numbers are unsupported, which
+  is exactly backwards for a correctly-cited document figure — so the prompt is where it lives.
+
+**Verify (live against the project, and in tests).**
+
+Live, against the real 213-chunk corpus:
+
+- Exact-identifier retrieval, which is the case the trigram half exists for:
+  `DC No. 2025-0549` → slides 37, 140 and 141 at lexical score 1.000 (the three slides that carry
+  it), ahead of two slides at 0.813 carrying *other* DC numbers. `JMC 2023-001` → 160/161/162.
+  `RA 7883` → 154/156/157. `277,767` → 8/26/151, slide 26 being §12.4's case.
+- Fuzzy retrieval: `Magna Carta honorarium` ranks slide 27 first at 0.697 — the honorarium
+  allocation slide §12.2 names — with no embedding involved at all.
+- **Guardrails refuse rather than clamp**: `limit 99` raises `limit 99 exceeds the search limit of
+  25`; an empty query is refused; an embedding supplied without naming its model is refused.
+- The empty slide (page 172, no text layer) is never returned, at any limit.
+- **The vector half was exercised with a synthetic fixture**, since no real embedding exists: a
+  4-dimension probe model with three hand-placed vectors. It confirmed vector-only hits, `both`
+  hits, and the RRF ordering above. The fixture was deleted afterwards and asserted gone — 0 rows
+  in `doc_chunk_embedding` and `doc_embedding_model`, 213 chunks intact. Recorded as synthetic
+  because it proves the *plumbing*, not retrieval quality; nothing here says the vector half
+  retrieves well, only that it runs, fuses and cleans up.
+- Advisors: `search_documents` does not appear under `function_search_path_mutable`. The project
+  has no ERROR-level security advisor.
+
+In tests: 32 new cases across two files. `search-documents.test.ts` (19) asserts the exact RPC the
+tool issues — a silently dropped `document` filter is the failure a payload assertion alone would
+miss — plus every refusal path, the degraded path, and what a citation carries.
+`internal-tool-set.test.ts` (13) closes a gap the route tests left: `app/api/ai/assistant/route.test.ts`
+mocks `createInternalTools`, so nothing checked that the real set contains what each increment
+claims to have added. It now also asserts the inverse, which is a security property rather than a
+packaging detail: the **public** tool set contains none of `searchDocuments`, `traverseGraph`,
+`queryDataset` or `listDatasets` (§9.1).
+
+`npm run lint`, `npm run typecheck`, `npm test` (313 tests) clean.
+
+**Not verified.** Retrieval *quality* of the vector half, and whether the model selects
+`searchDocuments` unprompted — both need a live provider key this environment does not have. The
+lexical half is verified against the real corpus above; the vector half is verified only as
+plumbing. §10's regression list is what would turn "these five queries look right" into a claim
+about the other forty, and it is the next thing worth having.
+
+**A finding that constrains 2.3.** The UUC regional distribution appears twice, on slides 37 and
+141, byte-identical. Search returns both, correctly — but a citation must name the slide the quoted
+words were actually taken from rather than collapsing them, and table-heavy slides extract in poor
+reading order (`662 M1,383 M1,497 M`), which is acceptable for *retrieval* and not acceptable as a
+*quoted span*. Both are constraints on how 2.3 quotes, not defects to fix in extraction.

@@ -2239,6 +2239,32 @@ export type Database = {
           path: string[];
         }[];
       };
+      search_documents: {
+        Args: {
+          p_doc_key?: string | null;
+          p_embedding?: string | null;
+          p_limit?: number;
+          p_min_lexical?: number;
+          p_model?: string | null;
+          p_query: string;
+        };
+        Returns: {
+          char_end: number;
+          char_start: number;
+          chunk_id: number;
+          content: string;
+          doc_as_of: string | null;
+          doc_key: string;
+          doc_title: string;
+          heading: string | null;
+          lexical_score: number | null;
+          matched_by: string;
+          page_from: number;
+          page_to: number;
+          score: number;
+          vector_distance: number | null;
+        }[];
+      };
       traverse_kb: {
         Args: {
           direction?: string;
