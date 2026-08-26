@@ -14,6 +14,9 @@ Also applied:
     the source office against the uncapped values and are not to be used.
   - "#N/A" reference values are written as blanks.
   - SORSOGON / PILAR / SAN ANTONIO resolves to PSGC 0506213048.
+  - The provincial reference columns are collapsed to one row per province and written
+    to a CSV. Water and Pre-natal references are capped at 100 (a provincial proportion
+    cannot exceed 100% either); IMR, UFMR, ABR and FIC references are left as supplied.
 
 No value is removed and no barangay is dropped: all 5,991 rows survive with every
 indicator populated.
@@ -33,6 +36,13 @@ CAP_1000 = {15: 'IMR', 18: 'UFMR', 24: 'ABR'}
 ALREADY_BOUNDED = {4: 'Physical Factor', 6: 'IP POP', 8: 'ARMED CONF', 9: 'IDP', 13: '4PS'}
 INDICATORS = {**CAP_100, **CAP_1000, **ALREADY_BOUNDED}
 CAPS = {**{i: 100 for i in CAP_100}, **{i: 1000 for i in CAP_1000}}
+
+# Provincial reference columns. These are benchmarks, not barangay measurements, so they are
+# NOT subject to the indicator rules — except Water and Pre-natal, which the owner capped at 100
+# because a provincial proportion cannot exceed 100% either.
+PROV_REF = {16: 'IMR', 19: 'UFMR', 22: 'FIC', 25: 'ABR',
+            28: 'Pre-natal', 31: 'SBA', 34: 'Water'}
+PROV_REF_CAP_100 = {28, 34}          # Pre-natal Prov Ref, Water Prov Ref
 
 # Pass/Fail and High/Low assessment columns — dropped per owner decision
 DROP_COLS = {5, 7, 11, 12, 14, 17, 20, 23, 26, 29, 32, 35, 38, 39, 40}
@@ -78,10 +88,40 @@ def apply_rules(rows):
                 cap = CAPS[ci]
                 actions.append((ri, ci, label, v, f'Capped at {cap:,}', cap))
                 r[ci] = cap
+        for ci in PROV_REF_CAP_100:         # provincial benchmarks that are proportions
+            v = r[ci]
+            if isinstance(v, (int, float)) and v > 100:
+                r[ci] = 100
         for ci, v in enumerate(r):          # #N/A -> blank
             if is_na(v):
                 r[ci] = None
     return actions
+
+
+def provincial_reference(rows, HDR, before):
+    """Collapse the denormalised Prov Ref columns into one row per province.
+
+    `before` holds the pre-cap values so the sheet can report what was adjusted.
+    Returns (records, n_capped_values).
+    """
+    seen, order = {}, []
+    for ri, r in enumerate(rows):
+        key = (str(r[0]).strip(), str(r[1]).strip() if r[1] else '')
+        if key not in seen:
+            seen[key] = {'region': key[0], 'province': key[1], 'barangays': 0,
+                         'vals': {}, 'capped': set()}
+            order.append(key)
+        rec = seen[key]
+        rec['barangays'] += 1
+        for ci, lab in PROV_REF.items():
+            if isinstance(r[ci], (int, float)) and lab not in rec['vals']:
+                rec['vals'][lab] = r[ci]
+                pre = before[ri][ci]
+                if ci in PROV_REF_CAP_100 and isinstance(pre, (int, float)) and pre > 100:
+                    rec['capped'].add(lab)
+    recs = [seen[k] for k in sorted(order)]
+    n_capped = sum(len(r['capped']) for r in recs)
+    return recs, n_capped
 
 
 # ---------------------------------------------------------------- styling
@@ -105,7 +145,7 @@ def head(ws, labels, row=1, height=34):
     ws.row_dimensions[row].height = height
 
 
-def build(src, psgc_src, out_path):
+def build(src, psgc_src, out_path, ref_csv=None):
     rec = openpyxl.load_workbook(src, read_only=True, data_only=True)['Reconciled']
     allr = list(rec.iter_rows(min_row=1, values_only=True))
     HDR = list(allr[0])
@@ -124,14 +164,17 @@ def build(src, psgc_src, out_path):
         psgc_list.append(code or '')
 
     n_na = sum(1 for r in rows for v in r if is_na(v))
+    before = [list(r) for r in rows]                     # snapshot for the reference sheet
     actions = apply_rules(rows)
+    prov_recs, n_prov_capped = provincial_reference(rows, HDR, before)
     n_cap100 = sum(1 for a in actions if a[1] in CAP_100 and a[4].startswith('Capped'))
     n_cap1000 = sum(1 for a in actions if a[1] in CAP_1000 and a[4].startswith('Capped'))
     n_neg = sum(1 for a in actions if a[4] == NEG_ACTION)
     touched = len({a[0] for a in actions})
     keep_idx = [i for i in range(len(HDR)) if i not in DROP_COLS]
     print(f'rows={len(rows)} psgc_missing={psgc_missing} cap100={n_cap100} cap1000={n_cap1000} '
-          f'neg={n_neg} na_blanked={n_na} cols_dropped={len(DROP_COLS)} touched={touched}')
+          f'neg={n_neg} na_blanked={n_na} cols_dropped={len(DROP_COLS)} touched={touched} '
+          f'provinces={len(prov_recs)} prov_ref_capped={n_prov_capped}')
 
     out = openpyxl.Workbook()
 
@@ -278,6 +321,44 @@ def build(src, psgc_src, out_path):
     s5.column_dimensions['A'].width = 28
     s5.column_dimensions['B'].width = 26
 
+    # ============================================================ Provincial reference
+    s6 = out.create_sheet('Provincial reference')
+    labs = list(PROV_REF.values())
+    head(s6, ['Region', 'Province', 'Barangays in list'] + labs + ['Adjusted to 100'], height=40)
+    for n, rec in enumerate(prov_recs, start=2):
+        base = [rec['region'], rec['province'] or '(HUC — no province)', rec['barangays']]
+        for j, v in enumerate(base, start=1):
+            c = s6.cell(row=n, column=j, value=v)
+            c.font, c.border = BODY, BOX
+            if j == 3:
+                c.number_format = '#,##0'
+        for k, lab in enumerate(labs):
+            c = s6.cell(row=n, column=4 + k, value=rec['vals'].get(lab))
+            c.font, c.border, c.number_format = BODY, BOX, '#,##0.00'
+            if lab in rec['capped']:
+                c.fill = CAP_FILL
+        c = s6.cell(row=n, column=4 + len(labs),
+                    value=', '.join(sorted(rec['capped'])) or '')
+        c.font, c.border = BODY, BOX
+    r0 = len(prov_recs) + 3
+    for t, off in (('One row per province or HUC. These are the provincial comparators that '
+                    'AO 2020-0023 §VI.A.2(d) tests each barangay against.', 0),
+                   ('Amber = value adjusted down to 100. Pre-natal and Water are proportions, so a '
+                    'provincial value above 100 is not possible.', 1),
+                   ('IMR, UFMR and ABR are rates per 1,000 and are left as supplied — Samar\'s ABR '
+                    'of 277 is legitimate.', 2),
+                   ('FIC is NOT adjusted here: Ilocos Sur (102.15) and City of Butuan (101.00) '
+                    'remain above 100. See the cleaning report.', 3),
+                   ('Blank rows had no reference value in the source (#N/A).', 4)):
+        s6.cell(row=r0 + off, column=1, value=t).font = ITAL
+    s6.freeze_panes = 'D2'
+    s6.auto_filter.ref = f'A1:{get_column_letter(4 + len(labs))}{len(prov_recs) + 1}'
+    for col, w in zip(['A', 'B', 'C'], (40, 26, 12)):
+        s6.column_dimensions[col].width = w
+    for k in range(len(labs)):
+        s6.column_dimensions[get_column_letter(4 + k)].width = 12
+    s6.column_dimensions[get_column_letter(4 + len(labs))].width = 24
+
     # ============================================================ Summary
     s4 = out.create_sheet('Summary')
     s4.sheet_view.showGridLines = False
@@ -313,9 +394,22 @@ def build(src, psgc_src, out_path):
     for col, w in zip('ABC', (30, 12, 16)):
         s4.column_dimensions[col].width = w
 
-    out.move_sheet('Summary', offset=-3)
+    out.move_sheet('Summary', offset=-4)
     out.save(out_path)
     print('written:', out_path)
+
+    if ref_csv:
+        import csv
+        with open(ref_csv, 'w', newline='', encoding='utf-8') as fh:
+            w = csv.writer(fh)
+            w.writerow(['region', 'province', 'barangays_in_list']
+                       + [f'ref_{l.lower().replace("-", "_")}' for l in labs]
+                       + ['adjusted_to_100'])
+            for rec in prov_recs:
+                w.writerow([rec['region'], rec['province'], rec['barangays']]
+                           + [rec['vals'].get(l, '') for l in labs]
+                           + ['|'.join(sorted(rec['capped']))])
+        print('written:', ref_csv, f'({len(prov_recs)} provinces, {n_prov_capped} values adjusted)')
 
 
 if __name__ == '__main__':
@@ -324,5 +418,7 @@ if __name__ == '__main__':
     ap.add_argument('--src', default='ingestion/data/GIDA reconciled data.xlsx')
     ap.add_argument('--psgc-src', default='ingestion/data/Submissions_UUA_2025_filled_1.xlsx')
     ap.add_argument('--out', default='UUC_PHC_2025_cleaned.xlsx')
+    ap.add_argument('--ref-csv', default='ingestion/data/uuc_phc_2025_provincial_reference.csv',
+                    help='where to write the one-row-per-province reference table')
     args = ap.parse_args()
-    build(args.src, args.psgc_src, args.out)
+    build(args.src, args.psgc_src, args.out, args.ref_csv)

@@ -90,6 +90,57 @@ selected, but it matters for the next profiling round and should be settled with
 on 15. Summing double-counts anyone both conflict-affected and displaced. Minor, but it is an
 implementation choice rather than the text of the order.
 
+### The provincial reference table
+
+Criterion (d) is a *comparison*, so it needs a benchmark per province. Those benchmarks arrived
+embedded in the reconciled workbook as the seven `* Prov Ref` columns, repeated identically down
+all 5,991 rows. Extracted to one row per province as
+`ingestion/data/uuc_phc_2025_provincial_reference.csv` (**88 provinces/HUCs**) and as the
+*Provincial reference* sheet of the cleaned workbook.
+
+The table is structurally sound — **zero contradictions**: every barangay in a province carries
+the identical reference value, so the denormalised form was consistent.
+
+**The benchmarks have the same units problem as the barangay data, one level up.** Before
+correction, 26 provincial values were impossible as proportions:
+
+| Indicator | Provinces > 100 | Worst | Treatment |
+|---|---:|---|---|
+| Water | 16 | Oriental Mindoro 365.5 | **Capped at 100** |
+| Pre-natal | 8 | Tarlac 166.0, Pangasinan 143.9 | **Capped at 100** |
+| FIC | 2 | Ilocos Sur 102.15, City of Butuan 101.00 | **Left as supplied** |
+| ABR | 1 | Samar 277 | Left — a rate per 1,000, legitimately above 100 |
+
+24 values across 22 provinces were capped (Aurora and Bulacan had both).
+
+**Why this matters beyond tidiness.** Criterion (d) marks a barangay as meeting the GIDA test when
+it performs *worse* than its province. An inflated benchmark flips that test on automatically:
+with Oriental Mindoro's water reference at 365.5 and no barangay value able to exceed 100, **every
+barangay in the province read as worse than its province on water**, pushing the `Health
+Indicators` count toward the ≥ 4 threshold. Qualification was therefore easier in the affected
+provinces than in the rest. Capping removes that skew for Water and Pre-natal.
+
+**FIC is deliberately not capped here**, so Ilocos Sur (102.15) and City of Butuan (101.00) remain
+above 100 while barangay FIC values are capped at 100. In those two provinces no barangay can
+exceed its benchmark, so all of them read as worse than province on FIC. The effect is confined
+to 2 provinces and the excess is under 3%, but it is a live inconsistency rather than a resolved
+one.
+
+**Five provinces have references that cannot support the comparison at all** — 238 barangays, 4%
+of the list:
+
+| Province | Barangays | Problem |
+|---|---:|---|
+| Agusan del Sur | 156 | Every reference is exactly `1` — a placeholder, not a measurement |
+| Nueva Vizcaya | 50 | No reference at all (`#N/A`) |
+| Cagayan | 12 | Every reference is `0` |
+| Zamboanga City (HUC) | 7 | No reference at all (`#N/A`) |
+| Special Geographic Area (BARMM) | 1 | All values below 1 — recorded as fractions, not percentages |
+
+For these, criterion (d) is not evaluable. It does not invalidate their inclusion — the
+socio-economic test passes on any one of four routes — but any analysis that leans on the
+health-indicator comparison should exclude them.
+
 ### Cadence
 
 CHDs and LGUs conduct mandatory profiling **once every three years** (§VI.B.6); BLHSD issues the

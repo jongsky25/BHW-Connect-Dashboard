@@ -63,6 +63,21 @@ a 10-digit PSGC code; the last open geography item from `UUC_PHC_2025_PLAN.md` �
 **The 5,991 total is confirmed for publication**, with cue cards p37's 5,987 as a footnote citing
 DC No. 2025-0549 — see `UUC_PHC_2025_PLAN.md` §3.
 
+**The provincial reference table is extracted and partly corrected.** The seven `* Prov Ref`
+columns were denormalised across all 5,991 rows; they are now one row per province in
+`ingestion/data/uuc_phc_2025_provincial_reference.csv` and on the *Provincial reference* sheet —
+**88 provinces/HUCs, zero contradictions**.
+
+These are benchmarks rather than barangay measurements, so the indicator rules do not apply to
+them wholesale. Two exceptions, per the owner: **Water and Pre-natal are capped at 100**, because
+a provincial proportion cannot exceed 100% any more than a barangay one can. That adjusted
+**24 values across 22 provinces** (Water 16, Pre-natal 8; Aurora and Bulacan had both), the worst
+being Oriental Mindoro's water reference of 365.5.
+
+`ABR` is left as supplied — Samar's 277 is a rate per 1,000 and legitimate. **`FIC` is also left
+as supplied**, so Ilocos Sur (102.15) and City of Butuan (101.00) stay above 100 while barangay
+FIC is capped at 100. See §6.
+
 ## 4. What happened
 
 | Indicator | Cap | Values capped | Max before | Max after |
@@ -112,6 +127,19 @@ enough to move a national figure.
 **The underlying encoding problem is unresolved.** These values were wrong at entry — a
 denominator error, a count entered where a percentage was wanted, or a units mismatch. Capping
 contains the symptom. If a corrected extract ever arrives, regenerate rather than patch.
+
+**FIC's benchmark is now inconsistent with its data.** Barangay FIC is capped at 100, but the FIC
+provincial reference is not, so Ilocos Sur (102.15) and City of Butuan (101.00) sit above a ceiling
+their own barangays cannot reach. Every barangay in those two provinces therefore reads as worse
+than province on FIC. Confined to 2 provinces with an excess under 3%, but unresolved — capping
+FIC's reference to 100 would close it, and was outside the instruction given.
+
+**Five provinces have references that cannot support criterion (d) at all** — 238 barangays, 4% of
+the list: Agusan del Sur (156, every reference exactly `1`), Nueva Vizcaya (50, `#N/A`), Cagayan
+(12, every reference `0`), Zamboanga City HUC (7, `#N/A`), and BARMM's Special Geographic Area
+(1, all values below 1, recorded as fractions). Their inclusion is not in doubt — the
+socio-economic test passes on any of four routes — but exclude them from any analysis leaning on
+the health-indicator comparison. See `UUC_PHC_2025_PLAN.md` §1a.
 
 **`dataentry_comment` is unreliable as a flag** and was not used: it marks 1,895 rows "With values
 above 100", but 381 of those have no such value, and 9 rows marked "Recheck entry" do. Everything
