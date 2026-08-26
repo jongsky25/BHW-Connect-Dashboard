@@ -1928,3 +1928,145 @@ is not mistaken for fallout from the graph work.
 question and `queryDataset` for a single-geography one, with both answers passing `auditNarrative`.
 That needs a live provider key, which this environment does not have. Every layer below the
 provider — the SQL, the guardrails, the tool contract — is verified above.
+
+## 2026-08-26 — Owner decision 1 answered: Supabase Pro
+
+The owner has upgraded the project to Supabase Pro. `AI_ASSISTANT_PLAN.md` §0 carried this as a
+*proposal* through all of Phase 1; it is now recorded as answered, and §0 gained a Status column
+so a settled decision is no longer indistinguishable from a proposed default.
+
+- **What it changes:** the §6 Free-tier fallback — pruning `agg_demographics` and `agg_training`
+  (265 MB between them) to get back under 500 MB — is moot and should not be done. That fallback
+  traded recurring engineering attention for $25/month indefinitely, and the trade is now closed.
+- **What it does not change:** §5 (pre-computed aggregates only when a page renders them) stands
+  either way, exactly as §6 said. Pro removes a ceiling; it does not make cross-tabs cheap.
+- **Headroom, measured.** The database is **602 MB** at the time of writing, against Pro's 8 GB of
+  included disk. The 2.1 corpus below adds ~150 KB of text plus, once embedded, on the order of
+  0.6–2.5 MB of vectors for 212 chunks depending on the dimension the provider returns. Documents
+  are not the cost driver; §6 said so and the measured figures agree.
+- Decisions 2, 3 and 4 were confirmed and implemented in Increment 1.4; decision 7 is answered as
+  Gemini and implemented in 2.1. §0's Status column now records all of this in one place.
+
+## 2026-08-26 — Internal AI assistant, Increment 2.1: the document corpus
+
+Phase 2 opens. Phase 1 gave the assistant SQL over registered tables (`queryDataset`) and a
+traversal over asserted edges (`traverseGraph`); this adds the third retrieval path from §2 —
+prose — by ingesting the 2027 Budget Cue Cards into `doc_source` / `doc_chunk`.
+
+**213 chunks over 213 pages, 147,262 characters**, chunked and loaded by
+`ingestion/ingest_documents.py`. One slide, one chunk (§12.3).
+
+- **Four tables, not the two the plan named.** `doc_source` (one row per document) and `doc_chunk`
+  (one row per slide) are the plan's; `doc_embedding_model` and `doc_chunk_embedding` are added,
+  and they exist for one reason given below. All four are service-role only with RLS enabled in
+  the same statement block as each `CREATE TABLE` (the 0.3 guardrail).
+
+- **The embedding dimension is a row, not a type modifier — this is the load-bearing decision.**
+  §11 asks for the dimension to be "confirmed against the provider's live model at implementation
+  time". A `vector(768)` column cannot do that: it hard-codes a provider's current output width
+  into a migration written *before* anyone measured it, and it is exactly the class of constant §1
+  forbids ("the model name is configuration, not code" — this project has already lost a day to a
+  pinned model that was shut down). So `doc_chunk_embedding.embedding` is an **unconstrained
+  `vector`**, the width lives in `doc_embedding_model.dim`, a composite FK on `(model, dim)` forces
+  every row of a model to share one width, and a check constraint asserts
+  `vector_dims(embedding) = dim`. A provider that quietly changes its output width fails the
+  insert instead of poisoning an index. Verified live before the schema was committed: an
+  unconstrained column accepts mixed widths, `<=>` works within a width, and both the check and
+  the composite FK reject the bad cases.
+
+  The cost is real and accepted: pgvector cannot build HNSW/IVFFlat on an unconstrained column.
+  At 212 embeddable chunks an exact scan is sub-millisecond and an approximate index would trade
+  recall for nothing. Pinning the column and adding the ANN index is a later migration, written
+  once a *measured* dimension exists to pin it to — which is a better trigger than a date.
+
+- **Offsets are asserted by construction, and the constraint earned its place immediately.**
+  Increment 2.3 makes citation accuracy a correctness requirement (§7), so `char_start`/`char_end`
+  index the document's canonical extracted text and `doc_chunk_offsets_match` requires
+  `char_end - char_start = length(content)`. While loading, a hand-transferred chunk was mangled
+  (two characters and a line break) and the constraint **rejected the whole batch** rather than
+  storing a citation that pointed at text the document does not contain. A length-preserving
+  corruption would have slipped past it, so the load was additionally verified by recomputing
+  sha256 in SQL over every stored chunk and comparing to the hash the pipeline computed: **0
+  mismatches across 213 chunks**. Both checks are cheap; neither is optional once a citation is
+  the only thing standing behind a prose claim.
+
+- **The slide-number hazard, measured rather than assumed — and §12.3 corrected.** §12.3 reports
+  three corrupted strings as evidence. The hazard is real, but those strings do not reproduce
+  against this file with this extractor, and the plan has been corrected in place. What is
+  actually there: a **3.0pt `38,Bold` span at x = 325.9**, one digit per span stacked vertically,
+  148 spans on 52 of 213 pages, spelling the deck's own printed slide number. It is the only
+  sub-5pt text in the deck (body text never goes below 7pt), so `size < 5.0` isolates it exactly.
+  It corrupts only a *flat sorted* extraction and lands **after** a token, not inside one
+  (`MIMAROPA REGION42`, `reported19`); page 157's `workshops` is clean in every mode tested.
+  The pipeline extracts line-structured and span-aware, which is not exposed to the hazard at all,
+  **and** strips the element anyway — left in, it is a stray digit line that gets embedded and
+  quoted. Verified live: 0 rows contain any of the three corrupted forms; the clean forms are
+  present.
+
+- **Citations use the PDF page number.** The deck's printed numbers exist on 52 of 213 pages and
+  their offset from the PDF page index runs +4 to +33, so they are not derivable. §12 already
+  cites by PDF page (p37 *is* the UUC distribution slide), and the load matches: `chunk_index` is
+  `page_from - 1` for all 213 rows, with no gaps.
+
+- **Extraction and embedding are separate flags, on purpose.** `--verify` / `--emit-sql-dir` /
+  `--database-url` follow the existing `ingest_population.py` convention; `--embed` is additive.
+  Extraction needs only the committed PDF, so it runs and is verifiable anywhere; embedding needs
+  a provider key and network. Splitting them means the corpus can be loaded, inspected and
+  searched by trigram before any vector exists, and re-embedded onto a new model later without
+  re-extracting. `doc_chunk_embedding` is keyed `(chunk_id, model)`, so a model swap is an insert
+  alongside rather than a destructive rewrite.
+
+- **The corpus is not seeded from a migration.** The PDF is committed and the pipeline is
+  committed, so the chunks are reproducible by re-running it — the same posture as `fact_bhw_raw`,
+  which `ingest.py` loads and no migration seeds. The migration carries schema only.
+
+- **`fact_uuc_phc_barangay` is still the open lineage gap** flagged in 1.2 and 1.5: live,
+  public-read, and with no committed migration. Unchanged by this increment and still surfaced by
+  every `build_kb_lineage.py` run rather than papered over.
+
+- **Two findings from reading the corpus, recorded because they change how 2.2 must behave.**
+  (1) The UUC-for-PHC regional distribution appears **twice**, on pages 37 and 141, byte-identical
+  (same `content_sha256`). Retrieval will return both; a citation must name the page it actually
+  quoted rather than collapsing them. (2) Table-heavy slides extract in poor reading order
+  (`662 M1,383 M1,497 M`, `TOTA` / `L` split across lines) — 85 of 213 pages carry tables per
+  §12.1. This is acceptable for retrieval and *not* acceptable as a quoted span, which is a
+  constraint on 2.3's quoting, not a defect to fix in extraction.
+
+**Verify (all live against the project).**
+
+- 213 chunks over 213 distinct pages, range 1–213; `chunk_index = page_from - 1` for every row;
+  0 multi-page chunks.
+- **Offsets tile the document exactly.** Every consecutive gap is exactly 1 (the single page
+  separator), first offset 0, last offset 147,262, and
+  `sum(char_end - char_start) + (count - 1) = 147,262` = `doc_source.char_count`. The stored
+  offsets reconstruct the canonical text with nothing missing and nothing double-counted.
+- **0 sha256 mismatches** across all 213 chunks, recomputed in SQL.
+- The slides §12 names resolve to the pages it names: p26 carries 277,767; p27 carries 35,645;
+  p37 and p141 carry `DC No. 2025-0549` and 5987; p160 and p163 carry `JMC. 2023-001`.
+- 1 chunk is empty (page 172 has no text layer, consistent with §12.1's "2 of 213 pages below 20
+  extracted characters" — the other is page 44, `Summary Slides`, at 14 chars). It keeps its row
+  so `chunk_index` stays aligned to page number, and is skipped by the embed step rather than sent
+  to a provider that would reject it.
+- **RLS is real, not merely declared:** `set local role anon` returns 0 rows from all four new
+  tables while a control read of `agg_bhw_counts` returns 41,052 — proving the role switch took
+  effect. §12.5's admin-only constraint holds at the database layer, not only at the route.
+- Advisors: the four new tables appear only under the pre-existing INFO `rls_enabled_no_policy`
+  lint, alongside `ai_ask_cache` / `fact_*` / `kb_*`. **No new WARN or ERROR from this work.**
+- The 1.5 FK debt is paid: `kb_node_source_chunk_fk` and `kb_edge_source_chunk_fk` both reference
+  `doc_chunk (chunk_id)` `ON DELETE RESTRICT`. Restrict, not cascade — deleting a chunk that a
+  graph row cites should fail loudly, because cascading would delete the assertion along with its
+  evidence. This also forces §11's retention question (what happens to chunks for a withdrawn
+  document) to be answered deliberately rather than by a default.
+
+**Not verified, and not claimed.** No embedding exists. This environment has no `GEMINI_API_KEY`,
+so `--embed` has never run, `doc_embedding_model` and `doc_chunk_embedding` are empty, and **no
+dimension is recorded anywhere** — which is the intended state of a design that measures the
+dimension instead of declaring it, but it does mean the vector half of 2.2 is unexercised until
+the owner runs the pipeline with a key. Running it is a single command and the schema is already
+live.
+
+**Unrelated advisor finding, still open.** `public.ref_uuc_phc_provincial` remains an ERROR-level
+`security_definer_view`, created on the live project by the concurrent UUC work. Flagged in 1.6,
+flagged again here, and still not this increment's to change — **the owner should decide whether
+that view needs SECURITY DEFINER at all**, since a view that bypasses the querying user's RLS is a
+poor fit for a public-read reference table.
