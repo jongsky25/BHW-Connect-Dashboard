@@ -2131,3 +2131,92 @@ an over-long line runs off the page with no error to catch it) all clean.
 
 That completes `docs/UUC_PHC_2025_PLAN.md`: U1 (load), U2 (rollup + section), U3 (indicators),
 U4 (one-pager). The remaining idea in the plan is an `/explore` overlay, which is out of its scope.
+
+## 2026-08-26 — UUC for PHC 2025: U5, the registry, the lineage, and the SECURITY DEFINER view
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U5. No user-visible change: this pays off debt that two branches
+merged in the same afternoon left behind, and it is the dependency U8's chat sits on.
+
+**The debt was structural, not clerical.** PRs #75 (this dataset) and #76 (the internal assistant)
+were each written against the other's absence, and both were true when written. What made them
+false was the merge, and nothing in either branch could have noticed. Three statements had to be
+corrected:
+
+- `fact_uuc_phc_barangay`'s `notes_md` said the table "has no committed migration in
+  supabase/migrations" and asked the lineage seeding to record that gap. #75 committed
+  `20260826121000_fact_uuc_phc_barangay.sql`. The note now points at it.
+- `agg_uuc_phc_counts`, `fact_uuc_phc_indicators` and `ref_uuc_phc_provincial` were in neither the
+  registry nor `kb_lineage` — 0 hits in both seeds. All three are registered with full column
+  dictionaries.
+- `kb_lineage` had no `built-by` edge for `table:fact_uuc_phc_barangay`, which the generator had
+  been printing to stderr every run as the one node it could not establish. It establishes now.
+
+**The dictionaries are the allowlist, so they are written as instructions, not descriptions.**
+`queryDataset` refuses a table with no approved dictionary outright and enforces `is_queryable` per
+column, so a column's `meaning` is the only thing a model sees before it composes a query.
+`capped_indicators` therefore says *what to do* — "a value named here is a ceiling, not a
+measurement… never average or rank it" — and each of the seven boundable indicators names
+`capped_indicators` in its own meaning, because the table-level caveat is not what travels with a
+returned value. A model reading a bare `100` off `water` with nothing adjacent reports full
+coverage, which is precisely the failure U3 built that column to stop. The seven `*_prov_ref`
+columns say the opposite in as many words — "Never capped, unlike the barangay value beside it" —
+since that asymmetry is exactly why 113 barangays read as worse-than-province by construction.
+
+**`ref_uuc_phc_provincial` is registered even though it is a view.** `queryDataset` reaches it
+through PostgREST the same way it reaches a table, and refuses any relation without a dictionary,
+so omitting it would not have made it unreachable — it would have made the canonical form of the
+provincial benchmark the one thing the assistant could not read.
+
+**`security_invoker = true` on that view** closes the ERROR-level `security_definer_view` advisor
+finding. Without it the view runs as its owner, so the RLS of `fact_uuc_phc_indicators` never
+applies to the caller. It is the repository's only view, so there was no local convention to copy;
+the one this sets is that the underlying table's policy grants access and the view adds no
+privilege of its own. That table is already public-read to `anon`, so *who* can read the view does
+not change — only what decides it. Verified: 87 rows still returned to `anon` over PostgREST, and
+the advisor is clean.
+
+**Two generator changes, both structural — no hand-written edges.** `ingestion/build_kb_lineage.py`
+now (a) reads `create view` as well as `create table`, keying a view as a `table:` node because the
+registry, `queryDataset` and every read path already treat one as a table, and taking its
+`derived-from` edges from its own defining query — a read scoped to the single statement that
+creates it, the same standard the ingestion `.sql` path already meets; and (b) honours an explicit
+`-- lineage: <src-key> <relation> <dst-key>` directive.
+
+The directive exists for one edge the plan asks for and no `from` or `join` can supply:
+`fact_uuc_phc_indicators` is derived from the bounding process `UUC_PHC_2025_CLEANING_REPORT.md`
+documents. **What was considered and rejected** was a rule reading every `docs/*.md` path an
+ingestion script mentions as a derivation. It would have produced the wanted edge — and also
+`agg_population derived-from docs/DECISIONS.md`, which is not a derivation and which nobody could
+check by opening the file. A directive names both endpoints itself, so it stays checkable by
+opening the file that carries it and cannot fire by accident.
+
+**Also considered and not done:** applying the ingestion path's read-inside-write rule to
+migrations generally, which would give `agg_uuc_phc_counts` a `derived-from` edge to
+`fact_uuc_phc_barangay`. It is honest and cheap, but it rewrites edges across all 60-odd migrations
+in an increment whose scope is four objects; it belongs in its own change where the delta can be
+read.
+
+**The seeds are edited in place, not superseded.** Both files say so themselves — the registry seed
+is "the single source for what the registry says", the lineage seed is wholly generated and its
+inserts are upserts. A second dated seed would leave two files each claiming to be current, which
+is the drift a generated file exists to remove. The live project was brought up by applying the
+delta as its own named migration, which is how every migration in this repository has reached it
+(the project's `schema_migrations` versions have never matched these filenames).
+
+One footgun found and documented: `build_kb_lineage.py > supabase/migrations/…_seed_kb_lineage.sql`
+truncates the seed *before* the generator runs, and the seed is itself a migration the generator
+reads — so the shell silently drops one node. Generate to a temp file and move it.
+
+**Verify.** Registry returns the four UUC relations, all `approved`/`public`, with 8 / 6 / 24 / 10
+approved columns; the live rows hash-match the committed seed field for field (four `notes_md`
+digests and one aggregate digest over all 48 column meanings, ordinals and names). No table node in
+`kb_node` lacks a `built-by` edge, and the generator prints nothing to stderr — the first clean run
+since the node was introduced. All four objects carry one (`create table` ×3, `create view`,
+`writes` ×2), and `fact_uuc_phc_indicators derived-from doc:docs/UUC_PHC_2025_CLEANING_REPORT.md`
+is present. `get_advisors` returns no `security_definer_view`; `anon` reads all 87 view rows over
+PostgREST. `npm run lint`, `npm run typecheck` and `npm test` clean, with 14 new tests: 11 in
+`lib/db/dataset-registry-seed.test.ts` — which parses the committed seed rather than the live
+database, on the same reasoning as the lineage generator, and asserts among other things that every
+registered relation has a `create table`/`create view` somewhere in `supabase/migrations`, the
+invariant whose absence let the false note ship — and 3 in `lib/ai/query-dataset.test.ts` proving
+the dataset became queryable by registration alone.

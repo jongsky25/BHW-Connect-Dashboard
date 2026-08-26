@@ -93,6 +93,43 @@ const demographics: RegisteredDataset = {
   ],
 };
 
+/**
+ * Shaped after the real agg_uuc_phc_counts registry row (plan U5). Present here because U5's
+ * Verify is a claim about this tool: the UUC dataset became reachable by registration alone, with
+ * no new tool code, and a column outside the dictionary is still refused.
+ */
+const uucCounts: RegisteredDataset = {
+  tableName: "agg_uuc_phc_counts",
+  title: "UUC for PHC listed-barangay counts by geography",
+  summary:
+    "How many barangays in an area are on the 2025 UUC for PHC list, against how many the area contains in total.",
+  grain: "One geography per dataset.",
+  datasetSlug: "uuc-phc-2025",
+  exposure: "public",
+  rowEstimate: 1788,
+  notesMd:
+    "n_barangays is the dim_geo universe, not the source workbook assessed set. Rows exist for every geography including those with none listed: a 0 is a finding, not missing data.",
+  docPath: "docs/UUC_PHC_2025_PLAN.md",
+  columns: [
+    col({ name: "id", dataType: "bigint", role: "meta", isQueryable: false }),
+    col({
+      name: "dataset_id",
+      dataType: "bigint",
+      role: "key",
+      isJoinKey: true,
+      joinsTo: "dim_dataset.dataset_id",
+    }),
+    col({ name: "geo_code", role: "key", isJoinKey: true, joinsTo: "dim_geo.geo_code" }),
+    col({
+      name: "geo_level",
+      dataType: "geo_level_enum",
+      allowedValues: ["national", "region", "province", "citymun"],
+    }),
+    col({ name: "n_listed", dataType: "integer", role: "measure", unit: "count" }),
+    col({ name: "n_barangays", dataType: "integer", role: "measure", unit: "count" }),
+  ],
+};
+
 /** A table with no dataset_id — the multi-dataset warning must not fire on it. */
 const geoDim: RegisteredDataset = {
   ...demographics,
@@ -367,5 +404,41 @@ describe("executeQueryDataset — the PostgREST call it actually issues", () => 
 
     const result = await executeQueryDataset({ table: "agg_demographics" }, "public");
     expect(result).toEqual({ error: expect.stringContaining("statement timeout") });
+  });
+});
+
+
+describe("planQuery — the UUC for PHC registration (plan U5)", () => {
+  it("plans a query over agg_uuc_phc_counts with no tool code of its own", () => {
+    const plan = planOf(uucCounts, {
+      table: "agg_uuc_phc_counts",
+      filters: [
+        { column: "geo_level", op: "eq", value: "region" },
+        { column: "dataset_id", op: "eq", value: 9 },
+      ],
+      orderBy: "n_listed",
+      limit: 5,
+    });
+    expect(plan.columns).toEqual(["dataset_id", "geo_code", "geo_level", "n_listed", "n_barangays"]);
+    expect(plan.orderBy).toBe("n_listed");
+    // The caveat travels with the payload; nothing about it is the caller's to remember.
+    expect(plan.warnings.join(" ")).toMatch(/not the source workbook assessed set/);
+  });
+
+  it("refuses a column the dictionary does not carry, even a plausible one", () => {
+    // "pct_listed" is the obvious guess, and it does not exist: the share is derived in the read
+    // layer so that it has one definition. A tool that let the model select it would be inventing
+    // a column name that PostgREST would then 400 on, opaquely.
+    expect(errorOf(uucCounts, { table: "agg_uuc_phc_counts", columns: ["pct_listed"] })).toMatch(
+      /pct_listed is not available on agg_uuc_phc_counts/,
+    );
+  });
+
+  it("refuses barangay as a geo_level, quoting the levels this aggregate actually has", () => {
+    const error = errorOf(uucCounts, {
+      table: "agg_uuc_phc_counts",
+      filters: [{ column: "geo_level", op: "eq", value: "barangay" }],
+    });
+    expect(error).toMatch(/only takes: national, region, province, citymun/);
   });
 });
