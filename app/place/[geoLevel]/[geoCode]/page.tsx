@@ -18,6 +18,7 @@ import {
 } from "@/lib/db/benchmark-context";
 import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
 import { getPeerRanks } from "@/lib/db/peer-ranks";
+import { getUucPhcCounts } from "@/lib/db/uuc-phc";
 import { PEER_LEVEL_PLURAL, peerParentName, toFigurePeer } from "@/lib/analysis/peer-labels";
 import { MAP_BASE_INDICATOR_META } from "@/lib/analysis/map-indicators";
 import { DOH_INDICATIVE_NOTE } from "@/lib/analysis/thresholds";
@@ -48,6 +49,7 @@ import { DIMENSION_LABEL } from "@/components/explore/demographics-figure";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
 import { PresentButton } from "@/components/present/present-button";
+import { UucPhcContextChip } from "@/components/uuc-phc/context-chip";
 
 /** R3: at barangay, a figure that renders the barangay's own data (not an
  * ancestor fallback) still has no peer row — `agg_peer_ranks` stops at
@@ -165,6 +167,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     peerRanks,
     honorariumSufficiencyRegion,
     honorariumSufficiencyNational,
+    uucPhcCounts,
   ] = await Promise.all([
     // Benchmark context (E1.2): this place vs. its region and the nation, so
     // every figure answers "versus what?". Also carries the ancestors this page
@@ -196,6 +199,10 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
     wantNationalRow
       ? getHonorariumSufficiency(NATIONAL_GEO_CODE, "national")
       : Promise.resolve(null),
+    // Cross-dataset context (U12a): how much of this area is on the 2025 UUC for PHC list. One
+    // extra row from an aggregate that already exists, joined into the same round trip as the
+    // rest — it returns null at barangay grain, where `agg_uuc_phc_counts` has no rows.
+    getUucPhcCounts(geo.geoCode, geo.geoLevel),
   ]);
 
   const overview = benchmarkCtx.self.overview;
@@ -323,6 +330,11 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
             <GeoSearch variant="compact" />
           </div>
         </div>
+
+        {/* Cross-dataset context (U12a) — this area on the 2025 UUC for PHC list. Deliberately
+          outside every `PresentationSlide`: the deck's caption states a BHW N, and a count of
+          barangays projected under it would be a figure that caption's denominator cannot carry. */}
+        <UucPhcContextChip counts={uucPhcCounts} />
 
         <PresentationSlide id="ai-insight" title="AI insight">
           <AiInsight geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />

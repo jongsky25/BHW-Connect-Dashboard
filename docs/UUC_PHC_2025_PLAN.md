@@ -901,11 +901,28 @@ returns a valid empty file with its header, not a 404.
 
 ### U12 — The `/explore` overlay, and the question that needs both datasets
 
-The idea U4 left unbuilt, in two halves that ship separately.
+The idea U4 left unbuilt, in two halves that ship separately. **U12a LANDED 2026-08-27; U12b is
+held pending an owner decision — see the three questions under it.**
 
-**U12a — Context, everywhere a place appears.** A chip on `/explore` and `/place/*`: *"31 of this
-area's 118 barangays are on the 2025 UUC for PHC list →"*, reading `agg_uuc_phc_counts` with no
-new aggregate. Cheap, and it is how anyone looking at BHW figures discovers this dataset exists.
+**U12a — Context, everywhere a place appears — LANDED 2026-08-27.** A chip on `/explore` and
+`/place/*`: *"141 of this area's 176 barangays are on the 2025 UUC for PHC list →"*, reading
+`agg_uuc_phc_counts` with no new aggregate. Cheap, and it is how anyone looking at BHW figures
+discovers this dataset exists.
+
+Built as specified, with three readings settled in the building and recorded in
+`docs/DECISIONS.md`:
+
+- **It renders at national, region, province and city/municipality, and nowhere else.** The
+  aggregate stops at citymun by design (U2: 41,958 barangay rows of `n_listed` in {0,1} would only
+  restate the fact table), and the section has no barangay route to link to — `/uuc-phc/barangay/*`
+  404s. So a barangay page shows no chip rather than a neighbouring area's figure under its own
+  heading.
+- **A zero renders as a sentence, not as an absence.** NCR reads "None of this area's 1,675
+  barangays are on the 2025 UUC for PHC list", on the section's standing rule that a zero here is
+  data. A chip that vanished at zero would be indistinguishable from one that failed to load.
+- **It sits outside every `PresentationSlide`.** Both host decks caption with a BHW N, and a count
+  of barangays projected under that caption would be a figure the caption's own denominator cannot
+  carry — the same objection this section makes to the choropleth, one paragraph down.
 
 **Deliberately not a new option in the map's indicator switcher.** `MAP_BASE_INDICATOR_META`'s
 entries are all shares of *BHW profiles*; "% of barangays listed" is a share of *barangays*.
@@ -914,8 +931,13 @@ colour ramp, and nothing on the map would tell a reader they had changed denomin
 choropleth is to carry it, it is a **second, separately-legended layer** with its own caption —
 that is a design decision to take with the map, not a line in a `Record`.
 
-**U12b — `agg_bhw_by_uuc_status`: are BHWs thinner on the ground where communities are unserved?**
-This is the reason both datasets sit in one dashboard, and it is answerable: `agg_bhw_counts` is
+**U12b — `agg_bhw_by_uuc_status`: is BHW coverage consistent with what the list already implies?
+NOT STARTED. Question 3 below was put to the owner on 2026-08-27 and settled: build it, but as a
+check rather than as a discovery.** The definitional overlap leads the caption, and the reportable
+finding is the *exception* — a listed area with good BHW coverage, or an unlisted one with bad —
+rather than the average gap, which the list's own criteria partly manufacture. The title question
+below is kept as originally written because the rest of the scope still holds; the framing above
+governs. This is the reason both datasets sit in one dashboard, and it is answerable: `agg_bhw_counts` is
 built at **all five levels including barangay** (`ingestion/build_aggregates.sql` §2), and
 `fact_uuc_phc_barangay` is barangay-grain, so the join key exists. Per geo and level, BHW
 indicators split listed vs. not-listed.
