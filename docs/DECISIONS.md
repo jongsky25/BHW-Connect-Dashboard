@@ -4247,3 +4247,171 @@ else, `ingestion/ingest_documents.py --embed` is now run *and* reachable by the 
 second — `ingestion/extract_kb.py --propose`, which replaces Phase 3's committed hand-authored
 transcript with one the model produced — is still unrun, and is now the only remaining item of that
 kind.
+## 2026-08-27 — `extract_kb.py --propose`, run for real: the script had never worked, and the model does not agree with the stand-in
+
+The second of the two "built but never actually run" items, and the one that did not go the way the
+embedding run did. The owner supplied a key. `--propose` now has a real transcript behind it:
+**17 slides, `gemini:gemini-3.7-flash`, 137 nodes / 74 edges proposed → 92 / 69 accepted, 4
+rejected.** Three findings, in ascending order of how much they matter.
+
+**1. `--propose` could never have run at all, and only running it could show that.** The first
+call crashed before reaching the provider:
+
+    TypeError: %c requires int or char
+
+`EXTRACTION_PROMPT` is applied with `%`-formatting, and it contains one literal `%` — inside the
+quoted example of the page-40 template text the prompt exists to warn about: *"Compute the %
+change..."*. Python read `% c` as the `%c` conversion. The fix is one character (`%%`), and the
+rendered prompt is unchanged: the model still sees `Compute the % change`.
+
+What is worth recording is not the bug but its shape. 3.1 called `--propose` "written, typed and
+unrun" and treated unrun as *untested-but-probably-fine*; it was in fact broken on its first line
+of real work. Nothing in the build could have caught it. `--verify` calls `prompt_digest()`, which
+hashes the prompt and never formats it. `lib/kb/extraction-transcript.test.ts` reads the Python
+source **as text** from Node and asserts the prompt still contains its §1 paragraph — a string
+match cannot evaluate a format string. So the one code path that no test exercised is the one that
+had never executed, which is close to a tautology and is exactly why "typed and unrun" is not a
+safety property. The prompt digest moves `f9a483f03816075e` → `458d37e961eb9064` as a result, and
+`--verify`'s stale-prompt NOTE fired on the old transcript exactly as designed — the first time
+that mechanism has done anything.
+
+**2. The model was chosen by measurement, not by name.** Three candidates, probed on the two
+slides that discriminate: page 40 (the unfilled template, which must extract to nothing) and page
+47 (the programme list, which must extract a lot).
+
+| | page 40 | page 47 | ungrounded spans on p47 |
+|---|---|---|---|
+| `gemini-2.5-pro` | — | — | **404 on the committed call path** |
+| `gemini-2.5-flash` | 0 nodes, 0 edges ✓ | 12 nodes, 7 edges | **4** |
+| `gemini-3.7-flash` | 0 nodes, 0 edges ✓ | 11 nodes, 7 edges | **0** |
+
+`gemini-2.5-pro` is listed by the models endpoint and 404s when actually called, which is its own
+small argument for probing rather than reading a catalogue. Both flash models passed the page-40
+adversarial case with zero rows — the §1 injection hazard, present in the corpus and unprompted,
+correctly extracted to nothing by a real model rather than by a person who knew the answer. The
+choice between them is the ungrounded-span column: `2.5-flash` tidied four quotes into spans its
+chunk does not contain, which the validator would reject and which is the failure 3.1's grounding
+trigger exists for. `3.7-flash` at zero is why it was used.
+
+**3. The model does not reproduce the stand-in, and the disagreement is concentrated exactly where
+it hurts.** Nodes agree; edges do not.
+
+|  | stand-in | model | shared |
+|---|---|---|---|
+| nodes | 79 | 92 | **76** |
+| edges | 99 | 69 | **28** |
+
+**All seven `supersedes` edges and the one `amends` edge are gone. The model proposed zero of
+either.** The 3.4 supersession chain — `DM 2020-0490 → 2021-0525 → 2022-0567 → 2023-0409 →
+2024-0459 → DC 2025-0549`, and `AO 2008-0017 → 2019-0027 → 2021-0002` — does not exist in a
+model-produced transcript of the same corpus under the same prompt.
+
+It is not that the model missed page 140. It read the same block and typed it differently: six new
+`implements` edges, each from an annual list issuance to `AO 2020-0023`, quoting the same span the
+stand-in read as a chain (*"Annual updating and issuance of UUA List ... based on AO 2020-0023"*).
+That is the more literal reading — the slide says the lists are issued *under* the AO, and never
+says any list replaces the one before it. The prompt anticipated this and asked for the other
+reading in as many words (*"an annual list 'updated annually' is [a chain]"*), and the model did
+not take it. **So 3.4's verified behaviour rested on an inference a person made and a model
+declines to make.** That is not a bug in either; it is the increment's central claim turning out
+to be contestable, and it is precisely the thing this run existed to discover.
+
+The 57 lost `defined-by` edges are a milder version of the same conservatism, against 21 the model
+found that the stand-in did not.
+
+**Duplicate identities got worse, not better, and §11's open question is now unavoidable.** 3.1
+recorded two cases of one programme named two ways and left them for review. The model produced
+**six keys carrying more than one label** — `org:DOH` as `DOH`, `Department of Health` and
+`DEPARTMENT OF HEALTH`; `org:BLHSD` three ways; `program:UUC for PHC` two ways — plus roughly
+seven distinct casing-variant *key* pairs (`program:PUROKALUSUGAN` alongside
+`program:PuroKalusugan`, `program:INDIGENOUS PEOPLES' HEALTH` alongside
+`program:Indigenous Peoples' Health`). It copies whatever casing the slide header uses. The
+validator's "first sighting wins" collapses the label variance deterministically — 92 nodes, 92
+distinct keys, one label each, so the database is correct — but the *key* variants are separate
+nodes and a person has to merge them.
+
+**The one test that failed is now asserted at the layer that actually holds it.** `keeps one
+label per key across slides` read the raw transcript and required byte-identical labels. That is
+free for a hand-authored file and false for a model-produced one: six keys carry more than one
+label — `org:DOH` as `DOH`, `Department of Health` and `DEPARTMENT OF HEALTH`; `org:BLHSD` three
+ways — because the model copies whatever casing the slide header uses.
+
+The variance cannot reach the database. `validate()` takes the first sighting and `kb_node.key` is
+unique, so one key is one row with one label however many the transcript proposes — 92 nodes, 92
+distinct keys, checked. Byte-equality was therefore asserting the *proposer's tidiness* at a layer
+where nothing guarantees it, which is why a correct extraction failed it.
+
+What nothing resolves is a key that denotes two different *entities*, so that is what it checks
+now, split in two and typed by kind: an issuance is identified by its number — the entire point of
+the canonical key — so every label must carry it; a programme or organisation is identified by its
+name, so its labels must be one an abbreviation or expansion of the other. A second case asserts
+one key never changes kind, which nothing checked before.
+
+**Proven by making it fail, the way 3.1 proved the grounding trigger.** Relabelling `org:DOH` as
+"Department of Agriculture" fails it (*"expected false to be true"*); giving `org:DOH` the kind
+`program` fails the new kind case; the real transcript passes both, and was restored byte-identical
+afterwards (sha256 checked). A rewrite that could not fail would have been the weakening this was
+avoiding — replacing an assertion with a `Map` that collapses labels by construction would have
+gone green and checked nothing.
+
+This is a change of layer, not of standard: the property is stricter about identity than the one it
+replaces and merely indifferent to casing. It is worth saying plainly that the alternative — pinning
+labels in the prompt and re-running — was available and was not taken, because it would have spent
+another run to make a model produce tidiness that the loader already discards.
+
+**Loaded, and what the load proves.** Both inserts ran against the live database. **Everything
+landed `status = 'auto'`** — written as a literal in both statements, so guardrail 6 holds by
+construction and nothing new is citable or traversable. `origin = 'extracted'` and
+`source_kind = 'chunk'` likewise, so §9.9 holds by column on the new rows as on the old.
+
+The load also settled a claim 3.1 could only assert: **every one of the 161 rows passed
+`kb_evidence_is_grounded()` on insert**. That trigger re-checks each quote against
+`doc_chunk.content` in the database, while the extractor drew its quotes from the committed PDF
+re-derived locally. A single byte of drift between the two would have raised and aborted the
+statement. Neither insert raised. 3.1's "reproduces the corpus byte for byte" is now checked
+against a transcript nobody wrote to satisfy it.
+
+**The approvals were not touched, and the earlier recommendation is withdrawn.** The 77 nodes / 94
+edges approved against the stand-in are exactly as they were. The previous entry recommended
+resetting them to `auto` before loading so the upsert guard would fire; **that recommendation was
+wrong given finding 3, and doing it would have broken 3.4.** Resetting the extracted rows and
+loading this transcript would leave the eight chain edges at `auto` — not re-proposed, therefore
+not restored, therefore not citable — and a supersession question that works today would silently
+stop working. The safe order is the opposite of what was suggested: decide the chain first, then
+reset.
+
+So the graph now holds both readings at once: the stand-in's `supersedes` chain, approved and
+citable, and the model's `implements` edges, at `auto` and not. That is an honest state to be in
+and not a stable one. **What needs a person, stated plainly:** whether the annual-list chain is a
+supersession (keep the approved edges, reject the model's `implements`), an implementation
+relationship (the reverse), or both; and whether the casing-variant keys are merged or rejected.
+Nothing here approved, rejected, reset or deleted a single row — `/admin/kb-review` is where that
+happens.
+
+**Not re-run, and why that is not a gap this time.** 3.3, 3.4 and the §10 runner were left alone
+because the approved edge population they run over is byte-for-byte unchanged: every new row is at
+`auto`, and 1.6's traversal filters `status = 'approved'` on both nodes and edges. A re-run would
+necessarily return the previous result, and would say nothing about the model's edges, which are
+by design unreachable. They become worth re-running the moment anything in the queue is approved —
+and finding 3 says the supersession question is the one to run first.
+
+**Verification that could not be completed.** Row counts on the loaded data were not read back:
+`select` through the available SQL tool was refused after the inserts succeeded, and it was not
+worked around. What is known is what the statements themselves guarantee — both returned without
+error, so every row was grounded and every row carries the literal `'auto'`, `'extracted'`,
+`'chunk'` written into the insert — and what the local validator guarantees: 92 nodes and 69 edges
+survived validation, with no dangling endpoints, so no edge could fail to resolve an endpoint at
+load. The exact landed counts are unconfirmed and are one `select` away for anyone who can run one.
+
+**What this does and does not establish.** It establishes that the committed call path works once
+its format string is fixed, that a real model clears the page-40 injection case and the grounding
+trigger unaided, and that the schema, the typed vocabulary, the canonical-key refusal and the
+arithmetic of the report all hold against output nobody authored to fit them. **It does not
+establish that this extraction is better than the stand-in, and on 3.4's evidence it is worse.**
+Nor does it establish anything about a different model: the p129 `NCIP-MO 0151` refusal recurring
+independently is a point in the checks' favour, not evidence that `3.7-flash` is the right choice.
+The stand-in transcript is preserved outside the repository for anyone who wants to diff further.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **548 tests, one more
+than before**, the label case having become two. `npx prettier --check .` fails on 149 files on
+untouched `main` and is unchanged by this branch; the rewritten test file is prettier-clean.

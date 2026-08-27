@@ -74,6 +74,36 @@ function kindOf(key: string): string | undefined {
   return Object.keys(PREFIX).find((kind) => PREFIX[kind] === prefix);
 }
 
+/** The number out of a canonical issuance key: `issuance:AO 2020-0023` -> `2020-0023`. */
+function issuanceNumber(key: string): string {
+  return key.split(":").slice(1).join(":").split(" ").slice(1).join(" ");
+}
+
+/** Words an initialism may or may not swallow. `DOH` keeps the "of" and `BLHSD` drops it, and
+ * both are how those bodies actually write themselves, so neither reading can be the only one. */
+const INITIALISM_STOPWORDS = new Set(["OF", "FOR", "AND", "THE", "IN", "ON", "TO"]);
+
+const alphanumeric = (text: string) => text.toUpperCase().replace(/[^A-Z0-9]/g, "");
+const wordsOf = (text: string) => text.match(/[A-Za-z0-9]+/g) ?? [];
+
+function initialisms(text: string): Set<string> {
+  const words = wordsOf(text).map((word) => word.toUpperCase());
+  return new Set([
+    words.map((word) => word[0]).join(""),
+    words
+      .filter((word) => !INITIALISM_STOPWORDS.has(word))
+      .map((word) => word[0])
+      .join(""),
+  ]);
+}
+
+/** Two labels name the same body or programme if one contains the other or abbreviates it. */
+function namesSameThing(a: string, b: string): boolean {
+  const [x, y] = [alphanumeric(a), alphanumeric(b)];
+  if (x.includes(y) || y.includes(x)) return true;
+  return initialisms(a).has(y) || initialisms(b).has(x);
+}
+
 describe("kb extraction transcript", () => {
   it("records who proposed each slide, under which prompt, against which chunk", () => {
     expect(records.length).toBeGreaterThan(0);
@@ -134,8 +164,9 @@ describe("kb extraction transcript", () => {
     // quoted span names both sides — and the extractor discards the edge when it does not.
     for (const edge of edges.filter((e) => SYMMETRIC.has(e.relation))) {
       for (const key of [edge.src, edge.dst]) {
-        const number = key.split(":").slice(1).join(":").split(" ").slice(1).join(" ");
-        expect(edge.evidence, `${edge.src} -${edge.relation}-> ${edge.dst}`).toContain(number);
+        expect(edge.evidence, `${edge.src} -${edge.relation}-> ${edge.dst}`).toContain(
+          issuanceNumber(key),
+        );
       }
     }
   });
@@ -161,12 +192,53 @@ describe("kb extraction transcript", () => {
     }
   });
 
-  it("keeps one label per key across slides", () => {
-    const labels = new Map<string, string>();
+  it("gives each key exactly one kind", () => {
+    // A key that is a programme on one slide and an organisation on the next is a collision, not
+    // a naming variant, and no amount of label tolerance below should excuse it.
+    const kinds = new Map<string, string>();
     for (const node of nodes) {
-      const seen = labels.get(node.key);
-      if (seen !== undefined) expect(node.label, node.key).toBe(seen);
-      labels.set(node.key, node.label);
+      const seen = kinds.get(node.key);
+      if (seen !== undefined) expect(node.kind, node.key).toBe(seen);
+      kinds.set(node.key, node.kind);
+    }
+  });
+
+  it("never gives one key two labels that name different things", () => {
+    // This asserted byte-identical labels until the transcript stopped being hand-authored — a
+    // property a person writing to a schema satisfies for free and a model does not. It writes
+    // `DOH` on one slide, `Department of Health` on the next and `DEPARTMENT OF HEALTH` on a
+    // third, copying whatever casing the slide header happens to use.
+    //
+    // That variance is already resolved and cannot reach the database: `validate()` takes the
+    // first sighting and `kb_node.key` is unique, so one key is one row with one label however
+    // many the transcript proposes. Asserting byte-equality here was therefore checking the
+    // proposer's tidiness at a layer where nothing guarantees it.
+    //
+    // What is NOT resolved anywhere is a key that denotes two different entities, so that is what
+    // this checks instead. An issuance is identified by its number — the whole point of the
+    // canonical key — so every label must carry it. A programme or an organisation is identified
+    // by its name, so its labels must be one an abbreviation or an expansion of the other.
+    // `org:DOH` labelled "Department of Agriculture" fails this, as it should.
+    const labels = new Map<string, { kind: string; seen: Set<string> }>();
+    for (const node of nodes) {
+      const entry = labels.get(node.key) ?? { kind: node.kind, seen: new Set<string>() };
+      entry.seen.add(node.label);
+      labels.set(node.key, entry);
+    }
+
+    for (const [key, { kind, seen }] of labels) {
+      const variants = [...seen];
+      if (variants.length < 2) continue;
+      if (kind === "issuance") {
+        const number = alphanumeric(issuanceNumber(key));
+        for (const label of variants) {
+          expect(alphanumeric(label), `${key} labelled ${label}`).toContain(number);
+        }
+        continue;
+      }
+      for (const other of variants.slice(1)) {
+        expect(namesSameThing(variants[0], other), `${key}: ${variants[0]} vs ${other}`).toBe(true);
+      }
     }
   });
 });
