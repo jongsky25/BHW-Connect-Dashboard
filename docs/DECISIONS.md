@@ -4529,6 +4529,346 @@ list issued after the deck was written would not be visible here at all.
 entry changes data and documentation, not code. `npx prettier --check .` fails on the same 149 files
 as untouched `main`.
 
+## 2026-08-27 — UUC for PHC 2025: U12a, the chip that says "barangays" out loud — and two things the generated types found
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U12a, plus the `database.types.ts` regeneration three earlier
+entries deferred. U12b is **not** started; the question holding it is at the end of this entry.
+
+### The chip is a sentence because a sentence can name its own denominator
+
+`/explore` and `/place/*` now carry one line: *"141 of this area's 176 barangays are on the 2025
+UUC for PHC list →"*. One extra `getUucPhcCounts` call joined into each page's existing
+`Promise.all`, against a row `agg_uuc_phc_counts` has carried since U2 — **no new aggregate, no new
+relation, no migration**.
+
+The plan is explicit that this must not become an entry in `MAP_BASE_INDICATOR_META`, and building
+it made clear why the alternative is a *sentence* rather than a differently-styled map layer. Every
+indicator in that `Record` is a share of **BHW profiles**; this is a share of **barangays**. Behind
+one `<select>`, one legend and one colour ramp, nothing on the map tells a reader the denominator
+moved under them — the choropleth's whole vocabulary is "darker means more", and it has no place to
+put the word "of what". A sentence does: it prints the numerator, the denominator and the noun in
+that order, in the same breath. That is not a workaround for the map; it is the reason this
+particular figure belongs in prose. Nothing in U12a touches `MAP_BASE_INDICATOR_META`, and if the
+choropleth is ever to carry this it is a second separately-legended layer with its own caption.
+
+Three readings settled while building it, each of which could have gone the other way:
+
+- **Nothing at barangay grain.** `agg_uuc_phc_counts` stops at citymun (U2: 41,958 rows of
+  `n_listed` in {0,1} would only restate the fact table) and `/uuc-phc/barangay/*` 404s (U2 again:
+  a barangay page is one yes/no the city page already renders). So on a barangay place page there
+  is no row to read and no page to link to. The tempting fallback — show the town's figure, as the
+  page already does for citymun-grain BHW figures with a "(shown for X)" suffix — was refused here:
+  those figures are the *same measure* at a coarser grain, whereas the chip's sentence says "this
+  area's", and printing the town's count under a barangay's heading makes the sentence false rather
+  than approximate.
+- **A zero renders.** NCR reads "None of this area's 1,675 barangays are on the 2025 UUC for PHC
+  list". The section's standing rule is that a zero here is data, not a gap; on a chip the rule has
+  extra force, because a chip that vanished at zero would be indistinguishable from one that failed
+  to load, and a reader would have no way to tell "none listed here" from "nobody checked".
+- **A failed read renders nothing** — which is the opposite of `/uuc-phc/data-quality`'s rule, and
+  deliberately so. There, silence is read as a clean bill of health, so an empty page must say it
+  failed. Here the chip is ancillary context on another dataset's page: rendering nothing asserts
+  nothing in either direction, and an error box for a secondary pointer is noise on a page the
+  reader came to for something else.
+
+**It sits outside every `PresentationSlide`.** Both host pages have a deck, and both decks caption
+with a BHW N ("N = 4,312 validated profiles · …"). A count of barangays projected under that
+caption is a figure the caption's own stated denominator cannot carry — the same objection the plan
+makes to the choropleth, in a different medium. Verified rather than assumed: both decks were
+driven end to end and the chip is not inside, and never visible over, any promoted slide.
+
+### `database.types.ts` is regenerated, and the reason it kept being deferred expired
+
+Three previous entries deferred this — Phase 2 (concurrent branches would conflict), Increment 3.3
+and 3.4 (this branch is the one hand-editing it; and "the only way to do it in this environment is
+to transcribe the generator's output by hand, and that defeats the point of the file being
+generated"). Four increments have now hand-edited it, and U11 added 46 more lines.
+
+**The transcription objection is what actually blocked it, and it no longer holds.** This session
+has a filesystem: the generator's output landed on disk as a file and was moved into place. No part
+of it passed through a person or an assistant character by character, which is the whole
+distinction that entry was drawing. The repo's own prettier then reformatted it — the same
+mechanical step every other file gets, and what keeps the diff a reformat rather than a restyle.
+The Supabase CLI itself is not installed here; the Supabase MCP's `generate_typescript_types` calls
+the same management endpoint `supabase gen types typescript --project-id` does, against the same
+project. It is its own commit with nothing else in it, as that entry asks.
+
+PR #92 (U11) hand-adds 46 lines to this file. It is already conflicted against `main` for unrelated
+reasons and needs a rebase regardless; on that rebase this file resolves to the regenerated version,
+which already contains `ref_uuc_phc_list`, so nothing is lost.
+
+**What the hand-maintained file was missing.** All drift, none of it wrong on purpose:
+`ref_uuc_phc_provincial` (a view since U1, never in the file at all), `demographic_dimension_enum`
+(from the very first migration), and `ref_uuc_phc_list` (live, from U11). Plus two things that were
+actively over-claimed, and are the finding below.
+
+### The finding: two places where the types promised more than the database does
+
+Regenerating broke `npm run typecheck` in exactly two files, and both breaks were correct.
+
+1. **`search_geo` does not return `parent_chain`, and never has in production.**
+   `supabase/migrations/20260720130000_search_geo_parent_chain.sql` is committed on `main` and its
+   version is **absent from the live migration history**; the live function's signature is
+   `TABLE(geo_code, geo_level, geo_name, n_total, match_rank)` — five columns where the repo's
+   migration declares six. So the home search's parent-chain disambiguation, the whole point of
+   which is telling one "Poblacion" from another, **has never worked in production**. Nothing
+   surfaced it because `lib/db/search.ts` was written to degrade cleanly, and its comment
+   ("parent_chain is absent until the P0.1 migration is applied") has been literally true for five
+   weeks while reading as historical. The evidence is one request:
+   `GET /api/geo/search?q=poblacion` returns six barangays all named POBLACION, every one of them
+   with `"parentChain":{}` — which is precisely the results list that migration exists to prevent.
+
+   **Applied, on the owner's decision, later in this session.** The repo's migration was run
+   verbatim against the live project; `search_geo` now returns six columns and all six rows of
+   `search_geo('poblacion', 6)` carry a chain. `lib/db/database.types.ts` was regenerated again for
+   it, in its own commit — and that diff is **one line**, `parent_chain: Json` on `search_geo`'s
+   Returns, which is the cleanest available evidence that the regeneration above was faithful: the
+   live schema moved by exactly one column and the generated file by exactly one line. `searchGeo`
+   drops the widening it had needed and reads the column directly again; the null guard stays,
+   because the column is a `jsonb` the aggregate builds rather than a typed record.
+
+   Rendered and looked at on `/bhw`: typing "poblacion" now returns POBLACION — CITY OF MUNTINLUPA,
+   POBLACION — NORALA, SOUTH COTABATO, POBLACION — CLAVERIA, MISAMIS ORIENTAL and three more, each
+   with its own parents. **This feature worked for the first time today**, six weeks after it was
+   written and merged.
+
+   Worth taking as a general finding rather than a one-off: nothing in the build compares the
+   repo's `supabase/migrations` against the live migration history, and the one thing that would
+   have caught this — a types file generated from the live schema, in CI or otherwise — was the
+   file that had been hand-maintained instead. Regenerating found it in one step. That is the
+   argument for the standing decision, stated better than the standing decision states it.
+
+2. **A view cannot declare `not null`.** `ref_uuc_phc_benchmark_gaps`' columns were hand-typed
+   non-nullable; the generator widens them, because that is all Postgres can promise through a
+   view. `getUucPhcBenchmarkGaps` now **drops** a row missing a structural field rather than
+   defaulting it — on `/uuc-phc/data-quality`'s own rule that a figure is computed or it is not
+   shown. A `0` in `n_affected` reads as "no barangays affected", which is the opposite of "we could
+   not tell". The migration's assertions mean the filter is expected to drop nothing; it exists so
+   that if the view ever does produce such a row, the page loses a row instead of gaining a wrong
+   one. Live, it drops nothing: the page still renders all 7 rows, 226 and 113.
+
+Both adaptations landed in the commit *before* the regeneration, so that the regeneration commit
+stays mechanical and every commit in the branch typechecks on its own.
+
+### `/profiling-status`'s brand label: there is nothing to change, and the note that said otherwise is fixed
+
+`docs/uuc-phc-feature.md` said "`/profiling-status` can adopt the same field with a one-line
+change", which reads as a pending one-liner. It is not one. **`/profiling-status` has no deck at
+all** — no `PresentationProvider`, no `PresentationSlide`, no `PresentButton` anywhere under
+`app/profiling-status/` or `components/profiling-status/`, and no "Present" control in the rendered
+HTML of either its landing page or an area page. So nothing there prints "BHW Connect" over slides,
+because there are no slides. Adopting `brandLabel` is one line *of* whatever increment gives that
+section present mode — not a change that can be made today. The sentence in the feature doc now
+says so, so the next reader does not go looking for it a third time.
+
+### Verification
+
+The chip's figure was checked against `agg_uuc_phc_counts` at every geo it was rendered at, and
+against the section's own hero by clicking through: IFUGAO's chip reads "141 of this area's 176"
+and `/uuc-phc/province/14027` reads "141 of 176 barangays in IFUGAO". Ten routes driven in Chromium
+against `next start`: `/explore` at national (5,991 of 41,958), NCR (the zero as a sentence),
+BANGUI (2 of 14) and a barangay; `/place/*` at national, CAR (609 of 1,178), IFUGAO, MAYOYAO (27 of
+27), CITY OF CAVITE (the singular — "1 of this area's 84 barangays **is**") and a barangay. **Both
+barangay routes render no chip.** Hrefs resolve to `/uuc-phc` at national and
+`/uuc-phc/<level>/<code>` elsewhere. Both decks driven end to end — 14 slides on
+`/place/province/14027`, 16 on `/explore` at CAR — with the chip **never inside or visible over a
+promoted slide**, both exiting on Esc, **zero console errors**. Looked at in light and dark and at
+390px, where the arrow was moved onto the last text line so it cannot wrap alone.
+
+10 new unit tests in `lib/db/uuc-phc.test.ts` cover the sentence (count, zero, singular, null row,
+zero denominator, and that it names "barangays") and the href. `npm run typecheck`, `npm run lint`
+and `npm test` (**48 files, 557 tests**) are clean, and `npm run build` compiles.
+
+The `search_geo` migration was applied live and verified end to end: six columns on the function,
+six of six rows carrying a chain, and the disambiguated results list rendered in Chromium with
+**zero console errors**. `npx playwright test` passes 3/3.
+
+**Not verified:** the two barangay-grain cases are verified as *absent*, which is what the design
+asks for, but that means `/place/barangay/*` gains nothing from this increment and no alternative
+was tried.
+
+### U12b is not started, and the owner has now framed it
+
+The plan names three things to settle. Two are ours to decide and are already answered by this
+section's reasoning: "not listed" means *every other barangay in the area* and the label must say
+so, and cells below the §4.1 threshold get suppressed rather than zeroed.
+
+The third was not ours. **UUC status is defined partly on distance to a health facility**, so a gap
+in BHW coverage between listed and unlisted barangays is **partly definitional, not a finding**.
+Publishing "unserved barangays have fewer BHWs per household" as a discovery, when the list was
+drawn partly on health-system access, is circular.
+
+Put to the owner in this session, who chose the third option available: **build it, but framed as a
+check rather than as a discovery** — *is BHW coverage consistent with what the list already
+implies?* — with the definitional overlap leading the caption, and the reportable finding being the
+*exception*: a listed area with good BHW coverage, or an unlisted one with bad. That inverts what
+the surface is for, and it is a better question than the one the plan's title asks. Recorded here;
+nothing is built yet.
+
+## 2026-08-27 — UUC for PHC 2025: U12b, the comparison that answers the opposite of its own question
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U12b. The two datasets on this dashboard finally meet, and the
+increment's whole difficulty is that the meeting is easy to misreport.
+
+### The framing came first, and it is not the plan's
+
+The plan's title asks *are BHWs thinner on the ground where communities are unserved?* Its own
+question 3 explains why that question cannot be answered here: UUC membership is defined partly on
+**distance to a health facility** (the physical factor of DOH AO No. 2020-0023), so a BHW coverage
+gap between listed and unlisted barangays is partly definitional. Publishing it as a discovery is
+circular.
+
+Put to the owner, who chose the option neither the plan nor the refusal had: **build it, framed as
+a check.** The page asks *is BHW coverage consistent with what the list already implies?*, leads
+with the definitional overlap, and reports the **exception** — an area where the direction reverses
+— rather than the average. That inverts what the surface is for, and it is a better question than
+the plan's title asks, because the exception is the only part the list's own criteria do not
+already account for.
+
+### Then the data answered the opposite of the title question
+
+Nationally, listed barangays carry **50.9 households per BHW** against **98.2** in every other
+barangay. BHWs are not thinner where communities are unserved; by the site's own operative workload
+measure they are roughly twice as thick. It holds in **76 of the 81 provinces** where both sides
+clear the threshold, and reverses in **5** — Cavite, Cagayan, Romblon, Lanao del Norte,
+Catanduanes.
+
+Which makes the framing load-bearing rather than decorative. "Unserved barangays have *better* BHW
+coverage" is exactly as circular a headline as the one question 3 feared, and it is the one this
+data would have produced. It is also, on inspection, mostly not about BHWs at all.
+
+### The finding that makes the page publishable: it is barangay size
+
+Listed barangays hold **0.58×** the households of the others and carry **1.13×** the BHWs each.
+Households per BHW is a ratio of exactly those two, so a difference in barangay size moves it on
+its own, with nothing about deployment having changed. Roughly: the listed barangays are the small
+ones, and BHWs per barangay barely differs.
+
+That block sits directly beneath the headline, computed from the same two numbers, and the page
+says in a sentence that it is most of the headline. **A caption disclaiming the comparison would
+have been the weaker instrument** — the objection question 3 raises to captions is right. What
+answers it is a second computed figure that shows the mechanism, not prose that asks the reader to
+discount the first one.
+
+### `agg_bhw_by_uuc_status`: three decisions that change what the figure means
+
+`supabase/migrations/20260827190000_agg_bhw_by_uuc_status.sql`. 1,788 rows at national / region /
+province / citymun — no barangay rows, since a barangay is entirely listed or entirely not and one
+level down there is no split to draw.
+
+- **"Other" is every other barangay in the area, and every column says so.** U1 loaded only the
+  5,991; the workbook's 9,395 assessed-but-unlisted rows were scoped out and are not in this
+  database. So the comparison group is the remainder, full stop. The columns are named `*_other`
+  rather than `*_not_listed` because a reader who sees "not listed" hears "assessed and found
+  adequate", which is a group that does not exist here.
+- **The measure is StepZero's headcount, not the per-person census — and the plan named the
+  census.** `agg_bhw_counts` is built from `fact_bhw_raw`, so it has a barangay row only where at
+  least one BHW has been *individually profiled*. Listed barangays are remote and underserved by
+  construction, so they are plausibly also less profiled: splitting a profiled figure by list
+  status would confound BHW supply with profiling progress — a second circularity stacked on the
+  definitional one. `agg_bhw_stepzero_counts` is a quick-count of every barangay's whole BHW
+  universe, present for all 41,958.
+
+  The profiled counts ship anyway, as `*_n_profiled` against `*_registered_universe`, so the page
+  can *state* the profiling difference rather than have it act unseen. **Live it is 96.9% against
+  97.5%** — small. That does not retire the argument; it settles it for this vintage, which is the
+  difference between a checked assumption and an assumed one, and it is why the figure is on the
+  page rather than in this entry alone. (It also forced a rendering decision: at whole percent both
+  sides read "97%" and the row said nothing, so it prints one decimal — the one place on the site
+  that does.)
+- **No ratio is stored.** Households per BHW, BHWs per barangay, households per barangay and
+  profiling coverage are all derived in `lib/db/uuc-phc-bhw-coverage.ts`, on `agg_uuc_phc_counts`'
+  precedent. Which also means the compositional check is computed from the same two counts as the
+  headline and cannot drift away from the figure it exists to explain.
+
+### The residual: StepZero's own levels do not add up, so the difference is a column
+
+`agg_bhw_stepzero_counts`' area rows exceed the sum of its barangay rows: **306,835 against
+306,819** nationally, a gap of **16 BHWs and 6,061 households**, confined to Bicol (+8 / +1,436),
+Western Visayas (+4 / +4,422) and Zamboanga Peninsula (+4 / +203). The likeliest cause is StepZero
+source rows for barangays absent from `dim_geo` — the ~2,689 newer or renumbered PSGC codes
+`lib/db/stepzero.ts` already names — which reach the rolled-up levels with no barangay row to
+attach a list status to.
+
+The plan's Verify asks that "the split reproduces the unsplit figure when recombined". **That
+equality is false, and the fix was not to weaken the assertion.** `unallocated_n_bhw` and
+`unallocated_households` carry the difference, listed + other + unallocated equals the area row
+exactly on every one of the 1,788 rows, and assertion 4 aborts the migration otherwise. A silent
+inequality would have been a permanent 16-BHW hole nobody could see; a column is a figure the page
+prints. Same shape as `ref_uuc_phc_published_delta` (U10): store the discrepancy, do not smooth it.
+
+The profiled counts, by contrast, recombine against `agg_bhw_counts.n_total` with **no residual at
+all**, because `agg_bhw_counts` is fanned out from each BHW's own barangay. Asserted, so that if it
+ever stops being true the profiling-coverage caveat is not quietly reading a broken denominator.
+
+### Suppression is a presentation rule, and pretending otherwise would have been worse
+
+Plan §9 U12b asks for §4.1's threshold on "any cell whose contributing barangay count" is below it.
+Implemented — a side with `0 < contributing < 5` is nulled, and no comparison is drawn — but the
+migration header records what it does and does not achieve, because the obvious reading is wrong.
+BUILD_PLAN.md §4.1 suppresses small cells because they can identify a person; it also says in as
+many words that "counts of totals — e.g. 'this barangay has 3 BHWs' — are not suppressed", and
+`agg_bhw_stepzero_counts` is public at barangay grain for all 41,958. **Anyone can compute this
+split themselves.** What the rule prevents is *this page* rendering one, two or three barangays as
+a group statistic and setting it beside a group of hundreds — a claim about a group, made from
+something that is not one.
+
+Only the small side is nulled. Suppressing both would destroy a real 198-barangay figure to protect
+a number already published directly above it. 454 listed sides and 113 other sides are suppressed,
+all at city/municipality except six provinces.
+
+**Four states are kept apart, and the ordering that keeps them apart is tested.** Nothing listed
+(NCR, a real 0 of 1,675), every barangay listed (Mayoyao, 27 of 27), one side suppressed, and
+comparable. "None of this area's barangays are on the list" and "too few to show" are opposite
+messages; the zero case is checked first in `toUucBhwCoverage`, and assertion 9 fails the migration
+if a zero side is ever marked suppressed.
+
+### Verification
+
+All nine in-migration assertions pass over 1,788 rows. The partition agrees with
+`agg_uuc_phc_counts.n_listed` on every row — reached by a `dim_geo` fan-out rather than that
+aggregate's own build, so it is a real cross-check — and both sides sum to `agg_uuc_phc_counts`'
+barangay count on every row, which is the plan's Verify line. Recombination is exact on all 1,788
+rows including the residual, with no negative residual anywhere; the profiled counts recombine with
+none. Every level rolls up to national on all eight measures. Suppression fires exactly where
+`0 < contributing < 5` and nowhere else, in both directions.
+
+Live figures, checked against direct queries before the table existed and against the table after:
+50.9 / 98.2 households per BHW, 0.58× / 1.13× behind them, 96.9% / 97.5% profiling coverage,
+100 listed and 945 other barangays reporting no BHW at all, and 76 / 5 comparable provinces
+splitting the two ways with 31 having nothing listed and 6 suppressed.
+
+Driven in Chromium against `next start` at all six states — national, CAVITE (the largest exception
+at 659.2 against 263.0), CALABARZON (whose breakdown badges CAVITE and reads "1 area against the
+pattern, first"), NCR, MAYOYAO and CITY OF CAVITE — in light and dark, with **zero console errors**.
+The deck starts, advances through Title / BHW coverage / Provinces / Closing and exits on Esc under
+"UUC FOR PHC". `/uuc-phc/bhw-coverage/barangay/*` and an unknown geo 404.
+
+Registry and lineage: the tenth relation on this branch registers `approved`/`public` with 22
+approved columns, 21 of them queryable; its `notes_md` and its column list both **hash-match the
+committed seed** (md5 `81176537…` over 1,815 characters, and over the 22 name/ordinal pairs), and
+`anon` reads all 1,788 rows over PostgREST. `ingestion/build_kb_lineage.py` regenerates to **214 nodes / 379 edges** — additive,
+5 and 11 — **printing nothing to stderr**, so the new table has its `built-by` edge and no table
+node lacks one. `get_advisors` reports nothing new: the table has its own public-read policy.
+
+`npm run typecheck`, `npm run lint` and `npm test` (**49 files, 577 tests**) are clean, and
+`npm run build` prerenders `/uuc-phc/bhw-coverage` plus the same 136 region and province pages the
+section's other three routes prerender, from the same helper.
+
+**One bookkeeping note.** The migration was applied to the live project byte-identical to the
+committed file (md5 checked against `supabase_migrations.schema_migrations`). Five comment lines
+were then corrected in the file — a malformed `-- lineage:` directive the generator rejected, which
+needs `table:` keys and `<src> <relation> <dst>` order — so the stored text now differs from the
+committed file by those five lines and no SQL. The registry and lineage deltas both remain
+byte-identical.
+
+**Not verified:** nothing here sits behind the provider boundary. Two things are genuinely open and
+neither is ours to close: *why* StepZero's levels exceed its barangay rows is inferred from
+`lib/db/stepzero.ts`'s note about renumbered PSGC codes and is not stated by the source, and the
+five exception provinces are surfaced but not explained — the page names them and stops, which is
+the correct end of what this data can say.
+
+
 ## 2026-08-27 — The review queue, emptied: the duplicate-identity question answered by measuring what rejection actually costs
 
 The queue had stood at **16 nodes and 35 edges at `auto`** since `--propose` was run for real, and two

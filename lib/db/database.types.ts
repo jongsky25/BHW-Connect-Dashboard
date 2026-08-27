@@ -4,7 +4,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5";
+    PostgrestVersion: "14.17";
   };
   public: {
     Tables: {
@@ -22,6 +22,96 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      agg_bhw_by_uuc_status: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          listed_households: number | null;
+          listed_is_suppressed: boolean;
+          listed_n_bhw: number | null;
+          listed_n_profiled: number | null;
+          listed_registered_universe: number | null;
+          n_barangays_listed: number;
+          n_barangays_other: number;
+          n_listed_no_bhw: number;
+          n_listed_with_data: number;
+          n_other_no_bhw: number;
+          n_other_with_data: number;
+          other_households: number | null;
+          other_is_suppressed: boolean;
+          other_n_bhw: number | null;
+          other_n_profiled: number | null;
+          other_registered_universe: number | null;
+          unallocated_households: number;
+          unallocated_n_bhw: number;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          listed_households?: number | null;
+          listed_is_suppressed?: boolean;
+          listed_n_bhw?: number | null;
+          listed_n_profiled?: number | null;
+          listed_registered_universe?: number | null;
+          n_barangays_listed?: number;
+          n_barangays_other?: number;
+          n_listed_no_bhw?: number;
+          n_listed_with_data?: number;
+          n_other_no_bhw?: number;
+          n_other_with_data?: number;
+          other_households?: number | null;
+          other_is_suppressed?: boolean;
+          other_n_bhw?: number | null;
+          other_n_profiled?: number | null;
+          other_registered_universe?: number | null;
+          unallocated_households?: number;
+          unallocated_n_bhw?: number;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          listed_households?: number | null;
+          listed_is_suppressed?: boolean;
+          listed_n_bhw?: number | null;
+          listed_n_profiled?: number | null;
+          listed_registered_universe?: number | null;
+          n_barangays_listed?: number;
+          n_barangays_other?: number;
+          n_listed_no_bhw?: number;
+          n_listed_with_data?: number;
+          n_other_no_bhw?: number;
+          n_other_with_data?: number;
+          other_households?: number | null;
+          other_is_suppressed?: boolean;
+          other_n_bhw?: number | null;
+          other_n_profiled?: number | null;
+          other_registered_universe?: number | null;
+          unallocated_households?: number;
+          unallocated_n_bhw?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_bhw_by_uuc_status_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_bhw_by_uuc_status_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
       };
       agg_bhw_counts: {
         Row: {
@@ -76,269 +166,6 @@ export type Database = {
           },
           {
             foreignKeyName: "agg_bhw_counts_geo_code_fkey";
-            columns: ["geo_code"];
-            isOneToOne: false;
-            referencedRelation: "dim_geo";
-            referencedColumns: ["geo_code"];
-          },
-        ];
-      };
-      agg_by_income_class: {
-        Row: {
-          any_honorarium_pct: number | null;
-          dataset_id: number;
-          id: number;
-          income_class: number;
-          median_honorarium_amount: number | null;
-          n_bhw: number;
-          n_citymun: number | null;
-          pct_accredited: number | null;
-        };
-        Insert: {
-          any_honorarium_pct?: number | null;
-          dataset_id: number;
-          id?: never;
-          income_class: number;
-          median_honorarium_amount?: number | null;
-          n_bhw: number;
-          n_citymun?: number | null;
-          pct_accredited?: number | null;
-        };
-        Update: {
-          any_honorarium_pct?: number | null;
-          dataset_id?: number;
-          id?: never;
-          income_class?: number;
-          median_honorarium_amount?: number | null;
-          n_bhw?: number;
-          n_citymun?: number | null;
-          pct_accredited?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "agg_by_income_class_dataset_id_fkey";
-            columns: ["dataset_id"];
-            isOneToOne: false;
-            referencedRelation: "dim_dataset";
-            referencedColumns: ["dataset_id"];
-          },
-        ];
-      };
-      agg_cohorts: {
-        Row: {
-          cohort_year: number;
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          id: number;
-          kind: string;
-          n: number;
-        };
-        Insert: {
-          cohort_year: number;
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
-          kind: string;
-          n: number;
-        };
-        Update: {
-          cohort_year?: number;
-          dataset_id?: number;
-          geo_code?: string;
-          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
-          kind?: string;
-          n?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "agg_cohorts_dataset_id_fkey";
-            columns: ["dataset_id"];
-            isOneToOne: false;
-            referencedRelation: "dim_dataset";
-            referencedColumns: ["dataset_id"];
-          },
-          {
-            foreignKeyName: "agg_cohorts_geo_code_fkey";
-            columns: ["geo_code"];
-            isOneToOne: false;
-            referencedRelation: "dim_geo";
-            referencedColumns: ["geo_code"];
-          },
-        ];
-      };
-      agg_honorarium_cumulative: {
-        Row: {
-          band_label: string;
-          band_order: number;
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          id: number;
-          is_suppressed: boolean;
-          median_cumulative_monthly: number | null;
-          n: number | null;
-          n_total: number;
-          pct: number | null;
-          pct_below_sufficiency: number | null;
-        };
-        Insert: {
-          band_label: string;
-          band_order: number;
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
-          is_suppressed?: boolean;
-          median_cumulative_monthly?: number | null;
-          n?: number | null;
-          n_total: number;
-          pct?: number | null;
-          pct_below_sufficiency?: number | null;
-        };
-        Update: {
-          band_label?: string;
-          band_order?: number;
-          dataset_id?: number;
-          geo_code?: string;
-          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
-          is_suppressed?: boolean;
-          median_cumulative_monthly?: number | null;
-          n?: number | null;
-          n_total?: number;
-          pct?: number | null;
-          pct_below_sufficiency?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "agg_honorarium_cumulative_dataset_id_fkey";
-            columns: ["dataset_id"];
-            isOneToOne: false;
-            referencedRelation: "dim_dataset";
-            referencedColumns: ["dataset_id"];
-          },
-          {
-            foreignKeyName: "agg_honorarium_cumulative_geo_code_fkey";
-            columns: ["geo_code"];
-            isOneToOne: false;
-            referencedRelation: "dim_geo";
-            referencedColumns: ["geo_code"];
-          },
-        ];
-      };
-      agg_honorarium_inequality: {
-        Row: {
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          gini: number | null;
-          id: number;
-          is_suppressed: boolean;
-          n_receiving: number;
-          p10_amount: number | null;
-          p90_amount: number | null;
-          p90_p10_ratio: number | null;
-        };
-        Insert: {
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          gini?: number | null;
-          id?: never;
-          is_suppressed?: boolean;
-          n_receiving: number;
-          p10_amount?: number | null;
-          p90_amount?: number | null;
-          p90_p10_ratio?: number | null;
-        };
-        Update: {
-          dataset_id?: number;
-          geo_code?: string;
-          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
-          gini?: number | null;
-          id?: never;
-          is_suppressed?: boolean;
-          n_receiving?: number;
-          p10_amount?: number | null;
-          p90_amount?: number | null;
-          p90_p10_ratio?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "agg_honorarium_inequality_dataset_id_fkey";
-            columns: ["dataset_id"];
-            isOneToOne: false;
-            referencedRelation: "dim_dataset";
-            referencedColumns: ["dataset_id"];
-          },
-          {
-            foreignKeyName: "agg_honorarium_inequality_geo_code_fkey";
-            columns: ["geo_code"];
-            isOneToOne: false;
-            referencedRelation: "dim_geo";
-            referencedColumns: ["geo_code"];
-          },
-        ];
-      };
-      agg_workload: {
-        Row: {
-          busiest_decile_share: number | null;
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          id: number;
-          is_suppressed: boolean;
-          mean: number | null;
-          median: number | null;
-          n_bhw: number;
-          p10: number | null;
-          p25: number | null;
-          p75: number | null;
-          p90: number | null;
-        };
-        Insert: {
-          busiest_decile_share?: number | null;
-          dataset_id: number;
-          geo_code: string;
-          geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
-          is_suppressed?: boolean;
-          mean?: number | null;
-          median?: number | null;
-          n_bhw: number;
-          p10?: number | null;
-          p25?: number | null;
-          p75?: number | null;
-          p90?: number | null;
-        };
-        Update: {
-          busiest_decile_share?: number | null;
-          dataset_id?: number;
-          geo_code?: string;
-          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
-          is_suppressed?: boolean;
-          mean?: number | null;
-          median?: number | null;
-          n_bhw?: number;
-          p10?: number | null;
-          p25?: number | null;
-          p75?: number | null;
-          p90?: number | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "agg_workload_dataset_id_fkey";
-            columns: ["dataset_id"];
-            isOneToOne: false;
-            referencedRelation: "dim_dataset";
-            referencedColumns: ["dataset_id"];
-          },
-          {
-            foreignKeyName: "agg_workload_geo_code_fkey";
             columns: ["geo_code"];
             isOneToOne: false;
             referencedRelation: "dim_geo";
@@ -466,6 +293,47 @@ export type Database = {
           },
         ];
       };
+      agg_by_income_class: {
+        Row: {
+          any_honorarium_pct: number | null;
+          dataset_id: number;
+          id: number;
+          income_class: number;
+          median_honorarium_amount: number | null;
+          n_bhw: number;
+          n_citymun: number | null;
+          pct_accredited: number | null;
+        };
+        Insert: {
+          any_honorarium_pct?: number | null;
+          dataset_id: number;
+          id?: never;
+          income_class: number;
+          median_honorarium_amount?: number | null;
+          n_bhw: number;
+          n_citymun?: number | null;
+          pct_accredited?: number | null;
+        };
+        Update: {
+          any_honorarium_pct?: number | null;
+          dataset_id?: number;
+          id?: never;
+          income_class?: number;
+          median_honorarium_amount?: number | null;
+          n_bhw?: number;
+          n_citymun?: number | null;
+          pct_accredited?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_by_income_class_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+        ];
+      };
       agg_certification: {
         Row: {
           cert_type: string;
@@ -504,6 +372,51 @@ export type Database = {
           },
           {
             foreignKeyName: "agg_certification_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      agg_cohorts: {
+        Row: {
+          cohort_year: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          kind: string;
+          n: number;
+        };
+        Insert: {
+          cohort_year: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          kind: string;
+          n: number;
+        };
+        Update: {
+          cohort_year?: number;
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          kind?: string;
+          n?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_cohorts_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_cohorts_geo_code_fkey";
             columns: ["geo_code"];
             isOneToOne: false;
             referencedRelation: "dim_geo";
@@ -742,6 +655,120 @@ export type Database = {
           },
         ];
       };
+      agg_honorarium_cumulative: {
+        Row: {
+          band_label: string;
+          band_order: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          is_suppressed: boolean;
+          median_cumulative_monthly: number | null;
+          n: number | null;
+          n_total: number;
+          pct: number | null;
+          pct_below_sufficiency: number | null;
+        };
+        Insert: {
+          band_label: string;
+          band_order: number;
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          is_suppressed?: boolean;
+          median_cumulative_monthly?: number | null;
+          n?: number | null;
+          n_total: number;
+          pct?: number | null;
+          pct_below_sufficiency?: number | null;
+        };
+        Update: {
+          band_label?: string;
+          band_order?: number;
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          is_suppressed?: boolean;
+          median_cumulative_monthly?: number | null;
+          n?: number | null;
+          n_total?: number;
+          pct?: number | null;
+          pct_below_sufficiency?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_honorarium_cumulative_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_honorarium_cumulative_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      agg_honorarium_inequality: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          gini: number | null;
+          id: number;
+          is_suppressed: boolean;
+          n_receiving: number;
+          p10_amount: number | null;
+          p90_amount: number | null;
+          p90_p10_ratio: number | null;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          gini?: number | null;
+          id?: never;
+          is_suppressed?: boolean;
+          n_receiving: number;
+          p10_amount?: number | null;
+          p90_amount?: number | null;
+          p90_p10_ratio?: number | null;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          gini?: number | null;
+          id?: never;
+          is_suppressed?: boolean;
+          n_receiving?: number;
+          p10_amount?: number | null;
+          p90_amount?: number | null;
+          p90_p10_ratio?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_honorarium_inequality_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_honorarium_inequality_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_peer_ranks: {
         Row: {
           dataset_id: number;
@@ -762,7 +789,7 @@ export type Database = {
           dataset_id: number;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
+          id?: number;
           indicator: string;
           is_outlier?: boolean;
           mad?: number | null;
@@ -777,7 +804,7 @@ export type Database = {
           dataset_id?: number;
           geo_code?: string;
           geo_level?: Database["public"]["Enums"]["geo_level_enum"];
-          id?: never;
+          id?: number;
           indicator?: string;
           is_outlier?: boolean;
           mad?: number | null;
@@ -1120,56 +1147,62 @@ export type Database = {
           },
         ];
       };
-      ref_uuc_phc_published_delta: {
+      agg_workload: {
         Row: {
+          busiest_decile_share: number | null;
           dataset_id: number;
-          delta: number;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
           id: number;
-          n_listed: number;
-          n_published: number;
-          source_as_of: string | null;
-          source_doc_key: string;
-          source_label: string;
-          source_page: number;
+          is_suppressed: boolean;
+          mean: number | null;
+          median: number | null;
+          n_bhw: number;
+          p10: number | null;
+          p25: number | null;
+          p75: number | null;
+          p90: number | null;
         };
         Insert: {
+          busiest_decile_share?: number | null;
           dataset_id: number;
-          delta: number;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
           id?: never;
-          n_listed: number;
-          n_published: number;
-          source_as_of?: string | null;
-          source_doc_key: string;
-          source_label: string;
-          source_page: number;
+          is_suppressed?: boolean;
+          mean?: number | null;
+          median?: number | null;
+          n_bhw: number;
+          p10?: number | null;
+          p25?: number | null;
+          p75?: number | null;
+          p90?: number | null;
         };
         Update: {
+          busiest_decile_share?: number | null;
           dataset_id?: number;
-          delta?: number;
           geo_code?: string;
           geo_level?: Database["public"]["Enums"]["geo_level_enum"];
           id?: never;
-          n_listed?: number;
-          n_published?: number;
-          source_as_of?: string | null;
-          source_doc_key?: string;
-          source_label?: string;
-          source_page?: number;
+          is_suppressed?: boolean;
+          mean?: number | null;
+          median?: number | null;
+          n_bhw?: number;
+          p10?: number | null;
+          p25?: number | null;
+          p75?: number | null;
+          p90?: number | null;
         };
         Relationships: [
           {
-            foreignKeyName: "ref_uuc_phc_published_delta_dataset_id_fkey";
+            foreignKeyName: "agg_workload_dataset_id_fkey";
             columns: ["dataset_id"];
             isOneToOne: false;
             referencedRelation: "dim_dataset";
             referencedColumns: ["dataset_id"];
           },
           {
-            foreignKeyName: "ref_uuc_phc_published_delta_geo_code_fkey";
+            foreignKeyName: "agg_workload_geo_code_fkey";
             columns: ["geo_code"];
             isOneToOne: false;
             referencedRelation: "dim_geo";
@@ -1306,6 +1339,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_provider_quota: {
+        Row: {
+          id: number;
+          is_paused: boolean;
+          limit_value: number;
+          paused_until: string | null;
+          provider: string;
+          request_count: number;
+          window_start: string;
+          window_type: Database["public"]["Enums"]["quota_window_enum"];
+        };
+        Insert: {
+          id?: never;
+          is_paused?: boolean;
+          limit_value: number;
+          paused_until?: string | null;
+          provider: string;
+          request_count?: number;
+          window_start: string;
+          window_type: Database["public"]["Enums"]["quota_window_enum"];
+        };
+        Update: {
+          id?: never;
+          is_paused?: boolean;
+          limit_value?: number;
+          paused_until?: string | null;
+          provider?: string;
+          request_count?: number;
+          window_start?: string;
+          window_type?: Database["public"]["Enums"]["quota_window_enum"];
+        };
+        Relationships: [];
+      };
       ai_regression_case: {
         Row: {
           answer_given: string;
@@ -1351,39 +1417,6 @@ export type Database = {
           status?: string;
           tool_calls?: Json;
           updated_at?: string;
-        };
-        Relationships: [];
-      };
-      ai_provider_quota: {
-        Row: {
-          id: number;
-          is_paused: boolean;
-          limit_value: number;
-          paused_until: string | null;
-          provider: string;
-          request_count: number;
-          window_start: string;
-          window_type: Database["public"]["Enums"]["quota_window_enum"];
-        };
-        Insert: {
-          id?: never;
-          is_paused?: boolean;
-          limit_value: number;
-          paused_until?: string | null;
-          provider: string;
-          request_count?: number;
-          window_start: string;
-          window_type: Database["public"]["Enums"]["quota_window_enum"];
-        };
-        Update: {
-          id?: never;
-          is_paused?: boolean;
-          limit_value?: number;
-          paused_until?: string | null;
-          provider?: string;
-          request_count?: number;
-          window_start?: string;
-          window_type?: Database["public"]["Enums"]["quota_window_enum"];
         };
         Relationships: [];
       };
@@ -1793,23 +1826,22 @@ export type Database = {
         Row: {
           chunk_id: number;
           dim: number;
-          // pgvector renders as its text form ("[0.1,0.2,...]") over PostgREST.
-          embedding: string;
           embedded_at: string;
+          embedding: string;
           model: string;
         };
         Insert: {
           chunk_id: number;
           dim: number;
-          embedding: string;
           embedded_at?: string;
+          embedding: string;
           model: string;
         };
         Update: {
           chunk_id?: number;
           dim?: number;
-          embedding?: string;
           embedded_at?: string;
+          embedding?: string;
           model?: string;
         };
         Relationships: [
@@ -2059,6 +2091,54 @@ export type Database = {
           },
         ];
       };
+      fact_uuc_phc_barangay: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          id: number;
+          source_barangay: string | null;
+          source_citymun: string | null;
+          source_geo_code: string;
+          source_province: string | null;
+          source_region: string | null;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          id?: never;
+          source_barangay?: string | null;
+          source_citymun?: string | null;
+          source_geo_code: string;
+          source_province?: string | null;
+          source_region?: string | null;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          id?: never;
+          source_barangay?: string | null;
+          source_citymun?: string | null;
+          source_geo_code?: string;
+          source_province?: string | null;
+          source_region?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_uuc_phc_barangay_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "fact_uuc_phc_barangay_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       fact_uuc_phc_indicators: {
         Row: {
           abr: number | null;
@@ -2151,54 +2231,6 @@ export type Database = {
           },
           {
             foreignKeyName: "fact_uuc_phc_indicators_geo_code_fkey";
-            columns: ["geo_code"];
-            isOneToOne: false;
-            referencedRelation: "dim_geo";
-            referencedColumns: ["geo_code"];
-          },
-        ];
-      };
-      fact_uuc_phc_barangay: {
-        Row: {
-          dataset_id: number;
-          geo_code: string;
-          id: number;
-          source_barangay: string | null;
-          source_citymun: string | null;
-          source_geo_code: string;
-          source_province: string | null;
-          source_region: string | null;
-        };
-        Insert: {
-          dataset_id: number;
-          geo_code: string;
-          id?: never;
-          source_barangay?: string | null;
-          source_citymun?: string | null;
-          source_geo_code: string;
-          source_province?: string | null;
-          source_region?: string | null;
-        };
-        Update: {
-          dataset_id?: number;
-          geo_code?: string;
-          id?: never;
-          source_barangay?: string | null;
-          source_citymun?: string | null;
-          source_geo_code?: string;
-          source_province?: string | null;
-          source_region?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "fact_uuc_phc_barangay_dataset_id_fkey";
-            columns: ["dataset_id"];
-            isOneToOne: false;
-            referencedRelation: "dim_dataset";
-            referencedColumns: ["dataset_id"];
-          },
-          {
-            foreignKeyName: "fact_uuc_phc_barangay_geo_code_fkey";
             columns: ["geo_code"];
             isOneToOne: false;
             referencedRelation: "dim_geo";
@@ -2344,15 +2376,22 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "kb_edge_src_node_id_fkey";
-            columns: ["src_node_id"];
+            foreignKeyName: "kb_edge_dst_node_id_fkey";
+            columns: ["dst_node_id"];
             isOneToOne: false;
             referencedRelation: "kb_node";
             referencedColumns: ["node_id"];
           },
           {
-            foreignKeyName: "kb_edge_dst_node_id_fkey";
-            columns: ["dst_node_id"];
+            foreignKeyName: "kb_edge_source_chunk_fk";
+            columns: ["source_chunk_id"];
+            isOneToOne: false;
+            referencedRelation: "doc_chunk";
+            referencedColumns: ["chunk_id"];
+          },
+          {
+            foreignKeyName: "kb_edge_src_node_id_fkey";
+            columns: ["src_node_id"];
             isOneToOne: false;
             referencedRelation: "kb_node";
             referencedColumns: ["node_id"];
@@ -2362,9 +2401,9 @@ export type Database = {
       kb_node: {
         Row: {
           created_at: string;
+          evidence_quote: string | null;
           key: string;
           kind: string;
-          evidence_quote: string | null;
           label: string;
           node_id: number;
           origin: string;
@@ -2380,9 +2419,9 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          evidence_quote?: string | null;
           key: string;
           kind: string;
-          evidence_quote?: string | null;
           label: string;
           node_id?: never;
           origin?: string;
@@ -2398,9 +2437,9 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          evidence_quote?: string | null;
           key?: string;
           kind?: string;
-          evidence_quote?: string | null;
           label?: string;
           node_id?: never;
           origin?: string;
@@ -2414,7 +2453,72 @@ export type Database = {
           summary?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "kb_node_source_chunk_fk";
+            columns: ["source_chunk_id"];
+            isOneToOne: false;
+            referencedRelation: "doc_chunk";
+            referencedColumns: ["chunk_id"];
+          },
+        ];
+      };
+      ref_uuc_phc_published_delta: {
+        Row: {
+          dataset_id: number;
+          delta: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          n_listed: number;
+          n_published: number;
+          source_as_of: string | null;
+          source_doc_key: string;
+          source_label: string;
+          source_page: number;
+        };
+        Insert: {
+          dataset_id: number;
+          delta: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_listed: number;
+          n_published: number;
+          source_as_of?: string | null;
+          source_doc_key: string;
+          source_label: string;
+          source_page: number;
+        };
+        Update: {
+          dataset_id?: number;
+          delta?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_listed?: number;
+          n_published?: number;
+          source_as_of?: string | null;
+          source_doc_key?: string;
+          source_label?: string;
+          source_page?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ref_uuc_phc_published_delta_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "ref_uuc_phc_published_delta_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
       };
       usage_events: {
         Row: {
@@ -2461,25 +2565,101 @@ export type Database = {
     Views: {
       ref_uuc_phc_benchmark_gaps: {
         Row: {
-          finding: string;
-          kind: string;
-          n_affected: number;
-          n_listed_province: number;
-          province_code: string;
+          finding: string | null;
+          kind: string | null;
+          n_affected: number | null;
+          n_listed_province: number | null;
+          province_code: string | null;
           witness_value: number | null;
+        };
+        Relationships: [];
+      };
+      ref_uuc_phc_list: {
+        Row: {
+          abr: number | null;
+          abr_prov_ref: number | null;
+          armed_conf: number | null;
+          capped_indicators: string[] | null;
+          citymun_code: string | null;
+          citymun_name: string | null;
+          dataset_id: number | null;
+          elcac_brgy: boolean | null;
+          fic: number | null;
+          fic_prov_ref: number | null;
+          four_ps: number | null;
+          geo_code: string | null;
+          geo_name: string | null;
+          health_evaluable: boolean | null;
+          health_indicators: number | null;
+          idp: number | null;
+          imr: number | null;
+          imr_prov_ref: number | null;
+          ip_pop: number | null;
+          physical_factor: number | null;
+          pre_natal: number | null;
+          pre_natal_prov_ref: number | null;
+          province_code: string | null;
+          province_name: string | null;
+          region_code: string | null;
+          region_name: string | null;
+          route_conflict: boolean | null;
+          route_four_ps: boolean | null;
+          route_health: boolean | null;
+          route_ip: boolean | null;
+          sba: number | null;
+          sba_prov_ref: number | null;
+          source_barangay: string | null;
+          source_citymun: string | null;
+          source_geo_code: string | null;
+          source_province: string | null;
+          source_region: string | null;
+          ufmr: number | null;
+          ufmr_prov_ref: number | null;
+          water: number | null;
+          water_prov_ref: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_uuc_phc_barangay_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "fact_uuc_phc_barangay_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      ref_uuc_phc_provincial: {
+        Row: {
+          n_listed_barangays: number | null;
+          n_with_reference: number | null;
+          province_code: string | null;
+          ref_abr: number | null;
+          ref_fic: number | null;
+          ref_imr: number | null;
+          ref_pre_natal: number | null;
+          ref_sba: number | null;
+          ref_ufmr: number | null;
+          ref_water: number | null;
         };
         Relationships: [];
       };
       ref_uuc_phc_quality: {
         Row: {
-          n_barangays_capped: number;
-          n_barangays_multi_capped: number;
-          n_listed: number;
-          n_no_route_as_recorded: number;
-          n_no_route_if_recomputed: number;
-          n_score_disagreement: number;
-          n_score_understated: number;
-          n_values_capped: number;
+          n_barangays_capped: number | null;
+          n_barangays_multi_capped: number | null;
+          n_listed: number | null;
+          n_no_route_as_recorded: number | null;
+          n_no_route_if_recomputed: number | null;
+          n_score_disagreement: number | null;
+          n_score_understated: number | null;
+          n_values_capped: number | null;
         };
         Relationships: [];
       };
@@ -2490,13 +2670,45 @@ export type Database = {
         Returns: string;
       };
       match_ask_answer: {
-        Args: { dataset: string; min_sim?: number; q: string; scope: string; version: string };
+        Args: {
+          dataset: string;
+          min_sim?: number;
+          q: string;
+          scope: string;
+          version: string;
+        };
         Returns: {
           answer_md: string;
           cache_key: string;
-          provider: string | null;
+          provider: string;
           question_norm: string;
           score: number;
+        }[];
+      };
+      search_documents: {
+        Args: {
+          p_doc_key?: string;
+          p_embedding?: string;
+          p_limit?: number;
+          p_min_lexical?: number;
+          p_model?: string;
+          p_query: string;
+        };
+        Returns: {
+          char_end: number;
+          char_start: number;
+          chunk_id: number;
+          content: string;
+          doc_as_of: string;
+          doc_key: string;
+          doc_title: string;
+          heading: string;
+          lexical_score: number;
+          matched_by: string;
+          page_from: number;
+          page_to: number;
+          score: number;
+          vector_distance: number;
         }[];
       };
       search_geo: {
@@ -2507,11 +2719,16 @@ export type Database = {
           geo_name: string;
           match_rank: number;
           n_total: number;
-          parent_chain: Json | null;
+          parent_chain: Json;
         }[];
       };
       traverse_geo: {
-        Args: { direction?: string; max_depth?: number; row_cap?: number; start_code: string };
+        Args: {
+          direction?: string;
+          max_depth?: number;
+          row_cap?: number;
+          start_code: string;
+        };
         Returns: {
           depth: number;
           geo_code: string;
@@ -2520,34 +2737,9 @@ export type Database = {
           path: string[];
         }[];
       };
-      search_documents: {
-        Args: {
-          p_doc_key?: string | null;
-          p_embedding?: string | null;
-          p_limit?: number;
-          p_min_lexical?: number;
-          p_model?: string | null;
-          p_query: string;
-        };
-        Returns: {
-          char_end: number;
-          char_start: number;
-          chunk_id: number;
-          content: string;
-          doc_as_of: string | null;
-          doc_key: string;
-          doc_title: string;
-          heading: string | null;
-          lexical_score: number | null;
-          matched_by: string;
-          page_from: number;
-          page_to: number;
-          score: number;
-          vector_distance: number | null;
-        }[];
-      };
       traverse_kb: {
         Args: {
+          as_of?: string;
           direction?: string;
           max_depth?: number;
           relations?: string[];
@@ -2556,12 +2748,14 @@ export type Database = {
         };
         Returns: {
           depth: number;
+          direction_path: string[];
           key: string;
           kind: string;
           label: string;
           path: string[];
           relation_path: string[];
           source_path: string[];
+          validity_path: string[];
         }[];
       };
       wilson_high: { Args: { k: number; n: number }; Returns: number };

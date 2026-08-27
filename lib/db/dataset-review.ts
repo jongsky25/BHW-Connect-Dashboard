@@ -136,9 +136,11 @@ export async function listPendingDatasets(limit = 50): Promise<PendingDataset[]>
         .order("ordinal"),
     ]);
 
-    // `as unknown as` for the reason kb-review.ts uses it on its edge rows: the generated types
-    // for this file are hand-maintained and lag the live schema (see DECISIONS.md on the pending
-    // `database.types.ts` regeneration), so a direct cast is rejected on columns that exist.
+    // `as unknown as`, the same hop kb-review.ts makes on its edge rows. The cause is the
+    // concatenated `.select()` string above: the Supabase client infers a row type by parsing that
+    // string at the type level, and a value built by `+` is not a literal it can read, so `data`
+    // degrades to `GenericStringError[]` and a direct cast is rejected. Not a stale-types problem —
+    // it still holds against the regenerated `database.types.ts`, which was checked.
     const columns = (pendingColumns.data ?? []) as unknown as ColumnRow[];
     const registryIds = new Set<number>(columns.map((c) => c.registry_id));
     const known = new Map<number, RegistryRow>();

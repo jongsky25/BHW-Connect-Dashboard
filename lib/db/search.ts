@@ -45,8 +45,15 @@ export async function searchGeo(query: string, limit = 8): Promise<GeoSearchResu
     geoLevel: row.geo_level,
     geoName: row.geo_name,
     nTotal: row.n_total,
-    // parent_chain is absent until the P0.1 migration is applied; treat a
-    // missing/non-object value as "no parents known" so the UI degrades cleanly.
+    // `parent_chain` is `Json`, which admits null and any other JSON shape — the column is a
+    // jsonb the aggregate builds, not a typed record — so anything that is not a plain object is
+    // treated as "no parents known" and the UI degrades to bare place names.
+    //
+    // That degraded rendering was the *only* rendering until 2026-08-27: the P0.1 migration that
+    // adds this column had been committed for six weeks with its version missing from the live
+    // migration history, so `search_geo` returned five columns and every result carried an empty
+    // chain. Nothing caught it because this guard made it look deliberate. Applying that migration
+    // is what turned this branch back into a fallback.
     parentChain:
       row.parent_chain && typeof row.parent_chain === "object" && !Array.isArray(row.parent_chain)
         ? (row.parent_chain as GeoParentChain)

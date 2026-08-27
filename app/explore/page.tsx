@@ -40,6 +40,7 @@ import type { ChildIndicator } from "@/components/explore/geo-comparison-figure"
 import { coverageForDisplay } from "@/lib/db/stepzero";
 import { getPeerRank, getPeerRanks } from "@/lib/db/peer-ranks";
 import { getInsights } from "@/lib/db/insights";
+import { getUucPhcCounts } from "@/lib/db/uuc-phc";
 import {
   getBenchmarkContext,
   benchmarkRowsFor,
@@ -65,6 +66,7 @@ import { HonorariumDistributionFigure } from "@/components/explore/honorarium-di
 import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { DataQualityBadge } from "@/components/explore/data-quality-badge";
 import { PeerRankChip } from "@/components/explore/peer-rank-chip";
+import { UucPhcContextChip } from "@/components/uuc-phc/context-chip";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
 import {
@@ -231,6 +233,7 @@ export default async function ExplorePage({
     honorariumSufficiencyNational,
     certificationRegion,
     certificationNational,
+    uucPhcCounts,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
     // Benchmark context (E1.2): this place vs. its region and the nation, so
@@ -299,6 +302,10 @@ export default async function ExplorePage({
       : Promise.resolve(null),
     wantRegionRow && regionCode ? getCertification(regionCode, "region") : Promise.resolve([]),
     wantNationalRow ? getCertification(NATIONAL_GEO_CODE, "national") : Promise.resolve([]),
+    // Cross-dataset context (U12a): how much of this area is on the 2025 UUC for PHC list. One
+    // extra row from an aggregate that already exists, in the same round trip as the rest — it
+    // returns null at barangay grain, where `agg_uuc_phc_counts` has no rows.
+    getUucPhcCounts(geo.geoCode, geo.geoLevel),
   ]);
 
   const overview = benchmarkCtx.self.overview;
@@ -687,6 +694,13 @@ export default async function ExplorePage({
               )}
             </section>
           </PresentationSlide>
+
+          {/* Cross-dataset context (U12a) — this area on the 2025 UUC for PHC list. Sits under
+            the at-a-glance strip, where a reader has just read this area's BHW figures, and
+            deliberately outside every `PresentationSlide`: the deck's caption states a BHW N, and
+            a count of barangays projected under it would be a figure that caption's denominator
+            cannot carry. */}
+          <UucPhcContextChip counts={uucPhcCounts} />
 
           {/* Data-quality grade (E2.5) — one honest letter for how complete the
             profiles behind these figures are, linking the full breakdown. */}
