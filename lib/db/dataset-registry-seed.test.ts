@@ -174,11 +174,13 @@ describe("the committed dataset registry seed", () => {
 describe("the UUC for PHC entries (plan U5)", () => {
   const uuc = registry.filter((r) => r.datasetSlug === "uuc-phc-2025");
 
-  it("registers all nine objects, approved and public", () => {
-    // Four from U5, plus agg_uuc_phc_criteria from U7, agg_uuc_phc_indicator_dist from U9 and
-    // U10's three data-quality relations. A new relation the registry does not know about is one
-    // queryDataset refuses outright, so this list is the thing that has to grow.
+  it("registers all ten objects, approved and public", () => {
+    // Four from U5, plus agg_uuc_phc_criteria from U7, agg_uuc_phc_indicator_dist from U9, U10's
+    // three data-quality relations and U12b's agg_bhw_by_uuc_status. A new relation the registry
+    // does not know about is one queryDataset refuses outright, so this list is the thing that has
+    // to grow.
     expect(uuc.map((r) => r.tableName).sort()).toEqual([
+      "agg_bhw_by_uuc_status",
       "agg_uuc_phc_counts",
       "agg_uuc_phc_criteria",
       "agg_uuc_phc_indicator_dist",
@@ -231,6 +233,53 @@ describe("the UUC for PHC entries (plan U5)", () => {
       (c) => c.tableName === "fact_uuc_phc_indicators" && c.columnName.endsWith("_prov_ref"),
     )) {
       expect(column.meaning, column.columnName).toMatch(/Never capped/);
+    }
+  });
+
+  it("says on agg_bhw_by_uuc_status that it is a check, not a finding — and on both sides", () => {
+    // The one thing a model must not do with this table is report the average gap as a discovery.
+    // UUC status is defined partly on distance to a health facility, so the gap is partly
+    // definitional; and the compositional caveat has to travel with the households columns, since
+    // a column meaning is the only text that reaches a returned value.
+    const table = registry.find((r) => r.tableName === "agg_bhw_by_uuc_status");
+    expect(table?.notesMd).toMatch(/CONSISTENCY CHECK, NOT A FINDING/);
+    expect(table?.notesMd).toMatch(/EXCEPTION/);
+    for (const name of ["listed_households", "other_households"]) {
+      const column = columns.find(
+        (c) => c.tableName === "agg_bhw_by_uuc_status" && c.columnName === name,
+      );
+      expect(column, name).toBeDefined();
+      expect(column?.meaning, name).toMatch(/barangay size/i);
+    }
+  });
+
+  it("tells a reader of agg_bhw_by_uuc_status what 'other' is, and what it is not", () => {
+    // "Not listed" reads as "assessed and found adequate". Those barangays were never loaded, so
+    // that group does not exist in this database at all.
+    const column = columns.find(
+      (c) => c.tableName === "agg_bhw_by_uuc_status" && c.columnName === "n_barangays_other",
+    );
+    expect(column?.meaning).toMatch(/EVERY OTHER barangay/);
+    expect(column?.meaning).toMatch(/NOT assessed and found adequate/);
+  });
+
+  it("warns that a suppressed side is null, not zero, on every column that can be nulled", () => {
+    const nullable = [
+      "listed_n_bhw",
+      "other_n_bhw",
+      "listed_households",
+      "other_households",
+      "listed_registered_universe",
+      "other_registered_universe",
+      "listed_n_profiled",
+      "other_n_profiled",
+    ];
+    for (const name of nullable) {
+      const column = columns.find(
+        (c) => c.tableName === "agg_bhw_by_uuc_status" && c.columnName === name,
+      );
+      expect(column, name).toBeDefined();
+      expect(column?.meaning, name).toMatch(/NULL when|suppress/i);
     }
   });
 

@@ -47,6 +47,12 @@ function SectionHeader() {
             Indicators
           </Link>
           <Link
+            href="/uuc-phc/bhw-coverage"
+            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+          >
+            BHW coverage
+          </Link>
+          <Link
             href="/uuc-phc/data-quality"
             className="rounded-md px-3 py-2 font-medium hover:bg-surface"
           >

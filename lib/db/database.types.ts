@@ -23,6 +23,96 @@ export type Database = {
         };
         Relationships: [];
       };
+      agg_bhw_by_uuc_status: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          listed_households: number | null;
+          listed_is_suppressed: boolean;
+          listed_n_bhw: number | null;
+          listed_n_profiled: number | null;
+          listed_registered_universe: number | null;
+          n_barangays_listed: number;
+          n_barangays_other: number;
+          n_listed_no_bhw: number;
+          n_listed_with_data: number;
+          n_other_no_bhw: number;
+          n_other_with_data: number;
+          other_households: number | null;
+          other_is_suppressed: boolean;
+          other_n_bhw: number | null;
+          other_n_profiled: number | null;
+          other_registered_universe: number | null;
+          unallocated_households: number;
+          unallocated_n_bhw: number;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          listed_households?: number | null;
+          listed_is_suppressed?: boolean;
+          listed_n_bhw?: number | null;
+          listed_n_profiled?: number | null;
+          listed_registered_universe?: number | null;
+          n_barangays_listed?: number;
+          n_barangays_other?: number;
+          n_listed_no_bhw?: number;
+          n_listed_with_data?: number;
+          n_other_no_bhw?: number;
+          n_other_with_data?: number;
+          other_households?: number | null;
+          other_is_suppressed?: boolean;
+          other_n_bhw?: number | null;
+          other_n_profiled?: number | null;
+          other_registered_universe?: number | null;
+          unallocated_households?: number;
+          unallocated_n_bhw?: number;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          listed_households?: number | null;
+          listed_is_suppressed?: boolean;
+          listed_n_bhw?: number | null;
+          listed_n_profiled?: number | null;
+          listed_registered_universe?: number | null;
+          n_barangays_listed?: number;
+          n_barangays_other?: number;
+          n_listed_no_bhw?: number;
+          n_listed_with_data?: number;
+          n_other_no_bhw?: number;
+          n_other_with_data?: number;
+          other_households?: number | null;
+          other_is_suppressed?: boolean;
+          other_n_bhw?: number | null;
+          other_n_profiled?: number | null;
+          other_registered_universe?: number | null;
+          unallocated_households?: number;
+          unallocated_n_bhw?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_bhw_by_uuc_status_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_bhw_by_uuc_status_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_bhw_counts: {
         Row: {
           adjusted_pct: number | null;
