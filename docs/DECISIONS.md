@@ -4330,16 +4330,34 @@ validator's "first sighting wins" collapses the label variance deterministically
 distinct keys, one label each, so the database is correct — but the *key* variants are separate
 nodes and a person has to merge them.
 
-**One test fails, and it has not been touched.** `keeps one label per key across slides` reads the
-raw transcript and asserts one key carries one label. That held for a hand-authored transcript and
-does not hold for this one (`org:DOH`, above). The test is right and the model output is what
-changed, so weakening it to get a green tick would delete the finding. It is left failing and
-flagged here. **The decision is the owner's**, and it is a real fork: either the assertion belongs
-against `validate()`'s output rather than the raw proposal — the database only ever sees one label
-per key, and `kb_node.key` is unique — or the prompt should pin labels to the key and this should
-be re-run. The first is defensible and is not the same as lowering the bar; it is asserting the
-property at the layer that actually holds it. It was not done here because 3.1 named this test's
-intent explicitly and changing it is a judgment about that intent.
+**The one test that failed is now asserted at the layer that actually holds it.** `keeps one
+label per key across slides` read the raw transcript and required byte-identical labels. That is
+free for a hand-authored file and false for a model-produced one: six keys carry more than one
+label — `org:DOH` as `DOH`, `Department of Health` and `DEPARTMENT OF HEALTH`; `org:BLHSD` three
+ways — because the model copies whatever casing the slide header uses.
+
+The variance cannot reach the database. `validate()` takes the first sighting and `kb_node.key` is
+unique, so one key is one row with one label however many the transcript proposes — 92 nodes, 92
+distinct keys, checked. Byte-equality was therefore asserting the *proposer's tidiness* at a layer
+where nothing guarantees it, which is why a correct extraction failed it.
+
+What nothing resolves is a key that denotes two different *entities*, so that is what it checks
+now, split in two and typed by kind: an issuance is identified by its number — the entire point of
+the canonical key — so every label must carry it; a programme or organisation is identified by its
+name, so its labels must be one an abbreviation or expansion of the other. A second case asserts
+one key never changes kind, which nothing checked before.
+
+**Proven by making it fail, the way 3.1 proved the grounding trigger.** Relabelling `org:DOH` as
+"Department of Agriculture" fails it (*"expected false to be true"*); giving `org:DOH` the kind
+`program` fails the new kind case; the real transcript passes both, and was restored byte-identical
+afterwards (sha256 checked). A rewrite that could not fail would have been the weakening this was
+avoiding — replacing an assertion with a `Map` that collapses labels by construction would have
+gone green and checked nothing.
+
+This is a change of layer, not of standard: the property is stricter about identity than the one it
+replaces and merely indifferent to casing. It is worth saying plainly that the alternative — pinning
+labels in the prompt and re-running — was available and was not taken, because it would have spent
+another run to make a model produce tidiness that the loader already discards.
 
 **Loaded, and what the load proves.** Both inserts ran against the live database. **Everything
 landed `status = 'auto'`** — written as a literal in both statements, so guardrail 6 holds by
@@ -4394,6 +4412,6 @@ Nor does it establish anything about a different model: the p129 `NCIP-MO 0151` 
 independently is a point in the checks' favour, not evidence that `3.7-flash` is the right choice.
 The stand-in transcript is preserved outside the repository for anyone who wants to diff further.
 
-**Standards.** `npm run lint` and `npm run typecheck` clean. `npm test`: **546 of 547 pass, with
-the one failure described above, deliberately not fixed.** `npx prettier --check .` fails on 149
-files on untouched `main` and is unchanged by this branch.
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **548 tests, one more
+than before**, the label case having become two. `npx prettier --check .` fails on 149 files on
+untouched `main` and is unchanged by this branch; the rewritten test file is prettier-clean.
