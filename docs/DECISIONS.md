@@ -3811,6 +3811,75 @@ now"*, which is the correct `allCapped` path and was seen — and no live model 
 boundary itself is not. That is the same gap Increments 1.3, 1.4, 2.2 and 2.3 recorded, and the
 same one that closes with a key on the deployed preview.
 
+## 2026-08-27 — The corpus is embedded: §11's dimension question is answered, 3072, measured
+
+The one thing Phase 2 and Phase 3 both had to record as unverified. `doc_embedding_model` and
+`doc_chunk_embedding` have been empty since 2.1 built them, because measuring the dimension needs a
+live provider and no build environment had a key. The owner supplied one; this is that run.
+
+**212 vectors, `gemini-embedding-001`, dimension 3072, cosine, L2-normalised.** Page 172 has no text
+layer and is the single unembedded chunk — the state 2.1 called "the honest one", not a gap.
+
+- **The dimension was measured, never chosen.** §11 and 2.1 are emphatic that a `vector(768)` column
+  would have hard-coded a provider's output width into a migration written before anyone looked.
+  `embed_chunks` read 3072 off the first live response, and the composite FK plus the
+  `vector_dims(embedding) = dim` check constraint then held every subsequent row to it. Re-verified
+  after loading: **0 width mismatches across 212 rows**, and every vector's L2 norm is exactly
+  1.0000 at both ends of the range.
+
+- **Three embedding models were live on the key, and the choice is recorded rather than assumed.**
+  `gemini-embedding-001`, `gemini-embedding-2` and `gemini-embedding-2-preview`. The first two both
+  return 3072. `-001` was taken as the stable, best-documented of them; `doc_chunk_embedding` is
+  keyed `(chunk_id, model)` precisely so moving to `-2` later is an insert alongside rather than a
+  destructive rewrite (2.1), so this is a reversible call and not a fork in the road.
+
+- **The transport differed from the committed path, and only the transport.** The session that ran
+  this permits outbound HTTPS only, so the raw Postgres connection `--database-url` opens was not
+  available — verified rather than assumed: DNS resolved, the TCP socket failed at the OS layer,
+  and an HTTPS call to the same provider succeeded from the same shell. The embedding itself is
+  `ingest_documents.embed_chunks` called unmodified — same `RETRIEVAL_DOCUMENT` task type, same
+  normalisation, same measured width, same refusal if a later chunk returns a different one — and
+  the rows were written through PostgREST instead of psycopg2. Nothing about what is stored differs
+  from running the committed script; a normal machine should still use `--embed --database-url`.
+
+**Verify — and this is the first evidence that the vector half retrieves WELL, not merely that it
+runs.** 2.2 was explicit that its fixture proved "the plumbing, not retrieval quality", and 2.2's
+own entry closed with "nothing here says the vector half retrieves well".
+
+Question: *"how are village health volunteers paid a monthly stipend"* — chosen because the deck
+contains none of "village", "volunteers" or "stipend"; it says "Barangay Health Workers" and
+"honorarium".
+
+| | lexical only (the state until today) | hybrid, vectors live |
+|---|---|---|
+| top hit | slide 148 (PuroKalusugan), 0.259 | slide 29 (FAQs), matched by both |
+| **slide 27 — the DOH honorarium allocation table, i.e. the actual answer** | **not in the top 25** | **rank #5, `matched_by=vector`** |
+
+Slide 27 carries the 3rd/4th/5th income-class honorarium table (§12.2) and shares no vocabulary
+with the question at all, so trigram cannot see it at any limit. It has the best cosine distance of
+any hit in the run (0.3359). This is the exact failure mode 2.2 predicted when it argued that
+neither half is sufficient alone — now demonstrated against the real corpus rather than a
+four-dimension probe.
+
+- **The §10 runner earned its keep on its first real change.** Regression case #1 records
+  `searchDocuments("How many BHWs are there", limit 6)` citing chunk 26. Turning vectors on
+  reorders that result set — `[26,29,178,32,175,177]` becomes `[26,178,175,29,177,27]` — but the
+  cited chunk holds **rank #1 both ways**, so the case replays `ok`. A retrieval change that had
+  dropped chunk 26 out of its own recorded search would have been invisible in the answer prose and
+  is exactly what the runner checks.
+
+**Still to do, and it is the owner's:** `GEMINI_EMBEDDING_MODEL=gemini-embedding-001` has to go on
+Vercel. Until it does, `embedQuery` reads no configured model and every document search in
+production still degrades to lexical with the `no-model-configured` warning — the vectors are in
+the database but unused by the deployed app. `lib/ai/embed-query.ts` compares the configured model
+against `doc_embedding_model` and refuses on a mismatch rather than embedding with the wrong one,
+so the string must match exactly.
+
+**The ANN index is now possible and is deliberately not built here.** 2.1 traded it away knowingly:
+pgvector cannot index an unconstrained `vector` column, and pinning the column needed a measured
+dimension to pin it to. That dimension now exists. At 212 rows an exact scan is sub-millisecond, so
+the trigger for doing it is corpus growth, not this entry — but the blocker 2.1 named is gone.
+
 ## 2026-08-27 — UUC for PHC 2025: U9, the indicators as distributions — and the rule that had two copies
 
 `docs/UUC_PHC_2025_PLAN.md` §9 U9. The 12 indicators become legible above barangay grain for the
