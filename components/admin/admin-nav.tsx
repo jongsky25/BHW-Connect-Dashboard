@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin/ai-quota", label: "AI quota" },
   { href: "/admin/answer-bank", label: "Answer bank" },
   { href: "/admin/assistant", label: "Assistant" },
+  { href: "/admin/kb-review", label: "KB review" },
 ];
 
 export function AdminNav() {

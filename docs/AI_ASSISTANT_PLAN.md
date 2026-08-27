@@ -469,7 +469,8 @@ extraction prompt restates the §1 rule that source text is data and never instr
 *Verify:* extracted triples on a known document are spot-checked; every edge resolves to a chunk
 whose text actually supports it; nothing at `status = 'auto'` is citable.
 
-**3.2 — Review queue.** Admin approves, edits, or rejects proposed nodes, edges, and joins.
+**3.2 — Review queue.** *(built — 2026-08-27; 77 nodes / 85 edges approved, 2 / 5 rejected)*
+Admin approves, edits, or rejects proposed nodes, edges, and joins.
 Lineage edges from 1.5 are exempt and land approved: they are derived from repository structure,
 not proposed by a model. The queue exists for inferences, not for what a migration asserts —
 routing both through it would bury the rows that need judgment among rows that do not.

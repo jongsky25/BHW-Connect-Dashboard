@@ -3000,3 +3000,110 @@ taken by the concurrent UUC work (`agg_uuc_phc_criteria`), applied live at 01:01
 being written. Ours is `20260827110000_kb_extraction.sql`. The handoff warned about exactly this and
 it happened anyway, which suggests the check belongs somewhere a person cannot forget it — noted,
 not built here.
+
+## 2026-08-27 — Internal AI assistant, Increment 3.2: the extraction review queue
+
+Owner decision 5 in one screen. 3.1 wrote 169 rows a model proposed; none of them was citable or
+traversable, because `traverse_kb` filters `status = 'approved'`. This is where a person decides,
+at `/admin/kb-review`.
+
+**Lineage rows are exempt, and the exemption is structural rather than remembered.** §8 3.2 says
+routing 1.5's edges through the queue "would bury the rows that need judgment among rows that do
+not". Every read in `lib/db/kb-review.ts` filters `status = 'auto'`, and an asserted row is never
+at `auto` — so the exemption is a consequence of the schema, not a rule this module has to keep in
+mind. The header counts asserted rows anyway (317 today), so their absence from the queue reads as
+a decision rather than an omission.
+
+- **Two triggers, because an approved edge with an unapproved endpoint is the worst state there
+  is.** `traverse_kb` requires `approved` on the edge *and* on both nodes, so such an edge is
+  approved and invisible: the queue says it was handled and the traversal disagrees, and nothing
+  anywhere reports the disagreement. `kb_edge_endpoints_are_approved()` refuses it, and
+  `kb_node_keeps_its_approved_edges()` refuses the other direction — a node cannot leave
+  `approved` while an approved edge still points at it. The review layer therefore sends edges
+  back before their node, which is the order a reviewer would take anyway.
+
+  Both live in the database, per 3.1's reasoning: this invariant has to survive an admin surface
+  nobody has designed yet.
+
+- **The evidence is on the card, not behind a link.** §7's argument for citations applies to a
+  reviewer more than to a reader — the only way to judge "UUC for PHC is defined by AO 2020-0023"
+  is to see the words it was taken from. The link through to 2.3's stored-slide page is there for
+  fuller context, but a queue that makes you click to see the evidence gets approved without it.
+  The quote renders as stored, line breaks and all: table-heavy slides extract in poor reading
+  order (2.2's finding), and tidying that here would hide exactly what the reviewer is judging.
+
+- **The reviewer's identity comes from the session, never from the form.** §7's argument against
+  rubber-stamped review turns on a checkmark meaning someone looked; a `reviewed_by` the request
+  can set records nothing. `reviewed_at` / `reviewed_by` / `review_note` are new columns, and the
+  note carries the reason — most of the content of a rejection is *why*.
+
+- **There is a "Recently judged" list with a Return-to-review button, which the plan did not ask
+  for.** An approval that only SQL can undo is a queue nobody will use carefully. Reopening a node
+  reopens its edges too — both because the trigger requires it and because it is what the reviewer
+  means: if the entity is under question again, so is every claim about it.
+
+- **Editing is presentational only: a node's label and summary.** Not the key, not the relation,
+  not the evidence. Changing any of those changes what the slide was taken to say while leaving
+  the quotation that backs it untouched — the §7 failure exactly, a citation that reads as verified
+  and points somewhere else.
+
+- **There is deliberately no merge action, and 3.1 handed the queue two cases that want one.**
+  Merging means re-pointing an edge at a different node, and an edge's `evidence_quote` describes
+  the endpoints it was extracted with. Rejecting the duplicate is the honest action; re-extracting
+  under a prompt that pins canonical programme names is the honest fix. §11's "edge dedup" open
+  question now has two concrete instances rather than a hypothetical.
+
+**The review pass itself, and who did it.** All 169 rows were judged in this session and
+`reviewed_by` records `phase-3-build-session` rather than an admin account, because no admin was
+present. **77 nodes and 85 edges approved; 2 nodes and 5 edges rejected.**
+
+The rejections are the naming split 3.1 surfaced. `program:Local Investment Plans for Health`
+(slide 87's profile heading) is the same programme as
+`program:Local Investments Plan for Health/ Annual Operational Plan (LIPH/AOP)` (the slide 47
+programme list), and `program:Good Practices in Health` (slide 208) is the same as
+`program:Good Practice in Health and Replication` (slide 48). Approving both of each pair would
+put a false distinctness claim into the citable graph, and every question about the programme
+would silently split across two nodes. **The cost is real and is not hidden: five `defined-by`
+edges naming AO 2020-0022, AO 2020-0018, RA 11223, AO 2008-0006 and AO 2021-0061 were rejected
+along with their endpoints.** Every one of those facts is true and on the slide; they return on a
+re-extraction whose prompt is given the slide 47/48 programme list as the canonical naming. The
+rejection note on each row says so.
+
+Every approval and every rejection is reversible from the page by whoever the owner is.
+
+**Verify (live against the project, and in tests).**
+
+- **Both triggers refuse, proven by making them fire.** Approving an edge ahead of its endpoints:
+  *"cannot approve an edge whose endpoints are not approved: issuance:DC 2025-0549 (auto),
+  program:Unserved and Underserved…"*. Un-approving a node that other rows depend on:
+  *"table:agg_bhw_counts still has 16 approved edge(s); reject or unapprove those first"* — an
+  asserted lineage node, so the invariant covers the whole graph and not only extracted rows.
+- **0 approved edges have an unapproved endpoint**, re-checked in SQL across all 407 edges
+  independently of the triggers that enforce it.
+- **Only approved rows are citable.** `traverse_kb('program:PuroKalusugan', 'out', …)` returned 0
+  rows before the review and returns **15** after — twelve issuances plus the two programme sets
+  it sits inside. `traverse_kb` from the rejected `program:Local Investment Plans for Health`
+  returns 0 rows, and it does not appear as a destination from
+  `program:Local Health Planning and Financing` either: a rejected row is invisible in both
+  directions, not merely unlisted.
+- **§9.9 holds by column.** 272 nodes / 407 edges: 193 / 317 `asserted` + `approved` with no
+  evidence quote, 77 / 85 `extracted` + `approved` with a chunk and a quote, 2 / 5 `extracted` +
+  `rejected`. No row is asserted-looking by convention; the columns say which is which.
+- **RLS unchanged by the new columns**: `set local role anon` returns 0 rows from `kb_node` and
+  `kb_edge` while the control read of `agg_bhw_counts` returns 41,052.
+- Advisors: no new finding. The two WARN `function_search_path_mutable` entries are `wilson_low`
+  and `wilson_high` from July; all three trigger functions added in 3.1 and 3.2 pin their
+  `search_path` and do not appear. The project still has no ERROR-level security advisor.
+- `next build` puts `/admin/kb-review` under `ƒ` (dynamic): no prerender attempt on an auth-gated
+  page.
+- 10 new tests (399 total). `kb-review/actions.test.ts` covers the two properties that are security
+  rather than behaviour — every action re-checks admin access itself, and the reviewer comes from
+  the session and not from the form — plus the refusals (a status that is not a judgement, a
+  non-positive id), note trimming and capping, blank-summary-to-null, and reopen dispatch.
+- `npm run lint`, `npm run typecheck`, `npm test` clean.
+
+**`database.types.ts` was hand-extended again, not regenerated.** Six columns on `kb_node` and
+`kb_edge`, in the existing style. The Phase 2 entry's reasoning still holds and the trigger for
+changing it has not arrived: the concurrent UUC work is still unmerged on `main` and applied two
+more migrations to the live project while this increment was being written. A regeneration remains
+worth doing as its own change once that branch lands.
