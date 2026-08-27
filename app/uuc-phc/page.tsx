@@ -118,7 +118,11 @@ export default async function UucPhcLanding() {
           <Link href="/uuc-phc/indicators" className="underline hover:text-accent">
             the indicators behind it
           </Link>{" "}
-          for how the 12 measurements are distributed, or the{" "}
+          for how the 12 measurements are distributed,{" "}
+          <Link href="/uuc-phc/bhw-coverage" className="underline hover:text-accent">
+            BHW coverage and the list
+          </Link>{" "}
+          for how the two datasets here compare, or the{" "}
           <Link href="/uuc-phc/methodology" className="underline hover:text-accent">
             methodology
           </Link>{" "}
