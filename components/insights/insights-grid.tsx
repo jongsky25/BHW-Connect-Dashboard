@@ -54,13 +54,17 @@ export function InsightsGrid({
         // than always reserving 3 columns — a lone card in a fixed 3-column
         // grid sits stranded in the first column with two empty columns
         // beside it, reading as a stray single-column block instead of
-        // aligning with the full-width sections above it.
+        // aligning with the full-width sections above it. grid-cols-1 (rather
+        // than omitting a cols class) is required here: a bare `grid`
+        // container with no explicit template sizes its lone implicit column
+        // to content width instead of stretching it, which reproduces the
+        // same dead-space bug.
         const colsClass =
           group.cards.length >= 3
             ? "sm:grid-cols-2 lg:grid-cols-3"
             : group.cards.length === 2
               ? "sm:grid-cols-2"
-              : "";
+              : "grid-cols-1";
 
         return (
           <div key={group.category} className="flex flex-col gap-3">
