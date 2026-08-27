@@ -2850,3 +2850,137 @@ The generator's stderr findings list is empty: every table node has a `built-by`
   A regeneration is still worth doing — **once the concurrent branches have merged**, as its own
   change with nothing else in it, so the diff is reviewable as the mechanical reformat it is.
 
+## 2026-08-27 — UUC for PHC 2025: U7, the qualifying routes, and the score that had to be loaded
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U7. `/uuc-phc/criteria` answers the question the section could not:
+not which barangays are on the list, but *why* — how many came in on each of the four
+socio-economic routes of DOH AO No. 2020-0023 §VI.A, at every geo level. Before this it was legible
+only inside a `<details>` on one city page at a time, so "how many of BARMM's 399 qualified on the
+4Ps route?" meant reading 399 disclosures. (190.)
+
+**`health_indicators` is loaded, not recomputed — and the plan's Verify block is what exposed
+this.** It asks that "the health-indicator route count equals the number of rows with
+`health_indicators >= 4`", naming a column that was not in `fact_uuc_phc_indicators`: U3 left it
+out on §10's advice that it be "dropped or recomputed before anything depends on it". The obvious
+move was to recompute it from the seven indicator/benchmark pairs with U3's own `comparesWorse`
+rule. That is wrong, and checkably so:
+
+- It disagrees with the source on **664 of the 5,991 rows**, always lower, because the source
+  scored criterion (d) against the values *before* cleaning bounded them, using the Pass/Fail
+  columns the reconciled extract drops.
+- Worse, it leaves **98 listed barangays qualifying on none of the four routes**. §1a makes that
+  impossible — a barangay reaches this list only with a socio-economic factor present. The source's
+  own score leaves zero such barangays. So the recomputation is demonstrably not the test that
+  selected this list; it is a different quantity wearing the same name.
+
+So the column is loaded as what it is: the source office's recorded classification, auditable
+against the source and not against this table. **That is also what keeps the aggregate inside U3's
+rule.** The plan's argument is that a route count is safe because it counts classifications rather
+than measurements — and recomputing the score from capped columns would have quietly turned it back
+into a derived measurement, which is exactly what U3 refused. Neither dropping nor recomputing was
+right; carrying it and saying plainly what it is was. The caveat is on the page, on the column
+comment, and in the column dictionary, because that last is the only text a model sees before
+composing a query.
+
+**There was no rendered health verdict to stay consistent with**, which is what freed this choice.
+U3's barangay disclosure renders each indicator's comparison and the chips for criteria (a)–(c); it
+never renders a criterion (d) pass/fail. Had it done so, two surfaces in one section would now
+disagree about the same barangay.
+
+**Four independent shares, never a stacked bar or a pie.** The routes overlap — a barangay can
+qualify on three at once — so the counts do not sum to the listed count, and nationally they come
+to 146% of it. Every rendering decision follows from that: four separate 0–100% tracks; each route
+carrying **its own denominator** in words beside it; no "other" or remainder figure anywhere,
+because there is no remainder; and `shareSumPct` exposed by the read layer for the sole purpose of
+letting the page *state* the overshoot in a sentence rather than leaving a reader to infer a
+partition. The sum is taken over the **rounded** shares, so a reader who adds the four percentages
+on screen gets back the number printed beneath them. 672 of the 1,047 areas with anything listed
+sum above 100%; CARAGA reads 184%.
+
+**Route (d) has a different denominator from the other three, and the page says so where it
+renders.** For 226 barangays in 5 provinces the provincial benchmark cannot support the comparison
+at all, so they are excluded from `n_health_evaluable` and the health share is out of the barangays
+the route could apply to. Giving all four routes the same denominator would have understated
+exactly the route whose evidence is weakest. An area where the comparison is evaluable for nobody
+renders **"Not evaluable here"** and an em dash in the table, never "0 of 0" or "0%" — no barangay
+qualified and the question cannot be asked are different statements, and the one place they must
+not collapse is a route whose whole caveat is that the data cannot answer it. Agusan del Sur is the
+case: all 156 of its listed barangays.
+
+**The not-evaluable count is 226, not the 238 the plan and the cleaning report both state.** Their
+own per-province tables read 156 + 50 + 12 + 7 + 1. 238 is an addition error that propagated from
+§1a into the cleaning report §6, the U7 and U9 Verify blocks, U10's scope and §10's carried
+questions; both round to the 4% they also quote, which is why it survived. Corrected in both
+documents, and the page computes the figure rather than quoting it.
+
+**The test for "not evaluable" is computed, not a list of province codes.** A province's seven
+benchmarks are three rates per 1,000 and four coverage percentages, so a real set has at least one
+value well above 1; "the largest of this barangay's seven benchmarks is null, or at most 1"
+identifies a placeholder, a zero-fill or a fraction encoding without naming anyone. It selects
+exactly those 226 and nothing else. Hard-coding the codes would go stale the first time a corrected
+extract arrives; this rule would simply stop firing. It is also **per barangay, not per province** —
+`ref_uuc_phc_provincial` rolls Zamboanga City's 7 reference-less barangays in with the 1 that has a
+full set, so a province-level test finds 219 and silently keeps those 7.
+
+**`n_listed` is carried on this table although `agg_uuc_phc_counts` already has it.** Three of the
+four routes are shares of it, and joining two aggregates in the read layer to divide is more
+fragile than one row that carries its own denominator. The duplication is made safe rather than
+accepted: the migration asserts after loading that the two agree on every row, which — since they
+are computed from different fact tables — is also a live check that every listed barangay has an
+indicator row and vice versa. Three more assertions guard what the page draws: no count outside its
+denominator, every level rolling up to the national totals, and every criteria row having a counts
+row.
+
+**`n_health_evaluable` is stored; the excluded count is not.** It is `n_listed - n_health_evaluable`
+and the read layer derives it — U2's discipline for the share, one definition in one place.
+
+**Children with nothing listed are dropped from this breakdown**, unlike the coverage one. There a
+zero is the finding ("no barangay in NCR is on the list"); here the row would be four empty tracks
+restating that same zero four times. The area page itself still renders for a zero area, saying so
+in a sentence.
+
+**A rendering bug no static check could catch.** JSX dropped the leading space of a multi-line text
+node, printing "5,991listed barangays"; it is an explicit `{" "}` now.
+
+**And one that the rebase then un-found.** Writing the phrase `create table if not exists` in prose
+inside a migration comment made `ingestion/build_kb_lineage.py` match its own `CREATE_TABLE_RE` and
+invent a `table:if` node — the fourth instance of this script reading prose as data. Written first
+against the pre-#81 `main`, this increment worked around it by rewording the comment, and declined
+to touch the regex on the grounds that widening it risked the `built-by` edges that already work.
+**#81 had already fixed it properly**, at the cause: `read_migrations` now scans comment-stripped
+SQL. So the workaround was reverted on rebase and the comment says the plain thing again — a
+regeneration on the merged base produces no phantom node from it. Recorded rather than quietly
+dropped, because "reworded a comment to appease a parser" is exactly the kind of workaround that
+outlives its reason.
+
+**Regenerating the lineage picked up drift from two increments, not one.** `feedback` had no
+`built-by` edge to `20260827090000_feedback_dataset_slug.sql` (U6 added the migration without
+re-running the generator); and the rebase conflict on the seed had to be resolved by regenerating
+rather than by choosing a side, since either side alone was missing the other's tables. The
+committed seed now carries #81's five document-corpus tables *and* this increment's aggregate, and
+the generator prints nothing to stderr. That is the argument for a generated seed over a
+hand-written one: the merge of two branches that both touched it is a re-run, not a negotiation.
+
+**The ref-number churn in that file's diff is mechanical.** Inserting migrations into a sorted list
+renumbers `rN` for everything after them, so the seed's diff is large while its semantic delta is
+8 nodes and 16 edges — all of them #81's, plus this increment's own. Verified by parsing both
+versions and differencing the node and edge keys rather than the lines.
+
+**Verify.** 1,788 rows (1 + 18 + 118 + 1,651), matching `agg_uuc_phc_counts`; all four in-migration
+assertions pass; **0 rows** have a count outside its denominator. The national row equals a direct
+count over the fact table on all six figures (5,991 / 3,677 / 2,302 / 726 / 2,000 / 5,765), and
+those match an independent Python computation over the committed CSV. 2,001 rows carry
+`health_indicators >= 4` and 2,000 of them are evaluable — the national health route reads 2,000,
+so the exclusion is exactly the one not-evaluable row it should be. All 5,991 loaded scores were
+read back from the database and compared to the committed CSV as `(source_geo_code, score)` pairs —
+**md5 match, 0 mismatches**; the load asserted its own payload length and md5 before writing, which
+is what caught a first attempt that arrived truncated. 672 of 1,047 areas with anything listed have
+four shares summing above 100%. Registry returns **5** UUC relations approved/public with 6 / 10 /
+8 / 25 / 10 approved columns; the lineage generator prints **nothing** to stderr and no table node
+lacks a `built-by` edge; `get_advisors` reports no new finding and no `security_definer_view`;
+`anon` reads all 1,788 rows over PostgREST. Rendered and **looked at** in Chromium at national,
+CARAGA (184%, 156 excluded), Agusan del Sur (all 156 excluded, "Not evaluable here"), Mayoyao (104%)
+and NCR (0 listed, empty state); `/uuc-phc/criteria/barangay/*` and an unknown geo 404. The deck
+starts, advances through both slides showing **"UUC FOR PHC"**, and exits; `/bhw` still reads
+"BHW Connect". The one console error is the pre-existing theme-script hydration warning, identical
+on `/bhw`. `npm run lint`, `npm run typecheck` and `npm test` all clean.

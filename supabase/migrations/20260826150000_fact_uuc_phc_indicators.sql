@@ -69,10 +69,49 @@ create table if not exists fact_uuc_phc_indicators (
   -- the 4,594 barangays whose values were all in range.
   capped_indicators text[] not null default '{}',
 
+  -- The source office's own criterion (d) score, 0-7: how many of the seven health assessments
+  -- this barangay failed against its province. Added by plan U7, which counts qualifying routes.
+  --
+  -- **Loaded, not recomputed, and the distinction is the whole point.** The seven indicator and
+  -- benchmark columns above are all published here, so it is tempting to derive this score from
+  -- them with the same comparesWorse rule the barangay disclosures use (lib/db/uuc-phc-indicators
+  -- .ts). Doing so gives a different answer on 664 of the 5,991 rows, always lower, because the
+  -- source scored criterion (d) against the values *before* cleaning bounded them, using the
+  -- Pass/Fail columns the reconciled extract drops.
+  --
+  -- The recomputation is not merely different, it is wrong as a statement about qualification:
+  -- it leaves 98 listed barangays meeting none of the four socio-economic routes, which DOH AO
+  -- No. 2020-0023 makes impossible - a barangay reaches this list only with a socio-economic
+  -- factor present. The source's score leaves zero such barangays. So this column is what
+  -- actually decided criterion (d), and a derivation from the capped values is a different
+  -- quantity wearing its name.
+  --
+  -- That is also what keeps agg_uuc_phc_criteria inside U3's rule. A route count counts
+  -- classifications the source recorded; it never averages a bounded value. Recomputing the
+  -- score from capped columns would quietly turn the count back into a derived measurement,
+  -- which is the thing U3 refused.
+  --
+  -- docs/UUC_PHC_2025_PLAN.md §10 asks for this column to be dropped or recomputed before
+  -- anything depends on it, because it cannot be re-derived from the published columns. That is
+  -- true and is why it is documented here, on the page and in the column dictionary, rather than
+  -- silently substituted: it is the source's classification, auditable against the source and not
+  -- against this table.
+  health_indicators smallint,
+
   unique (dataset_id, geo_code)
 );
 
+-- For databases created before U7 added the column above. `create table if not exists` is a no-op
+-- on a table that already exists, so the new column needs stating twice: once in the shape a fresh
+-- replay builds, once as an alter for a database that already has the table. Both run before
+-- 20260826150100_seed_fact_uuc_phc_indicators.sql, which writes the column.
+alter table fact_uuc_phc_indicators
+  add column if not exists health_indicators smallint;
+
 create index if not exists fact_uuc_phc_indicators_geo_idx on fact_uuc_phc_indicators (geo_code);
+
+comment on column fact_uuc_phc_indicators.health_indicators is
+  'The source office''s own criterion (d) score, 0-7: how many of the seven health assessments this barangay failed against its province. Loaded as supplied, never recomputed — the source scored it against the values before cleaning bounded them, so recomputing from the published columns disagrees on 664 rows and leaves 98 listed barangays qualifying on no route at all. Treat it as a recorded classification, not a derived measurement.';
 
 comment on table fact_uuc_phc_indicators is
   'Per-barangay indicator values behind the 2025 UUC for PHC list, with the provincial benchmarks criterion (d) compares against. capped_indicators names the values bounded during cleaning — a bounded value is indistinguishable from a genuine one without it. See docs/UUC_PHC_2025_CLEANING_REPORT.md.';

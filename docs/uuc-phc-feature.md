@@ -38,10 +38,12 @@ it or not. Every figure on the section is therefore one count against one denomi
   count, the two-state split and the child table — **but no indicator values**: a one-pager cannot
   carry the † marker's footnote, and reproducing bounded values without it is exactly the unmarked
   artefact U3 was built to avoid.
-- **All four relations are registered and queryable by the internal assistant** (U5). The column
-  dictionaries are the allowlist `queryDataset` enforces, not documentation: `capped_indicators`
-  and each of the seven boundable indicators carry the capping caveat in the column meaning
-  itself, because that is what travels with a returned value.
+- **All five relations are registered and queryable by the internal assistant** (U5, extended by
+  U7). The column dictionaries are the allowlist `queryDataset` enforces, not documentation:
+  `capped_indicators` and each of the seven boundable indicators carry the capping caveat in the
+  column meaning itself, because that is what travels with a returned value. `agg_uuc_phc_criteria`
+  carries the overlap warning the same way — on the table *and* on each of the four route columns,
+  since adding them is the one thing a reader of those columns must not do.
 - **Present mode on both pages** (U6), with the section's own name in the slide chrome. The
   barangay list is one slide rather than one per barangay: its indicator disclosures stay closed
   on promotion, so a capped value cannot reach a projected screen without its † footnote.
@@ -49,9 +51,13 @@ it or not. Every figure on the section is therefore one count against one denomi
   page path at write time, and the section footer asks the question this list actually attracts —
   "Is a barangay missing from this list, or listed in error?" — while saying plainly that the list
   is DOH's to change, not ours.
+- **Why each barangay qualified, above barangay grain** (U7). `/uuc-phc/criteria` counts the four
+  socio-economic routes per area. The routes **overlap**, so they render as four independent
+  shares against their own denominators — never stacked, never a pie, and the page prints the
+  sum (146% nationally) to say so in words rather than let a reader infer a partition.
 - **Not built yet:** an `/explore` overlay, ask-the-data chat, an AI insight slot, and the
-  sub-pages that would show the criteria, the indicator distributions and the data-quality caveats
-  above barangay grain. All planned as U7–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
+  sub-pages that would show the indicator distributions and the data-quality caveats above
+  barangay grain. All planned as U8–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
 
 ## The indicators (U3)
 
@@ -78,6 +84,42 @@ comparison criterion (d) is built on.
     **113 barangays**; `comparesWorse` returns null and the UI shows the benchmark with no verdict.
     This turns the cleaning report's §6 caveat into behaviour instead of a footnote.
 
+## The qualifying routes (U7)
+
+`/uuc-phc/criteria` (and `/uuc-phc/criteria/<level>/<code>`) answers *why* the barangays in an area
+are on the list: how many came in on each of the four socio-economic routes of AO §VI.A. The
+physical factor is not counted — it holds in all 5,991 rows by construction, since a barangay below
+the 25% floor never entered the list.
+
+- **The four routes overlap and do not partition the list.** A barangay can qualify on three at
+  once; nationally the four shares come to 146%. So the page draws four independent 0–100% tracks,
+  each labelled with its own denominator, and states the sum in a sentence. A stacked bar or a pie
+  would assert four slices of one whole, which is not the shape of the data. There is no "other"
+  or remainder figure, because there is no remainder.
+- **Route (d) has a different denominator from the other three.** For **226** barangays in 5
+  provinces the provincial benchmark cannot support the comparison at all, so they are excluded
+  from the health route's denominator and the page says which and why. Giving all four routes the
+  same denominator would understate exactly the route whose evidence is weakest. Where the
+  comparison is evaluable for nobody the page reads **"Not evaluable here"**, never "0%" — Agusan
+  del Sur, all 156 of its listed barangays.
+- **226, not the 238** that `UUC_PHC_2025_PLAN.md` §1a and `UUC_PHC_2025_CLEANING_REPORT.md` §6
+  both stated. Their per-province tables always summed to 226; the total was an addition error.
+  Corrected in both, and the page computes the figure rather than quoting it.
+- **The health route counts the source's own score, not a recomputation.** `health_indicators` (0–7)
+  is the source office's criterion (d) result and is loaded as supplied. Deriving it from the
+  published, capped columns disagrees on **664 rows** and leaves **98 listed barangays qualifying
+  on no route at all** — impossible under the AO, which requires a socio-economic factor. So the
+  recomputation is not the test that selected this list. Carrying the recorded classification is
+  also what keeps this aggregate a count of *classifications*: it never averages a bounded value,
+  which is the reason U3's per-indicator aggregates were refused and this one is not.
+- **The not-evaluable test is computed per barangay, not a list of province codes.** "The largest
+  of this barangay's seven benchmarks is null, or at most 1" identifies a placeholder, a zero-fill
+  or a fraction encoding, and selects exactly those 226. A province-level test would find only 219:
+  `ref_uuc_phc_provincial` rolls Zamboanga City's 7 reference-less barangays in with the 1 that has
+  a full set.
+- **Children with nothing listed are dropped from this breakdown**, unlike the coverage one, where
+  "0 of 1,675" is the finding. Here the row would be four empty tracks restating one zero.
+
 ## Data model
 
 - Table **`fact_uuc_phc_barangay`** — one row per listed barangay: resolved `geo_code`,
@@ -101,13 +143,27 @@ comparison criterion (d) is built on.
     table. A citymun page reads its barangays from the fact table directly.
   - **Computed in SQL from `fact_uuc_phc_barangay` + `dim_geo`**, so there is no generated seed to
     drift: re-running the migration recomputes every row. That *is* the refresh procedure.
+- Table **`agg_uuc_phc_criteria`** — public-read aggregate keyed `(dataset_id, geo_code,
+  geo_level)` at the same four levels, **1,788 rows**. `n_listed` plus four route counts, plus
+  `n_health_evaluable` (route (d)'s denominator). The excluded count is derived in the read layer
+  as `n_listed - n_health_evaluable`, not stored.
+  - **Computed in SQL from `fact_uuc_phc_indicators` + `dim_geo`**, on `agg_uuc_phc_counts`'
+    precedent: re-running the migration recomputes every row, and that *is* the refresh procedure.
+  - Four assertions run after the load and abort the migration rather than publish a wrong share:
+    `n_listed` agrees with `agg_uuc_phc_counts` on every row (they are computed from different fact
+    tables, so this also checks that the two tables cover the same 5,991 barangays); every criteria
+    row has a counts row; no route count exceeds its denominator; every level rolls up to the
+    national totals.
+- Column **`fact_uuc_phc_indicators.health_indicators`** (U7) — the source's criterion (d) score,
+  0–7, loaded as supplied and *not* recomputable from the columns beside it. See "The qualifying
+  routes" above.
 - The **share** is derived in the read layer (`lib/db/uuc-phc.ts`), not stored — one definition,
   one place, the same discipline as the profiling-status stage totals.
 - Dataset row in `dim_dataset` (`uuc-phc-2025`, `geo_join_level = 'barangay'`, status `published`).
 
-## Registry and lineage (U5)
+## Registry and lineage (U5, extended by U7)
 
-All four relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
+All five relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
 edges in `kb_node` / `kb_edge`.
 
 - **The dictionary is the allowlist.** `queryDataset` (`lib/ai/query-dataset.ts`) refuses any
@@ -179,6 +235,8 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Dataset slug | `lib/db/dataset.ts` (`DATASET_SLUGS.uucPhc`) |
 | Section landing + sub-pages | `app/uuc-phc/` (`page.tsx`, `[geoLevel]/[geoCode]/page.tsx`, `methodology/`, `layout.tsx`) |
 | Section components | `components/uuc-phc/` (coverage-hero, share-bar, child-breakdown, barangay-list, barangay-detail) |
+| Criteria read layer | `lib/db/uuc-phc-criteria.ts` (+ `.test.ts`) |
+| Criteria page + components | `app/uuc-phc/criteria/`, `components/uuc-phc/` (criteria-section, route-shares, route-not-evaluable, route-breakdown) |
 | PNG one-pager | `lib/exports/uuc-phc-figure.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/route.ts` |
 | Fact loader | `ingestion/ingest_uuc_phc.py` |
 | Cleaning step | `ingestion/clean_uuc_phc_indicators.py` |
@@ -217,9 +275,9 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 - Indicator rendering checked live: BACSIL (Bangui) shows its factors and a correctly-directional
   comparison; BITONG (Galimuyod, Ilocos Sur) shows two † marks with the footnote and its FIC as
   "not comparable — province reads 102.2" rather than a false "worse than province".
-- Registry and lineage (U5): the four relations return from `dataset_registry` as
-  `approved`/`public` with 8 / 6 / 24 / 10 approved columns, hash-matching the committed seed field
-  for field; **no table node in `kb_node` lacks a `built-by` edge** and the generator prints nothing
+- Registry and lineage (U5, U7): the five relations return from `dataset_registry` as
+  `approved`/`public` with 8 / 6 / 25 / 10 / 10 approved columns, hash-matching the committed seed
+  field for field; **no table node in `kb_node` lacks a `built-by` edge** and the generator prints nothing
   to stderr; `get_advisors` reports no `security_definer_view`; `anon` still reads all 87 rows of
   `ref_uuc_phc_provincial` over PostgREST.
 - Section chrome (U6): the deck was driven end to end in a real browser on seven routes — the three
@@ -229,6 +287,18 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   null. OG images render 1200×630 at national, region (NCR's zero included), province and
   city/municipality, and were looked at rather than only status-checked. Exactly one `SpotFeedback`
   widget and one correction entry point on the page.
+- Qualifying routes (U7): `agg_uuc_phc_criteria` is **1,788 rows** matching `agg_uuc_phc_counts`
+  row for row on `n_listed`; all four in-migration assertions pass and **0 rows** carry a count
+  outside its denominator. The national row equals a direct count over `fact_uuc_phc_indicators` on
+  all six figures (5,991 / 3,677 / 2,302 / 726 / 2,000 / 5,765), which also match an independent
+  computation over the committed CSV. 2,001 barangays score `health_indicators >= 4` and **2,000**
+  of them are evaluable, so the national health route reads 2,000 — the exclusion is exactly the one
+  row it should be. All 5,991 loaded scores were read back and compared to the committed CSV as
+  `(source_geo_code, score)` pairs: **md5 match, 0 mismatches**. **672 of the 1,047** areas with
+  anything listed have four shares summing above 100%. Rendered and looked at at national (146%),
+  CARAGA (184%, 156 excluded), Agusan del Sur (all 156 excluded, "Not evaluable here"), Mayoyao
+  (104%) and NCR (0 listed, empty state); the deck starts, advances and exits on the route;
+  `/uuc-phc/criteria/barangay/*` and unknown geos 404.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,

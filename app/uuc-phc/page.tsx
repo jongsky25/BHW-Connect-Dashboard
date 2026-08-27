@@ -109,12 +109,15 @@ export default async function UucPhcLanding() {
         </PresentationSlide>
 
         <p className="text-sm text-muted">
-          See the{" "}
+          See{" "}
+          <Link href="/uuc-phc/criteria" className="underline hover:text-accent">
+            why these barangays qualified
+          </Link>{" "}
+          for the four routes onto the list, or the{" "}
           <Link href="/uuc-phc/methodology" className="underline hover:text-accent">
             methodology
           </Link>{" "}
-          for the qualifying criteria and how the {formatCount(counts.nListed)} barangays were
-          counted.
+          for how the {formatCount(counts.nListed)} barangays were counted.
         </p>
       </div>
     </PresentationProvider>

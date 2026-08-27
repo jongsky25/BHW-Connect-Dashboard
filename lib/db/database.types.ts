@@ -1003,6 +1003,60 @@ export type Database = {
           },
         ];
       };
+      agg_uuc_phc_criteria: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          n_health_evaluable: number;
+          n_listed: number;
+          n_route_conflict: number;
+          n_route_four_ps: number;
+          n_route_health: number;
+          n_route_ip: number;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_health_evaluable?: number;
+          n_listed?: number;
+          n_route_conflict?: number;
+          n_route_four_ps?: number;
+          n_route_health?: number;
+          n_route_ip?: number;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_health_evaluable?: number;
+          n_listed?: number;
+          n_route_conflict?: number;
+          n_route_four_ps?: number;
+          n_route_health?: number;
+          n_route_ip?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_uuc_phc_criteria_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_uuc_phc_criteria_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       ai_ask_cache: {
         Row: {
           answer_md: string;
@@ -1891,6 +1945,7 @@ export type Database = {
           fic_prov_ref: number | null;
           four_ps: number | null;
           geo_code: string;
+          health_indicators: number | null;
           id: number;
           idp: number | null;
           imr: number | null;
@@ -1917,6 +1972,7 @@ export type Database = {
           fic_prov_ref?: number | null;
           four_ps?: number | null;
           geo_code: string;
+          health_indicators?: number | null;
           id?: never;
           idp?: number | null;
           imr?: number | null;
@@ -1943,6 +1999,7 @@ export type Database = {
           fic_prov_ref?: number | null;
           four_ps?: number | null;
           geo_code?: string;
+          health_indicators?: number | null;
           id?: never;
           idp?: number | null;
           imr?: number | null;

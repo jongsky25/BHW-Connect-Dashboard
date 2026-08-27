@@ -56,6 +56,15 @@ INDICATOR_COLS = [
 HEALTH_COLS = ["imr", "ufmr", "fic", "abr", "pre_natal", "sba", "water"]
 PROV_REF_COLS = [f"{c}_prov_ref" for c in HEALTH_COLS]
 
+# The source's own criterion (d) score: how many of the seven health assessments this barangay
+# failed against its province, as the source office scored it. Carried through as an integer
+# because it is a *recorded classification*, not a value this pipeline derives — see the U7 note
+# in supabase/migrations/20260826150000_fact_uuc_phc_indicators.sql for why it is loaded rather
+# than recomputed. Range is 0–7: the AO's eighth indicator (FP CU) was dropped before
+# reconciliation, so seven remain and the >= 4 threshold applies to seven.
+SCORE_COL = "health_indicators"
+SCORE_MAX = 7
+
 # Expected capped-value counts per indicator, from docs/UUC_PHC_2025_CLEANING_REPORT.md §4.
 # A regression check: these are the values the published caveats quote.
 EXPECTED_CAPPED = {
@@ -162,6 +171,25 @@ def check(rows: list[dict]) -> None:
     if dict(capped) != EXPECTED_CAPPED:
         problems.append(f"capped counts changed: expected {EXPECTED_CAPPED}, found {dict(capped)}")
 
+    # The source's criterion (d) score. It decides the health route on /uuc-phc/criteria (U7),
+    # so a blank, a fraction or an out-of-range value has to fail the load rather than become a
+    # silently wrong route count.
+    bad_score = []
+    for r in rows:
+        raw = str(r[SCORE_COL]).strip()
+        try:
+            value = float(raw)
+        except ValueError:
+            bad_score.append(f"{r['psgc']}={raw!r}")
+            continue
+        if value != int(value) or not (0 <= value <= SCORE_MAX):
+            bad_score.append(f"{r['psgc']}={raw}")
+    if bad_score:
+        problems.append(
+            f"{len(bad_score)} rows have a {SCORE_COL} that is not a whole number in 0–{SCORE_MAX}, "
+            f"e.g. {bad_score[:3]}"
+        )
+
     counts = Counter(r["region_name"].strip() for r in rows)
     for region, expected in EXPECTED_REGION_COUNTS.items():
         if counts.get(region, 0) != expected:
@@ -257,7 +285,7 @@ def arr(value) -> str:
 
 
 def emit_indicators_sql(rows: list[dict]) -> str:
-    cols = INDICATOR_COLS + ["elcac_brgy"] + HEALTH_COLS + PROV_REF_COLS
+    cols = INDICATOR_COLS + ["elcac_brgy"] + HEALTH_COLS + PROV_REF_COLS + [SCORE_COL]
     header = (
         "-- Seed fact_uuc_phc_indicators with the 2025 UUC for PHC indicator values (plan U3).\n"
         "--\n"
@@ -267,7 +295,9 @@ def emit_indicators_sql(rows: list[dict]) -> str:
         "-- 5,991 rows, one per listed barangay: 12 indicators, the 7 provincial benchmarks\n"
         "-- criterion (d) compares against, and capped_indicators — which of this barangay's values\n"
         "-- were bounded during cleaning. 1,584 values across 1,397 barangays were bounded; without\n"
-        "-- the flags a bounded 100% is indistinguishable from a genuine one. geo_code resolves\n"
+        "-- the flags a bounded 100% is indistinguishable from a genuine one. Also health_indicators\n"
+        "-- (U7): the source office's own criterion (d) score, 0-7, loaded rather than recomputed —\n"
+        "-- see 20260826150000_fact_uuc_phc_indicators.sql. geo_code resolves\n"
         "-- through map_psgc_to_dim_geo() for the same reason as the classification seed.\n"
         "-- Idempotent: re-running updates every value in place.\n\n"
         "with ds as (\n"
@@ -283,6 +313,7 @@ def emit_indicators_sql(rows: list[dict]) -> str:
         vals.append(flag(r["elcac_brgy"]))
         vals += [num(r[c]) for c in HEALTH_COLS]
         vals += [num(r[c]) for c in PROV_REF_COLS]
+        vals.append(str(int(float(r[SCORE_COL]))))
         vals.append(arr(r["capped_indicators"]))
         lines.append("    (" + ", ".join(vals) + ")")
     # The first row carries the casts the VALUES list needs: an all-NULL column would otherwise be
