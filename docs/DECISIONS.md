@@ -3215,3 +3215,129 @@ it was written rather than after. The generator's comment says so in place.
 it explicitly and says why a one-way walk stops at the circular, which is the most that can be done
 without a provider key. The property that does not depend on the model — that the path exists, is
 bounded, and names its sources — is verified above.
+
+## 2026-08-27 — Internal AI assistant, Increment 3.4: supersession
+
+§4 gave `kb_edge` `valid_from` / `valid_to` in Increment 1.5 for one stated reason — *"policy
+documents supersede each other, and an assistant that cannot say 'as of' will confidently quote a
+repealed circular"* — and nothing had used the columns since. This is where they start working.
+
+**9 edges: 7 `supersedes`, 1 `amends`, 1 `implements`**, extracted from slides 140, 167 and 101,
+loaded at `auto` and approved through the 3.2 queue like everything else in Phase 3.
+
+**Why this increment exists at all, measured rather than argued.** The Verify asks to show that
+2.2 retrieval alone returns the *superseded* text. It does, and by a wide margin. Retrieval scores
+whole chunks, so the model is handed slide 140 or slide 167 entire and picks a line off it — and
+the words a question uses are the *old* ones, because a superseding issuance is titled "Revised"
+and does not repeat the phrase the question was built from:
+
+| question | best line | worst line |
+|---|---|---|
+| "GIDA List" | the four **superseded** GIDA lists, 0.385 each | **the current** DC 2025-0549, **0.132** |
+| "which memorandum issues the GIDA list" | superseded, 0.185 | current, 0.076 |
+| "implementing guidelines for the LGU Scorecard" | **AO 2008-0017**, superseded twice over, **0.425** | **the current** AO 2021-0002, **0.267** |
+
+The LGU Scorecard row is the sharpest: trigram ranks the three orders in **exactly reverse order of
+currency**, because the 2008 order is literally titled "Implementing Guidelines for the LGU
+Scorecard" and the 2021 one is titled "Revised Guidelines on the Implementation of…". No amount of
+better ranking fixes this — the superseded text *is* the better match. Only an edge saying so does.
+
+**The same questions, answered from the edges:**
+
+```
+traverse_kb('issuance:DM 2020-0490', 'in', ['supersedes'], 5)
+  → 5 hops, current = issuance:DC 2025-0549, took effect {2025-01-01..open}
+    DM 2020-0490 ← DM 2021-0525 ← DM 2022-0567 ← DM 2023-0409 ← DM 2024-0459 ← DC 2025-0549
+
+…the same call with as_of = '2022-06-01'
+  → 2 hops, current = issuance:DM 2022-0567, took effect {2022-01-01..open}
+
+…with as_of = '2020-06-01'
+  → 0 rows: nothing had superseded the 2020 list yet, which is the right answer, not an empty one
+
+traverse_kb('issuance:AO 2008-0017', 'in', ['supersedes','amends'], 4)
+  → AO 2019-0027 (supersedes) and DM 2014-0147 (amends) at depth 1; AO 2021-0002 at depth 2
+    — all three hops "always", because the deck gives no effective date for any of them
+```
+
+- **`valid_to` is null on every supersession, and that is the model, not an omission.** A
+  supersession does not expire; what expires is the superseded issuance's *currency*, which the
+  chain expresses. Closing the window on the 2021 edge would sever the chain at any `as_of` past
+  2022 — the 2021 hop would drop out and the walk would stop before reaching 2022. Tested: an
+  `as_of` in mid-2022 walks *through* the 2021 supersession and stops at the 2022 one, which is
+  only correct because earlier supersessions stay in force.
+
+- **`as_of` filters edges, not nodes, because an issuance has no single validity.** AO 2020-0023 is
+  current for the UUC criteria and irrelevant to the LGU Scorecard. What has a date is the
+  supersession *event*, so that is where the date lives, and "as of" falls out of filtering each
+  edge by its own window. An edge with no dates is in force at every `as_of` — deliberate, because
+  most edges here are structural (a table is derived from a fact table for as long as both exist)
+  and a missing date must never read as "expired". It is also what lets the undated LGU Scorecard
+  chain order correctly.
+
+- **`as_of` is refused on a geo walk rather than accepted and ignored.** `dim_geo` carries no
+  validity — a geography's vintage lives in `dim_psgc_crosswalk`, which §13 defers — so accepting
+  the argument there would produce an "as of" answer that was never filtered.
+
+- **A new check constraint: only `supersedes`, `amends` and `implements` may carry validity.** §4
+  gave the columns for supersession; a dated `part-of` would be a date nobody could act on, and a
+  nullable column with no rule eventually holds three different meanings. Verified by making it
+  fire: dating a `defined-by` edge is refused by `kb_edge_validity_relations`, and a `valid_to`
+  before `valid_from` on a dated edge is refused by 1.5's `kb_edge_validity_order`. (The first
+  attempt at that second probe passed, because it happened to pick an *undated* edge where a
+  `valid_to` alone is legal — the probe was wrong, not the constraint. Re-run against a dated row
+  it refuses. Recorded because a probe that passes for the wrong reason is worth less than none.)
+
+- **These are the three relations where the type system stops helping, and the extractor is told
+  so.** `defined-by` runs program → issuance, so a reversed one is caught by the endpoint
+  signature. `supersedes` runs issuance → issuance: "A supersedes B" and "B supersedes A" are both
+  well typed and only one is true. The extractor compensates with a rule the signature cannot
+  express — **the evidence span must name both issuance numbers** — and rejects the edge otherwise.
+  The prompt also says plainly that being newer is not being a supersession, and that four
+  guidelines on one legal-basis slide are not a chain unless the slide describes them as one.
+
+- **The dates are year precision and say so on every row.** The deck labels each list with its year
+  ("GIDA List 2020" … "2025 UUC for PHC List") and gives no issuance dates, so `valid_from` is the
+  list year and each edge's `note` records exactly that derivation. The LGU Scorecard chain gets
+  **no dates at all** — the deck says "Revised" and nothing more — and the extractor is instructed
+  that no date is a better answer than a guessed one. Both halves of that are in the transcript.
+
+- **Rule 9b is the one prompt rule here that exists to override retrieval rather than to use it.**
+  The measurements above are why: a search-shaped answer names the repealed circular every time,
+  and confidently. The rule tells the model to walk `in` along `supersedes` before naming any
+  issuance as the rule, and to quote the validity window where the chain carries one — "in force
+  from 2025-01-01" is a different claim from "in force".
+
+**Verify (live against the project, and in tests).**
+
+- The four traversals above, live, including the two `as_of` positions and the empty-but-correct
+  2020 one.
+- The retrieval measurements above, live, against the real corpus with `similarity()`.
+- **Nine integrity checks over the whole graph return 0**: no extracted row without a chunk and a
+  quote; no asserted row carrying a quote or a date; no extracted row whose chunk does not contain
+  its quote (re-checked with `position()`, independently of the trigger); no approved edge with an
+  unapproved endpoint; no dated edge on an undatable relation; no chain edge hanging off something
+  that is not an issuance.
+- Graph after this increment: **276 nodes / 427 edges** — 197 / 328 asserted, 79 / 99 extracted
+  (77 / 94 approved, 2 / 5 rejected). Nothing is left at `auto`.
+- The lineage seed was regenerated in place (193 nodes / 318 edges, stderr empty) and the delta —
+  1 node, 1 edge — applied live after diffing, taking live to exactly generated + the concurrent
+  branch's 4 / 10.
+- Advisors: no new finding. The two WARN entries are still `wilson_low` / `wilson_high` from July;
+  every function this phase added pins its `search_path`. No ERROR-level security advisor.
+- `next build` still puts `/admin/kb-review` under `ƒ`.
+- 8 new tests (413 total): the dated hop rendering its window and the undated one staying bare,
+  `asOf` passed through, `asOf` refused on a geo walk, a malformed `asOf` refused before any
+  database call, and three new transcript invariants — both issuances quoted on a symmetric
+  relation, dates only where they are allowed and in order, and `valid_to` open on every
+  supersession.
+- `npm run lint`, `npm run typecheck`, `npm test` clean.
+
+**A gap found and deliberately not closed.** Three migrations in this repository create only
+functions — `20260826130000_traverse_graph.sql` (1.6), `20260826160100_search_documents.sql` (2.2)
+and `20260827130000_kb_cross_source.sql` (3.3) — and none of them has a node, because
+`build_kb_lineage.py` keys the graph on tables and views. So "what built `search_documents`" returns
+nothing, and the generator's stderr finding for tables with no `built-by` has no equivalent for
+functions, since functions are not nodes at all. Fixing it means a new node kind and a `create
+function` scan, which is its own change; recorded here so it is a known gap rather than a silent
+one.

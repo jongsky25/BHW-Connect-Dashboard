@@ -9,13 +9,19 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** Phase 1 complete (Increments 1.1–1.6) and **Phase 2 open at 2.1** — the document
-corpus is ingested (see `DECISIONS.md`, 2026-08-26). Owner decisions 1, 2, 3 and 4 are all
-**answered**: the project is on Supabase Pro, the assistant is admin-only, the numeric audit is
-retained and the answer cache is bypassed. Decision 7 (embedding provider) is answered as Gemini;
-what remains open is not the provider but the *dimension*, which 2.1 deliberately made a stored
-row rather than a schema constant so it can be measured rather than declared (§6, §11). Phases
-ship in order; each increment is an independently shippable PR-sized unit.
+**Status:** Phases 1, 2 and 3 complete (Increments 1.1–3.4) — the graph now holds extracted rows
+as well as asserted ones, a review queue gates them, one traversal crosses between the two, and
+supersession chains answer "what is the rule now" (see `DECISIONS.md`, 2026-08-27). Owner decisions
+1, 2, 3, 4 and 5 are all **answered**: the project is on Supabase Pro, the assistant is admin-only,
+the numeric audit is retained, the answer cache is bypassed, and extraction is reviewed at
+`/admin/kb-review` before anything becomes citable. Decision 7 (embedding provider) is answered as
+Gemini; what remains open is not the provider but the *dimension*, which 2.1 deliberately made a
+stored row rather than a schema constant so it can be measured rather than declared (§6, §11).
+**Two things still need a provider key and nothing else:** running
+`ingestion/ingest_documents.py --embed` (which measures the dimension and turns on the vector half
+of 2.2) and `ingestion/extract_kb.py --propose` (which replaces Phase 3's committed transcript with
+one the deployed model produced). Phases ship in order; each increment is an independently
+shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -484,7 +490,8 @@ path-provenance contract are unchanged from 1.6; what changes is the edge popula
 *Verify:* a multi-hop question that no single tool can answer returns a correct, cited answer, and
 the rendered path names the source of each hop.
 
-**3.4 — Supersession.** Give issuances (RA 12000, DC No. 2025-0549, JMC 2023-001) their own nodes
+**3.4 — Supersession.** *(built — 2026-08-27; 7 supersedes, 1 amends, 1 implements)*
+Give issuances (RA 12000, DC No. 2025-0549, JMC 2023-001) their own nodes
 and `supersedes` / `amends` / `implements` edges with `valid_from` / `valid_to`, so a question
 about current policy excludes superseded text instead of ranking it slightly lower.
 

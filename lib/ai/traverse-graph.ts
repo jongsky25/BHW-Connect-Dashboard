@@ -56,6 +56,12 @@ export const KB_RELATIONS = [
   "defined-by",
   "issued-by",
   "part-of",
+  // Increment 3.4. The only three relations that may carry validity, and the only three whose
+  // direction the endpoint signature cannot check — both ends are issuances, so "A supersedes B"
+  // and its reverse are equally well typed and only one is true.
+  "supersedes",
+  "amends",
+  "implements",
 ] as const;
 
 export const traverseArgsSchema = z.object({
@@ -66,6 +72,11 @@ export const traverseArgsSchema = z.object({
   relations: z.array(z.enum(KB_RELATIONS)).max(KB_RELATIONS.length).optional(),
   maxDepth: z.number().int().min(1).max(LINEAGE_MAX_DEPTH).optional(),
   limit: z.number().int().min(1).max(MAX_TRAVERSAL_ROWS).optional(),
+  /** lineage only: walk the graph as it stood on this date. YYYY-MM-DD. */
+  asOf: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export type TraverseArgs = z.infer<typeof traverseArgsSchema>;
@@ -85,6 +96,7 @@ export type LineagePlan = {
     relations: string[] | null;
     max_depth: number;
     row_cap: number;
+    as_of: string | null;
   };
 };
 export type TraversalPlan = GeoPlan | LineagePlan;
@@ -105,6 +117,15 @@ export function planTraversal(args: TraverseArgs): { plan: TraversalPlan } | Tra
     if (args.relations?.length) {
       return {
         error: "relations apply to the lineage graph only; a geo traversal follows containment.",
+      };
+    }
+    if (args.asOf) {
+      // dim_geo has no validity of its own — `dim_psgc_crosswalk` is where a geography's vintage
+      // lives, and it is deferred (§13 agent 4). Accepting the argument and ignoring it would be
+      // an "as of" answer that was never filtered.
+      return {
+        error:
+          "asOf applies to the lineage graph only; the geography tree carries no validity dates.",
       };
     }
     const direction = args.direction ?? "down";
@@ -157,6 +178,7 @@ export function planTraversal(args: TraverseArgs): { plan: TraversalPlan } | Tra
         relations: args.relations?.length ? [...args.relations] : null,
         max_depth: depth,
         row_cap: limit,
+        as_of: args.asOf ?? null,
       },
     },
   };
@@ -178,6 +200,7 @@ type KbRow = {
   relation_path: string[];
   source_path: string[];
   direction_path: string[];
+  validity_path: string[];
 };
 
 export type GeoResult = {
@@ -199,6 +222,9 @@ export type LineageResult = {
   /** Which way each step was walked: 'out' along the edge, 'in' against it. Only `both` produces
    * a mixture, but it is always returned so a reader never has to know which mode ran. */
   directions: string[];
+  /** When each step holds: 'always' for a structural edge, 'from..to' for a dated one. A hop that
+   * is only true for a period is not the same claim as one that is always true (Increment 3.4). */
+  validity: string[];
   /** One-line rendering of the whole chain, so a cited answer can quote it verbatim. */
   via: string;
 };
@@ -231,7 +257,9 @@ function renderVia(row: KbRow): string {
     // "←defined-by— program:UUC for PHC" are opposite claims, and a chain that renders them the
     // same is a chain a reader cannot check — which 1.6 treats as worse than no chain at all.
     const arrow = row.direction_path?.[i] === "in" ? `←${relation}—` : `—${relation}→`;
-    return `${arrow} ${node} [${source}]`;
+    const validity = row.validity_path?.[i];
+    const when = validity && validity !== "always" ? ` {${validity}}` : "";
+    return `${arrow} ${node}${when} [${source}]`;
   });
   return `${row.path[0]} ${steps.join(" ; ")}`;
 }
@@ -294,6 +322,7 @@ export async function executeTraverseGraph(
       relations: row.relation_path,
       sources: row.source_path,
       directions: row.direction_path ?? [],
+      validity: row.validity_path ?? [],
       via: renderVia(row),
     }));
     return {
@@ -321,7 +350,7 @@ export function createTraversalTool(): Tool {
     definition: {
       name: "traverseGraph",
       description:
-        "Walk a graph and get back paths, not just endpoints. source 'geo' walks the dim_geo containment tree — down for everything inside a place (its cities, its barangays), up for its ancestors — which is how you answer questions about a whole subtree rather than one named geography. source 'lineage' walks the knowledge graph, which spans two populations: the datasets, tables, columns, migrations and write-ups this project builds, and the programmes, issuances and agencies described in the document corpus. Go out from a node for what it rests on (what a table was derived from, what built it, which circular defines a dataset), in for what depends on it, and both when the chain changes direction — which it does whenever you cross between a dataset and the policy behind it, because a dataset and a programme each point AT the same issuance. Every lineage result carries the file or slide that asserts each step and which way it was walked; quote that chain when you describe where something comes from.",
+        "Walk a graph and get back paths, not just endpoints. source 'geo' walks the dim_geo containment tree — down for everything inside a place (its cities, its barangays), up for its ancestors — which is how you answer questions about a whole subtree rather than one named geography. source 'lineage' walks the knowledge graph, which spans two populations: the datasets, tables, columns, migrations and write-ups this project builds, and the programmes, issuances and agencies described in the document corpus. Go out from a node for what it rests on (what a table was derived from, what built it, which circular defines a dataset), in for what depends on it, and both when the chain changes direction — which it does whenever you cross between a dataset and the policy behind it, because a dataset and a programme each point AT the same issuance. Issuances also carry supersedes, amends and implements: walk in along supersedes from any issuance in a chain to reach the one currently in force, and pass asOf to see the chain as it stood on a past date. Every lineage result carries the file or slide that asserts each step, which way it was walked, and when the step holds; quote that chain when you describe where something comes from.",
       parameters: {
         type: "object",
         properties: {
@@ -349,6 +378,11 @@ export function createTraversalTool(): Tool {
           limit: {
             type: "number",
             description: `Rows to return, 1-${MAX_TRAVERSAL_ROWS} (default ${DEFAULT_TRAVERSAL_ROWS}).`,
+          },
+          asOf: {
+            type: "string",
+            description:
+              "lineage only, YYYY-MM-DD: walk the graph as it stood on this date, so a supersession that had not happened yet is not followed. Omit for the position today.",
           },
         },
         required: ["source", "start"],

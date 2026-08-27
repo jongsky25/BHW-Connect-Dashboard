@@ -123,7 +123,23 @@ RELATION_SIGNATURE = {
     "defined-by": ("program", "issuance"),
     "issued-by": ("issuance", "organization"),
     "part-of": ("program", "program"),
+    # Increment 3.4. All three run issuance -> issuance and all three are directional claims that
+    # read backwards if reversed, which is exactly what the endpoint signature cannot catch here —
+    # the reviewer has to. The evidence span is therefore required to show BOTH issuances.
+    "supersedes": ("issuance", "issuance"),
+    "amends": ("issuance", "issuance"),
+    "implements": ("issuance", "issuance"),
 }
+
+# Relations whose evidence must name both endpoints, because the endpoint signature cannot tell a
+# claim from its reverse when both sides are the same kind.
+SYMMETRIC_KIND_RELATIONS = {"supersedes", "amends", "implements"}
+
+# Only these relations may carry validity. §4 gives kb_edge valid_from/valid_to so an assistant can
+# say "as of"; a `part-of` with a date would be a date nobody could act on.
+DATED_RELATIONS = {"supersedes", "amends", "implements"}
+
+ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 # Canonical issuance codes. Numbered forms only: a type name with no number ("RA", "EO", "DOH AO")
 # is a category, not an issuance, and page 40 is full of them.
@@ -159,6 +175,21 @@ Extract ONLY these relations, and only in this direction:
   program  defined-by  issuance      the issuance establishes or governs the programme
   issuance issued-by   organization  the body that issued it
   program  part-of     program       the programme sits inside a larger programme set
+  issuance supersedes  issuance      the FIRST replaces the SECOND for the same subject
+  issuance amends      issuance      the FIRST changes part of the SECOND, which still stands
+  issuance implements  issuance      the FIRST is issued pursuant to the SECOND
+
+The last three run issuance to issuance in both directions, so nothing but your care keeps them
+the right way round: "A supersedes B" means A is the current one. Their evidence span must show
+BOTH issuance numbers, and an edge whose quote names only one side is discarded. Extract one only
+where the slide SAYS so — an issuance being newer than another is not a supersession, and a list
+of issuances under one programme is not a chain unless the slide describes it as one (an annual
+list "updated annually" is; four separate guidelines on one legal-basis slide are not).
+
+supersedes, amends and implements may carry "valid_from" and/or "valid_to" as "YYYY-MM-DD" — the
+date the change took effect. Give one ONLY where the slide supports it, and put what the date is
+derived from in "note". No date at all is a perfectly good answer and is better than a guessed one;
+the chain still orders itself without one.
 
 Node keys are canonical and stable. Use exactly these forms:
   program:<Programme name as the deck writes it>
@@ -181,7 +212,8 @@ nothing here; asserting a false one is the failure this whole step is built to p
 
 Return ONLY a JSON object, no prose and no code fence:
 {"nodes": [{"key": "...", "kind": "...", "label": "...", "summary": null, "evidence": "..."}],
- "edges": [{"src": "...", "relation": "...", "dst": "...", "evidence": "...", "note": null}]}
+ "edges": [{"src": "...", "relation": "...", "dst": "...", "evidence": "...", "note": null,
+            "valid_from": null, "valid_to": null}]}
 
 SLIDE %(page)d OF THE 2027 BUDGET CUE CARDS -- BEGIN UNTRUSTED SLIDE TEXT
 %(content)s
@@ -349,9 +381,31 @@ def validate(records: list[dict], chunks_by_page: dict[int, dict]) -> tuple[list
                 continue
             if (src, relation, dst) in edges:
                 continue
+            # A same-kind relation reads backwards if reversed and the signature cannot see it,
+            # so the quotation has to carry both sides for a reviewer to judge at all.
+            if relation in SYMMETRIC_KIND_RELATIONS:
+                numbers = [key.partition(":")[2] for key in (src, dst)]
+                missing = [n for n in numbers if n.split(" ", 1)[-1] not in raw["evidence"]]
+                if missing:
+                    rejects.add("edge", "evidence-names-one-side", page, f"{what}: {missing}")
+                    continue
+
+            valid_from, valid_to = raw.get("valid_from"), raw.get("valid_to")
+            dated = [d for d in (valid_from, valid_to) if d is not None]
+            if dated and relation not in DATED_RELATIONS:
+                rejects.add("edge", "undatable-relation", page, what)
+                continue
+            if any(not isinstance(d, str) or not ISO_DATE_RE.match(d) for d in dated):
+                rejects.add("edge", "bad-date", page, f"{what}: {valid_from!r}..{valid_to!r}")
+                continue
+            if valid_from and valid_to and valid_to < valid_from:
+                rejects.add("edge", "backwards-validity", page, f"{what}: {valid_from}..{valid_to}")
+                continue
+
             edges[(src, relation, dst)] = {
                 "src": src, "relation": relation, "dst": dst,
                 "page": page, "evidence": raw["evidence"], "note": raw.get("note"),
+                "valid_from": valid_from, "valid_to": valid_to,
             }
 
     # Deferred to last so an edge is not rejected for naming a node a later slide proposes.
@@ -425,23 +479,25 @@ def emit_sql(nodes: list[dict], edges: list[dict]) -> str:
         lines.append("")
     if edges:
         lines.append(chunks_cte + ",")
-        lines.append("edge_input (src_key, relation, dst_key, page, evidence, note) as (values")
+        lines.append("edge_input (src_key, relation, dst_key, page, evidence, note, valid_from, valid_to) as (values")
         lines.append(",\n".join(
-            "  ({src}, {relation}, {dst}, {page}, {quote}, {note})".format(
+            "  ({src}, {relation}, {dst}, {page}, {quote}, {note}, {vf}, {vt})".format(
                 src=sql_literal(e["src"]), relation=sql_literal(e["relation"]), dst=sql_literal(e["dst"]),
                 page=e["page"], quote=sql_literal(e["evidence"]), note=sql_literal(e["note"]),
+                vf=f"{sql_literal(e['valid_from'])}::date", vt=f"{sql_literal(e['valid_to'])}::date",
             )
             for e in sorted(edges, key=lambda e: (e["relation"], e["src"], e["dst"]))
         ))
         lines.append(")")
-        lines.append("insert into kb_edge (src_node_id, relation, dst_node_id, origin, source_kind, source_ref, source_chunk_id, evidence_quote, note, status)")
-        lines.append(f"select src.node_id, n.relation, dst.node_id, 'extracted', 'chunk', {page_ref}, c.chunk_id, n.evidence, n.note, 'auto'")
+        lines.append("insert into kb_edge (src_node_id, relation, dst_node_id, origin, source_kind, source_ref, source_chunk_id, evidence_quote, note, valid_from, valid_to, status)")
+        lines.append(f"select src.node_id, n.relation, dst.node_id, 'extracted', 'chunk', {page_ref}, c.chunk_id, n.evidence, n.note, n.valid_from, n.valid_to, 'auto'")
         lines.append("from edge_input n")
         lines.append("join chunks c on c.page = n.page")
         lines.append("join kb_node src on src.key = n.src_key")
         lines.append("join kb_node dst on dst.key = n.dst_key")
         lines.append("on conflict (src_node_id, relation, dst_node_id) do update set")
-        lines.append("  evidence_quote = excluded.evidence_quote, note = excluded.note, updated_at = now()")
+        lines.append("  evidence_quote = excluded.evidence_quote, note = excluded.note,")
+        lines.append("  valid_from = excluded.valid_from, valid_to = excluded.valid_to, updated_at = now()")
         lines.append("  where kb_edge.origin = 'extracted' and kb_edge.status = 'auto';")
     return "\n".join(lines) + "\n"
 
@@ -517,6 +573,47 @@ def selftest() -> None:
     stale[0]["chunk_sha256"] = "different"
     _n, _e, rejects = validate(stale, by_page)
     assert rejects.summary() == {"stale-transcript": 1}
+
+    # Increment 3.4. A same-kind relation reads backwards if reversed, and the endpoint signature
+    # cannot see it — so the quote has to carry both sides.
+    chain = {"page_from": 1, "content": "AO No. 2019-0027 revises AO No. 2008-0017 for the same scorecard",
+             "content_sha256": "def"}
+    chain_pages = {1: chain}
+
+    def chain_record(edges):
+        nodes = [
+            {"key": "issuance:AO 2019-0027", "kind": "issuance", "label": "a", "evidence": "AO No. 2019-0027"},
+            {"key": "issuance:AO 2008-0017", "kind": "issuance", "label": "b", "evidence": "AO No. 2008-0017"},
+        ]
+        return [{"page": 1, "chunk_sha256": "def", "proposal": {"nodes": nodes, "edges": edges}}]
+
+    both_sides = "AO No. 2019-0027 revises AO No. 2008-0017"
+    _n, edges, rejects = validate(chain_record([
+        {"src": "issuance:AO 2019-0027", "relation": "supersedes", "dst": "issuance:AO 2008-0017",
+         "evidence": both_sides, "valid_from": "2019-01-01"}]), chain_pages)
+    assert len(edges) == 1 and not rejects.rows, rejects.rows
+    assert edges[0]["valid_from"] == "2019-01-01" and edges[0]["valid_to"] is None
+
+    _n, edges, rejects = validate(chain_record([
+        {"src": "issuance:AO 2019-0027", "relation": "supersedes", "dst": "issuance:AO 2008-0017",
+         "evidence": "AO No. 2019-0027"}]), chain_pages)
+    assert not edges and rejects.summary() == {"evidence-names-one-side": 1}, rejects.summary()
+
+    for bad, reason in (
+        ({"valid_from": "2019"}, "bad-date"),
+        ({"valid_from": "2019-01-01", "valid_to": "2018-01-01"}, "backwards-validity"),
+    ):
+        _n, edges, rejects = validate(chain_record([
+            {"src": "issuance:AO 2019-0027", "relation": "supersedes", "dst": "issuance:AO 2008-0017",
+             "evidence": both_sides, **bad}]), chain_pages)
+        assert not edges and rejects.summary() == {reason: 1}, (reason, rejects.summary())
+
+    # A date on a relation that cannot carry one is refused rather than silently dropped: §4 gives
+    # kb_edge validity for supersession, and a dated `defined-by` would be a date nobody can act on.
+    _n, edges, rejects = validate(record(good_nodes, [
+        {"src": "program:GIDA", "relation": "defined-by", "dst": "issuance:AO 2020-0023",
+         "evidence": "AO No. 2020-0023", "valid_from": "2020-01-01"}]), by_page)
+    assert not edges and rejects.summary() == {"undatable-relation": 1}, rejects.summary()
 
     assert normalised("Legal and  Policy Basis!") == "LEGALANDPOLICYBASIS"
     assert sql_literal("O'Brien") == "'O''Brien'" and sql_literal(None) == "null"
