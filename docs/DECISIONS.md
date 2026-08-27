@@ -4247,3 +4247,140 @@ else, `ingestion/ingest_documents.py --embed` is now run *and* reachable by the 
 second — `ingestion/extract_kb.py --propose`, which replaces Phase 3's committed hand-authored
 transcript with one the model produced — is still unrun, and is now the only remaining item of that
 kind.
+
+## 2026-08-27 — `extract_kb.py --propose`: not run, and what the attempt established anyway
+
+The last of the two "built but never actually run" items. The embedding entry above closed its
+sibling on this same date; this one does not close, and the useful part of the attempt is *why*
+not, plus one finding about the load path that does not need a provider key to establish.
+
+**The run did not happen. Neither variable is present, and one of them has never existed
+anywhere in this repository.** `--propose` reads `GEMINI_API_KEY` and `GEMINI_EXTRACTION_MODEL`
+with no defaults by design (`ingestion/extract_kb.py:242-248`). This session has neither. The
+second is the sharper finding: `GEMINI_EXTRACTION_MODEL` appears in exactly three places in the
+tree — the script, the test that asserts the script reads it with no default, and 3.1's entry
+saying it is unset. It is not in `.env.example`, which does carry `GEMINI_API_KEY`. So it has
+never been set in any environment, and the deployed app has no value to inherit. Whoever runs
+this has to *choose* a model name, and §1 is explicit that the choice is configuration and is
+theirs — guessing one here would be the extractor answering a question that is not its to answer,
+which is the same reasoning 3.1 applied to `NCIP-MO 0151`. No transcript was invented, no other
+provider was reached for, and nothing was partially run.
+
+**The transport is the inverse of the embedding entry's, and was verified rather than assumed.**
+That run found outbound HTTPS available and the raw Postgres socket not, and changed transport
+accordingly. Here HTTPS to the provider is *also* available: DNS resolves
+`generativelanguage.googleapis.com` to eight A records, and an unauthenticated GET to
+`/v1beta/models` returns a **403 `PERMISSION_DENIED` "Method doesn't allow unregistered callers"**
+— Google's own error, from Google, not the egress proxy (`__agentproxy/status` reports
+`selective: false`, `toolScoped: false`, `recentRelayFailures: []`). That 403 is worth recording
+precisely because it is a *good* result: it proves the committed `urllib` call path in `propose()`
+would reach the endpoint unmodified. The blocker is credentials alone, and nothing else about
+this environment stands in the way.
+
+**`--selftest` and `--verify` pass against the committed transcript, which is the baseline a real
+run must be diffed against.** Recorded here because it exists nowhere else in one place:
+
+- 17 target slides of 213 — 40, 47, 48, 51, 66, 87, 99, 100, 101, 120, 129, 138, 140, 143, 144,
+  167, 208 — selected by the marker rule plus the three named pages.
+- `proposed by: assistant-session`. The transcript says what it is, in every record, as 3.1 said
+  it would.
+- **108 nodes and 102 edges proposed → 79 and 99 accepted**, +28 repeat node sightings merged by
+  key, +2 repeat edges, **2 rejected**: `non-canonical-key` on `issuance:NCIP-MO 0151` (p129) and
+  the `dangling-endpoint` that refusal takes with it. Both are 3.1's known findings, unchanged.
+- 3.1's entry records 93 edges proposed → 90 accepted; the 102 → 99 here is that plus 3.4's nine
+  chain edges written into the same transcript. The arithmetic still balances.
+
+**The finding: "the transcript is replaced and everything downstream re-runs unchanged" is not
+true against the database as it stands today.** 3.1 closed by saying a real `--propose` costs
+nothing downstream. That was written against a database where the extracted rows were all still
+at `auto`. They are not any more, and 3.2 is what changed it.
+
+Live today: **77 extracted nodes approved / 2 rejected, 94 extracted edges approved / 5 rejected,
+and zero rows at `status = 'auto'`.** (The brief for this task said 85 approved edges; that is the
+3.2-era figure, before 3.4's nine chain edges were approved. 94 is the number at risk.) Every
+extracted row in the graph has been judged.
+
+Now read the load the generator emits — both upserts carry the same guard:
+
+    on conflict (key) do update set ...
+      where kb_node.origin = 'extracted' and kb_node.status = 'auto';
+
+    on conflict (src_node_id, relation, dst_node_id) do update set ...
+      where kb_edge.origin = 'extracted' and kb_edge.status = 'auto';
+
+That guard is correct and was put there on purpose — 3.1 wanted a re-run never to reset a row an
+admin had already judged. But combined with *zero rows at `auto`*, it means *every one of the 178
+judged rows is immune to the load* — a rejected row fails the `auto` guard exactly as an approved
+one does. Loading a model-produced transcript over this database would:
+
+1. insert only the rows whose key or triple the stand-in never proposed, correctly at `auto`;
+2. leave all 77 + 94 approved rows byte-identical to what the stand-in transcript wrote —
+   including their `evidence_quote`, the column 3.1 built specifically to make a row auditable;
+3. leave any row the model *stops* proposing approved and citable, with nothing marking it as no
+   longer supported by the transcript it claims to come from.
+
+Point 2 is the one that matters. Those rows would still read `origin = 'extracted'`, still carry a
+quote that is genuinely verbatim in its chunk, and still pass `kb_evidence_is_grounded()` — the
+trigger checks that a span *is in the chunk*, which a hand-authored span taken from the same slide
+satisfies exactly as well as a model's. So there is no check anywhere in the system, in the
+database or in CI, that would notice the graph was still the stand-in's. It would look like a
+successful run. §13's sentence about extracted rows — *"a wrong extracted edge looks exactly like
+a right one"* — turns out to apply to a *stale* one too, and that is not a case 3.1 or 3.2
+anticipated.
+
+A narrower latent gap, found in the same reading: the node upsert updates `label`, `summary` and
+`updated_at` only. It never updates `evidence_quote`, so even for a row still at `auto` a
+re-proposal cannot correct that node's quote in place. The edge upsert does update it. This is
+worth fixing when someone next opens the file; it is not fixed here, because changing the loader
+while its input is still the stand-in would be a change nothing could verify.
+
+**What should happen to the 77 / 94 approvals, stated explicitly because leaving it implicit is
+how stale approvals survive.** Those approvals are real human judgments, and they were made about
+*rows a model did not produce*. They are evidence that the schema and the queue work; they are not
+evidence about any model's output. So:
+
+- **They should be re-reviewed, not kept and not destroyed.** Keeping them silently attributes
+  hand-authored spans to a provider. Mass-deleting them throws away the one thing 3.2 demonstrated
+  and would drop rows that a real run may well re-propose identically.
+- **The mechanism is a reset to `auto`, not an approval or a deletion.** After a real `--propose`
+  and a `--verify` diff, the extracted rows the new transcript re-proposes should be returned to
+  `status = 'auto'` so the load's guard actually fires and 3.2 sees them fresh; rows the new
+  transcript does *not* re-propose are the interesting ones and need a decision of their own.
+- **That decision is the owner's at `/admin/kb-review`, and this session made none of it.**
+  Nothing was approved, rejected, reset or deleted here. The graph is exactly as it was found.
+
+**Not re-run, and the reason is that nothing changed.** §10's runner at `/admin/regressions`, 3.3's
+cross-source traversal and 3.4's supersession question were all left alone: the transcript is
+unchanged, therefore the edges are unchanged, therefore any result they returned would be the
+previous result restated. Re-running them would have produced reassuring output that established
+nothing about a run that did not happen. What *was* captured instead is the pre-run baseline they
+will need to be diffed against — the nine chain edges, all approved, all from the stand-in:
+
+    DM 2020-0490 → 2021-0525 → 2022-0567 → 2023-0409 → 2024-0459 → DC 2025-0549   (supersedes ×5)
+    AO 2008-0017 → 2019-0027 → 2021-0002                                          (supersedes ×2)
+    DM 2014-0147 amends AO 2008-0017;  COA-C 2023-003 implements RA 11223
+
+Only the four annual-list edges carry `valid_from`; the scorecard chain has none. A real run that
+drops an edge from either chain, or dates one differently, changes what 3.4 answers about current
+policy — which is exactly the silent change to watch for, and it is now written down.
+
+**§9.9 holds by column right now, checked on the rows.** 0 extracted rows without an
+`evidence_quote`, 0 non-chunk-sourced rows carrying one, across 216 asserted nodes / 384 asserted
+edges and the 178 extracted rows. This is the property that survives whatever the transcript turns
+out to say, and it was re-confirmed live rather than read off the migration.
+
+**What this entry does not establish.** Nothing whatsoever about how well the committed Gemini call
+path extracts — the same sentence 3.1 wrote, still true, for the same reason. It does not establish
+that a real transcript would validate, that it would produce comparable counts, or that the two
+p129 rejections would recur. It adds only three things to 3.1's position: that the provider is
+reachable and the blocker is credentials alone, that `GEMINI_EXTRACTION_MODEL` has never been set
+anywhere and must be chosen by a person, and that the "re-runs unchanged for free" claim needs the
+approval reset above before it is true.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` (547 tests, 48 files) clean.
+`npx prettier --check .` does **not** pass, and did not before this branch: 149 files fail on an
+untouched `origin/main`, `docs/DECISIONS.md` among them. This entry is hand-wrapped to match the
+4,200 lines above it rather than reformatted, since running prettier over this file would rewrite
+the entire decisions history in one unrelated diff. `docs/BUILD_PLAN.md` is already in
+`.prettierignore` for what looks like the same reason; that `DECISIONS.md` is not is probably an
+oversight worth a one-line fix, and it is flagged rather than taken here.
