@@ -392,6 +392,14 @@ single-geography one, and both answers pass `auditNarrative`.
 primitive proven against two edge shapes before anything depends on a model having extracted
 them.**
 
+**At the end of Phase 2 you have all three retrieval paths from §2 live, a document corpus whose
+citations are checkable rather than decorative, and a regression list that grows from real
+failures.** The one thing Phase 2 does not have is a *measured* embedding: the schema, the
+pipeline and the search all handle vectors, but none has been run against a live provider, so the
+vector half of retrieval is proven as plumbing and not as quality. Running
+`ingestion/ingest_documents.py --embed` with a key is what closes that, and it needs no further
+code.
+
 ### Phase 2 — Documents
 
 **2.1 — Ingest pipeline for documents.** *(built — 2026-08-26; 213 chunks, 147,262 chars)*
@@ -434,9 +442,14 @@ worse than no citation, so the stored page/offset must be asserted, not assumed.
 *Verify:* every document-grounded sentence shows a traceable citation; on a document with known
 page numbers, ten sampled citations resolve to text that actually supports the sentence.
 
-**2.4 — Failure capture.** A "this is wrong" control on any answer, writing the question, the
-answer given, the tools called, and the provider into a regression table. Optional free-text note
-for the correct answer.
+**2.4 — Failure capture.** *(built — 2026-08-26)*
+A "this is wrong" control on any answer, writing the question, the answer given, the tools called,
+and the provider into a regression table. Optional free-text note for the correct answer.
+
+A case also stores the **whole conversation** and the **citations**, because the Verify asks for
+replayability and neither the question alone nor the prose alone gives it: the assistant is
+multi-turn, and the regressions worth catching are usually in which tools were selected or which
+page was cited rather than in how the answer reads.
 
 This is what makes §10 self-sustaining: the regression list grows from real failures rather than
 from an authoring session, so it tracks whatever sources have actually been loaded.
@@ -550,6 +563,18 @@ It costs nothing up front and requires no advance knowledge of the corpus:
 **Not a prerequisite.** Phase 1 ships without it. It becomes load-bearing at **Phase 2**, when the
 third retrieval path goes live and a change to one can silently degrade another — one phase
 earlier than originally written, because Phase 1 now ends with two paths rather than one.
+
+**Status after Increment 2.4.** Route 2 is built: `ai_regression_case` captures a replayable case
+from any answer, and the open list renders on the assistant page so the people who file cases can
+see the list growing. Route 1 (seed from the dashboard) and route 3 (harvest `ai_ask_cache` rows at
+`status = 'approved'`) are still unbuilt, and both are now cheap — the table they would write into
+exists and carries a `source` column that keeps seeded cases distinguishable from reported ones.
+One seeded case is in the list already, recording §12.4 rule 3.
+
+**What is still missing is the runner.** A stored case is replayable in the sense that everything a
+replay needs is in the row; nothing yet re-runs them in a batch and diffs the result. That is the
+next thing worth building, and it is what would turn "these five queries look right" into a claim
+about the other forty.
 
 ## 11. Open questions
 

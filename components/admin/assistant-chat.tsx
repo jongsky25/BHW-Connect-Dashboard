@@ -53,7 +53,45 @@ export function AssistantChat() {
   const [droppedPages, setDroppedPages] = useState<number[]>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
+  const [provider, setProvider] = useState<string | null>(null);
+  // Increment 2.4. `null` = not reporting; a string = the note being typed.
+  const [report, setReport] = useState<string | null>(null);
+  const [reportState, setReportState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const listRef = useRef<HTMLDivElement>(null);
+
+  const lastAnswer = [...turns].reverse().find((t) => t.role === "assistant") ?? null;
+  const lastQuestion = [...turns].reverse().find((t) => t.role === "user") ?? null;
+
+  /**
+   * Files the answer as a regression case (§10). What is stored is what a *replay* needs — the
+   * whole conversation, the tool calls with their arguments, the citations — not just the question
+   * and a complaint, because the interesting regressions are usually in which tools were selected
+   * rather than in the prose.
+   */
+  async function reportWrong() {
+    if (!lastAnswer || !lastQuestion || reportState === "saving") return;
+    setReportState("saving");
+    try {
+      const res = await fetch("/api/ai/assistant/regression", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: lastQuestion.content,
+          conversation: turns.filter((t) => t.role !== "system"),
+          answerGiven: lastAnswer.content,
+          toolCalls,
+          citations,
+          provider,
+          note: report,
+        }),
+      });
+      if (!res.ok) throw new Error("not recorded");
+      setReportState("saved");
+      setReport(null);
+    } catch {
+      setReportState("failed");
+    }
+  }
 
   async function send(question: string) {
     const text = question.trim();
@@ -65,6 +103,9 @@ export function AssistantChat() {
     setToolCalls([]);
     setCitations([]);
     setDroppedPages([]);
+    setProvider(null);
+    setReport(null);
+    setReportState("idle");
     setStatus("sending");
 
     try {
@@ -111,6 +152,7 @@ export function AssistantChat() {
             setToolCalls((prev) => [...prev, { name: event.name, args: event.args }]);
           } else if (event.type === "message") {
             setTurns((prev) => [...prev, { role: "assistant", content: event.content }]);
+            setProvider(event.provider);
           } else if (event.type === "citations") {
             setCitations(event.citations);
             setDroppedPages(event.droppedPages);
@@ -223,6 +265,74 @@ export function AssistantChat() {
                 </li>
               ))}
             </ol>
+          </div>
+        )}
+
+        {/*
+          Increment 2.4. Deliberately one click to open and one to file, with the note optional:
+          §10's list only grows if reporting is cheaper than shrugging. A reader who knows an
+          answer is wrong but not why should still be able to say so.
+        */}
+        {lastAnswer && status === "idle" && (
+          <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
+            {reportState === "saved" ? (
+              <p className="text-xs text-muted">
+                Filed as a regression case. It will be re-run against later builds.
+              </p>
+            ) : report === null ? (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReport("")}
+                  className="text-xs underline text-muted hover:text-foreground"
+                >
+                  This answer is wrong
+                </button>
+                {reportState === "failed" && (
+                  <span className="text-xs text-muted">
+                    That wasn&apos;t recorded — nothing was saved. Try once more.
+                  </span>
+                )}
+              </div>
+            ) : (
+              <>
+                <label htmlFor="regression-note" className="text-xs font-medium">
+                  What should it have said? Optional — filing it without a note is still useful.
+                </label>
+                <textarea
+                  id="regression-note"
+                  value={report}
+                  onChange={(e) => setReport(e.target.value)}
+                  rows={3}
+                  maxLength={4000}
+                  placeholder="e.g. the honorarium figure is the Magna Carta proposal, not the current allocation"
+                  className="rounded-md border border-border bg-background px-3 py-2 text-xs"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={reportWrong}
+                    disabled={reportState === "saving"}
+                    className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground disabled:opacity-50"
+                  >
+                    {reportState === "saving" ? "Filing…" : "File it"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReport(null)}
+                    className="text-xs text-muted underline"
+                  >
+                    Cancel
+                  </button>
+                  <span className="text-xs text-muted">
+                    Stores the question, this answer, {toolCalls.length}{" "}
+                    {toolCalls.length === 1 ? "tool call" : "tool calls"} with their arguments
+                    {citations.length > 0 && `, ${citations.length} cited passages`} and the
+                    provider — enough to replay it.
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         )}
 

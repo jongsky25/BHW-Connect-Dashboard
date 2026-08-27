@@ -1126,6 +1126,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_regression_case: {
+        Row: {
+          answer_given: string;
+          case_id: number;
+          citations: Json;
+          conversation: Json;
+          created_at: string;
+          note: string | null;
+          provider: string | null;
+          question: string;
+          reported_by: string | null;
+          source: string;
+          status: string;
+          tool_calls: Json;
+          updated_at: string;
+        };
+        Insert: {
+          answer_given: string;
+          case_id?: never;
+          citations?: Json;
+          conversation: Json;
+          created_at?: string;
+          note?: string | null;
+          provider?: string | null;
+          question: string;
+          reported_by?: string | null;
+          source?: string;
+          status?: string;
+          tool_calls?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          answer_given?: string;
+          case_id?: never;
+          citations?: Json;
+          conversation?: Json;
+          created_at?: string;
+          note?: string | null;
+          provider?: string | null;
+          question?: string;
+          reported_by?: string | null;
+          source?: string;
+          status?: string;
+          tool_calls?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       ai_provider_quota: {
         Row: {
           id: number;

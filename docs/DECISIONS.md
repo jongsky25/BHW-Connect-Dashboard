@@ -2486,3 +2486,87 @@ exactly that case, because it is the one that would otherwise rot silently.
 needs a provider key this environment does not have. What is verified is the property that does
 not depend on the model: a citation it emits is one it was handed, and a page it invents does not
 reach the reader.
+
+## 2026-08-26 — Internal AI assistant, Increment 2.4: failure capture
+
+The last of Phase 2, and the one that makes §10 self-sustaining. §10 is explicit that a fixed
+evaluation corpus chosen up front would be stale by Phase 2 — sources arrive incrementally and are
+not known in advance — so the list has to grow from real failures, which means someone has to be
+able to file one in a click.
+
+§7 frames the same decision from the other side. There is deliberately no queue of answers awaiting
+approval (owner decision 8): reviewing every answer is unbounded work that grows with usage and
+degrades to rubber-stamping. Failure capture is the opposite trade — effort is spent only on
+answers that were actually wrong, and that effort permanently guards against a repeat.
+
+- **What "replayable" actually requires, and why the table is wider than the plan's sentence.**
+  The plan names question, answer, tools and provider. The Verify asks that the case "can be re-run
+  against a later build", and those four are not sufficient for that:
+
+  - `conversation` — the full history, not just the last question. The assistant is multi-turn and
+    an answer often depends on what came before it; replaying the question alone replays a
+    different question.
+  - `tool_calls` — names **and arguments**, in order. The regressions worth catching are usually in
+    tool *selection*: a later build that answers the same question by calling `queryDataset` where
+    it used to call `searchDocuments` has changed behaviour even when the prose reads the same, and
+    that is precisely what §10 exists to detect.
+  - `citations` — the passages a document answer leaned on, so 2.3's failure mode (right answer,
+    wrong page) is visible in the case rather than hidden inside the text.
+  - `provider` — the cascade means two runs of the same question can be answered by different
+    models. "It regressed" and "it was answered by Groq this time" look identical without it.
+
+- **The note is optional, and that is the whole design.** A reader who knows an answer is wrong but
+  not what the right one is should still be able to say so; a case with no expected answer is still
+  worth re-running by hand. Requiring the correct answer would convert a one-click report into a
+  small piece of homework, and §10's list only grows if reporting is cheaper than shrugging.
+
+- **A failed write says so.** `recordRegressionCase` returns null rather than throwing, and the
+  route answers 503 with "nothing was saved". Telling a reader "recorded" when nothing was written
+  is how a regression list quietly stops growing — they report once, see no effect, and never
+  report again.
+
+- **Not rate-limited.** The assistant's own limit protects a shared provider quota; this endpoint
+  calls no provider, and throttling the act of reporting a bad answer would suppress exactly the
+  signal §10 depends on.
+
+- **Admin-gated on the route itself**, before the body is parsed, for the reason 1.4 documents:
+  `proxy.ts` matches `/admin/:path*` and never sees an `/api/*` request, so the route handler is
+  the security boundary. Verified by a test that posts unparseable garbage and still gets 401.
+
+- **The open list renders on the assistant page.** Not on a page of its own: a report that vanishes
+  into a table nobody reads is a report that stops being made, and the people best placed to file
+  cases are the ones already looking at this page.
+
+- **`status` keeps `invalid`, and cases are never deleted.** "We looked and it was fine" is itself
+  worth knowing the next time the same answer is reported.
+
+**Verify (live against the project, and in tests).**
+
+- A case inserted exactly as the UI sends it reads back with everything a replay needs: **2 turns
+  to replay**, the first tool (`searchDocuments`) and its arguments recoverable from jsonb, the
+  provider, the status and the expected answer.
+- **The stored citation still resolves.** The case's cited `chunkId` and `charStart` were checked
+  against `doc_chunk` and matched — so a citation regression is detectable from the stored case,
+  not merely a text diff. This is the check that makes 2.3 and 2.4 worth having together.
+- **RLS is real**: `set local role anon` returns 0 rows from `ai_regression_case` while a control
+  read of `agg_bhw_counts` returns 41,052.
+- Advisors: the table appears only under the pre-existing INFO `rls_enabled_no_policy` lint. No new
+  WARN or ERROR, and the project still has no ERROR-level security advisor at all.
+- `next build` puts `/api/ai/assistant/regression` under `ƒ` (dynamic).
+- 8 new route tests (351 total), covering the admin boundary, the replay payload, an absent note, a
+  whitespace-only note, an answer that used no tools, a malformed body, and the failed-write path.
+- `npm run lint`, `npm run typecheck`, `npm test` clean.
+
+**One seeded case, honestly labelled.** The verification insert originally carried an invented
+reporter id. Rather than delete it, it was re-filed as `source = 'seeded'` with `reported_by` null,
+because the expectation it records is real and useful: §12.4 rule 3 — where a document figure and a
+SQL figure disagree, the assistant must surface **both** with their as-of dates (the cue cards'
+277,767 as of Dec 2025 *and* `agg_bhw_counts`' 270,917 profiled records) rather than reconcile
+them. An invented *report* in the list would have misled about how the list is being used; a
+labelled *seed* is exactly what §10.1 describes.
+
+**Not verified, and the honest gap in Phase 2's evaluation story.** Nothing yet *runs* the stored
+cases. A case is replayable in the sense that every input a replay needs is in the row, and that is
+what the Verify asks for and what was checked — but there is no batch runner that re-executes them
+against a build and diffs the result. Until there is, §10's list accumulates evidence without
+automatically spending it. That runner is the obvious next increment and needs no schema change.
