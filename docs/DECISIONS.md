@@ -4418,3 +4418,158 @@ diff against when the supersession question below is settled.
 **Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **548 tests, one more
 than before**, the label case having become two. `npx prettier --check .` fails on 149 files on
 untouched `main` and is unchanged by this branch; the rewritten test file is prettier-clean.
+
+## 2026-08-27 — UUC for PHC 2025: U12a, the chip that says "barangays" out loud — and two things the generated types found
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U12a, plus the `database.types.ts` regeneration three earlier
+entries deferred. U12b is **not** started; the question holding it is at the end of this entry.
+
+### The chip is a sentence because a sentence can name its own denominator
+
+`/explore` and `/place/*` now carry one line: *"141 of this area's 176 barangays are on the 2025
+UUC for PHC list →"*. One extra `getUucPhcCounts` call joined into each page's existing
+`Promise.all`, against a row `agg_uuc_phc_counts` has carried since U2 — **no new aggregate, no new
+relation, no migration**.
+
+The plan is explicit that this must not become an entry in `MAP_BASE_INDICATOR_META`, and building
+it made clear why the alternative is a *sentence* rather than a differently-styled map layer. Every
+indicator in that `Record` is a share of **BHW profiles**; this is a share of **barangays**. Behind
+one `<select>`, one legend and one colour ramp, nothing on the map tells a reader the denominator
+moved under them — the choropleth's whole vocabulary is "darker means more", and it has no place to
+put the word "of what". A sentence does: it prints the numerator, the denominator and the noun in
+that order, in the same breath. That is not a workaround for the map; it is the reason this
+particular figure belongs in prose. Nothing in U12a touches `MAP_BASE_INDICATOR_META`, and if the
+choropleth is ever to carry this it is a second separately-legended layer with its own caption.
+
+Three readings settled while building it, each of which could have gone the other way:
+
+- **Nothing at barangay grain.** `agg_uuc_phc_counts` stops at citymun (U2: 41,958 rows of
+  `n_listed` in {0,1} would only restate the fact table) and `/uuc-phc/barangay/*` 404s (U2 again:
+  a barangay page is one yes/no the city page already renders). So on a barangay place page there
+  is no row to read and no page to link to. The tempting fallback — show the town's figure, as the
+  page already does for citymun-grain BHW figures with a "(shown for X)" suffix — was refused here:
+  those figures are the *same measure* at a coarser grain, whereas the chip's sentence says "this
+  area's", and printing the town's count under a barangay's heading makes the sentence false rather
+  than approximate.
+- **A zero renders.** NCR reads "None of this area's 1,675 barangays are on the 2025 UUC for PHC
+  list". The section's standing rule is that a zero here is data, not a gap; on a chip the rule has
+  extra force, because a chip that vanished at zero would be indistinguishable from one that failed
+  to load, and a reader would have no way to tell "none listed here" from "nobody checked".
+- **A failed read renders nothing** — which is the opposite of `/uuc-phc/data-quality`'s rule, and
+  deliberately so. There, silence is read as a clean bill of health, so an empty page must say it
+  failed. Here the chip is ancillary context on another dataset's page: rendering nothing asserts
+  nothing in either direction, and an error box for a secondary pointer is noise on a page the
+  reader came to for something else.
+
+**It sits outside every `PresentationSlide`.** Both host pages have a deck, and both decks caption
+with a BHW N ("N = 4,312 validated profiles · …"). A count of barangays projected under that
+caption is a figure the caption's own stated denominator cannot carry — the same objection the plan
+makes to the choropleth, in a different medium. Verified rather than assumed: both decks were
+driven end to end and the chip is not inside, and never visible over, any promoted slide.
+
+### `database.types.ts` is regenerated, and the reason it kept being deferred expired
+
+Three previous entries deferred this — Phase 2 (concurrent branches would conflict), Increment 3.3
+and 3.4 (this branch is the one hand-editing it; and "the only way to do it in this environment is
+to transcribe the generator's output by hand, and that defeats the point of the file being
+generated"). Four increments have now hand-edited it, and U11 added 46 more lines.
+
+**The transcription objection is what actually blocked it, and it no longer holds.** This session
+has a filesystem: the generator's output landed on disk as a file and was moved into place. No part
+of it passed through a person or an assistant character by character, which is the whole
+distinction that entry was drawing. The repo's own prettier then reformatted it — the same
+mechanical step every other file gets, and what keeps the diff a reformat rather than a restyle.
+The Supabase CLI itself is not installed here; the Supabase MCP's `generate_typescript_types` calls
+the same management endpoint `supabase gen types typescript --project-id` does, against the same
+project. It is its own commit with nothing else in it, as that entry asks.
+
+PR #92 (U11) hand-adds 46 lines to this file. It is already conflicted against `main` for unrelated
+reasons and needs a rebase regardless; on that rebase this file resolves to the regenerated version,
+which already contains `ref_uuc_phc_list`, so nothing is lost.
+
+**What the hand-maintained file was missing.** All drift, none of it wrong on purpose:
+`ref_uuc_phc_provincial` (a view since U1, never in the file at all), `demographic_dimension_enum`
+(from the very first migration), and `ref_uuc_phc_list` (live, from U11). Plus two things that were
+actively over-claimed, and are the finding below.
+
+### The finding: two places where the types promised more than the database does
+
+Regenerating broke `npm run typecheck` in exactly two files, and both breaks were correct.
+
+1. **`search_geo` does not return `parent_chain`, and never has in production.**
+   `supabase/migrations/20260720130000_search_geo_parent_chain.sql` is committed on `main` and its
+   version is **absent from the live migration history**; the live function's signature is
+   `TABLE(geo_code, geo_level, geo_name, n_total, match_rank)` — five columns where the repo's
+   migration declares six. So the home search's parent-chain disambiguation, the whole point of
+   which is telling one "Poblacion" from another, **has never worked in production**. Nothing
+   surfaced it because `lib/db/search.ts` was written to degrade cleanly, and its comment
+   ("parent_chain is absent until the P0.1 migration is applied") has been literally true for five
+   weeks while reading as historical. The evidence is one request:
+   `GET /api/geo/search?q=poblacion` returns six barangays all named POBLACION, every one of them
+   with `"parentChain":{}` — which is precisely the results list that migration exists to prevent.
+
+   Not fixed here, because applying DDL to the live project is a different decision from
+   regenerating a types file, and it is the owner's. `searchGeo` now reads the column as
+   **optional** rather than asserting it: it claims nothing the live database does not provide, and
+   it starts rendering the chain the moment the migration is applied, with no code change. The
+   remedy is to apply that one committed migration.
+
+2. **A view cannot declare `not null`.** `ref_uuc_phc_benchmark_gaps`' columns were hand-typed
+   non-nullable; the generator widens them, because that is all Postgres can promise through a
+   view. `getUucPhcBenchmarkGaps` now **drops** a row missing a structural field rather than
+   defaulting it — on `/uuc-phc/data-quality`'s own rule that a figure is computed or it is not
+   shown. A `0` in `n_affected` reads as "no barangays affected", which is the opposite of "we could
+   not tell". The migration's assertions mean the filter is expected to drop nothing; it exists so
+   that if the view ever does produce such a row, the page loses a row instead of gaining a wrong
+   one. Live, it drops nothing: the page still renders all 7 rows, 226 and 113.
+
+Both adaptations landed in the commit *before* the regeneration, so that the regeneration commit
+stays mechanical and every commit in the branch typechecks on its own.
+
+### `/profiling-status`'s brand label: there is nothing to change, and the note that said otherwise is fixed
+
+`docs/uuc-phc-feature.md` said "`/profiling-status` can adopt the same field with a one-line
+change", which reads as a pending one-liner. It is not one. **`/profiling-status` has no deck at
+all** — no `PresentationProvider`, no `PresentationSlide`, no `PresentButton` anywhere under
+`app/profiling-status/` or `components/profiling-status/`, and no "Present" control in the rendered
+HTML of either its landing page or an area page. So nothing there prints "BHW Connect" over slides,
+because there are no slides. Adopting `brandLabel` is one line *of* whatever increment gives that
+section present mode — not a change that can be made today. The sentence in the feature doc now
+says so, so the next reader does not go looking for it a third time.
+
+### Verification
+
+The chip's figure was checked against `agg_uuc_phc_counts` at every geo it was rendered at, and
+against the section's own hero by clicking through: IFUGAO's chip reads "141 of this area's 176"
+and `/uuc-phc/province/14027` reads "141 of 176 barangays in IFUGAO". Ten routes driven in Chromium
+against `next start`: `/explore` at national (5,991 of 41,958), NCR (the zero as a sentence),
+BANGUI (2 of 14) and a barangay; `/place/*` at national, CAR (609 of 1,178), IFUGAO, MAYOYAO (27 of
+27), CITY OF CAVITE (the singular — "1 of this area's 84 barangays **is**") and a barangay. **Both
+barangay routes render no chip.** Hrefs resolve to `/uuc-phc` at national and
+`/uuc-phc/<level>/<code>` elsewhere. Both decks driven end to end — 14 slides on
+`/place/province/14027`, 16 on `/explore` at CAR — with the chip **never inside or visible over a
+promoted slide**, both exiting on Esc, **zero console errors**. Looked at in light and dark and at
+390px, where the arrow was moved onto the last text line so it cannot wrap alone.
+
+10 new unit tests in `lib/db/uuc-phc.test.ts` cover the sentence (count, zero, singular, null row,
+zero denominator, and that it names "barangays") and the href. `npm run typecheck`, `npm run lint`
+and `npm test` (**48 files, 557 tests**) are clean, and `npm run build` compiles.
+
+**Not verified:** the two barangay-grain cases are verified as *absent*, which is what the design
+asks for, but that means `/place/barangay/*` gains nothing from this increment and no alternative
+was tried. And the `search_geo` finding is verified as a fact about the live database — that
+applying the missing migration fixes the home search is **not** verified, because the migration was
+deliberately not applied.
+
+### U12b is not started, and the question is the owner's
+
+The plan names three things to settle. Two are ours to decide and are already answered by this
+section's reasoning: "not listed" means *every other barangay in the area* and the label must say
+so, and cells below the §4.1 threshold get suppressed rather than zeroed.
+
+The third is not ours. **UUC status is defined partly on distance to a health facility**, so a gap
+in BHW coverage between listed and unlisted barangays is **partly definitional, not a finding**.
+Publishing "unserved barangays have fewer BHWs per household" as a discovery, when the list was
+drawn partly on health-system access, is circular — and a caption disclaiming it is a weaker
+instrument than not publishing the framing at all. Whether the aggregate ships, and under what
+framing, is an owner decision. Nothing was built.

@@ -70,8 +70,14 @@ it or not. Every figure on the section is therefore one count against one denomi
   the cleaning report's §6 as a surface, with every figure recomputed on each read rather than
   written down — a stale data-quality page is worse than none, because it is read as an assurance.
   See "Data quality" below.
-- **Not built yet:** downloads, and the `/explore` overlay. Planned as U11–U12 in
-  `docs/UUC_PHC_2025_PLAN.md` §9.
+- **The section announces itself on the BHW surfaces** (U12a). A one-line chip on `/explore` and
+  `/place/*` reads "141 of this area's 176 barangays are on the 2025 UUC for PHC list →", from
+  `agg_uuc_phc_counts` with no new aggregate and no new relation. It is deliberately a sentence
+  and not a map layer: the chip names *barangays* as its universe in words, which is the one thing
+  a shared legend and colour ramp cannot do. See "Context on the BHW surfaces" below.
+- **Not built yet:** U12b, `agg_bhw_by_uuc_status` — held pending an owner decision, because UUC
+  status is defined partly on distance to a health facility and a BHW coverage gap between listed
+  and unlisted barangays is therefore partly definitional. See `docs/UUC_PHC_2025_PLAN.md` §9 U12b.
 
 ## The indicators (U3)
 
@@ -290,6 +296,38 @@ and `AiInsight` sits on the area pages. Both are grounded in this dataset alone.
   query, so a stale number there reaches an answer with nothing rendering it for a person to catch.
   Every other figure in the five UUC dictionaries was checked against live data and is correct.
 
+## Context on the BHW surfaces (U12a)
+
+`/explore` and `/place/*` carry one chip: *"141 of this area's 176 barangays are on the 2025 UUC
+for PHC list →"*, linking to this section's page for the same area. It is the only place this
+dataset speaks on a page about another one.
+
+- **It is a sentence, not a map layer, and that is the whole design.** `MAP_BASE_INDICATOR_META`'s
+  entries are all shares of *BHW profiles*; this is a share of *barangays*. Putting it in the map's
+  indicator `<select>` would place two universes behind one legend and one colour ramp with nothing
+  telling the reader the denominator had changed. A sentence can say "barangays" out loud beside
+  its own denominator. Nothing in U12a touches `MAP_BASE_INDICATOR_META`; if the choropleth is ever
+  to carry this, it is a second separately-legended layer with its own caption — a decision to take
+  with the map.
+- **No new aggregate and no new relation.** One extra `getUucPhcCounts` call, joined into the page's
+  existing `Promise.all`, against a row `agg_uuc_phc_counts` has carried since U2.
+- **National, region, province, city/municipality — and nothing at barangay.** The aggregate stops
+  at citymun by design, and `/uuc-phc/barangay/*` 404s, so there is no row to read and no page to
+  link to. A barangay page renders no chip rather than its town's figure under its own heading.
+- **A zero is a sentence.** NCR reads "None of this area's 1,675 barangays are on the 2025 UUC for
+  PHC list" — the same rule as the section's own pages. A chip that disappeared at zero could not
+  be told apart from one that failed to load.
+- **A failed read renders nothing, and that is the right degradation here.** Unlike
+  `/uuc-phc/data-quality`, where silence reads as a clean bill of health, this chip is ancillary
+  context: rendering nothing makes no claim in either direction, and an error box for a secondary
+  pointer would be noise on someone else's page.
+- **Outside every `PresentationSlide`.** Both host decks caption with a BHW N ("N = 4,312 validated
+  profiles · …"). A barangay count projected under that caption would be a figure the caption's own
+  stated denominator cannot carry.
+- **"this area's", not the area name.** Both pages already carry the place name in the heading
+  directly above, and the generic phrasing is one string for every level — the alternative needs a
+  possessive, which "Philippines" and "Cebu Province" do not share.
+
 ## Data model
 
 - Table **`fact_uuc_phc_barangay`** — one row per listed barangay: resolved `geo_code`,
@@ -401,8 +439,11 @@ edges in `kb_node` / `kb_edge`.
 - **`DeckMeta.brandLabel`** is the shared-machinery fix behind it. `PresentationSlide` and
   `PresentationDeck` printed the literal `BHW Connect`; the field is optional and defaults to it,
   so `/bhw`, `/place/*`, `/explore` and `/compare` are unchanged, and this section passes
-  `"UUC for PHC"`. `/profiling-status` can adopt the same field with a one-line change.
-  Resolution is `brandLabelOf` in `components/present/deck-logic.ts`, unit-tested.
+  `"UUC for PHC"`. Resolution is `brandLabelOf` in `components/present/deck-logic.ts`, unit-tested.
+  **`/profiling-status` has no deck at all** — no `PresentationProvider`, no `PresentationSlide`,
+  no `PresentButton` — so there is no label there to correct today. Adopting `brandLabel` is one
+  line *of* whatever increment gives that section present mode, not a pending one-liner on its own.
+  Checked again in U12a, because the earlier wording here reads as the latter.
 - **The deck caption's N is the area's listed count**, not the national 5,991 — a deck presented on
   Mayoyao reads `N = 27 listed barangays · MAYOYAO · 2025 list (DC No. 2025-0549)`.
 - **Feedback is dataset-aware.** `SpotFeedback` already rendered here; what was added is
@@ -469,6 +510,7 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Source data | `ingestion/data/uuc_phc_2025_cleaned.csv` |
 | Present mode wiring | `components/present/` (`deck-logic.ts` `brandLabelOf`), both `app/uuc-phc` pages |
 | Correction entry point | `components/uuc-phc/list-correction.tsx` |
+| BHW-surface context chip | `components/uuc-phc/context-chip.tsx`, `uucContextSentence` / `uucPhcAreaHref` in `lib/db/uuc-phc.ts` (+ `.test.ts`) |
 | Feedback dataset routing | `lib/feedback/dataset.ts` (+ `.test.ts`), `app/api/feedback/route.ts` |
 | Social cards | `app/uuc-phc/opengraph-image.tsx`, `app/uuc-phc/[geoLevel]/[geoCode]/opengraph-image.tsx` |
 | Registry seed + its guard | `supabase/migrations/20260826090100_seed_dataset_registry.sql`, `lib/db/dataset-registry-seed.test.ts` |
@@ -580,6 +622,17 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   (**102.15%** and **100.96%**) rather than rounding Butuan's back to the 101.00 U9 corrected. No
   new advisor finding: both views are `security_invoker`, so neither raises `security_definer_view`.
   The methodology page's five typed counts are gone, replaced by links here.
+- Context chip (U12a): the figure the chip prints was compared against `agg_uuc_phc_counts` for
+  every geo it was rendered at, and against the section's own hero after clicking through —
+  IFUGAO's chip reads "141 of this area's 176" and `/uuc-phc/province/14027` reads "141 of 176
+  barangays in IFUGAO". Driven in Chromium against `next start` on ten routes: `/explore` at
+  national, NCR, BANGUI and a barangay, and `/place/*` at national, CAR, IFUGAO, MAYOYAO (27 of
+  27), CITY OF CAVITE (the singular "1 of this area's 84 barangays **is**") and a barangay. **The
+  two barangay routes render no chip**, which is the aggregate's own grain. NCR renders the zero as
+  a sentence. Both decks were driven end to end — 14 slides on `/place/province/14027`, 16 on
+  `/explore` at CAR — and the chip is **not inside, and never visible over, any promoted slide**;
+  both exit on Esc with **zero console errors**. Rendered and looked at in light and dark and at
+  390px, where the arrow stays on the last line with "list" rather than wrapping alone.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,
