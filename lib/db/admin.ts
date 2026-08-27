@@ -17,6 +17,9 @@ export type FeedbackRow = {
   createdAt: string;
   pagePath: string;
   pageUrl: string | null;
+  /** Which dataset the submitter was looking at, derived from the path at write time (U6). Null on
+   * multi-dataset pages like /explore — a real answer, not a gap. */
+  datasetSlug: string | null;
   category: string;
   message: string;
   email: string | null;
@@ -35,7 +38,7 @@ export async function listFeedback(status?: FeedbackStatus): Promise<FeedbackRow
   let query = supabase
     .from("feedback")
     .select(
-      "id, created_at, page_path, page_url, category, message, email, status, target_selector, context, screenshot_path",
+      "id, created_at, page_path, page_url, dataset_slug, category, message, email, status, target_selector, context, screenshot_path",
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -48,6 +51,7 @@ export async function listFeedback(status?: FeedbackStatus): Promise<FeedbackRow
     createdAt: row.created_at,
     pagePath: row.page_path,
     pageUrl: row.page_url,
+    datasetSlug: row.dataset_slug,
     category: row.category,
     message: row.message,
     email: row.email,

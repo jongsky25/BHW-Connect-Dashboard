@@ -2133,6 +2133,194 @@ an over-long line runs off the page with no error to catch it) all clean.
 That completes `docs/UUC_PHC_2025_PLAN.md`: U1 (load), U2 (rollup + section), U3 (indicators),
 U4 (one-pager). The remaining idea in the plan is an `/explore` overlay, which is out of its scope.
 
+
+## 2026-08-26 — UUC for PHC 2025: U5, the registry, the lineage, and the SECURITY DEFINER view
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U5. No user-visible change: this pays off debt that two branches
+merged in the same afternoon left behind, and it is the dependency U8's chat sits on.
+
+**The debt was structural, not clerical.** PRs #75 (this dataset) and #76 (the internal assistant)
+were each written against the other's absence, and both were true when written. What made them
+false was the merge, and nothing in either branch could have noticed. Three statements had to be
+corrected:
+
+- `fact_uuc_phc_barangay`'s `notes_md` said the table "has no committed migration in
+  supabase/migrations" and asked the lineage seeding to record that gap. #75 committed
+  `20260826121000_fact_uuc_phc_barangay.sql`. The note now points at it.
+- `agg_uuc_phc_counts`, `fact_uuc_phc_indicators` and `ref_uuc_phc_provincial` were in neither the
+  registry nor `kb_lineage` — 0 hits in both seeds. All three are registered with full column
+  dictionaries.
+- `kb_lineage` had no `built-by` edge for `table:fact_uuc_phc_barangay`, which the generator had
+  been printing to stderr every run as the one node it could not establish. It establishes now.
+
+**The dictionaries are the allowlist, so they are written as instructions, not descriptions.**
+`queryDataset` refuses a table with no approved dictionary outright and enforces `is_queryable` per
+column, so a column's `meaning` is the only thing a model sees before it composes a query.
+`capped_indicators` therefore says *what to do* — "a value named here is a ceiling, not a
+measurement… never average or rank it" — and each of the seven boundable indicators names
+`capped_indicators` in its own meaning, because the table-level caveat is not what travels with a
+returned value. A model reading a bare `100` off `water` with nothing adjacent reports full
+coverage, which is precisely the failure U3 built that column to stop. The seven `*_prov_ref`
+columns say the opposite in as many words — "Never capped, unlike the barangay value beside it" —
+since that asymmetry is exactly why 113 barangays read as worse-than-province by construction.
+
+**`ref_uuc_phc_provincial` is registered even though it is a view.** `queryDataset` reaches it
+through PostgREST the same way it reaches a table, and refuses any relation without a dictionary,
+so omitting it would not have made it unreachable — it would have made the canonical form of the
+provincial benchmark the one thing the assistant could not read.
+
+**`security_invoker = true` on that view** closes the ERROR-level `security_definer_view` advisor
+finding. Without it the view runs as its owner, so the RLS of `fact_uuc_phc_indicators` never
+applies to the caller. It is the repository's only view, so there was no local convention to copy;
+the one this sets is that the underlying table's policy grants access and the view adds no
+privilege of its own. That table is already public-read to `anon`, so *who* can read the view does
+not change — only what decides it. Verified: 87 rows still returned to `anon` over PostgREST, and
+the advisor is clean.
+
+**Two generator changes, both structural — no hand-written edges.** `ingestion/build_kb_lineage.py`
+now (a) reads `create view` as well as `create table`, keying a view as a `table:` node because the
+registry, `queryDataset` and every read path already treat one as a table, and taking its
+`derived-from` edges from its own defining query — a read scoped to the single statement that
+creates it, the same standard the ingestion `.sql` path already meets; and (b) honours an explicit
+`-- lineage: <src-key> <relation> <dst-key>` directive.
+
+The directive exists for one edge the plan asks for and no `from` or `join` can supply:
+`fact_uuc_phc_indicators` is derived from the bounding process `UUC_PHC_2025_CLEANING_REPORT.md`
+documents. **What was considered and rejected** was a rule reading every `docs/*.md` path an
+ingestion script mentions as a derivation. It would have produced the wanted edge — and also
+`agg_population derived-from docs/DECISIONS.md`, which is not a derivation and which nobody could
+check by opening the file. A directive names both endpoints itself, so it stays checkable by
+opening the file that carries it and cannot fire by accident.
+
+**Also considered and not done:** applying the ingestion path's read-inside-write rule to
+migrations generally, which would give `agg_uuc_phc_counts` a `derived-from` edge to
+`fact_uuc_phc_barangay`. It is honest and cheap, but it rewrites edges across all 60-odd migrations
+in an increment whose scope is four objects; it belongs in its own change where the delta can be
+read.
+
+**The seeds are edited in place, not superseded.** Both files say so themselves — the registry seed
+is "the single source for what the registry says", the lineage seed is wholly generated and its
+inserts are upserts. A second dated seed would leave two files each claiming to be current, which
+is the drift a generated file exists to remove. The live project was brought up by applying the
+delta as its own named migration, which is how every migration in this repository has reached it
+(the project's `schema_migrations` versions have never matched these filenames).
+
+One footgun found and documented: `build_kb_lineage.py > supabase/migrations/…_seed_kb_lineage.sql`
+truncates the seed *before* the generator runs, and the seed is itself a migration the generator
+reads — so the shell silently drops one node. Generate to a temp file and move it.
+
+**Verify.** Registry returns the four UUC relations, all `approved`/`public`, with 8 / 6 / 24 / 10
+approved columns; the live rows hash-match the committed seed field for field (four `notes_md`
+digests and one aggregate digest over all 48 column meanings, ordinals and names). No table node in
+`kb_node` lacks a `built-by` edge, and the generator prints nothing to stderr — the first clean run
+since the node was introduced. All four objects carry one (`create table` ×3, `create view`,
+`writes` ×2), and `fact_uuc_phc_indicators derived-from doc:docs/UUC_PHC_2025_CLEANING_REPORT.md`
+is present. `get_advisors` returns no `security_definer_view`; `anon` reads all 87 view rows over
+PostgREST. `npm run lint`, `npm run typecheck` and `npm test` clean, with 14 new tests: 11 in
+`lib/db/dataset-registry-seed.test.ts` — which parses the committed seed rather than the live
+database, on the same reasoning as the lineage generator, and asserts among other things that every
+registered relation has a `create table`/`create view` somewhere in `supabase/migrations`, the
+invariant whose absence let the false note ship — and 3 in `lib/ai/query-dataset.test.ts` proving
+the dataset became queryable by registration alone.
+
+## 2026-08-26 — UUC for PHC 2025: U6, present mode, section chrome, and dataset-aware feedback
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U6. The section's first parity increment: the two existing pages
+gain the chrome the BHW pages carry, and the one shared-machinery defect that blocked it is fixed
+in a form `/profiling-status` can adopt unchanged.
+
+**`brandLabel` on `DeckMeta` (§8 defect 1).** `PresentationSlide` printed the literal
+`BHW Connect` above every promoted slide, and `PresentationDeck`'s closing slide printed
+`Data: BHW Connect`. Both are right for `/bhw`, `/place/*`, `/explore` and `/compare` and wrong for
+every other section — a UUC deck would have carried the census's name above each of its slides and
+then attributed this dataset's figures to it. The field is **optional and defaults to
+`"BHW Connect"`**, so all four existing callers are untouched by construction rather than by
+inspection; `/uuc-phc` passes `"UUC for PHC"`.
+
+The resolution lives in `deck-logic.ts` (`brandLabelOf`) rather than as a `??` at each use site, so
+it unit-tests in the node environment alongside the rest of the pure deck logic and a third
+consumer cannot quietly reintroduce a literal. Blank is treated as unset: an empty header reads as
+a rendering bug, never as a choice.
+
+**I fixed the closing slide as well as the header**, which the plan named only as the header. It is
+the same wrong-section claim in a worse place — "Data: BHW Connect" under a UUC caption line
+asserts a provenance that is false — and leaving one of the two literals would have made the field
+look decorative.
+
+**Present mode on both routes**, four slides: the coverage card (hero + share bar), the child
+breakdown, and — at city/municipality — the barangay list. Two judgment calls:
+
+- **The barangay list is one slide, not one per barangay.** The indicator disclosures inside it are
+  `<details>` and stay closed on promotion, so a capped value cannot reach a projected screen
+  without the † footnote that travels with it. Promoting each barangay would have inverted U3.
+- **The deck caption's N is the *area's* listed count, not the national 5,991.** The plan writes
+  `N = 5,991 listed barangays · <area> · …`, which is exactly right for the landing page and would
+  be a number none of the figures support on a city's deck. Verified reading
+  `N = 27 listed barangays · MAYOYAO · 2025 list (DC No. 2025-0549)`.
+
+`PresentButton` sits beside the page's own `<h1>`, not in the section header in `layout.tsx`: the
+button must be inside the provider, and the provider needs page-specific `DeckMeta`. This is where
+`/bhw` and `/place/*` put it too.
+
+**`feedback.dataset_slug`, derived server-side.** `feedback` has carried only `page_path` since
+July, so a correction about this list arrived indistinguishable from a UI bug on `/explore` except
+by string-matching a URL. The column is nullable and additive (no backfill), and **derived from
+`page_path` in the API route** rather than sent by the client — one derivation for the spot widget
+and the form alike, and a slug nobody can set is a slug nobody can set wrongly. A test asserts a
+caller-supplied `dataset_slug` is ignored.
+
+**Null is a real answer.** Only sections that *are* one dataset's surface get a slug — `/uuc-phc`,
+`/profiling-status`, `/bhw`, `/place`. `/explore` and `/compare` render BHW figures beside census
+population and SAE poverty; naming one dataset there would be a claim the page does not support,
+and a wrong slug is worse than none precisely because it is filterable. Those stay null and are
+triaged by path as before. No foreign key to `dim_dataset`: this records what was on screen and
+must outlive a dataset being renamed or retired.
+
+**The UUC entry point is not a second widget.** `SpotFeedback` already renders here (it is mounted
+globally and gated off `/admin` and `/` only), and confirmed still exactly one widget on the page.
+What was missing is an entry point that names the correction in the reader's words —
+*"Is a barangay missing from this list, or listed in error?"* — in the section footer. Pin-and-
+comment is the right shape for "this chart looks wrong" and the wrong shape for "this list is wrong
+about my barangay".
+
+It **says plainly that we cannot change the list**: this is DC No. 2025-0549 reproduced as issued,
+and a correction is the source office's to make. It also names the two things already known and not
+worth reporting — the 5,991 vs 5,987 gap and the one unresolvable source row — so nobody spends
+effort telling us what `docs/UUC_PHC_2025_CLEANING_REPORT.md` already says. Implemented by giving
+`FeedbackForm` a starting category and an id namespace rather than writing a second form; the form
+already reads `usePathname`, so a correction from `/uuc-phc/citymun/…` lands tagged with both the
+dataset and the exact area.
+
+**`opengraph-image.tsx` for both routes**, count as the headline, no indicator values — U4's rule,
+since a 1200×630 card has nowhere to put a † footnote. A zero renders as a zero: NCR reads
+"0 of 1,675 barangays", never an omission.
+
+**Both OG images had real bugs that only rendering found**, and neither is catchable by lint,
+typecheck or any test in this repo:
+
+1. Satori throws on a `<div>` with more than one child unless it declares an explicit `display`.
+   The landing card's headline interpolated a number beside literal text and 500'd. Every line is
+   now composed as one string.
+2. `params` is a Promise on this Next version. The area card read `params.geoCode` synchronously;
+   it happened to work and logged an error on every request. Now awaited.
+   (`app/place/[geoLevel]/[geoCode]/opengraph-image.tsx` has the same synchronous read — noted, not
+   changed here, since it is outside this increment and works today.)
+
+**Verify.** Deck driven end to end in a real browser on seven routes: `/uuc-phc`,
+`/uuc-phc/region/14` and `/uuc-phc/citymun/1402706` all start, advance through their slides, show
+**"UUC FOR PHC"** in the promoted-slide header and `Data: UUC for PHC · …` on the closing slide, and
+exit on Escape; `/bhw`, `/place/citymun/0102804`, `/explore` and `/compare?geos=14,01` all still
+read **"BHW Connect"** on both. Feedback POSTed from `/uuc-phc/citymun/1402706` landed with
+`dataset_slug = 'uuc-phc-2025'` and from `/explore` with null, and both came back through the exact
+projection `listFeedback()` issues; the two synthetic rows were then deleted rather than left in the
+real inbox. (The admin page itself needs the service-role key, which this environment does not
+have — the read layer and its projection were exercised, the rendered page was not.) OG images
+render 1200×630 at national, region (including NCR's zero), province and city/municipality, and
+were **looked at**, not just status-checked. Exactly one `SpotFeedback` widget and one correction
+entry point on the page. The one console error on `/uuc-phc` is the pre-existing theme-script
+hydration warning, identical on `/bhw` and `/explore`. `npm run lint`, `npm run typecheck` and
+`npm test` (309 tests, 14 new) all clean.
+
 ## 2026-08-26 — Owner decision 1 answered: Supabase Pro
 
 The owner has upgraded the project to Supabase Pro. `AI_ASSISTANT_PLAN.md` §0 carried this as a
@@ -2617,6 +2805,32 @@ The generator's stderr finding list is **empty**: every table node has a `built-
 the first time that has been true since 1.5, and it is true because #75 committed
 `fact_uuc_phc_barangay`'s migration.
 
+**Merged with #79, which changed the same generator.** #79 taught `build_kb_lineage.py` to read
+`create view` (so `ref_uuc_phc_provincial` becomes a node) and regenerated
+`20260826120100_seed_kb_lineage.sql` **in place** rather than adding a dated seed. Both changes are
+better than what this branch did:
+
+- The view scan is kept, and now reads *stripped* SQL like the table scans, for the reason above —
+  a header saying "CREATE VIEW …" would otherwise assert a view that is not there. The fix and the
+  feature compose; neither side had to lose.
+- The separate `20260826160300_seed_kb_lineage_phase2.sql` this branch added is **deleted**. One
+  generated file regenerated in place is the better convention: two seeds drift, and the second one
+  is only ever a snapshot of a moment. `split_statements` was checked and needs no change — it
+  already strips comments itself, so #79's view-lineage walk was never exposed.
+
+**Live reconciled to the committed seed: 189 nodes, 307 edges, exact match.** Getting there needed
+three corrections, found by diffing the generator's output against the live rows rather than
+assuming a re-apply would converge:
+
+- Two rows were missing live — `table:feedback built-by 20260827090000_feedback_dataset_slug.sql`
+  and its `reconciled-in` — because #80 applied that migration without re-seeding the graph.
+- One node was **stale**: `migration:20260826160300_seed_kb_lineage_phase2.sql`, created by this
+  branch and then deleted with the file. Upserts never remove anything, so a full re-apply would
+  have left it there — a node naming a file that no longer exists, which is precisely the
+  unverifiable assertion the graph exists to prevent. It was deleted explicitly.
+
+The generator's stderr findings list is empty: every table node has a `built-by` edge.
+
 ### Carry-forward items from the Phase 1 handoff, settled
 
 - **`agg_uuc_phc_counts` registration — done, by the concurrent work, not here.** The registry is
@@ -2635,3 +2849,4 @@ the first time that has been true since 1.5, and it is true because #75 committe
   The additions here follow the existing hand-maintained style and `npm run typecheck` is clean.
   A regeneration is still worth doing — **once the concurrent branches have merged**, as its own
   change with nothing else in it, so the diff is reviewable as the mechanical reformat it is.
+

@@ -13,7 +13,16 @@
 -- generic query tool has no other way to learn.
 --
 -- Idempotent: re-running refreshes descriptions in place, so this file stays the single source
--- for what the registry says.
+-- for what the registry says. That is why plan U5's four UUC for PHC objects were added here
+-- rather than in a follow-on seed: two files both claiming to describe the registry is the drift
+-- this one exists to prevent. The rows added there also close a statement that had gone false —
+-- fact_uuc_phc_barangay's note said it had no committed migration, written while PR #75 was still
+-- unmerged; 20260826121000_fact_uuc_phc_barangay.sql has been committed since.
+--
+-- ref_uuc_phc_provincial is a *view*, not a table. It is registered anyway: queryDataset reads it
+-- through PostgREST exactly as it reads a table, and refuses any relation with no approved
+-- dictionary, so leaving it out would not make it unreachable — it would make it unusable while
+-- still being the canonical form of the provincial benchmark.
 insert into dataset_registry (
   table_name, title, summary, grain, dataset_slug, exposure, row_estimate,
   source_kind, status, notes_md, doc_path
@@ -170,8 +179,29 @@ insert into dataset_registry (
    'The barangays on the 2025 Unserved and Underserved Communities for Primary Health Care list, with the source name fields they were matched from. Presence in this table means listed.',
    'One listed barangay.',
    'uuc-phc-2025', 'public', 5991, 'hand_written', 'approved',
-   'Presence is the fact - there is no listed flag column, so absence means not on the list, not missing data. The table is live and public-read but has no committed migration in supabase/migrations; the lineage seeding in Increment 1.5 should record that gap rather than infer a source.',
-   'docs/UUC_PHC_2025_PLAN.md')
+   'Presence is the fact - there is no listed flag column, so absence means not on the list, not missing data. Built by supabase/migrations/20260826121000_fact_uuc_phc_barangay.sql and loaded by ingestion/ingest_uuc_phc.py. The 9,395 barangays the source workbook assessed and did NOT list were deliberately not loaded, so this table answers "is it on the 2025 list" and cannot answer "was it assessed". Any share of barangays takes its denominator from dim_geo, never from the workbook.',
+   'docs/UUC_PHC_2025_PLAN.md'),
+  ('agg_uuc_phc_counts',
+   'UUC for PHC listed-barangay counts by geography',
+   'How many barangays in an area are on the 2025 Unserved and Underserved Communities for Primary Health Care list, against how many barangays the area contains in total.',
+   'One geography per dataset.',
+   'uuc-phc-2025', 'public', 1788, 'hand_written', 'approved',
+   'n_barangays is the dim_geo universe, not the source workbook assessed set - "3 of the 42 barangays in this town" is the statement this table exists to support, and 42 comes from dim_geo. The share is n_listed / n_barangays and is derived in the read layer, never stored, so there is one definition of it. Rows exist for every geography including those with none listed: a 0 is a finding, not missing data. National / region / province / citymun only - barangay rows would restate the fact table as n_listed in {0,1}.',
+   'docs/UUC_PHC_2025_PLAN.md'),
+  ('fact_uuc_phc_indicators',
+   'UUC for PHC 2025 indicator values',
+   'The measurements each listed barangay was assessed on: the qualifying factors of DOH AO No. 2020-0023 section VI.A, the 12 cleaned health indicators, and the provincial benchmarks criterion (d) compares each barangay against.',
+   'One listed barangay.',
+   'uuc-phc-2025', 'public', 5991, 'hand_written', 'approved',
+   'CAPPED VALUES. 1,584 values across 1,397 barangays were recorded outside any possible range (Water as high as 9,594 percent, FIC 18,088) and were bounded during cleaning - coverage percentages at 100, rates at 1,000. capped_indicators names, per barangay, which of its values were bounded; 886 Water and 456 FIC values now read as exactly 100 and are indistinguishable from genuine full coverage without it. Never state a value from this table without checking capped_indicators for that barangay, and never average or rank a capped indicator: the marker travels with a single value and cannot survive a mean, which is why this dataset publishes no indicator aggregates at all. Covers the 5,991 listed barangays only - there is no row for an unlisted barangay. The source column Health Indicators (a 0-7 count) is not loaded: it is not recomputable from these columns, so it cannot be checked.',
+   'docs/UUC_PHC_2025_CLEANING_REPORT.md'),
+  ('ref_uuc_phc_provincial',
+   'UUC for PHC provincial benchmarks',
+   'One row per province: the benchmark values criterion (d) of DOH AO No. 2020-0023 tests a barangay against, with how many of that province listed barangays actually carry a reference.',
+   'One province.',
+   'uuc-phc-2025', 'public', 87, 'hand_written', 'approved',
+   'A view over fact_uuc_phc_indicators, not a stored table - it runs with security_invoker, so the fact table own public-read policy decides access rather than the view owner. 87 provinces, not the source 88: the source files Zamboanga City under two province names and dim_geo files both under 09317. Read n_with_reference against n_listed_barangays before quoting a benchmark - reference values are all-or-nothing per barangay, and in province 09317 only 1 of 8 listed barangays carries one, so a single value would otherwise stand for the whole province. Five provinces / 238 barangays carry no usable reference at all and cannot support criterion (d); FIC benchmarks are uncapped while barangay FIC values are capped at 100, so 113 barangays in 2 provinces read as worse than their province by construction. To compare one barangay to its province, read that barangay own *_prov_ref columns, which are NULL exactly where the source supplied none.',
+   'docs/UUC_PHC_2025_CLEANING_REPORT.md')
 on conflict (table_name) do update set
   title = excluded.title,
   summary = excluded.summary,
@@ -447,7 +477,50 @@ from (values
   ('fact_uuc_phc_barangay','source_region',5,'text',null,'Region name as printed in the source list.',null,'dimension',false,null,true),
   ('fact_uuc_phc_barangay','source_province',6,'text',null,'Province name as printed in the source list.',null,'dimension',false,null,true),
   ('fact_uuc_phc_barangay','source_citymun',7,'text',null,'City or municipality name as printed in the source list.',null,'dimension',false,null,true),
-  ('fact_uuc_phc_barangay','source_barangay',8,'text',null,'Barangay name as printed in the source list.',null,'dimension',false,null,true)
+  ('fact_uuc_phc_barangay','source_barangay',8,'text',null,'Barangay name as printed in the source list.',null,'dimension',false,null,true),
+  -- agg_uuc_phc_counts
+  ('agg_uuc_phc_counts','id',1,'bigint',null,'Surrogate row identifier; carries no meaning.',null,'meta',false,null,false),
+  ('agg_uuc_phc_counts','dataset_id',2,'bigint',null,'Source dataset this row belongs to.',null,'key',true,'dim_dataset.dataset_id',true),
+  ('agg_uuc_phc_counts','geo_code',3,'text',null,'Geography this row counts.',null,'key',true,'dim_geo.geo_code',true),
+  ('agg_uuc_phc_counts','geo_level',4,'geo_level_enum','national|region|province|citymun','Level of the counted geography; there are no barangay rows.',null,'dimension',false,null,true),
+  ('agg_uuc_phc_counts','n_listed',5,'integer',null,'Barangays in this area on the 2025 UUC for PHC list.','count','measure',false,null,true),
+  ('agg_uuc_phc_counts','n_barangays',6,'integer',null,'Barangays in this area in total, from dim_geo - the denominator of the share. Not the source workbook assessed set, which is smaller and is not loaded.','count','measure',false,null,true),
+  -- fact_uuc_phc_indicators
+  ('fact_uuc_phc_indicators','id',1,'bigint',null,'Surrogate row identifier; carries no meaning.',null,'meta',false,null,false),
+  ('fact_uuc_phc_indicators','dataset_id',2,'bigint',null,'Source dataset this row belongs to.',null,'key',true,'dim_dataset.dataset_id',true),
+  ('fact_uuc_phc_indicators','geo_code',3,'text',null,'Listed barangay these values describe.',null,'key',true,'dim_geo.geo_code',true),
+  ('fact_uuc_phc_indicators','physical_factor',4,'numeric',null,'Share of the barangay meeting the AO physical factors (distance, terrain, transport). Never below 25 - a barangay under that floor never entered the list, so this column has no low tail to find.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','ip_pop',5,'numeric',null,'Share of the barangay population who are Indigenous Peoples. 10 or more is one of the four qualifying routes.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','armed_conf',6,'numeric',null,'Share of the barangay population affected by armed conflict. Read with idp: criterion (b) is implemented as their sum, not as either alone.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','idp',7,'numeric',null,'Share of the barangay population who are internally displaced. Read with armed_conf - see that column.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','four_ps',8,'numeric',null,'Share of the barangay population who are 4Ps (Pantawid Pamilyang Pilipino Program) beneficiaries. 50 or more is one of the four qualifying routes.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','elcac_brgy',9,'boolean',null,'True where the barangay is ELCAC-designated as conflict-affected. Qualifies on its own, independent of the armed_conf and idp shares.',null,'dimension',false,null,true),
+  ('fact_uuc_phc_indicators','imr',10,'numeric',null,'Infant mortality rate. Bounded at 1,000 during cleaning where the source recorded more; check capped_indicators before quoting this value.','per 1,000 live births','measure',false,null,true),
+  ('fact_uuc_phc_indicators','ufmr',11,'numeric',null,'Under-five mortality rate. Bounded at 1,000 during cleaning where the source recorded more; check capped_indicators before quoting this value.','per 1,000 live births','measure',false,null,true),
+  ('fact_uuc_phc_indicators','fic',12,'numeric',null,'Fully immunized child coverage. Bounded at 100 during cleaning where the source recorded more; check capped_indicators before quoting this value.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','abr',13,'numeric',null,'Adolescent birth rate. Bounded at 1,000 during cleaning where the source recorded more; check capped_indicators before quoting this value.','per 1,000 women aged 10-19','measure',false,null,true),
+  ('fact_uuc_phc_indicators','pre_natal',14,'numeric',null,'Pre-natal care coverage. Bounded at 100 during cleaning where the source recorded more; check capped_indicators before quoting this value.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','sba',15,'numeric',null,'Skilled birth attendance coverage. Bounded at 100 during cleaning where the source recorded more; check capped_indicators before quoting this value.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','water',16,'numeric',null,'Access to safe water coverage. Bounded at 100 during cleaning where the source recorded more; check capped_indicators before quoting this value.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','imr_prov_ref',17,'numeric',null,'Provincial benchmark for infant mortality rate that criterion (d) compares this barangay against. NULL where the source supplied #N/A - 238 barangays in 5 provinces have none. Never capped, unlike the barangay value beside it.','per 1,000 live births','measure',false,null,true),
+  ('fact_uuc_phc_indicators','ufmr_prov_ref',18,'numeric',null,'Provincial benchmark for under-five mortality rate that criterion (d) compares this barangay against. NULL where the source supplied #N/A - 238 barangays in 5 provinces have none. Never capped, unlike the barangay value beside it.','per 1,000 live births','measure',false,null,true),
+  ('fact_uuc_phc_indicators','fic_prov_ref',19,'numeric',null,'Provincial benchmark for fully immunized child coverage that criterion (d) compares this barangay against. NULL where the source supplied #N/A - 238 barangays in 5 provinces have none. Never capped, unlike the barangay value beside it.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','abr_prov_ref',20,'numeric',null,'Provincial benchmark for adolescent birth rate that criterion (d) compares this barangay against. NULL where the source supplied #N/A - 238 barangays in 5 provinces have none. Never capped, unlike the barangay value beside it.','per 1,000 women aged 10-19','measure',false,null,true),
+  ('fact_uuc_phc_indicators','pre_natal_prov_ref',21,'numeric',null,'Provincial benchmark for pre-natal care coverage that criterion (d) compares this barangay against. NULL where the source supplied #N/A - 238 barangays in 5 provinces have none. Never capped, unlike the barangay value beside it.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','sba_prov_ref',22,'numeric',null,'Provincial benchmark for skilled birth attendance coverage that criterion (d) compares this barangay against. NULL where the source supplied #N/A - 238 barangays in 5 provinces have none. Never capped, unlike the barangay value beside it.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','water_prov_ref',23,'numeric',null,'Provincial benchmark for access to safe water coverage that criterion (d) compares this barangay against. NULL where the source supplied #N/A - 238 barangays in 5 provinces have none. Never capped, unlike the barangay value beside it.','percent (0-100)','measure',false,null,true),
+  ('fact_uuc_phc_indicators','capped_indicators',24,'text[]',null,'Which of THIS barangay values were bounded during cleaning, by column name (for example {water,fic}); empty for the 4,594 barangays whose values were all in range. 1,584 values across 1,397 barangays were recorded outside any possible range and bounded - coverage percentages at 100, rates at 1,000 - so 886 Water and 456 FIC values now read as exactly 100 with nothing else to distinguish them from genuine full coverage. A value named here is a ceiling, not a measurement: report it as bounded and its true figure as unknown, and never average or rank it.',null,'dimension',false,null,true),
+  -- ref_uuc_phc_provincial (a view; registered because the read layer and queryDataset treat it as a table)
+  ('ref_uuc_phc_provincial','province_code',1,'text',null,'Province the benchmarks apply to, as dim_geo codes it - never the source province name, 9 of which do not match dim_geo.',null,'key',true,'dim_geo.geo_code',true),
+  ('ref_uuc_phc_provincial','n_listed_barangays',2,'integer',null,'Listed barangays in this province.','count','measure',false,null,true),
+  ('ref_uuc_phc_provincial','n_with_reference',3,'integer',null,'How many of those barangays actually carry a reference value. Where this is below n_listed_barangays the benchmark rests on a subset - in province 09317 on 1 barangay of 8 - so read it before quoting the province figure.','count','measure',false,null,true),
+  ('ref_uuc_phc_provincial','ref_imr',4,'numeric',null,'Provincial benchmark for infant mortality rate. NULL where no listed barangay in the province carries one.','per 1,000 live births','measure',false,null,true),
+  ('ref_uuc_phc_provincial','ref_ufmr',5,'numeric',null,'Provincial benchmark for under-five mortality rate. NULL where no listed barangay in the province carries one.','per 1,000 live births','measure',false,null,true),
+  ('ref_uuc_phc_provincial','ref_fic',6,'numeric',null,'Provincial benchmark for fully immunized child coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true),
+  ('ref_uuc_phc_provincial','ref_abr',7,'numeric',null,'Provincial benchmark for adolescent birth rate. NULL where no listed barangay in the province carries one.','per 1,000 women aged 10-19','measure',false,null,true),
+  ('ref_uuc_phc_provincial','ref_pre_natal',8,'numeric',null,'Provincial benchmark for pre-natal care coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true),
+  ('ref_uuc_phc_provincial','ref_sba',9,'numeric',null,'Provincial benchmark for skilled birth attendance coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true),
+  ('ref_uuc_phc_provincial','ref_water',10,'numeric',null,'Provincial benchmark for access to safe water coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true)
 ) as c (
   table_name, column_name, ordinal, data_type, allowed_values,
   meaning, unit, role, is_join_key, joins_to, is_queryable

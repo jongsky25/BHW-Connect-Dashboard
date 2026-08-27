@@ -8,15 +8,22 @@ what the repository literally says.
 That is the point of doing it as a script rather than by hand. Every edge is reproducible from the
 files by re-running this, so an edge can be *checked* by anyone who opens the migration it names —
 which is what makes these edges the reference example that later extracted edges (Phase 3) are
-measured against. Re-run it after adding a migration or an ingestion script:
+measured against. Re-run it after adding a migration or an ingestion script, over a temporary file:
 
-    python ingestion/build_kb_lineage.py > supabase/migrations/<timestamp>_seed_kb_lineage.sql
+    python ingestion/build_kb_lineage.py > /tmp/lineage.sql \
+      && mv /tmp/lineage.sql supabase/migrations/20260826120100_seed_kb_lineage.sql
+
+Redirecting straight onto the seed truncates it *before* the generator runs, and the seed is
+itself a migration this script reads — so the shell would silently delete a node from the output.
+Regenerate in place rather than emitting a second dated seed: the file is wholly generated and its
+inserts are upserts, and two files both claiming to be the current lineage is exactly the drift a
+generated file is supposed to remove.
 
 What it reads, and what each read asserts:
 
-* `supabase/migrations/*.sql` — `create table` / `alter table` give `built-by` edges; a
-  `docs/*.md` path in a migration gives `reconciled-in`; `insert into dim_dataset` gives the
-  dataset nodes.
+* `supabase/migrations/*.sql` — `create table` / `create view` / `alter table` give `built-by`
+  edges; a view's own defining query gives `derived-from`; a `docs/*.md` path in a migration
+  gives `reconciled-in`; `insert into dim_dataset` gives the dataset nodes.
 * `supabase/migrations/*_seed_dataset_registry.sql` — the 1.2 registry: `dataset_slug` gives
   `derived-from` (table → source dataset), `doc_path` gives `reconciled-in`, and `joins_to` gives
   `joins-on` between column nodes, so the registry and the graph are one structure rather than two.
@@ -25,8 +32,13 @@ What it reads, and what each read asserts:
   through the `_`-prefixed working tables so `agg_bhw_counts` reaches `fact_bhw_raw` rather than
   stopping at `_agg_base`.
 
+* any file — a `-- lineage: <src-key> <relation> <dst-key>` directive states an edge outright.
+  Reserved for provenance that is true but structurally invisible: `fact_uuc_phc_indicators`
+  is derived from the cleaning report's bounding process, and no `from` or `join` says so.
+
 Everything it cannot establish from a file, it leaves out. A table with no `built-by` edge is a
-finding, not a gap to fill by guessing — `fact_uuc_phc_barangay` is exactly that case today.
+finding, not a gap to fill by guessing; it is printed to stderr. `fact_uuc_phc_barangay` was that
+case until its migration was committed (plan U5), and the finding is what surfaced it.
 """
 
 from __future__ import annotations
@@ -41,6 +53,28 @@ INGESTION = REPO / "ingestion"
 
 CREATE_TABLE_RE = re.compile(r"create\s+table\s+(?:if\s+not\s+exists\s+)?(\w+)", re.I)
 ALTER_TABLE_RE = re.compile(r"alter\s+table\s+(?:only\s+)?(\w+)", re.I)
+# Views are relations this graph has to carry: `ref_uuc_phc_provincial` is registered in the
+# dataset registry and queried like any other table, so a graph that only knew `create table`
+# would report it as a table nobody built. They are keyed `table:` rather than a new node kind —
+# the registry, `queryDataset` and every read path treat a view as a table, and inventing a
+# second kind here would split one concept across two vocabularies for no gain.
+CREATE_VIEW_RE = re.compile(
+    r"create\s+(?:or\s+replace\s+)?(?:materialized\s+)?view\s+(?:if\s+not\s+exists\s+)?(\w+)", re.I
+)
+# An explicit assertion, for provenance that is true but not inferable from SQL structure.
+#
+#     -- lineage: table:fact_uuc_phc_indicators derived-from doc:docs/UUC_PHC_2025_CLEANING_REPORT.md
+#
+# The cleaning report is the transformation record for that table's values — 1,584 of them were
+# bounded by the process it documents — and no `from` or `join` anywhere says so. The alternative
+# considered was a rule reading every `docs/*.md` path an ingestion script mentions as a
+# derivation, which would have asserted `agg_population derived-from docs/DECISIONS.md`: an edge
+# nobody could check by opening the file, which is the one thing this generator exists not to
+# produce. A directive names both endpoints itself, so it is still checkable by opening the file
+# that carries it, and it cannot be emitted by accident.
+LINEAGE_DIRECTIVE_RE = re.compile(r"^\s*--\s*lineage:\s*(\S+)\s+(\S+)\s+(\S+)\s*$", re.M)
+# Mirrors the check constraint on kb_edge.relation.
+RELATIONS = {"derived-from", "built-by", "reconciled-in", "joins-on", "has-column"}
 DOC_PATH_RE = re.compile(r"docs/[A-Za-z0-9_./-]+\.md")
 DATASET_INSERT_RE = re.compile(r"insert\s+into\s+dim_dataset\s*\(([^)]*)\)\s*values(.*?);", re.I | re.S)
 
@@ -176,6 +210,41 @@ class Graph:
         )
 
 
+# The key prefix carries the kind — the emitted SQL derives `kb_node.kind` from it, so a directive
+# naming an endpoint by key is naming its kind too.
+KIND_BY_PREFIX = {
+    "table": "table",
+    "column": "column",
+    "dataset": "dataset",
+    "migration": "migration",
+    "script": "ingestion_script",
+    "doc": "document",
+}
+
+
+def read_directives(graph: Graph, text: str, source_kind: str, ref: str) -> None:
+    """Apply any `-- lineage: <src-key> <relation> <dst-key>` lines in one file.
+
+    Read from the raw text, before comment stripping — the directive *is* a comment. Both
+    endpoints are named in full, so this adds nothing the file does not literally say; an
+    unrecognized prefix or relation is skipped rather than guessed at.
+    """
+    for src, relation, dst in LINEAGE_DIRECTIVE_RE.findall(text):
+        if relation not in RELATIONS:
+            print(f"-- {ref}: unknown lineage relation {relation!r}, skipped", file=sys.stderr)
+            continue
+        for key in (src, dst):
+            prefix = key.split(":", 1)[0]
+            if prefix not in KIND_BY_PREFIX:
+                print(f"-- {ref}: unknown lineage node key {key!r}, skipped", file=sys.stderr)
+                break
+        else:
+            for key in (src, dst):
+                prefix, _, label = key.partition(":")
+                graph.node(key, KIND_BY_PREFIX[prefix], label, None, source_kind, ref)
+            graph.edge(src, relation, dst, source_kind, ref, "declared")
+
+
 def read_migrations(graph: Graph) -> tuple[set[str], dict[str, str]]:
     """Tables and the migrations that built them. Returns (known tables, table → first migration)."""
     known: set[str] = set()
@@ -183,8 +252,8 @@ def read_migrations(graph: Graph) -> tuple[set[str], dict[str, str]]:
 
     for path in sorted(MIGRATIONS.glob("*.sql")):
         sql = path.read_text()
-        # Table scans read STRIPPED sql; the docs/ scan reads RAW. The asymmetry is deliberate and
-        # is the whole point of doing this separately.
+        # The table and view scans read STRIPPED sql; the docs/ scan reads RAW. The asymmetry is
+        # deliberate and is the whole point of doing this separately.
         #
         # A migration header in this repository is prose, and prose says things like "RLS in the
         # same statement block as each CREATE TABLE with no anon policy" — which a raw scan reads
@@ -192,7 +261,10 @@ def read_migrations(graph: Graph) -> tuple[set[str], dict[str, str]]:
         # DECISIONS.md records twice for this script (a quote-tracking splitter desynchronising on
         # apostrophes; an illustrative doc path asserted as a real edge): a parser reading prose as
         # data. It recurred here because the earlier fix stripped comments for the dim_dataset scan
-        # only, and the table scans kept reading raw text.
+        # only, and the table scans kept reading raw text. The view scan added by #79 is included
+        # for the same reason: a header saying "CREATE VIEW ..." would assert a view that is not
+        # there. (split_statements strips comments itself, so the view-lineage walk below is
+        # already safe.)
         #
         # The docs/ scan must NOT be stripped: a migration's citation of the write-up that
         # reconciled its data lives in the header comment, which is exactly where it belongs. That
@@ -201,19 +273,38 @@ def read_migrations(graph: Graph) -> tuple[set[str], dict[str, str]]:
         name = path.name
         ref = f"supabase/migrations/{name}"
         created = [t.lower() for t in CREATE_TABLE_RE.findall(statements)]
+        views = [v.lower() for v in CREATE_VIEW_RE.findall(statements)]
         altered = [t.lower() for t in ALTER_TABLE_RE.findall(statements)]
         docs = sorted(set(DOC_PATH_RE.findall(sql)))
-        touched = created + altered
-        if not touched and "dim_dataset" not in sql:
+        touched = created + views + altered
+        if not touched and "dim_dataset" not in sql and "lineage:" not in sql:
             continue
 
         migration_key = graph.node(f"migration:{name}", "migration", name, None, "migration", ref)
+        read_directives(graph, sql, "migration", ref)
 
         for table in created:
             known.add(table)
             first_migration.setdefault(table, name)
             table_key = graph.node(f"table:{table}", "table", table, None, "migration", ref)
             graph.edge(table_key, "built-by", migration_key, "migration", ref, "create table")
+
+        # A view's own defining query is its lineage, and unlike a table's it is right there in
+        # the statement that creates it — the same statement-scoped read that `read_ingestion`
+        # already trusts for `.sql`, so the edge is checkable by opening one CREATE VIEW.
+        for statement in split_statements(sql):
+            view_match = CREATE_VIEW_RE.search(statement)
+            if not view_match:
+                continue
+            view = view_match.group(1).lower()
+            known.add(view)
+            first_migration.setdefault(view, name)
+            view_key = graph.node(f"table:{view}", "table", view, None, "migration", ref)
+            graph.edge(view_key, "built-by", migration_key, "migration", ref, "create view")
+            for source in sorted({t.lower() for t in READ_RE.findall(statement)} - {view}):
+                if source in known:
+                    graph.edge(view_key, "derived-from", f"table:{source}", "migration", ref, "view query")
+
         for table in altered:
             known.add(table)
             table_key = graph.node(f"table:{table}", "table", table, None, "migration", ref)
@@ -306,6 +397,7 @@ def read_ingestion(graph: Graph, known: set[str]) -> None:
         text = path.read_text()
         ref = f"ingestion/{path.name}"
         script_key = graph.node(f"script:{ref}", "ingestion_script", path.name, None, "ingestion_script", ref)
+        read_directives(graph, text, "ingestion_script", ref)
 
         wrote_any = False
         statements = split_statements(text) if path.suffix == ".sql" else [text]

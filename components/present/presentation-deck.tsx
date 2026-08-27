@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { DeckMeta, SlideInfo } from "./presentation-context";
+import { brandLabelOf } from "./deck-logic";
 import { useFitScale } from "./use-fit-scale";
 
 /** The generated title/closing slides are composed at max-w-3xl (48rem) before
@@ -123,7 +124,10 @@ export function PresentationDeck({
           >
             <h1 className="text-3xl font-bold tracking-tight">Thank you</h1>
             <p className="text-sm text-muted">
-              Data: BHW Connect · {meta.captionLine} · presented {presentedDate}
+              {/* Same reason as the slide header: this line names the source of what was just
+                  presented, so on a UUC for PHC deck "BHW Connect" would attribute one dataset's
+                  figures to another section. */}
+              Data: {brandLabelOf(meta)} · {meta.captionLine} · presented {presentedDate}
             </p>
             <button
               type="button"
