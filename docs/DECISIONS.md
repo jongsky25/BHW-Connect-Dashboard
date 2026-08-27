@@ -4410,7 +4410,10 @@ arithmetic of the report all hold against output nobody authored to fit them. **
 establish that this extraction is better than the stand-in, and on 3.4's evidence it is worse.**
 Nor does it establish anything about a different model: the p129 `NCIP-MO 0151` refusal recurring
 independently is a point in the checks' favour, not evidence that `3.7-flash` is the right choice.
-The stand-in transcript is preserved outside the repository for anyone who wants to diff further.
+The hand-authored stand-in it replaced is not lost and needs no copy kept anywhere: it is the
+same path one commit back, `git show 9fa4de7:ingestion/data/kb_extraction_blhsd-2027-budget-cue-cards.jsonl`,
+and reads `proposed_by: assistant-session` under prompt `f9a483f03816075e`. That is the file to
+diff against when the supersession question below is settled.
 
 **Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **548 tests, one more
 than before**, the label case having become two. `npx prettier --check .` fails on 149 files on
