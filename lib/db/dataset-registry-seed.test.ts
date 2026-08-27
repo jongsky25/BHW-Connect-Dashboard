@@ -174,11 +174,11 @@ describe("the committed dataset registry seed", () => {
 describe("the UUC for PHC entries (plan U5)", () => {
   const uuc = registry.filter((r) => r.datasetSlug === "uuc-phc-2025");
 
-  it("registers all ten objects, approved and public", () => {
+  it("registers all eleven objects, approved and public", () => {
     // Four from U5, plus agg_uuc_phc_criteria from U7, agg_uuc_phc_indicator_dist from U9, U10's
-    // three data-quality relations and U12b's agg_bhw_by_uuc_status. A new relation the registry
-    // does not know about is one queryDataset refuses outright, so this list is the thing that has
-    // to grow.
+    // three data-quality relations, U11's ref_uuc_phc_list and U12b's agg_bhw_by_uuc_status. A new
+    // relation the registry does not know about is one queryDataset refuses outright, so this list
+    // is the thing that has to grow.
     expect(uuc.map((r) => r.tableName).sort()).toEqual([
       "agg_bhw_by_uuc_status",
       "agg_uuc_phc_counts",
@@ -187,6 +187,7 @@ describe("the UUC for PHC entries (plan U5)", () => {
       "fact_uuc_phc_barangay",
       "fact_uuc_phc_indicators",
       "ref_uuc_phc_benchmark_gaps",
+      "ref_uuc_phc_list",
       "ref_uuc_phc_provincial",
       "ref_uuc_phc_published_delta",
       "ref_uuc_phc_quality",
@@ -216,13 +217,16 @@ describe("the UUC for PHC entries (plan U5)", () => {
   });
 
   it("warns on every indicator that can be capped, where the value itself is read", () => {
+    // Both relations that return a barangay's own values, because the caveat has to travel with
+    // whichever one a caller actually queried. ref_uuc_phc_list (U11) is additionally the relation
+    // the downloadable file is built from, so its meanings are what a reader sees offline.
     const bounded = ["imr", "ufmr", "fic", "abr", "pre_natal", "sba", "water"];
-    for (const name of bounded) {
-      const column = columns.find(
-        (c) => c.tableName === "fact_uuc_phc_indicators" && c.columnName === name,
-      );
-      expect(column, name).toBeDefined();
-      expect(column?.meaning, name).toMatch(/capped_indicators/);
+    for (const table of ["fact_uuc_phc_indicators", "ref_uuc_phc_list"]) {
+      for (const name of bounded) {
+        const column = columns.find((c) => c.tableName === table && c.columnName === name);
+        expect(column, `${table}.${name}`).toBeDefined();
+        expect(column?.meaning, `${table}.${name}`).toMatch(/capped_indicators/);
+      }
     }
   });
 
@@ -230,10 +234,73 @@ describe("the UUC for PHC entries (plan U5)", () => {
     // FIC's benchmark is uncapped while barangay FIC is capped at 100, which is why 113 barangays
     // read as worse-than-province by construction. Describing both as bounded would hide that.
     for (const column of columns.filter(
-      (c) => c.tableName === "fact_uuc_phc_indicators" && c.columnName.endsWith("_prov_ref"),
+      (c) =>
+        (c.tableName === "fact_uuc_phc_indicators" || c.tableName === "ref_uuc_phc_list") &&
+        c.columnName.endsWith("_prov_ref"),
     )) {
-      expect(column.meaning, column.columnName).toMatch(/Never capped/);
+      expect(column.meaning, `${column.tableName}.${column.columnName}`).toMatch(
+        /NEVER capped|Never capped/,
+      );
     }
+  });
+
+  it("refuses an average of the export view's boundable indicators, in the column meaning itself", () => {
+    // The strongest form of the caveat, and it belongs on ref_uuc_phc_list (U11) rather than being
+    // retrofitted onto fact_uuc_phc_indicators: this view's meanings are what the XLSX dictionary
+    // sheet is built from, so they are the only text still attached to a value once the file has
+    // left the site and there is nobody to ask.
+    for (const name of ["imr", "ufmr", "fic", "abr", "pre_natal", "sba", "water"]) {
+      const column = columns.find(
+        (c) => c.tableName === "ref_uuc_phc_list" && c.columnName === name,
+      );
+      expect(column?.meaning, name).toMatch(/NEVER AVERAGE THIS COLUMN/);
+    }
+    const capped = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_list" && c.columnName === "capped_indicators",
+    );
+    expect(capped?.meaning).toMatch(/NEVER AVERAGE THOSE COLUMNS/);
+  });
+
+  it("keeps the export view's route flags from being added together", () => {
+    // ref_uuc_phc_list (U11) is the first relation to carry the four routes per barangay rather
+    // than as counts, and a boolean column is the shape most likely to be summed. Every one says
+    // so, on agg_uuc_phc_criteria's precedent.
+    const table = uuc.find((r) => r.tableName === "ref_uuc_phc_list");
+    expect(table?.notesMd).toMatch(/ROUTE FLAGS OVERLAP/);
+    for (const name of ["route_ip", "route_conflict", "route_four_ps", "route_health"]) {
+      const column = columns.find(
+        (c) => c.tableName === "ref_uuc_phc_list" && c.columnName === name,
+      );
+      expect(column, name).toBeDefined();
+      expect(column?.meaning, name).toMatch(/OVERLAP/);
+    }
+    // route_health without health_evaluable is the reading that turns "never asked" into "failed".
+    const health = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_list" && c.columnName === "route_health",
+    );
+    expect(health?.meaning).toMatch(/health_evaluable/);
+  });
+
+  it("says a route flag is false for a missing value, not only for a low one", () => {
+    // The three socio-economic routes read a null as 0, following agg_uuc_phc_criteria — which is
+    // what makes the flags in a downloaded file add up to the counts /uuc-phc/criteria prints. The
+    // per-barangay disclosure renders the same null as "—", so without this sentence a reader
+    // comparing the two would think they disagree about 17 barangays.
+    for (const name of ["route_ip", "route_conflict", "route_four_ps"]) {
+      const column = columns.find(
+        (c) => c.tableName === "ref_uuc_phc_list" && c.columnName === name,
+      );
+      expect(column?.meaning, name).toMatch(/FALSE WHERE THE VALUE BEHIND IT IS MISSING/);
+    }
+  });
+
+  it("tells a caller how to scope the export view, since queryDataset cannot join", () => {
+    // The whole reason this view is reachable at all: it is the only UUC relation carrying both
+    // barangay values and the ancestor codes above them. A caller that does not know that will try
+    // a geo_code prefix, which the Sulu remap makes wrong.
+    const table = uuc.find((r) => r.tableName === "ref_uuc_phc_list");
+    expect(table?.notesMd).toMatch(/region_code, province_code or citymun_code/);
+    expect(table?.notesMd).toMatch(/never on a prefix of geo_code/);
   });
 
   it("says on agg_bhw_by_uuc_status that it is a check, not a finding — and on both sides", () => {

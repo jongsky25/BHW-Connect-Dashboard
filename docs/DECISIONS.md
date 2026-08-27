@@ -4866,3 +4866,202 @@ neither is ours to close: *why* StepZero's levels exceed its barangay rows is in
 `lib/db/stepzero.ts`'s note about renumbered PSGC codes and is not stated by the source, and the
 five exception provinces are surfaced but not explained — the page names them and stops, which is
 the correct end of what this data can say.
+## 2026-08-27 — UUC for PHC 2025: U11, the list as a spreadsheet — and the marker that finally reaches the value
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U11. The one-pager U4 built is a picture; anyone doing work with this
+list needs the rows. `/api/export/uuc-phc/data?geoLevel=&geoCode=&format=csv|xlsx` emits them.
+
+### This is not a relaxation of U4's rule, and the whole design turns on why
+
+U3 wrote the rule down: *mark the value, never average it*. 1,584 values across 1,397 barangays were
+bounded during cleaning, and once bounded a Water reading of exactly 100 is indistinguishable from
+genuine full coverage — `capped_indicators` is the only thing separating them. U4 refused to put
+indicator values on the PNG for a reason specific to the format: a 794-pixel one-pager has nowhere
+to carry the † marker and its footnote, so the values would leave the site unmarked.
+
+**A spreadsheet has somewhere.** That is the entire argument for this increment, and it is a claim
+about the format rather than about the rule, which is why three things follow from it and are not
+optional:
+
+- `capped_indicators` is a column of its own, and it sits **immediately before the seven boundable
+  indicators** rather than at the far right of 40. A marker a reader has to scroll thirty columns
+  to find is a marker that does not travel with the value, which is precisely the failure U4 named.
+- On the XLSX each bounded cell is additionally **shaded in place** — the marker reaching the value
+  itself, the thing the PNG could not do. It is deliberately secondary: shading survives neither a
+  copy-paste, nor a re-save as CSV, nor a reader who cannot see colour, so the column stays
+  authoritative and the notes say so.
+- The notes block leads with the capping caveat, on the sheet the file opens on, above the data.
+  The plan asks for it to be visible without scrolling; a second sheet is one click away and
+  routinely never opened.
+
+### Every figure in the notes block is counted from the rows
+
+U10 established that a page making a claim about our own data must compute every figure on it,
+because a stale data-quality figure is worse than none. A downloaded file is the same claim with a
+worse failure mode — it leaves the building, and nothing downstream will ever notice it drifted.
+
+So `buildUucPhcExportNotes` counts. The national file reads *"1,584 value(s) across 1,397 of the
+5,991 barangay row(s) in this file were bounded during cleaning (water 886, fic 456, pre_natal 208,
+sba 30, abr 2, imr 1, ufmr 1)"* — the cleaning report's own per-indicator table, reproduced without
+a single one of those numbers being typed anywhere in the build. The Mayoyao file reads *"2
+value(s) across 2 of the 27"*, which is the figure that is true about Mayoyao; a header quoting
+1,584 onto a municipal file would be wrong twice over. The same holds for the 226 rows criterion (d)
+cannot be evaluated for: counted per file, and where the count is zero the note says the opposite
+thing explicitly rather than falling silent, because silence there reads as "no capping in this
+dataset".
+
+### `ref_uuc_phc_list`: the rows needed a relation, and it widened the assistant
+
+`supabase/migrations/20260827180000_ref_uuc_phc_list.sql`. A `security_invoker` view joining
+`fact_uuc_phc_barangay` (the record) to `fact_uuc_phc_indicators` (the evidence) and resolving the
+geography against `dim_geo`. 41 columns, 5,991 rows.
+
+U1 kept the record and the evidence apart on purpose, and the export is the first thing in the build
+that needs both on one line. The forcing constraint, though, was scoping: **neither fact table
+carries an ancestor code.** "Every listed barangay in this region" therefore means naming its
+barangays, and at national grain that is 41,958 identifiers in a URL. `dim_geo`'s denormalized
+`region_code` / `province_code` / `citymun_code` are what turn it into one predicate, and this view
+is where they meet the facts.
+
+That closed a gap nobody had noticed on the assistant side. **`queryDataset` performs no joins at
+all** — by design, since it composes no SQL — so until this existed, no registered relation in this
+dataset could answer *"the listed barangays of this province, with their values"*. You could reach a
+barangay whose code you already had, and nothing above it. This is the first registry entry in the
+section that widens what the assistant can answer rather than describing something it could already
+reach, and the seed says so.
+
+A view rather than a table, on `ref_uuc_phc_quality`'s precedent (U10): it cannot go stale against
+the tables beneath it, which is the property a downloaded file needs most.
+
+### The route flags are a second copy of U7's rule, and the migration is what makes that safe
+
+The view carries `route_ip` / `route_conflict` / `route_four_ps` / `route_health` /
+`health_evaluable` per barangay, computed by the same expressions `agg_uuc_phc_criteria` sums per
+area. There is no way to derive one from the other — an aggregate cannot produce a row — so this is
+genuinely a second copy of the rule, the thing U9's placeholder finding warned about.
+
+The section's answer to a two-copy rule is not to avoid it but to assert it, and that is what
+assertion 4 does: **the flags roll up to `agg_uuc_phc_criteria` on every one of its 1,788 geo rows
+and all five measures**, or the migration aborts. Live, the national row reads
+3,677 / 2,302 / 726 / 2,000 with 5,765 evaluable — U7's figures exactly, now reproducible by anyone
+who opens the downloaded file and counts.
+
+`health_evaluable` ships beside `route_health` for the same reason the criteria page prints "Not
+evaluable here" rather than 0%: for 226 barangays the comparison was never made, and a bare
+`route_health = false` would assert they were tested and failed.
+
+Assertion 3 is the other one that earns its place: **for all 1,788 geos, the rows the view yields
+under that geo equal `agg_uuc_phc_counts.n_listed`.** That makes "a city/municipality export matches
+that page's barangay list" true by construction at all four levels at once, rather than by
+inspecting one town.
+
+### The route refuses to emit a short file
+
+`rows.length` is compared against `agg_uuc_phc_counts.n_listed` — computed from a *different* fact
+table — and a disagreement returns 500 rather than a file. This is the fact loader's own discipline
+("a silently short load is worse than a failed one when 5,991 is a headline figure") carried into
+the export, and it matters more here than anywhere in the build: a page that renders one province
+short can be noticed and fixed, a spreadsheet on somebody's laptop cannot.
+
+The mirror-image case is an area with **nothing listed**, which is not a failure and must not look
+like one. NCR gets a real file — notes block, header row, no data rows — and the page keeps its
+download links with copy saying what they will give. A 404 is reserved for an area with no
+`agg_uuc_phc_counts` row at all.
+
+### Two small decisions, both about not inventing things
+
+**No licence is claimed.** The plan's Verify asks the header to carry source, licence, DC number and
+caveat. `dim_dataset.license` is null for this dataset, so the header reads **"Licence: not stated
+by the source"** — the honest answer to the question the Verify asks, and the alternative would put
+an invented licence on the copy of this data that travels furthest from anyone who could correct it.
+Same for `As of`, which the row does carry (2025-01-01).
+
+**`dataset_id` is the one view column the file omits.** A surrogate key into `dim_dataset`, constant
+down every row, meaningless to anyone not holding this database. Which dataset the file is gets said
+in words in the notes block instead. Everything else is `ref_uuc_phc_list`'s column names verbatim,
+so a file and the relation it came from can be checked against each other column for column — and
+`capped_indicators` is pipe-separated exactly as `ingestion/data/uuc_phc_2025_cleaned.csv` encodes
+it, which is what makes the round-trip below a literal comparison rather than a re-parse.
+
+### One reading that had to be written down rather than fixed
+
+A route flag is **false where the value behind it is missing**, not null — `agg_uuc_phc_criteria`
+reads a null as 0, "which cannot manufacture a pass: a pass needs 10", and the export inherits that
+so the flags in a file add up to the counts `/uuc-phc/criteria` prints. But U3's per-barangay
+disclosure renders the same null as "—", because at one-barangay grain "not recorded" is the honest
+rendering. Both are right for what they are, and a reader holding the file next to the page would
+otherwise conclude the two surfaces disagree about 17 barangays.
+
+Rather than change either, the column dictionary says which reading applies and points at `ip_pop`,
+`armed_conf`, `idp` and `four_ps` — which are in the file, empty — as the way to tell a missing
+value from a low one. Guarded by tests in both the seed and the export column table.
+
+`route_conflict` differs from the disclosure in a second, smaller way worth noting: it is the summed
+conflict/displacement test **or** the ELCAC designation, as criterion (b) is defined; the disclosure
+shows the two components separately. Same criterion, two renderings, neither wrong.
+
+### `maxDuration = 60`, and why the deployment is where that was found
+
+A national export is 5,991 rows read a page of 1,000 at a time — PostgREST's own cap — so it costs
+six sequential round trips plus serialisation. Locally that is ~6s and looks fine. **On the deployed
+Vercel preview it measured 8.5s for the CSV and 9.0s for the XLSX**, which is inside the platform's
+default function ceiling but not comfortably: one slow cold start or one slow Supabase response and
+the file that fails is the largest one on the section.
+
+So the route sets `maxDuration = 60`, on `app/api/cron/precompute/route.ts`'s precedent, with the
+measurement written beside it — the number is the reason, and a future reader changing the paging
+needs to know which figure the limit was protecting. The constraint is time and not response size:
+a national CSV is 1.6 MB.
+
+Worth recording as a method note rather than only as a fix: this is the one thing in the increment
+that **local verification could not have found**, because `next start` imposes no such ceiling. The
+export was correct locally and would have been correct in production too — right up until it wasn't.
+
+### Verification
+
+All five in-migration assertions pass. **The national CSV has 5,991 data rows and round-trips
+against the committed extract with 0 mismatches** — every row joined on `source_geo_code` and
+compared field by field on the 12 indicators, the 7 benchmarks, `health_indicators`, `elcac_brgy`,
+`capped_indicators` and the four source names, numerics as decimals; 0 rows in the file absent from
+the extract, 0 in the extract absent from the file. `capped_indicators` is non-empty on exactly
+1,397 rows totalling 1,584 values, and 226 rows read `health_evaluable = false`.
+
+The XLSX was written by `exceljs` and **read back with an independent OOXML reader (openpyxl)**: the
+capping caveat at **A3** of the sheet the file opens on, the header at row 15 with panes frozen at
+A16 and an autofilter across all 40 columns, numbers and booleans typed rather than stringified, and
+on BONGAN (Mayoyao) `fic` reads 100 **shaded** while `water` 78.31 and `fic_prov_ref` 66.33 beside it
+are not. All 40 column meanings are on the "About this data" sheet. **Excel and Google Sheets
+themselves were not exercised** — neither is available in this environment. What is verified is that
+a second, independent implementation opens the file and finds the caveat above the fold; that the
+plan's "opens in Excel and Sheets" holds in those two products specifically is **not** verified, and
+is the one item on U11's Verify list this environment cannot close.
+
+The Mayoyao export is 27 rows and all 27 barangay names appear verbatim in that page's HTML. NCR
+returns 200 with its notes, its header row and no data rows. 400 on an unknown level, an unsupported
+format or barangay grain; 404 on an unknown geo.
+
+Registry and lineage: the tenth relation registers `approved`/`public` with 41 approved columns, and
+both its column dictionary and its `notes_md` **hash-match the committed seed** field for field.
+`ingestion/build_kb_lineage.py` regenerates the seed to 216 nodes / 384 edges — an additive diff of
+7 nodes and 16 edges — printing nothing to stderr, so the view has its `built-by` edge and no table
+node lacks one. `get_advisors` reports no `security_definer_view` and nothing new. `anon` reads all
+5,991 rows over PostgREST, scopes by `citymun_code`, and returns `["fic","water"]` beside two 100s
+and Ilocos Sur's uncapped 102.15 benchmark — the case that makes this column load-bearing.
+
+In Chromium against `next start`: `/uuc-phc` and the region, province and city/municipality pages
+show the three links with the right hrefs and a row count (5,991 / 17 / 27, and NCR's zero-state
+copy); an XLSX downloads on a real click as `uuc-phc-2025-listed-barangays-mayoyao.xlsx`; zero
+console errors.
+
+**Exercised on the deployed Vercel preview**, not only locally: national CSV 200 / 1,613,747 bytes /
+8.5s / 5,991 data rows, national XLSX 200 / 926,724 bytes / 9.0s, Ilocos Norte 0.9s, NCR 0.8s. The
+repo's own CI (`lint-typecheck-test`) is green on the head; `playwright-smoke` is skipped by the
+workflow's own condition on PRs, not by anything in this change.
+
+`npm run typecheck`, `npm run lint` and `npm test` (49 files, 584 tests) are clean, and
+`npm run build` compiles `/api/export/uuc-phc/data` as a dynamic route beside the existing PNG one.
+
+**Not verified, beyond the Excel/Sheets gap above:** nothing here sits behind the provider boundary.
+The unresolved thing this export now puts in more hands is the same one U9 and U10 report — the
+upstream encoding error behind the capping. A corrected extract empties `capped_indicators`, which
+is why the file counts it rather than stating it.

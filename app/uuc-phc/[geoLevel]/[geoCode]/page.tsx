@@ -18,6 +18,7 @@ import { CoverageHero } from "@/components/uuc-phc/coverage-hero";
 import { ShareBar } from "@/components/uuc-phc/share-bar";
 import { ChildBreakdown } from "@/components/uuc-phc/child-breakdown";
 import { BarangayList } from "@/components/uuc-phc/barangay-list";
+import { DownloadLinks } from "@/components/uuc-phc/download-links";
 import { getUucPhcBarangayDetails } from "@/lib/db/uuc-phc-indicators";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
@@ -138,7 +139,7 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
                 <div className="mt-6">
                   <ShareBar counts={counts} />
                 </div>
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4">
                   <p className="text-xs text-muted">
                     Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
                     {counts.nListed > 0 && (
@@ -160,12 +161,11 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
                       </>
                     )}
                   </p>
-                  <a
-                    href={`/api/export/uuc-phc?geoLevel=${geo.geoLevel}&geoCode=${encodeURIComponent(geo.geoCode)}`}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"
-                  >
-                    Download summary (PNG)
-                  </a>
+                  <DownloadLinks
+                    geoLevel={geo.geoLevel}
+                    geoCode={geo.geoCode}
+                    nListed={counts.nListed}
+                  />
                 </div>
                 {counts.nListed === 0 && (
                   // A real zero, not a gap: this dataset is a single national publication, so an
