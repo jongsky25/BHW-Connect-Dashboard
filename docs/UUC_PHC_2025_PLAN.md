@@ -877,7 +877,25 @@ cleaning report; regenerating the extract with an altered cap changes the page; 
 barangay lists are rendered from the data, not from a constant; links from `/uuc-phc/indicators`
 and the methodology page resolve here.
 
-### U11 — Downloads: the list as CSV and XLSX
+### U11 — Downloads: the list as CSV and XLSX — **LANDED 2026-08-27**
+
+`/api/export/uuc-phc/data` emits one row per listed barangay as CSV or XLSX for any area, with
+`capped_indicators` as an explicit column sitting immediately before the seven indicators it
+qualifies and a notes block above the data. Three things the scope below did not anticipate, all
+recorded in `docs/DECISIONS.md`:
+
+- **The rows needed a relation of their own, and it turned out to widen the assistant too.** The
+  record and the evidence are two tables by design (U1), neither carries an ancestor code, and
+  `queryDataset` performs no joins — so `ref_uuc_phc_list` is the first relation in this dataset
+  from which "the listed barangays of this province, with their values" is a single query.
+- **Every figure in the header block is counted from the rows in the file**, not quoted from the
+  cleaning report. A typed "1,584 across 1,397" would print a national total onto a municipal file
+  and drift on the next extract — U10's rule, applied to something that leaves the building.
+- **No licence is claimed.** `dim_dataset.license` is null for this dataset, so the header reads
+  "Licence: not stated by the source" rather than naming one. The plan's Verify asks for a licence;
+  what it gets is the honest answer to that question.
+
+The scope below is kept as written.
 
 The one-pager is a picture. Anyone doing work with this list needs the rows.
 

@@ -2483,6 +2483,52 @@ export type Database = {
         };
         Relationships: [];
       };
+      ref_uuc_phc_list: {
+        Row: {
+          abr: number | null;
+          abr_prov_ref: number | null;
+          armed_conf: number | null;
+          capped_indicators: string[];
+          citymun_code: string | null;
+          citymun_name: string | null;
+          dataset_id: number;
+          elcac_brgy: boolean | null;
+          fic: number | null;
+          fic_prov_ref: number | null;
+          four_ps: number | null;
+          geo_code: string;
+          geo_name: string;
+          health_evaluable: boolean;
+          health_indicators: number | null;
+          idp: number | null;
+          imr: number | null;
+          imr_prov_ref: number | null;
+          ip_pop: number | null;
+          physical_factor: number | null;
+          pre_natal: number | null;
+          pre_natal_prov_ref: number | null;
+          province_code: string | null;
+          province_name: string | null;
+          region_code: string | null;
+          region_name: string | null;
+          route_conflict: boolean;
+          route_four_ps: boolean;
+          route_health: boolean;
+          route_ip: boolean;
+          sba: number | null;
+          sba_prov_ref: number | null;
+          source_barangay: string | null;
+          source_citymun: string | null;
+          source_geo_code: string;
+          source_province: string | null;
+          source_region: string | null;
+          ufmr: number | null;
+          ufmr_prov_ref: number | null;
+          water: number | null;
+          water_prov_ref: number | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       map_psgc_to_dim_geo: {
