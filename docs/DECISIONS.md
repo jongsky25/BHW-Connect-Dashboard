@@ -3873,7 +3873,8 @@ Vercel. Until it does, `embedQuery` reads no configured model and every document
 production still degrades to lexical with the `no-model-configured` warning — the vectors are in
 the database but unused by the deployed app. `lib/ai/embed-query.ts` compares the configured model
 against `doc_embedding_model` and refuses on a mismatch rather than embedding with the wrong one,
-so the string must match exactly.
+so the string must match exactly. **Done — the owner set it; see the 2026-08-27 entry below on the
+production check, which also records what that check does and does not prove.**
 
 **The ANN index is now possible and is deliberately not built here.** 2.1 traded it away knowingly:
 pgvector cannot index an unconstrained `vector` column, and pinning the column needed a measured
@@ -4204,3 +4205,45 @@ new advisor finding — both views are `security_invoker`, so neither raises `se
 
 **Not verified:** nothing here sits behind the provider boundary. The one thing this page reports
 and cannot resolve is the upstream encoding error itself — which is the point of publishing it.
+
+## 2026-08-27 — The embedding model is configured on Vercel: the vectors are now reachable in production
+
+The last item the embedding entry left open, and it was configuration rather than code.
+`GEMINI_EMBEDDING_MODEL=gemini-embedding-001` is set on the `bhw-connect` project. Until it was,
+`embedQuery` returned `no-model-configured` on every call and the 212 vectors sat in the database
+unused by the deployed app — the corpus was embedded but production still searched lexically.
+
+**Checked live against the deployed admin assistant**, not inferred from the code path:
+
+- A document question routed through `searchDocuments` and returned **10 cited passages**, slide 27
+  (the DOH honorarium allocation table under the Magna Carta for BHWs) among them, each rendering
+  its document, slide, as-of date and character offsets and each clickable through to the stored
+  chunk. The 2.3 citation contract holds end to end in production, not just in tests.
+- The assistant reports **31 registered datasets it can query**, where the run that opened the
+  previous entry reported 0. That is the `exposure: "internal"` superset fix confirmed on live data
+  from the surface that was broken, and the four-tool sequence in the same run
+  (`getIndicatorByGeo` → `getHonorariumStats` → `searchDocuments` → `listDatasets`) shows the
+  agent loop selecting across all three retrieval paths of §2 rather than stalling.
+
+**What this check does not prove, stated because the distinction is easy to lose.** The question
+asked shared vocabulary with the slide it retrieved (`honorarium`), so trigram alone could have
+surfaced that passage: this run establishes that document retrieval and citation work in
+production, not that the vector half is what found the answer. The paraphrase probe from the
+embedding entry — "how are village health volunteers paid a monthly stipend", chosen because the
+deck contains none of those three words — is the one that separates them, and it has been run only
+against the database, never against the deployed app.
+
+**The reason the distinction cannot be read off the screen is itself a small gap.**
+`searchDocuments` reports which halves ran as `warnings` in the tool payload (2.2: degraded
+visibly, never quietly thinner), and the payload goes to the model. Nothing in `components/`
+renders it. So a production search that silently fell back to lexical — a rotated key, a model
+rename, a `dimension-mismatch` after a future re-embed — looks identical on screen to one that
+used vectors. `embedQuery`'s five distinct reasons exist precisely so this is diagnosable; today
+they are diagnosable only by the model reading them. Surfacing that line in the citations panel is
+small and is not done here.
+
+**Where this leaves the plan.** Of the two things §8 recorded as needing a provider key and nothing
+else, `ingestion/ingest_documents.py --embed` is now run *and* reachable by the deployed app. The
+second — `ingestion/extract_kb.py --propose`, which replaces Phase 3's committed hand-authored
+transcript with one the model produced — is still unrun, and is now the only remaining item of that
+kind.
