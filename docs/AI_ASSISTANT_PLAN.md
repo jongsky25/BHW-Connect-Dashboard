@@ -19,9 +19,11 @@ full: Gemini, `gemini-embedding-001`, at a dimension of **3072 measured from a l
 which 2.1 deliberately made a stored row rather than a schema constant so it could be measured
 rather than declared (§6, §11). The corpus is embedded (212 of 213 chunks) and the model is
 configured on Vercel, so the vector half of 2.2 is live in production rather than merely built.
-**One thing still needs a provider key and nothing else:** `ingestion/extract_kb.py --propose`,
-which replaces Phase 3's committed hand-authored transcript with one the deployed model produced.
-Phases ship in order; each increment is an independently shippable PR-sized unit.
+`ingestion/extract_kb.py --propose` has since been run against a live provider, and **the review
+queue it filled is now empty** (2026-08-27): 7 nodes and 14 edges approved, 9 nodes and 21 edges
+rejected as duplicate identities. Extracted rows stand at 84 nodes / 114 edges approved.
+**Phase 4 is the only unbuilt phase.** Phases ship in order; each increment is an independently
+shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -619,8 +621,14 @@ unbuilt.
 - **Traversal depth.** What maximum depth stays explainable? Set a low cap in 1.6 and raise it
   against real questions rather than guessing upward — an answer whose path nobody can follow is
   not usable in a briefing, whatever its depth.
-- **Edge dedup.** When extraction (3.1) proposes an edge that lineage (1.5) already asserts, is it
-  dropped, or kept as corroboration with a second provenance pointer?
+- ~~**Edge dedup.** When extraction (3.1) proposes an edge that lineage (1.5) already asserts, is it
+  dropped, or kept as corroboration with a second provenance pointer?~~ **Answered by measurement
+  (2026-08-27): dropped.** The first real case was 21 `defined-by` edges proposed against duplicate
+  program nodes; **20 restated a fact already approved under the canonical key**, so dropping them
+  cost nothing, and the corroboration argument would have attached a second provenance pointer to a
+  node that should not exist. The remaining one (edge 502) is a genuine loss and is recorded on the
+  row. The sample is one duplicate cluster from one deck — a disagreement about *content* rather
+  than *casing* would not decompose this cleanly. See `DECISIONS.md`.
 
 ---
 

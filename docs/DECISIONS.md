@@ -4528,3 +4528,110 @@ list issued after the deck was written would not be visible here at all.
 **Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — 548 tests, unchanged; this
 entry changes data and documentation, not code. `npx prettier --check .` fails on the same 149 files
 as untouched `main`.
+
+## 2026-08-27 — The review queue, emptied: the duplicate-identity question answered by measuring what rejection actually costs
+
+The queue had stood at **16 nodes and 35 edges at `auto`** since `--propose` was run for real, and two
+entries in a row handed the duplicate-identity question forward as needing a person. It is settled
+here, and the thing that settles it is not a judgment call about naming — it is a count.
+
+**The queue is now empty.** 7 nodes and 14 edges approved, 9 nodes and 21 edges rejected. Extracted
+rows stand at **84 nodes / 114 edges approved, 11 / 26 rejected**.
+
+### The question, and why it looked harder than it was
+
+Nine of the sixteen pending nodes were the same programmes the graph already holds, under a second
+rendition of their names. The deck names each programme twice: once in the p47 programme list
+(`Local Health Systems Integration`), and again as the all-caps heading on that programme's own
+profile slide (`LOCAL HEALTH SYSTEMS INTEGRATION`). The stand-in transcript took the first, the model
+took the second, and the upsert has no reason to consider them one key.
+
+`lib/db/kb-review.ts` had already ruled out the obvious response, in a comment written before this
+situation existed: there is deliberately **no merge**, because re-pointing an edge would leave its
+`evidence_quote` "standing behind a fact it does not support", and *"rejecting the duplicate is the
+honest action; re-extracting under a corrected prompt is the honest fix."* Rejection was therefore
+the only available action — and rejecting 9 nodes takes 21 `defined-by` edges down with them, since
+the database refuses an approved edge with an unapproved endpoint. Twenty-one program→legal-basis
+edges is exactly the kind of fact this assistant exists to answer from, so the rule looked expensive.
+
+**It is not, and the way to find out was to check every one of them against the canonical node
+rather than to reason about the rule.**
+
+| pending `defined-by` edges | | |
+|---|---|---|
+| already approved under the canonical key | **20** | rejection costs nothing |
+| not present anywhere in the graph | **1** | a real loss |
+
+Twenty of the twenty-one restate a fact the graph already asserts — `Special Health Fund defined-by
+COA-C 2023-003` was approved months of increments ago; edge 496 proposes it again with
+`LOCAL HEALTH FINANCING (SPECIAL HEALTH FUND)` on the left. **§11's edge-dedup open question —
+"when extraction proposes an edge lineage already asserts, is it dropped or kept as corroboration?"
+— is answered by this measurement in the only case that has ever arisen: dropped, and at no cost.**
+The corroboration argument is real in the abstract and worth nothing here, because the second
+provenance pointer would be attached to a node that should not exist.
+
+### The one that does cost something
+
+**Edge 502 — `LOCAL INVESTMENT PLANS FOR HEALTH defined-by AO 2020-0022` (p87) — is the single fact
+this triage loses**, and it is recorded as such on the row rather than buried in the batch note. No
+approved edge links any LIPH node to `AO 2020-0022`; the canonical node (281, `Local Investments Plan
+for Health/ Annual Operational Plan (LIPH/AOP)`) carries **no legal basis at all**. So the programme
+whose guidelines are literally titled *"Guidelines on the Development of Local Investment Plans for
+Health"* has no `defined-by` edge, the model found the right one, and it is rejected on identity.
+
+That is the no-merge rule's actual price, stated as one row rather than as a worry about twenty-one:
+**one fact, recoverable by re-extracting p87 under a prompt that emits the canonical key.** Whether
+that price is right is now a question with a number attached, which it did not have before.
+
+### What the model contributed that the stand-in missed
+
+The approvals are not a formality — 14 of them are facts the graph did not hold.
+
+- **Joint issuership (11 edges, 3 new organization nodes).** `JMC 2013-01`, `JMC 2015-01` and
+  `JMC 2021-0001` had **no `issued-by` edge at all**: every approved issuer edge until now pointed at
+  a single agency, so the multi-agency circulars — the ones whose whole significance is who signed
+  them — recorded no issuer. `DBM`, `DOF` and `PhilHealth` enter the graph as organizations, and
+  "who issued the SHF circular" returns five agencies where it previously returned nothing.
+- **Three p47 sub-programmes (3 edges, 3 nodes).** `Local Health Systems Maturity Level and
+  Information System`, `Support for DOH Representatives`, `Support for Local Health Boards` — siblings
+  of `Support for Barangay Health Workers`, which the stand-in did capture. The two transcripts
+  covered different children of the same lists.
+- **`org:BLHSD`**, the bureau that owns the entire deck, which had no node.
+
+Each was checked case-insensitively against every approved program and organization key before
+approval; none is a rendition of something already present.
+
+### Re-runs, which the previous entry said became worth doing the moment anything was approved
+
+Both new questions answer, and the old ones are unmoved:
+
+```
+traverse_kb('issuance:JMC 2021-0001','out',['issued-by'],2)  → DBM, DILG, DOF, DOH, PhilHealth  (new; was empty)
+traverse_kb('program:…(LeadGov4Health)','in',['part-of'],2)  → + Support for DOH Representatives,
+                                                                 Support for Local Health Boards  (new)
+traverse_kb('issuance:DM 2020-0490','in',['supersedes'],5)   → DC 2025-0549 at depth 5           (unchanged)
+traverse_kb('issuance:AO 2020-0023','in',['implements'],1)   → all six annual list issuances     (unchanged)
+```
+
+3.3 and 3.4 are re-run and unchanged, which is the correct result: nothing approved here touches the
+issuance chain.
+
+**Integrity re-checked after the writes, all zero**: no pending rows; no extracted row without a chunk
+and a quote; no asserted row carrying a quote; no extracted quote absent from its chunk; **no approved
+edge with an unapproved endpoint**; no `supersedes` with a closed `valid_to`.
+
+**The extractor's `note` column was not touched** — it must keep matching the transcript byte for byte.
+Every decision here is in `review_note`, attributed to `phase-3-queue-triage`, and every one is
+reversible through the queue's own reopen control rather than only by SQL.
+
+**What this does and does not establish.** It establishes that the no-merge rule was affordable in the
+one case that has tested it, that the model's contribution over the stand-in is concentrated in
+joint issuership rather than in the relations the last two entries argued about, and that §11's
+edge-dedup question has an answer grounded in counted rows. **It does not establish that rejection is
+the right rule in general**: the sample is one duplicate cluster from one deck, and a corpus where the
+model and the stand-in disagreed on *content* rather than on *casing* would not decompose this
+cleanly. Nor does it recover edge 502, which needs a provider key this environment does not have.
+
+**Standards.** No code changed in this entry — it is data and documentation. `npm run lint`,
+`npm run typecheck` and `npm test` clean, 548 tests, unchanged. `npx prettier --check .` fails on the
+same 149 files as untouched `main`.
