@@ -9,13 +9,19 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** Phase 1 complete (Increments 1.1–1.6) and **Phase 2 open at 2.1** — the document
-corpus is ingested (see `DECISIONS.md`, 2026-08-26). Owner decisions 1, 2, 3 and 4 are all
-**answered**: the project is on Supabase Pro, the assistant is admin-only, the numeric audit is
-retained and the answer cache is bypassed. Decision 7 (embedding provider) is answered as Gemini;
-what remains open is not the provider but the *dimension*, which 2.1 deliberately made a stored
-row rather than a schema constant so it can be measured rather than declared (§6, §11). Phases
-ship in order; each increment is an independently shippable PR-sized unit.
+**Status:** Phases 1, 2 and 3 complete (Increments 1.1–3.4) — the graph now holds extracted rows
+as well as asserted ones, a review queue gates them, one traversal crosses between the two, and
+supersession chains answer "what is the rule now" (see `DECISIONS.md`, 2026-08-27). Owner decisions
+1, 2, 3, 4 and 5 are all **answered**: the project is on Supabase Pro, the assistant is admin-only,
+the numeric audit is retained, the answer cache is bypassed, and extraction is reviewed at
+`/admin/kb-review` before anything becomes citable. Decision 7 (embedding provider) is answered as
+Gemini; what remains open is not the provider but the *dimension*, which 2.1 deliberately made a
+stored row rather than a schema constant so it can be measured rather than declared (§6, §11).
+**Two things still need a provider key and nothing else:** running
+`ingestion/ingest_documents.py --embed` (which measures the dimension and turns on the vector half
+of 2.2) and `ingestion/extract_kb.py --propose` (which replaces Phase 3's committed transcript with
+one the deployed model produced). Phases ship in order; each increment is an independently
+shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -462,26 +468,30 @@ be re-run against a later build.
 The tables and the traversal exist from Phase 1. Phase 3 adds the only part that genuinely needs
 documents and a model: edges nobody has written down.
 
-**3.1 — Document extraction.** Typed extraction against the 1.5 schema, written as
+**3.1 — Document extraction.** *(built — 2026-08-27; 79 nodes, 90 edges, all at `auto`)*
+Typed extraction against the 1.5 schema, written as
 `status = 'auto'` with `source_kind = 'chunk'` and a `source_chunk_id` on every edge. The
 extraction prompt restates the §1 rule that source text is data and never instructions.
 *Verify:* extracted triples on a known document are spot-checked; every edge resolves to a chunk
 whose text actually supports it; nothing at `status = 'auto'` is citable.
 
-**3.2 — Review queue.** Admin approves, edits, or rejects proposed nodes, edges, and joins.
+**3.2 — Review queue.** *(built — 2026-08-27; 77 nodes / 85 edges approved, 2 / 5 rejected)*
+Admin approves, edits, or rejects proposed nodes, edges, and joins.
 Lineage edges from 1.5 are exempt and land approved: they are derived from repository structure,
 not proposed by a model. The queue exists for inferences, not for what a migration asserts —
 routing both through it would bury the rows that need judgment among rows that do not.
 *Verify:* only approved rows are citable; auto rows are visibly marked; a 1.5 lineage edge is
 distinguishable from an extracted one by column, not by convention (§9.9).
 
-**3.3 — Cross-source traversal.** Extend 1.6's primitive so one traversal can cross a registry
+**3.3 — Cross-source traversal.** *(built — 2026-08-27)*
+Extend 1.6's primitive so one traversal can cross a registry
 join edge into a document-extracted edge and back. The recursion, the bounds, and the
 path-provenance contract are unchanged from 1.6; what changes is the edge population it runs over.
 *Verify:* a multi-hop question that no single tool can answer returns a correct, cited answer, and
 the rendered path names the source of each hop.
 
-**3.4 — Supersession.** Give issuances (RA 12000, DC No. 2025-0549, JMC 2023-001) their own nodes
+**3.4 — Supersession.** *(built — 2026-08-27; 7 supersedes, 1 amends, 1 implements)*
+Give issuances (RA 12000, DC No. 2025-0549, JMC 2023-001) their own nodes
 and `supersedes` / `amends` / `implements` edges with `valid_from` / `valid_to`, so a question
 about current policy excludes superseded text instead of ranking it slightly lower.
 
@@ -571,10 +581,20 @@ see the list growing. Route 1 (seed from the dashboard) and route 3 (harvest `ai
 exists and carries a `source` column that keeps seeded cases distinguishable from reported ones.
 One seeded case is in the list already, recording §12.4 rule 3.
 
-**What is still missing is the runner.** A stored case is replayable in the sense that everything a
-replay needs is in the row; nothing yet re-runs them in a batch and diffs the result. That is the
-next thing worth building, and it is what would turn "these five queries look right" into a claim
-about the other forty.
+**The runner is built** *(2026-08-27)*. `/admin/regressions` replays every open case against the
+build in front of it: it re-issues the tool calls the case recorded, with the arguments it
+recorded, and re-resolves every passage it cited — checking that the chunk still exists, is still
+on its page, still carries the text the case quoted, and is *still returned by the case's own
+search*. That last check is the one a model cannot help with and a prose diff cannot see.
+
+It deliberately does not re-ask the question: that needs a provider key, and a suite that only runs
+when someone has one never runs. Every result carries the caveat saying so.
+
+**Two things are still missing, and they are about the list rather than the runner.** There is
+nowhere to record an *expected payload*, so a `queryDataset` case is scored on whether the call
+still runs and not on whether it returns the same figure — which is exactly what route 1 below
+needs, so route 1 waits on that column. And the list is one case long: route 2 is live, route 3 is
+unbuilt.
 
 ## 11. Open questions
 

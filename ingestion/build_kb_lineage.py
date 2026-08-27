@@ -43,6 +43,7 @@ case until its migration was committed (plan U5), and the finding is what surfac
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -50,6 +51,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 MIGRATIONS = REPO / "supabase" / "migrations"
 INGESTION = REPO / "ingestion"
+EXTRACTIONS = INGESTION / "data"
 
 CREATE_TABLE_RE = re.compile(r"create\s+table\s+(?:if\s+not\s+exists\s+)?(\w+)", re.I)
 ALTER_TABLE_RE = re.compile(r"alter\s+table\s+(?:only\s+)?(\w+)", re.I)
@@ -74,7 +76,32 @@ CREATE_VIEW_RE = re.compile(
 # that carries it, and it cannot be emitted by accident.
 LINEAGE_DIRECTIVE_RE = re.compile(r"^\s*--\s*lineage:\s*(\S+)\s+(\S+)\s+(\S+)\s*$", re.M)
 # Mirrors the check constraint on kb_edge.relation.
-RELATIONS = {"derived-from", "built-by", "reconciled-in", "joins-on", "has-column"}
+RELATIONS = {"derived-from", "built-by", "reconciled-in", "joins-on", "has-column", "defined-by"}
+
+# An issuance code as this repository's own SQL writes it: "DOH AO No. 2020-0023",
+# "DC No. 2025-0549", "AO 2020-0023 §VI.B". Canonicalised to `AO 2020-0023` — the same form
+# `ingestion/extract_kb.py` requires of the model, because the two have to name the same node.
+ISSUANCE_IN_SQL_RE = re.compile(
+    r"\b(?:DOH\s+)?(AO|DC|DM|JMC|JAO)\b[\s.]*(?:No\.?)?\s*(\d{4}-\d{2,4})\b", re.I
+)
+COMMENT_ON_TABLE_RE = re.compile(
+    r"comment\s+on\s+table\s+(\w+)\s+is\s+'((?:[^']|'')*)'", re.I
+)
+
+
+def issuance_keys(text: str) -> list[str]:
+    """Canonical `issuance:` keys named in one piece of SQL *statement* text.
+
+    READ FROM STRIPPED SQL, ALWAYS, AND THE NEAR-MISS IS WORTH RECORDING. An issuance code is not
+    like a `docs/*.md` path: prose produces one by accident all the time. Two migrations in this
+    repository name "DC No. 2025-0549" purely as an EXAMPLE in a header comment about trigram
+    search (`20260826160000_doc_corpus.sql`, `20260826160100_search_documents.sql`). A raw-text
+    scan would assert `table:doc_chunk defined-by issuance:DC 2025-0549` from them — the fourth
+    instance of the one failure mode this script keeps hitting, caught before it was written.
+    Reading only statement text limits the scan to codes the database itself carries: a table
+    comment, or a `dim_dataset` row's own source field.
+    """
+    return sorted({f"{kind.upper()} {number}" for kind, number in ISSUANCE_IN_SQL_RE.findall(text)})
 DOC_PATH_RE = re.compile(r"docs/[A-Za-z0-9_./-]+\.md")
 DATASET_INSERT_RE = re.compile(r"insert\s+into\s+dim_dataset\s*\(([^)]*)\)\s*values(.*?);", re.I | re.S)
 
@@ -336,6 +363,20 @@ def read_migrations(graph: Graph) -> tuple[set[str], dict[str, str]]:
                     continue
                 label = unquote(fields[name_index]) if name_index is not None and len(fields) > name_index else slug
                 graph.node(f"dataset:{slug}", "dataset", slug, label, "migration", ref)
+                # The dataset's own source field names the issuance that published it. This is the
+                # edge that lets one traversal cross from the registry into the document corpus
+                # (Increment 3.3): the ISSUANCE node is extracted from the cue cards, this EDGE is
+                # asserted by a committed migration, and each row says which it is (§9.9).
+                for issuance in issuance_keys(" ".join(fields)):
+                    graph.edge(f"dataset:{slug}", "defined-by", f"issuance:{issuance}",
+                               "migration", ref, "dataset source field")
+
+        # A table comment is the table's own statement of what it holds, and several of them name
+        # the circular that published it. Same crossing edge, anchored on the table instead.
+        for table, comment in COMMENT_ON_TABLE_RE.findall(statements):
+            for issuance in issuance_keys(comment):
+                graph.edge(f"table:{table.lower()}", "defined-by", f"issuance:{issuance}",
+                           "migration", ref, "table comment")
 
     return known, first_migration
 
@@ -567,6 +608,29 @@ def main() -> None:
     unbuilt = sorted(k for k, n in graph.nodes.items() if n["kind"] == "table" and k not in built)
     if unbuilt:
         print(f"tables with no built-by edge: {', '.join(unbuilt)}", file=sys.stderr)
+
+    # A crossing edge (Increment 3.3) names an `issuance:` node this script does not define — the
+    # node comes from document extraction, and the emitted seed joins to it by key. The join drops
+    # an edge whose node is absent, which is correct and silent, so the absence is reported here
+    # instead. Checked against the committed extraction transcripts, which are the only committed
+    # statement of which issuances the corpus actually yields.
+    proposed = set()
+    for transcript in sorted(EXTRACTIONS.glob("kb_extraction_*.jsonl")):
+        for line in transcript.read_text().splitlines():
+            if not line.strip():
+                continue
+            for node in (json.loads(line).get("proposal") or {}).get("nodes") or []:
+                if isinstance(node.get("key"), str) and node["key"].startswith("issuance:"):
+                    proposed.add(node["key"])
+    missing = sorted(
+        {e["dst"] for e in graph.edges.values() if e["dst"].startswith("issuance:")} - proposed
+    )
+    if missing:
+        print(
+            "issuances named by a migration that no extraction proposes "
+            f"(their crossing edges will not load): {', '.join(missing)}",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":
