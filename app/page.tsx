@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { DatasetCard } from "@/components/portal/dataset-card";
 
 // Absolute title so the root layout's "%s · BHW Connect" template — which is
@@ -70,9 +71,14 @@ export default function Portal() {
       </section>
 
       {/* Attribution */}
-      <footer className="mt-auto flex flex-wrap items-center gap-2 border-t border-border pt-6 text-sm text-muted">
-        <span className="equity-mark sm" aria-hidden="true" />
-        <span>An Equity in Health Section innovation.</span>
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border pt-6 text-sm text-muted">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="equity-mark sm" aria-hidden="true" />
+          <span>An Equity in Health Section innovation.</span>
+        </div>
+        <Link href="/admin/login" className="underline underline-offset-2 hover:text-accent">
+          Admin sign in
+        </Link>
       </footer>
     </div>
   );
