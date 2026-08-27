@@ -157,6 +157,13 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
                         >
                           Why these {formatCount(counts.nListed)} qualified
                         </Link>
+                        {" · "}
+                        <Link
+                          href={`/uuc-phc/indicators/${geo.geoLevel}/${geo.geoCode}`}
+                          className="underline hover:text-accent"
+                        >
+                          The indicators behind them
+                        </Link>
                       </>
                     )}
                   </p>

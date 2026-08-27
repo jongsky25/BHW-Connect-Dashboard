@@ -1057,6 +1057,126 @@ export type Database = {
           },
         ];
       };
+      agg_uuc_phc_indicator_dist: {
+        Row: {
+          bin_capped: number[];
+          bin_counts: number[];
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          indicator: string;
+          n_comparable: number;
+          n_listed: number;
+          n_missing: number;
+          n_worse: number;
+          provincial_ref: number | null;
+          value_max: number;
+        };
+        Insert: {
+          bin_capped?: number[];
+          bin_counts?: number[];
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator: string;
+          n_comparable?: number;
+          n_listed?: number;
+          n_missing?: number;
+          n_worse?: number;
+          provincial_ref?: number | null;
+          value_max: number;
+        };
+        Update: {
+          bin_capped?: number[];
+          bin_counts?: number[];
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator?: string;
+          n_comparable?: number;
+          n_listed?: number;
+          n_missing?: number;
+          n_worse?: number;
+          provincial_ref?: number | null;
+          value_max?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_uuc_phc_indicator_dist_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_uuc_phc_indicator_dist_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      ref_uuc_phc_published_delta: {
+        Row: {
+          dataset_id: number;
+          delta: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          n_listed: number;
+          n_published: number;
+          source_as_of: string | null;
+          source_doc_key: string;
+          source_label: string;
+          source_page: number;
+        };
+        Insert: {
+          dataset_id: number;
+          delta: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_listed: number;
+          n_published: number;
+          source_as_of?: string | null;
+          source_doc_key: string;
+          source_label: string;
+          source_page: number;
+        };
+        Update: {
+          dataset_id?: number;
+          delta?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_listed?: number;
+          n_published?: number;
+          source_as_of?: string | null;
+          source_doc_key?: string;
+          source_label?: string;
+          source_page?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ref_uuc_phc_published_delta_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "ref_uuc_phc_published_delta_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       ai_ask_cache: {
         Row: {
           answer_md: string;
@@ -2339,7 +2459,30 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      ref_uuc_phc_benchmark_gaps: {
+        Row: {
+          finding: string;
+          kind: string;
+          n_affected: number;
+          n_listed_province: number;
+          province_code: string;
+          witness_value: number | null;
+        };
+        Relationships: [];
+      };
+      ref_uuc_phc_quality: {
+        Row: {
+          n_barangays_capped: number;
+          n_barangays_multi_capped: number;
+          n_listed: number;
+          n_no_route_as_recorded: number;
+          n_no_route_if_recomputed: number;
+          n_score_disagreement: number;
+          n_score_understated: number;
+          n_values_capped: number;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       map_psgc_to_dim_geo: {

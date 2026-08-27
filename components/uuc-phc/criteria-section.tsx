@@ -22,6 +22,7 @@ export function CriteriaSection({
   childHeading,
   childAreas,
   coverageHref,
+  indicatorsHref,
 }: {
   criteria: UucPhcCriteria;
   areaLabel: string;
@@ -31,6 +32,8 @@ export function CriteriaSection({
   childAreas: UucPhcCriteriaChild[];
   /** The matching coverage page — the same area on the section's existing drill-down. */
   coverageHref: string;
+  /** The matching indicators page — the same area's distributions (plan U9). */
+  indicatorsHref: string;
 }) {
   return (
     <>
@@ -46,8 +49,8 @@ export function CriteriaSection({
           <p className="mt-2 max-w-2xl text-sm text-muted">
             A barangay qualifies only when a <strong>physical</strong> factor and a{" "}
             <strong>socio-economic</strong> factor are both present. The physical factor holds for
-            every barangay here by construction — one below the 25% threshold never entered the
-            list — so what distinguishes them is which socio-economic route carried them.
+            every barangay here by construction — one below the 25% threshold never entered the list
+            — so what distinguishes them is which socio-economic route carried them.
           </p>
 
           <div className="mt-5">
@@ -57,11 +60,17 @@ export function CriteriaSection({
           <RouteNotEvaluable criteria={criteria} areaLabel={areaLabel} />
 
           {/* The one line the plan asks for: why counting routes is publishable when averaging the
-              indicators is not. */}
+              indicators is not. U9 added the second half — the indicator values are now published
+              above barangay grain too, as distributions, which is the other rendering that keeps a
+              bounded value visible instead of dissolving it. */}
           <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
             These are counts of classifications, not averages of measurements — which is why this
-            page can publish them while the indicator values themselves are shown only one barangay
-            at a time, where a bounded value can carry its own caveat.{" "}
+            page can publish them. The indicator values themselves are never averaged either: they
+            are shown one barangay at a time, and{" "}
+            <Link href={indicatorsHref} className="underline hover:text-accent">
+              as distributions
+            </Link>
+            , both of which keep a bounded value visible where a mean would absorb it.{" "}
             <Link href="/uuc-phc/methodology" className="underline hover:text-accent">
               Methodology
             </Link>

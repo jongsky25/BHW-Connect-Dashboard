@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { NATIONAL_GEO_CODE } from "@/lib/filters/schema";
 import { UUC_PHC_BRAND_LABEL, uucDeckCaption, getUucPhcCounts } from "@/lib/db/uuc-phc";
-import { getUucPhcCriteria, getUucPhcCriteriaChildren } from "@/lib/db/uuc-phc-criteria";
-import { CriteriaSection } from "@/components/uuc-phc/criteria-section";
+import { getUucPhcIndicatorDist } from "@/lib/db/uuc-phc-indicator-dist";
+import { IndicatorsSection } from "@/components/uuc-phc/indicators-section";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentButton } from "@/components/present/present-button";
 import { AskTheList } from "@/components/uuc-phc/ask-the-list";
@@ -14,29 +14,30 @@ import { AskTheList } from "@/components/uuc-phc/ask-the-list";
 export const revalidate = 3_600;
 
 export const metadata: Metadata = {
-  title: { absolute: "Why these barangays qualified · UUC for PHC 2025" },
+  title: { absolute: "The indicators behind the list · UUC for PHC 2025" },
   description:
-    "How the 5,991 barangays on the 2025 UUC for PHC list qualified: Indigenous Peoples, conflict and displacement, 4Ps enrolment, and health indicators against the province. The four routes overlap.",
+    "How the 5,991 barangays on the 2025 UUC for PHC list are distributed across the 12 indicators they were assessed on, with the values bounded during cleaning counted separately. No averages: a mean would hide them.",
 };
 
-export default async function UucPhcCriteriaLanding() {
-  const [criteria, counts, children] = await Promise.all([
-    getUucPhcCriteria(NATIONAL_GEO_CODE, "national"),
+export default async function UucPhcIndicatorsLanding() {
+  const [counts, dists] = await Promise.all([
     getUucPhcCounts(NATIONAL_GEO_CODE, "national"),
-    getUucPhcCriteriaChildren(NATIONAL_GEO_CODE, "national"),
+    getUucPhcIndicatorDist(NATIONAL_GEO_CODE, "national"),
   ]);
 
-  if (!criteria) {
+  // `counts` is what says whether anything is listed; `dists` being empty with counts present is a
+  // read failure, and the two must not be confused — see the module note on getUucPhcIndicatorDist.
+  if (!counts || dists.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Why these barangays qualified</h1>
-        <p className="text-muted">This breakdown is not available right now.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">The indicators behind the list</h1>
+        <p className="text-muted">These distributions are not available right now.</p>
       </div>
     );
   }
 
   const deckMeta = {
-    pageLabel: "Qualifying criteria",
+    pageLabel: "Indicators",
     areaName: "Philippines",
     filterChips: [] as string[],
     captionLine: uucDeckCaption(counts, "Philippines"),
@@ -54,30 +55,29 @@ export default async function UucPhcCriteriaLanding() {
             Overview
           </Link>
           <span aria-hidden="true">›</span>
-          <span className="font-medium text-foreground">Qualifying criteria</span>
+          <span className="font-medium text-foreground">Indicators</span>
         </nav>
 
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Why these barangays qualified
+              The indicators behind the list
             </h1>
             <PresentButton variant="secondary" />
           </div>
           <p className="max-w-2xl text-muted">
-            DOH AO No. 2020-0023 sets four socio-economic routes onto the list, and a barangay needs
-            only one of them alongside the physical factor. This is how many barangays came in on
-            each — nationally, and for every region, province, city and municipality.
+            The 12 measurements each listed barangay was assessed on, as distributions rather than
+            as figures — every value at its own position, for the whole country and for every
+            region, province, city and municipality.
           </p>
         </section>
 
-        <CriteriaSection
-          criteria={criteria}
+        <IndicatorsSection
+          dists={dists}
           areaLabel="the Philippines"
-          childHeading="Regions"
-          childAreas={children}
+          nListed={counts.nListed}
           coverageHref="/uuc-phc"
-          indicatorsHref="/uuc-phc/indicators"
+          criteriaHref="/uuc-phc/criteria"
         />
 
         <AskTheList geoCode={NATIONAL_GEO_CODE} geoLevel="national" geoName="Philippines" />

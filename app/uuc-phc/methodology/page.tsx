@@ -117,9 +117,12 @@ export default function UucPhcMethodology() {
         <p className="text-muted">
           Some values arrived recorded above the maximum their indicator can take — water coverage
           as high as 9,594%, immunisation at 18,088. These were bounded to the maximum: 100% for
-          coverage indicators, 1,000 for rates per 1,000. In total{" "}
-          <strong>1,584 values across 1,397 barangays</strong> were bounded, most of them water
-          supply (886) and immunisation (456).
+          coverage indicators, 1,000 for rates per 1,000.{" "}
+          <Link href="/uuc-phc/data-quality" className="underline hover:text-accent">
+            How many values that was, and across how many barangays
+          </Link>
+          , is counted from the data rather than written down here — a figure typed into a
+          methodology page stops being true the first time the extract is regenerated.
         </p>
         <p className="text-muted">
           A bounded value is <strong>a ceiling, not a measurement</strong>. A barangay marked † at
@@ -130,29 +133,48 @@ export default function UucPhcMethodology() {
         <p className="text-muted">
           For the same reason this dashboard publishes{" "}
           <strong>no averages of these indicators</strong>. A mark can travel with a single value;
-          it cannot survive a mean. An average water-coverage figure would silently absorb 886
-          ceilings and report near-universal coverage the data does not support.
+          it cannot survive a mean. An average water-coverage figure would silently absorb every one
+          of those ceilings and report near-universal coverage the data does not support. What it
+          publishes instead are{" "}
+          <Link href="/uuc-phc/indicators" className="underline hover:text-accent">
+            distributions
+          </Link>{" "}
+          — a histogram averages nothing, so each bounded value stays where it is and is counted
+          separately in the bar it lands in.
         </p>
       </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">When a comparison is not made</h2>
         <p className="text-muted">
-          Two cases show as unavailable rather than as a result, because in neither does the source
-          support a conclusion:
+          Three cases show as unavailable rather than as a result, because in none of them does the
+          source support a conclusion:
         </p>
         <ul className="ml-5 list-disc space-y-1 text-muted">
           <li>
-            <strong>No provincial figure</strong> — 57 barangays sit in provinces that supplied
-            none. Criterion (d) cannot be evaluated for them; that is not the same as passing it.
+            <strong>No provincial figure</strong> — some provinces supplied none at all. Criterion
+            (d) cannot be evaluated for their barangays; that is not the same as passing it.
+          </li>
+          <li>
+            <strong>A benchmark that is a placeholder</strong> — some provinces supplied a figure
+            that is plainly not a measurement: every value exactly 1, or every value 0, or fractions
+            where percentages were wanted. These compare perfectly well and mean nothing, which is
+            precisely why they need excluding rather than using.
           </li>
           <li>
             <strong>A benchmark above the indicator&rsquo;s maximum</strong> — in two provinces the
             immunisation benchmark was left above 100% while every barangay&rsquo;s own figure was
             bounded to 100%. No barangay there could match it, so &ldquo;worse than province&rdquo;
-            would be true by construction. Those 113 barangays show the benchmark and no verdict.
+            would be true by construction. Those barangays show the benchmark and no verdict, and
+            remain comparable on the other six indicators.
           </li>
         </ul>
+        <p className="text-muted">
+          <Link href="/uuc-phc/data-quality" className="underline hover:text-accent">
+            Which provinces these are, and how many barangays each affects
+          </Link>
+          , is counted from the data on the data-quality page.
+        </p>
       </section>
 
       <section id="ask" className="flex flex-col gap-2 scroll-mt-6">
@@ -173,11 +195,11 @@ export default function UucPhcMethodology() {
           dataset records which barangays are on the 2025 list. It does not record the assessment
           that put them there, and the barangays that were assessed and <em>not</em> listed are not
           in it at all. So it can tell you whether a barangay is listed and which of the recorded
-          criteria its own values meet — and it cannot tell you whether a barangay{" "}
-          <em>should</em> be listed, why any barangay was included or left out, or whether an
-          unlisted barangay would qualify. Those are the source office&rsquo;s to answer: the DOH
-          Bureau of Local Health Systems Development, which issues the list. The correction link at
-          the foot of every page in this section is the route to them.
+          criteria its own values meet — and it cannot tell you whether a barangay <em>should</em>{" "}
+          be listed, why any barangay was included or left out, or whether an unlisted barangay
+          would qualify. Those are the source office&rsquo;s to answer: the DOH Bureau of Local
+          Health Systems Development, which issues the list. The correction link at the foot of
+          every page in this section is the route to them.
         </p>
         <p className="text-muted">
           Two of the caveats above are rules it follows rather than notes it might mention. A value

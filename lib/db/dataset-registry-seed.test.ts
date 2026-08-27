@@ -174,15 +174,20 @@ describe("the committed dataset registry seed", () => {
 describe("the UUC for PHC entries (plan U5)", () => {
   const uuc = registry.filter((r) => r.datasetSlug === "uuc-phc-2025");
 
-  it("registers all five objects, approved and public", () => {
-    // Four from U5, plus agg_uuc_phc_criteria from U7. A new relation the registry does not know
-    // about is one queryDataset refuses outright, so this list is the thing that has to grow.
+  it("registers all nine objects, approved and public", () => {
+    // Four from U5, plus agg_uuc_phc_criteria from U7, agg_uuc_phc_indicator_dist from U9 and
+    // U10's three data-quality relations. A new relation the registry does not know about is one
+    // queryDataset refuses outright, so this list is the thing that has to grow.
     expect(uuc.map((r) => r.tableName).sort()).toEqual([
       "agg_uuc_phc_counts",
       "agg_uuc_phc_criteria",
+      "agg_uuc_phc_indicator_dist",
       "fact_uuc_phc_barangay",
       "fact_uuc_phc_indicators",
+      "ref_uuc_phc_benchmark_gaps",
       "ref_uuc_phc_provincial",
+      "ref_uuc_phc_published_delta",
+      "ref_uuc_phc_quality",
     ]);
     for (const row of uuc) {
       expect(row.status).toBe("approved");
@@ -254,6 +259,87 @@ describe("the UUC for PHC entries (plan U5)", () => {
     expect(health?.meaning).toMatch(/NEVER n_listed/);
   });
 
+  it("forbids deriving an average from the binned distributions, on the bins themselves", () => {
+    // U9's equivalent of the capped_indicators case. A histogram is publishable where a mean is
+    // not, but a bin midpoint weighted by bin_counts *is* a mean — the one way a model can walk
+    // straight back into what U3 refused while believing it is reporting a distribution. The
+    // warning has to be on the column a query returns, not only on the table.
+    const table = registry.find((r) => r.tableName === "agg_uuc_phc_indicator_dist");
+    expect(table?.notesMd).toMatch(/NO AVERAGE/);
+    const bins = columns.find(
+      (c) => c.tableName === "agg_uuc_phc_indicator_dist" && c.columnName === "bin_counts",
+    );
+    expect(bins).toBeDefined();
+    expect(bins?.isQueryable).toBe(true);
+    expect(bins?.meaning).toMatch(/DO NOT COMPUTE A MEAN/);
+    // And bin_capped has to say it is a subset, or the two get added together.
+    const capped = columns.find(
+      (c) => c.tableName === "agg_uuc_phc_indicator_dist" && c.columnName === "bin_capped",
+    );
+    expect(capped?.meaning).toMatch(/subset of bin_counts/i);
+  });
+
+  it("says on n_worse that it is a count and must stay one", () => {
+    // Evaluable denominators differ between areas for data-quality reasons, so a share of
+    // worse-than-province invites a comparison across areas that the data cannot carry.
+    const worse = columns.find(
+      (c) => c.tableName === "agg_uuc_phc_indicator_dist" && c.columnName === "n_worse",
+    );
+    expect(worse?.meaning).toMatch(/never as a share/i);
+  });
+
+  it("keeps the barangay count and the value count apart on the data-quality totals", () => {
+    // U10's central trap, and the one a model would fall into first: 1,584 values fall across
+    // 1,397 barangays, so reporting the value count as a barangay count overstates the affected
+    // share of the list by about 13%. Both columns say so, because a column meaning is the only
+    // text that travels with a returned value.
+    const brgy = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_quality" && c.columnName === "n_barangays_capped",
+    );
+    const values = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_quality" && c.columnName === "n_values_capped",
+    );
+    expect(brgy?.meaning).toMatch(/BARANGAYS/);
+    expect(brgy?.meaning).toMatch(/NOT the number of bounded values/i);
+    expect(values?.meaning).toMatch(/VALUES/);
+  });
+
+  it("says the recomputed criterion (d) columns are a measurement, never a score", () => {
+    // The one place in this dataset where a derivation the docs warn against is performed on
+    // purpose. If the dictionary does not say why, a reader of the column has every reason to
+    // treat it as the score.
+    const table = registry.find((r) => r.tableName === "ref_uuc_phc_quality");
+    expect(table?.notesMd).toMatch(/MEASUREMENT OF A GAP, NEVER A SCORE/);
+    const disagreement = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_quality" && c.columnName === "n_score_disagreement",
+    );
+    expect(disagreement?.meaning).toMatch(/NOT A CORRECTION/);
+  });
+
+  it("keeps the two benchmark findings from being added together", () => {
+    // 226 barangays cannot support criterion (d) at all; a different 113 are affected on FIC
+    // alone and remain evaluable on the other six indicators. Summing them to 339 would be wrong
+    // in both directions at once.
+    const finding = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_benchmark_gaps" && c.columnName === "finding",
+    );
+    expect(finding?.meaning).toMatch(/never added together/i);
+    const table = registry.find((r) => r.tableName === "ref_uuc_phc_benchmark_gaps");
+    expect(table?.notesMd).toMatch(/MUST NOT BE ADDED TOGETHER/);
+  });
+
+  it("marks the published-total gap as unexplained, and its absence as agreement", () => {
+    // Two ways to misread this table: inferring the vintage cause neither document states, and
+    // reading a missing geography as missing data rather than as the two sources agreeing.
+    const table = registry.find((r) => r.tableName === "ref_uuc_phc_published_delta");
+    expect(table?.notesMd).toMatch(/INFERENCE, NOT A STATEMENT EITHER SOURCE MAKES/);
+    expect(table?.notesMd).toMatch(/absence from a geography means the two sources AGREE/);
+    const delta = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_published_delta" && c.columnName === "delta",
+    );
+    expect(delta?.meaning).toMatch(/Never zero/);
+  });
+
   it("describes health_indicators as a recorded score, not a derivable one", () => {
     // docs/UUC_PHC_2025_PLAN.md §10 asks for this column to be dropped or recomputed before
     // anything depends on it. U7 depends on it, so the dictionary carries why it is neither.
@@ -292,7 +378,8 @@ describe("the UUC for PHC entries (plan U5)", () => {
       expect(id.role, id.tableName).toBe("meta");
     }
     const counts = columns.filter(
-      (c) => c.tableName === "agg_uuc_phc_counts" && ["n_listed", "n_barangays"].includes(c.columnName),
+      (c) =>
+        c.tableName === "agg_uuc_phc_counts" && ["n_listed", "n_barangays"].includes(c.columnName),
     );
     expect(counts.map((c) => c.role)).toEqual(["measure", "measure"]);
   });

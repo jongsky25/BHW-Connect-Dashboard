@@ -8,6 +8,13 @@ function num(n: number | null): string {
 }
 
 function ComparisonNote({ reading }: { reading: IndicatorReading }) {
+  if (reading.benchmarkPlaceholder) {
+    // The province's whole benchmark set is a placeholder — every value 1, or 0, or a fraction.
+    // The figure is a number and would compare, which is exactly why it must not be drawn as a
+    // verdict: criterion (d) is not evaluable for this barangay at all, and the criteria page has
+    // already excluded it from route (d)'s denominator on the same rule.
+    return <span className="text-muted">no usable provincial figure</span>;
+  }
   if (reading.benchmarkUnusable) {
     // The province's figure is above this indicator's own maximum, so no barangay could match it.
     // Saying "worse than province" here would be an artefact of the source, not a finding.
@@ -128,6 +135,15 @@ export function BarangayDetail({ detail }: { detail: UucPhcBarangayDetail }) {
             </tbody>
           </table>
         </div>
+
+        {detail.benchmarksPlaceholder && (
+          <p className="mt-3 text-xs text-muted">
+            None of the seven comparisons is drawn here: this barangay&rsquo;s province supplied
+            benchmarks that cannot support them — every value a placeholder, a zero, or a fraction
+            where a percentage was wanted. Its place on the list is not in doubt; the socio-economic
+            test passes on any one of four routes.
+          </p>
+        )}
 
         {detail.cappedCount > 0 && (
           <p className="mt-3 text-xs text-muted">

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { comparesWorse, toBarangayDetail, type Row } from "./uuc-phc-indicators";
+import {
+  benchmarksArePlaceholder,
+  comparesWorse,
+  toBarangayDetail,
+  type Row,
+} from "./uuc-phc-indicators";
 
 /** A barangay with a capped Water value (the source recorded it above 100) and a real IMR. */
 const base: Row = {
@@ -54,13 +59,41 @@ describe("comparesWorse", () => {
   });
 
   it("refuses a benchmark the indicator cannot reach", () => {
-    // FIC's provincial reference was left uncapped in two provinces (102.15, 101.00) while every
-    // barangay FIC was capped at 100. Without this rule all 113 of their barangays would read as
-    // "worse than province" — an artefact of the cleaning, not a finding.
+    // FIC's provincial reference was left uncapped in two provinces (Ilocos Sur 102.15, City of
+    // Butuan 100.96) while every barangay FIC was capped at 100. Without this rule all 113 of
+    // their barangays would read as "worse than province" — an artefact of the cleaning, not a
+    // finding.
     expect(comparesWorse(100, 102.15, false, 100)).toBeNull();
-    expect(comparesWorse(60, 101, false, 100)).toBeNull();
+    expect(comparesWorse(60, 100.96, false, 100)).toBeNull();
     // A rate legitimately above 100 is still comparable: only above its own maximum is not.
     expect(comparesWorse(300, 277, true, 1000)).toBe(true);
+  });
+});
+
+describe("benchmarksArePlaceholder", () => {
+  it("accepts a real benchmark set", () => {
+    expect(benchmarksArePlaceholder([8, 20, 30, 90, 60, 60, 75])).toBe(false);
+  });
+
+  it("rejects the three shapes the source actually supplied", () => {
+    // Agusan del Sur: every reference exactly 1. Cagayan: every one 0. BARMM's Special Geographic
+    // Area: fractions where percentages were wanted. All three compare perfectly well and mean
+    // nothing, which is why comparesWorse alone cannot catch them.
+    expect(benchmarksArePlaceholder([1, 1, 1, 1, 1, 1, 1])).toBe(true);
+    expect(benchmarksArePlaceholder([0, 0, 0, 0, 0, 0, 0])).toBe(true);
+    expect(benchmarksArePlaceholder([0.04, 0.9, 0.12, 0.88, 0.7, 0.65, 0.8])).toBe(true);
+  });
+
+  it("rejects a set with nothing in it at all", () => {
+    // Nueva Vizcaya and Zamboanga City supplied #N/A throughout — 57 barangays.
+    expect(benchmarksArePlaceholder([null, null, null, null, null, null, null])).toBe(true);
+  });
+
+  it("accepts a set where a single real rate survives", () => {
+    // The test is on the largest of the seven, not on all of them: a partial set is still a set
+    // that criterion (d) can be run against, and treating it as fake would exclude barangays the
+    // criteria page counts.
+    expect(benchmarksArePlaceholder([null, null, 45, null, null, null, null])).toBe(false);
   });
 });
 
@@ -88,6 +121,40 @@ describe("toBarangayDetail", () => {
     expect(fic?.worseThanProvince).toBeNull();
     // The other indicators are unaffected.
     expect(d.health.find((h) => h.key === "imr")?.benchmarkUnusable).toBe(false);
+  });
+
+  it("draws no verdict at all where the province's benchmarks are placeholders", () => {
+    // Plan U9. Until then this was the one surface that would score a barangay against Agusan del
+    // Sur's all-ones reference and print "worse than province (1)" — while agg_uuc_phc_criteria
+    // had already excluded that same barangay from route (d)'s denominator on the same rule. One
+    // rule, three readers: the disclosure, the criteria aggregate and the distributions.
+    const placeholder = toBarangayDetail(
+      {
+        ...base,
+        imr_prov_ref: 1,
+        ufmr_prov_ref: 1,
+        fic_prov_ref: 1,
+        abr_prov_ref: 1,
+        pre_natal_prov_ref: 1,
+        sba_prov_ref: 1,
+        water_prov_ref: 1,
+      },
+      "X",
+    );
+    expect(placeholder.benchmarksPlaceholder).toBe(true);
+    expect(placeholder.health.map((h) => h.worseThanProvince)).toEqual(
+      new Array(7).fill(null) as (boolean | null)[],
+    );
+    // The figures are still carried — the page prints what the source supplied, it just draws no
+    // conclusion from it.
+    expect(placeholder.health.every((h) => h.provincialRef === 1)).toBe(true);
+    expect(placeholder.health.every((h) => h.benchmarkPlaceholder)).toBe(true);
+  });
+
+  it("leaves a real benchmark set unflagged", () => {
+    const d = toBarangayDetail(base, "X");
+    expect(d.benchmarksPlaceholder).toBe(false);
+    expect(d.health.some((h) => h.benchmarkPlaceholder)).toBe(false);
   });
 
   it("sums armed conflict and displacement for criterion (b), matching the source", () => {
