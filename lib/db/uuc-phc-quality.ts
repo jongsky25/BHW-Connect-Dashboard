@@ -149,23 +149,46 @@ export const getUucPhcBenchmarkGaps = cache(async (): Promise<UucPhcBenchmarkGap
 
   if (error || !data || data.length === 0) return [];
 
-  const codes = [...new Set(data.map((row) => row.province_code))];
+  const codes = [...new Set(data.map((row) => row.province_code))].filter(
+    (code): code is string => code !== null,
+  );
   const { data: geos } = await supabase
     .from("dim_geo")
     .select("geo_code, geo_name")
     .in("geo_code", codes);
   const nameByCode = new Map((geos ?? []).map((g) => [g.geo_code, g.geo_name]));
 
+  // A view cannot declare `not null`, so every column arrives typed as nullable however
+  // unconditionally the view's own SQL produces it. The five below are structural — a row missing
+  // any of them names no province, or no count for one — and this page's rule is that a figure is
+  // computed or it is not shown. So such a row is dropped rather than defaulted: a 0 here would
+  // read as "no barangays affected", which is the opposite of "we could not tell". The migration's
+  // assertions mean this filter is expected to drop nothing; it exists so that if it ever does,
+  // the page loses a row instead of gaining a wrong one. `witness_value` is genuinely nullable and
+  // is passed through.
   return data
-    .map((row) => ({
-      provinceCode: row.province_code,
-      provinceName: nameByCode.get(row.province_code) ?? row.province_code,
-      nListedProvince: row.n_listed_province,
-      nAffected: row.n_affected,
-      kind: row.kind,
-      witnessValue: row.witness_value,
-      finding: row.finding as UucPhcGapFinding,
-    }))
+    .flatMap((row) => {
+      if (
+        row.province_code === null ||
+        row.n_listed_province === null ||
+        row.n_affected === null ||
+        row.kind === null ||
+        row.finding === null
+      ) {
+        return [];
+      }
+      return [
+        {
+          provinceCode: row.province_code,
+          provinceName: nameByCode.get(row.province_code) ?? row.province_code,
+          nListedProvince: row.n_listed_province,
+          nAffected: row.n_affected,
+          kind: row.kind,
+          witnessValue: row.witness_value,
+          finding: row.finding as UucPhcGapFinding,
+        },
+      ];
+    })
     .sort((a, b) => b.nAffected - a.nAffected);
 });
 

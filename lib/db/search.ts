@@ -1,6 +1,7 @@
 import "server-only";
 import { createSupabaseServerClient } from "./supabase";
 import type { GeoLevel } from "@/lib/filters/schema";
+import type { Database, Json } from "./database.types";
 
 /** Ancestor locality names for a geo, used to disambiguate same-named places
  * in search results (e.g. one of the many "Poblacion" barangays). Any level may
@@ -17,6 +18,14 @@ export type GeoSearchResult = {
   geoName: string;
   nTotal: number | null;
   parentChain: GeoParentChain;
+};
+
+/**
+ * One `search_geo` row, plus `parent_chain` as an *optional* column. Optional rather than required
+ * because the live function does not return it — see the comment inside `searchGeo` below.
+ */
+type SearchGeoRow = Database["public"]["Functions"]["search_geo"]["Returns"][number] & {
+  parent_chain?: Json | null;
 };
 
 /**
@@ -40,7 +49,16 @@ export async function searchGeo(query: string, limit = 8): Promise<GeoSearchResu
 
   if (error || !data) return [];
 
-  return data.map((row) => ({
+  // `search_geo`'s rows, widened by the one optional column below. The migration that adds it
+  // (`20260720130000_search_geo_parent_chain.sql`) is committed but has never been applied to the
+  // live project — `supabase gen types` reads the live function, so the generated Returns type has
+  // five columns where the repo's migration declares six. Rather than assert a column the live
+  // database does not return, this reads it as optional: today every row omits it and the mapping
+  // below falls through to "no parents known"; the day the migration is applied, the same code
+  // starts rendering the chain with no edit. See the U12a entry in docs/DECISIONS.md.
+  const rows: SearchGeoRow[] = data;
+
+  return rows.map((row) => ({
     geoCode: row.geo_code,
     geoLevel: row.geo_level,
     geoName: row.geo_name,
