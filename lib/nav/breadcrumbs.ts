@@ -70,6 +70,7 @@ const PROFILING_STATUS_TRAILS: Record<string, Crumb[]> = {
 const UUC_PHC_TRAILS: Record<string, Crumb[]> = {
   "/uuc-phc": [UUC_PHC_CRUMB],
   "/uuc-phc/criteria": [UUC_PHC_CRUMB, { label: "Qualifying criteria" }],
+  "/uuc-phc/bhw-coverage": [UUC_PHC_CRUMB, { label: "BHW coverage" }],
   "/uuc-phc/indicators": [UUC_PHC_CRUMB, { label: "Indicators" }],
   "/uuc-phc/data-quality": [UUC_PHC_CRUMB, { label: "Data quality" }],
   "/uuc-phc/methodology": [UUC_PHC_CRUMB, { label: "Methodology" }],
