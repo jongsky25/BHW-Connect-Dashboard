@@ -83,16 +83,25 @@ describe("normalizeQuestion", () => {
 });
 
 describe("askCacheKey", () => {
-  it("scopes by data version and geo, with 'national' for no geo context", () => {
-    expect(askCacheKey("v1", "0722", "q")).toBe("v1|0722|q");
-    expect(askCacheKey("v1", null, "q")).toBe("v1|national|q");
+  it("scopes by data version, dataset and geo, with 'national' for no geo context", () => {
+    expect(askCacheKey("v1", "bhw-2025", "0722", "q")).toBe("v1|bhw-2025|0722|q");
+    expect(askCacheKey("v1", "bhw-2025", null, "q")).toBe("v1|bhw-2025|national|q");
+  });
+
+  // §8 defect 3: without the dataset segment these two produce one key, and whichever section
+  // asked first serves its answer to the other. The hit is fluent and passes the numeric audit,
+  // because it is grounded — in the other dataset.
+  it("separates the same question asked about two datasets at the same version and geo", () => {
+    expect(askCacheKey("v1", "bhw-2025", "0722", "how many are there")).not.toBe(
+      askCacheKey("v1", "uuc-phc-2025", "0722", "how many are there"),
+    );
   });
 });
 
 describe("lookupAskCache", () => {
   it("returns the stored answer and bumps hit_count on a hit", async () => {
     state.row = { answer_md: "There are 5 BHWs.", provider: "gemini", status: "auto", hit_count: 3 };
-    const hit = await lookupAskCache("q", null, "v1");
+    const hit = await lookupAskCache("q", null, "v1", "bhw-2025");
     expect(hit).toEqual({ answerMd: "There are 5 BHWs.", provider: "gemini" });
     expect(state.updates).toHaveLength(1);
     expect(state.updates[0].hit_count).toBe(4);
@@ -100,20 +109,20 @@ describe("lookupAskCache", () => {
 
   it("misses on a blocked entry", async () => {
     state.row = { answer_md: "old answer", provider: "gemini", status: "blocked", hit_count: 0 };
-    expect(await lookupAskCache("q", null, "v1")).toBeNull();
+    expect(await lookupAskCache("q", null, "v1", "bhw-2025")).toBeNull();
     expect(state.updates).toHaveLength(0);
   });
 
   it("misses on a read error", async () => {
     state.selectError = { message: "boom" };
-    expect(await lookupAskCache("q", null, "v1")).toBeNull();
+    expect(await lookupAskCache("q", null, "v1", "bhw-2025")).toBeNull();
   });
 
   it("misses rather than throwing when the service client is unconfigured", async () => {
     createSupabaseServiceClient.mockImplementationOnce(() => {
       throw new Error("unconfigured");
     });
-    expect(await lookupAskCache("q", null, "v1")).toBeNull();
+    expect(await lookupAskCache("q", null, "v1", "bhw-2025")).toBeNull();
   });
 });
 
@@ -123,6 +132,7 @@ describe("storeAskAnswer", () => {
     questionDisplay: "Q?",
     geoCode: null,
     dataVersion: "v1",
+    datasetSlug: "bhw-2025",
     answerMd: "Answer.",
     provider: "gemini",
   };
@@ -131,9 +141,10 @@ describe("storeAskAnswer", () => {
     await storeAskAnswer(params);
     expect(state.upserts).toHaveLength(1);
     expect(state.upserts[0]).toMatchObject({
-      cache_key: "v1|national|q",
+      cache_key: "v1|bhw-2025|national|q",
       question_norm: "q",
       answer_md: "Answer.",
+      dataset_slug: "bhw-2025",
       status: "auto",
     });
   });
@@ -184,7 +195,7 @@ describe("near-match config", () => {
 
 describe("lookupAskCacheNearMatch", () => {
   it("returns null without touching the db when disabled", async () => {
-    const hit = await lookupAskCacheNearMatch("q", null, "v1");
+    const hit = await lookupAskCacheNearMatch("q", null, "v1", "bhw-2025");
     expect(hit).toBeNull();
     expect(state.rpcCalls).toHaveLength(0);
   });
@@ -199,11 +210,11 @@ describe("lookupAskCacheNearMatch", () => {
     };
     state.row = { hit_count: 2 }; // read for the bump
 
-    const hit = await lookupAskCacheNearMatch("how many bhw", null, "v1");
+    const hit = await lookupAskCacheNearMatch("how many bhw", null, "v1", "bhw-2025");
     expect(hit).toMatchObject({ answerMd: "There are 5.", provider: "gemini", matchedNorm: "how many bhws", score: 0.92 });
     expect(state.rpcCalls[0]).toEqual({
       name: "match_ask_answer",
-      args: { q: "how many bhw", scope: "national", version: "v1", min_sim: 0.85 },
+      args: { q: "how many bhw", scope: "national", version: "v1", dataset: "bhw-2025", min_sim: 0.85 },
     });
     expect(state.updates).toHaveLength(1);
     expect(state.updates[0].hit_count).toBe(3);
@@ -212,15 +223,25 @@ describe("lookupAskCacheNearMatch", () => {
   it("passes the page geo scope through to the rpc", async () => {
     process.env.ASK_NEAR_MATCH_ENABLED = "1";
     state.rpcResult = { data: [], error: null };
-    await lookupAskCacheNearMatch("q", "07", "v1");
+    await lookupAskCacheNearMatch("q", "07", "v1", "bhw-2025");
     expect(state.rpcCalls[0].args).toMatchObject({ scope: "07" });
+  });
+
+  // This path never reads the cache key — it matches on the data_version, geo_code and
+  // dataset_slug columns — so the dataset has to reach the rpc as its own argument or the
+  // near-match path keeps crossing datasets after askCacheKey is fixed (§8 defect 3).
+  it("passes the dataset through to the rpc, which is the only thing scoping this path", async () => {
+    process.env.ASK_NEAR_MATCH_ENABLED = "1";
+    state.rpcResult = { data: [], error: null };
+    await lookupAskCacheNearMatch("q", "07", "v1", "uuc-phc-2025");
+    expect(state.rpcCalls[0].args).toMatchObject({ dataset: "uuc-phc-2025" });
   });
 
   it("returns null on an empty match set or rpc error", async () => {
     process.env.ASK_NEAR_MATCH_ENABLED = "1";
     state.rpcResult = { data: [], error: null };
-    expect(await lookupAskCacheNearMatch("q", null, "v1")).toBeNull();
+    expect(await lookupAskCacheNearMatch("q", null, "v1", "bhw-2025")).toBeNull();
     state.rpcResult = { data: null, error: { message: "boom" } };
-    expect(await lookupAskCacheNearMatch("q", null, "v1")).toBeNull();
+    expect(await lookupAskCacheNearMatch("q", null, "v1", "bhw-2025")).toBeNull();
   });
 });

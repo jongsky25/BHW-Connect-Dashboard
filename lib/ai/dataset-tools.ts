@@ -28,8 +28,15 @@ import { createTraversalTool } from "./traverse-graph";
  * Both are built per `exposure`, so the same code serves a public surface (the `agg_*`/`dim_*`
  * layer anon can already read) and the internal assistant (`fact_*` too) without a second
  * allowlist and without either one being able to reach past its own boundary.
+ *
+ * `datasetSlugs` narrows further, to one dataset's own relations (plus the structural ones, which
+ * carry no slug — see `inDatasetScope`). U8's public chat on `/uuc-phc` uses it: exposure alone
+ * would hand a targeting list of barangays the whole BHW census as well, and a section that
+ * answers the neighbouring section's questions is the same wrong-dataset confusion the cache-key
+ * fixes exist to prevent, arriving through the front door. Omitting it is unchanged behaviour, so
+ * the internal assistant still sees everything its exposure allows.
  */
-export function createDatasetTools(exposure: Exposure): Tool[] {
+export function createDatasetTools(exposure: Exposure, datasetSlugs?: readonly string[]): Tool[] {
   return [
     {
       definition: {
@@ -50,9 +57,9 @@ export function createDatasetTools(exposure: Exposure): Tool[] {
         const table = typeof args.table === "string" ? args.table : null;
 
         if (table) {
-          const dataset = await getRegisteredDataset(table, exposure);
+          const dataset = await getRegisteredDataset(table, exposure, datasetSlugs);
           if (!dataset) {
-            const available = await listRegisteredDatasets(exposure);
+            const available = await listRegisteredDatasets(exposure, datasetSlugs);
             return {
               error: `Table ${table} is not registered. Available: ${available.map((d) => d.tableName).join(", ")}.`,
             };
@@ -60,7 +67,7 @@ export function createDatasetTools(exposure: Exposure): Tool[] {
           return { table: dataset.tableName, dictionary: describeDataset(dataset) };
         }
 
-        const datasets = await listRegisteredDatasets(exposure);
+        const datasets = await listRegisteredDatasets(exposure, datasetSlugs);
         if (datasets.length === 0) {
           return {
             error: "The dataset registry is unavailable — use the indicator tools instead.",
@@ -124,7 +131,7 @@ export function createDatasetTools(exposure: Exposure): Tool[] {
         },
       },
       async execute(args) {
-        return executeQueryDataset(args, exposure);
+        return executeQueryDataset(args, exposure, datasetSlugs);
       },
     },
   ];

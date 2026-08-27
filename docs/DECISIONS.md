@@ -3605,6 +3605,211 @@ by someone with the CLI and the project credentials, as its own commit with noth
 `npm run typecheck` is clean on the hand-maintained file today, so nothing is broken while it
 waits — this is tidiness, not correctness.
 
+## 2026-08-27 — UUC for PHC 2025: U8, ask the data — and the two cache keys that had no dataset in them
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U8. The section gets the two AI surfaces `/bhw` has — a chat and an
+insight slot — and §8's defects 2 and 3 are fixed first, because they are the part that fails
+invisibly.
+
+**A cross-dataset hit is fluent, grounded and wrong.** Both caches keyed on a `data_version` that
+was always `getActiveDataset()`'s, i.e. the *BHW* dataset's. `askCacheKey(dataVersion, geoCode,
+questionNorm)` would have served the BHW answer to an identically-worded question asked on
+`/uuc-phc` — and it would have passed `auditNarrative`, because the answer *is* grounded, in the
+other dataset. `cacheKey(dataVersion, geoCode, narrativeType)` had the same hole with only
+`'overview'` in the enum. Nothing on either page would reveal it: the answer names a real place and
+carries real numbers. So these were fixed and verified before anything was built on them.
+
+- **`narrative_type` cost one enum value, as the plan predicted.** It was already in the key and
+  already an extension point; `'uuc_overview'` is the second value. No migration.
+- **`askCacheKey` gained the dataset slug** — `data_version|dataset_slug|geo|question_norm`.
+- **But the key was not the whole hole.** `match_ask_answer` (the A4 near-match path) never reads
+  the cache key at all: it matches on the `data_version` and `geo_code` *columns*. Fixing
+  `askCacheKey` alone would have left a UUC question able to near-match an approved BHW answer.
+  `ai_ask_cache.dataset_slug` is added `not null` (backfilled `'bhw-2025'`, which every existing
+  row is by construction — there was one chat surface), the function is recreated with a `dataset`
+  argument, and it filters on it. **No default on the column**: a default would let a third surface
+  that forgets to name its dataset inherit `'bhw-2025'` silently, and the write is already
+  best-effort, so failing is the safe direction.
+- **And there was a third place, which the plan does not name.**
+  `refreshApprovedAskAnswers` re-runs `approved` rows through the tool loop on a version bump. Its
+  own docstring promises "the exact grounding path a live ask would" — which only holds if the
+  prompt and the tools match the dataset the stored question was about. A single pass keyed on one
+  dataset's version would have found every UUC row stale against the *BHW* version and regenerated
+  it under the BHW prompt with the BHW tools, then written the result back at `status = 'approved'`
+  — worse than the cache collision, because an approved row is exactly what the near-match path is
+  allowed to reuse. It now walks one scope at a time.
+- **`data_version` is now per dataset.** `getDatasetBySlug` returns the whole `DatasetInfo` rather
+  than just the id, so each scope versions its own caches. The direction that matters is the
+  second one: a *UUC republication* now invalidates UUC answers, where keying on the census meant
+  they would have gone stale only when the census moved. The two live values genuinely differ
+  (`2026-07-19` vs `2026-08-26`), which is precisely why relying on the version alone would have
+  looked fine in testing and been wrong in principle.
+
+**One object, not four parameters — `lib/ai/dataset-scope.ts`.** A scope carries the dataset slug,
+the system prompt, the tool set, the narrative type and its prompt, and the empty-answer line. The
+failure this shape prevents is a *partial* switch: the UUC tools with the BHW prompt, or the right
+prompt with the BHW cache key. Each of those produces an answer that is fluent, survives the audit
+and is about the wrong dataset. A caller picks a scope, not a set of settings it could get half
+right. The BHW scope is the pre-U8 behaviour moved verbatim — same prompt object, same `TOOLS`
+array — so `/bhw`, `/place/*` and `/explore` are unchanged by construction rather than by
+inspection, and a test asserts the identity.
+
+**The tool set is narrowed to this dataset, which the plan does not ask for and which is the right
+call.** `createDatasetTools('public')` hands over all 26 public relations, the BHW aggregates
+included. Nothing about that is unsafe — `anon` can already read every one of them — but it would
+make the two sections answer each other's questions *by construction*, which is the same
+wrong-dataset confusion defects 2 and 3 describe, arriving through the front door instead of
+through a cache. A reader on a targeting list of barangays asking about accreditation should be
+sent to `/bhw`, not quietly answered here from a table this section never renders. So
+`createDatasetTools` takes an optional slug scope, applied in `fetchRegistry` — the registry
+module's single fetch path, so both entry points inherit it and no caller can forget. It is applied
+in `getRegisteredDataset` too, not only in the catalogue: a model that names a table it was never
+shown has to be refused by the function that would read it, or the catalogue is advice rather than
+a boundary.
+
+**Relations with no `dataset_slug` stay in every scope.** `dim_geo` and `dim_dataset` are the
+coordinate system datasets are expressed in, not datasets of their own. `dim_geo` in particular is
+what makes the plan's second Verify case answerable at all: telling *"that barangay is not on the
+2025 list"* apart from *"there is no such barangay"* needs a source of barangays that is not the
+list itself. Verified live — a real NCR barangay resolves in `dim_geo` and returns
+`matchingRows: 0` from `fact_uuc_phc_barangay`.
+
+**On guardrail 5** (`AI_ASSISTANT_PLAN.md` §9: public tools touch only the `agg_*`/`dim_*` layer).
+This scope reaches `fact_uuc_phc_barangay` and `fact_uuc_phc_indicators`. That is not a relaxation:
+the guardrail is *implemented* as the registry's `exposure` column, and U5 registered both `public`
+on their merits. They are a published list of **places** with no person-level rows, already
+public-read to `anon`, and already rendered in full on the city/municipality page. The suppression
+concern the guardrail exists for — `fact_bhw_raw`, 270,917 people — does not arise, and that table
+remains unregistered and unreachable from here.
+
+**Refusals are the increment, not a garnish.** This dataset is a targeting list, so the questions
+it invites are ones it cannot answer: *should my barangay be on this list*, *why was this one
+included*, *would mine qualify*. Presence is recorded; the assessment behind it is not, and the
+barangays that were assessed and **not** listed were never loaded (U1). Rule 2 of
+`UUC_PHC_SYSTEM_PROMPT` says all of that and points at the source office — BLHSD, which issues the
+list — and at the correction link U6 put in the section footer, rather than letting the model
+reason from the indicator values toward a verdict of its own. Rules 3 to 5 carry the caveats this
+section already enforces everywhere else: `health_indicators` is a recorded classification and must
+never be presented as checkable against `imr`/`fic`/`water`; a capped value is never reported
+without its caveat and these seven columns are never averaged; the four routes never sum.
+
+**A separate prompt, not a variant**, on `INTERNAL_SYSTEM_PROMPT`'s precedent: what differs between
+two surfaces is scope, and scope drift is what one shared prompt with conditional paragraphs
+invites.
+
+**Rule 6 exists because of something the audit does, observed rather than assumed.**
+`auditNarrative` collects numbers from tool *payloads*, and a number inside a dictionary string is
+not collected — so a sentence restating the AO's thresholds ("at least 10 percent…", "4 of 7") is
+stripped, correctly, as untraceable. Confirmed live: a scripted answer quoting a threshold lost
+that sentence and kept the queried figure. The fix is **not** to widen `ALWAYS_ALLOWED`, which is
+shared with `/bhw` and would blow a hole in the audit for every answer; it is to tell the model not
+to quote thresholds at all and to point at `/uuc-phc/methodology`. A threshold restated by a model
+is exactly a number nobody checked.
+
+**The methodology page says what the chat will refuse, in the reader's words.** A refusal policy
+that lives only in a prompt is a policy nobody can read. `/uuc-phc/methodology#ask` states the
+boundary and names where to take the question instead; the chat's "how this works" link points
+there rather than at `/methodology#ai`, which describes the BHW chat.
+
+**`ChatLauncher`'s BHW-shaped copy is props now**, `DeckMeta.brandLabel`'s discipline: every one is
+optional with the BHW value as its default, so the two existing callers are untouched by
+construction. Starter questions were the plan's ask; the intro line, the placeholder and the
+methodology href had the same problem — "Ask about accreditation, training, honorarium…" is wrong
+on a page holding none of those. `components/uuc-phc/ask-the-list.tsx` binds the section's copy
+once so a fifth page cannot inherit the BHW set by omission.
+
+**The third starter question is "Why is a barangay on this list?" deliberately.** It is the
+question this dataset attracts, and the honest answer is bounded. A visitor is better served
+meeting that boundary in the first click than after typing a question about their own barangay.
+
+**Mounted on all four routes**, including the two `/uuc-phc/criteria` pages the U8 scope predates —
+the criteria page is exactly where "why was this one included" gets asked, so a chat that refuses
+that question well belongs there most.
+
+**`AiInsight` on the area pages only, as the plan writes it.** The landing's single figure is
+already its hero, and a narrative there would restate it at the cost of a provider call on the
+section's highest-traffic page. It is **promoted as a slide**, like `/bhw`'s and unlike U6's
+barangay disclosures: its caveats are inside its sentences (rule 4) rather than in a footnote that
+promotion would leave behind, so there is nothing here for a slide to strip.
+
+**Phase 2's machinery is deliberately not reachable from this chat, and the plan predates it.**
+PR #81 landed `searchDocuments`, the document corpus and citations. The corpus is the 2027 Budget
+Cue Cards — internal budget material, and `AI_ASSISTANT_PLAN.md` §12.5 is explicit that clearance
+to *load* it is not clearance to expose it, with §9.1 standing unchanged. It is also the one corpus
+that would be genuinely tempting here, since slides 37 and 141 carry this very list's regional
+distribution. Reaching for it would put internal material behind a public button to restate a
+figure `agg_uuc_phc_counts` already answers exactly. `traverseGraph` is out for the same reason —
+it reads `kb_edge`, service-role only. A test asserts the UUC tool set is exactly
+`listDatasets`/`queryDataset` and contains neither.
+
+**Two wrong figures found in the column dictionaries, and the reason they matter more than a typo.**
+The dictionary is what a model reads before composing a query — U5's own framing, "the allowlist,
+not documentation" — so a stale number there reaches an answer with nothing rendering it for a
+person to notice.
+
+- `ref_uuc_phc_provincial`'s note still said **238** barangays cannot support criterion (d). U7
+  established 226 and corrected the plan, the cleaning report and the page, but not this seed.
+- `agg_uuc_phc_criteria`'s overlap caveat said the four routes come to "about **141** percent" of
+  the list. The live national row is 61 + 38 + 12 + 35 = **146** with route (d) over its own
+  denominator — the figure `/uuc-phc/criteria` prints beneath the four tracks and the one this
+  document records. The naive sum over `n_listed` is 145. 141 is neither. The note now names 146
+  *and says where a reader sees it*, so the dictionary and the page can be checked against each
+  other.
+
+Both are guarded by tests against the committed seed. **Every other figure in the five UUC
+dictionaries was then checked against live data** rather than assumed — 5,991 rows; 1,397 capped
+barangays over 1,584 values; 886 Water and 456 FIC; 57 with no reference in 2 provinces plus 169
+placeholders in 3, summing to the 226 in 5; 113 barangays in 2 provinces under an uncapped FIC
+benchmark; 4,594 barangays with nothing capped; 87 view rows. All correct.
+
+**Observed and not changed.** With no provider configured, `AiInsight` returns null and its
+`PresentationSlide` still registers, so the deck carries an empty "AI insight" frame. `/bhw` does
+exactly the same thing (slide 4 of 8) — it is pre-existing shared-machinery behaviour, it only
+manifests without a provider key, and suppressing an empty slide would change `/bhw`'s deck. Noted
+rather than fixed on the way past.
+
+**Two things the rebase onto Phase 3 turned up**, both mechanical but worth the line. PR #84
+merged mid-session and had already claimed `20260827110000`; this migration is
+`20260827150000_ai_ask_cache_dataset_slug.sql`, after Phase 3's last. And the lineage seed was
+regenerated rather than left alone, per 1.5's workflow — the graph gains **1 node and 4 edges**,
+all this migration's (`ai_ask_cache` and `ai_ask_log` each `built-by` it as an `alter table`, plus
+their `reconciled-in` edges to this plan), with nothing removed and no ref-number churn, since a
+migration dated last sorts last. The generator prints nothing to stderr and no table node lacks a
+`built-by` edge.
+
+**Verify.** `npm run lint`, `npm run typecheck` and `npm test` (445 tests, 50 new) all clean.
+
+Live against the project: the migration applied and backfilled **10** `ai_ask_cache` and **36**
+`ai_ask_log` rows to `bhw-2025`, 0 nulls left. The near-match hole is closed at the database:
+the one real `approved` row returns at score **1.000** for `dataset := 'bhw-2025'` and **no rows**
+for `'uuc-phc-2025'` at the same words, version and geo scope. The UUC scope resolves to exactly
+**7** relations — the five UUC ones plus `dim_geo` and `dim_dataset` — and no BHW aggregate; all
+five UUC `notes_md` hash-match the committed seed after both corrections.
+
+The chat path was exercised end to end against live data with a **scripted model** standing in for
+the provider (this environment has no provider key and no service-role key): real `runToolLoop`,
+real `createDatasetTools`, real `planQuery`, real PostgREST, real `auditNarrative`, real prompt.
+`listDatasets` returned the seven; `queryDataset { table: 'agg_bhw_counts' }` was refused with
+*"not registered for public use on this page"*; the national criteria row came back carrying its
+overlap caveat; a capped barangay's row came back with `capped_indicators` beside the values and
+the capping caveat in the payload's warnings; a real NCR barangay resolved in `dim_geo` and counted
+**0** in `fact_uuc_phc_barangay`; and a fabricated threshold sentence was stripped while the queried
+figure survived.
+
+In Chromium against a production build, on all four UUC routes: the launcher opens, the three UUC
+starters render, the intro reads "Ask a question about the 2025 UUC for PHC list.", the placeholder
+is the section's, and "how this works" points at `/uuc-phc/methodology#ask`. `/bhw` and `/explore`
+still show the three BHW starters, the BHW placeholder and `/methodology#ai`. A sent question POSTs
+`dataset: "uuc-phc"` with the page's `geoCode`/`geoLevel`. The deck starts, advances all five
+slides, shows **"UUC FOR PHC"** and `Data: UUC for PHC · …`, and exits; `/bhw`'s eight still read
+**"BHW CONNECT"**. `/uuc-phc/methodology#ask` renders. **Zero console errors** on every route.
+
+**Not verified, and not claimed.** A real model answering a real question. This environment has no
+provider key, so the surfaces degrade — a sent question streams *"Live AI is at capacity right
+now"*, which is the correct `allCapped` path and was seen — and no live model has been asked
+"should my barangay be on this list?" Everything below the provider boundary is covered above; the
+boundary itself is not. That is the same gap Increments 1.3, 1.4, 2.2 and 2.3 recorded, and the
+same one that closes with a key on the deployed preview.
 ## 2026-08-27 — The corpus is embedded: §11's dimension question is answered, 3072, measured
 
 The one thing Phase 2 and Phase 3 both had to record as unverified. `doc_embedding_model` and

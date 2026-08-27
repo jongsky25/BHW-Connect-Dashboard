@@ -1,11 +1,11 @@
 import "server-only";
-import { getActiveDataset } from "@/lib/db/dataset";
+import { getDatasetBySlug } from "@/lib/db/dataset";
 import { getGeoByCode } from "@/lib/db/geo";
 import { createSupabaseServiceClient } from "@/lib/db/service-client";
 import { runToolLoop } from "./agent-loop";
 import { askCacheKey } from "./ask-cache";
 import { auditNarrative } from "./audit";
-import { SYSTEM_PROMPT } from "./system-prompt";
+import { allDatasetScopes, type DatasetScope } from "./dataset-scope";
 import type { ChatMessage } from "./providers/types";
 
 /**
@@ -18,11 +18,19 @@ import type { ChatMessage } from "./providers/types";
  * `auto` entries are deliberately NOT refreshed here — they regenerate lazily on first ask, which
  * keeps this bounded to the small admin-curated set. Runs inside the daily precompute cron.
  *
- * Regeneration reruns the exact grounding path a live ask would (same system prompt, same page
- * context reconstructed from geo_code, same numeric audit), so a refreshed answer is held to the
- * identical safety bar. A hand-edited approved answer is therefore replaced on a version bump by
- * design: its numbers were checked against the *old* data, so carrying its text forward verbatim
- * under a new version would risk quoting stale figures — the one thing the whole scheme forbids.
+ * Regeneration reruns the exact grounding path a live ask would (same system prompt, same tool
+ * set, same page context reconstructed from geo_code, same numeric audit), so a refreshed answer
+ * is held to the identical safety bar. A hand-edited approved answer is therefore replaced on a
+ * version bump by design: its numbers were checked against the *old* data, so carrying its text
+ * forward verbatim under a new version would risk quoting stale figures — the one thing the whole
+ * scheme forbids.
+ *
+ * **This walks one dataset scope at a time, and that is a correctness requirement rather than
+ * tidiness** (`UUC_PHC_2025_PLAN.md` §8, defect 3). "Same grounding path a live ask would" only
+ * holds if the prompt and the tools match the dataset the stored question was asked about; a
+ * single pass keyed on one dataset's version would have found every UUC row "stale" against the
+ * BHW version and regenerated it against the BHW prompt and the BHW tools — writing an answer
+ * about the wrong dataset under the right question, at `status = 'approved'`.
  */
 
 export type AskRefreshResult = {
@@ -41,32 +49,35 @@ export async function refreshApprovedAskAnswers(opts: {
   limit?: number;
 }): Promise<AskRefreshResult> {
   try {
-    const dataVersion = (await getActiveDataset())?.lastUpdatedAt ?? "unknown";
     const supabase = createSupabaseServiceClient();
+    const result = { staleTotal: 0, attempted: 0, refreshed: 0, ranOutOfTime: false };
 
-    const { data: stale, error } = await supabase
-      .from("ai_ask_cache")
-      .select("cache_key, question_display, question_norm, geo_code")
-      .eq("status", "approved")
-      .neq("data_version", dataVersion)
-      .limit(opts.limit ?? 50);
+    for (const scope of allDatasetScopes()) {
+      if (result.ranOutOfTime) break;
 
-    if (error || !stale || stale.length === 0) return { ...EMPTY, staleTotal: stale?.length ?? 0 };
+      const dataVersion = (await getDatasetBySlug(scope.datasetSlug))?.lastUpdatedAt ?? "unknown";
+      const { data: stale, error } = await supabase
+        .from("ai_ask_cache")
+        .select("cache_key, question_display, question_norm, geo_code")
+        .eq("status", "approved")
+        .eq("dataset_slug", scope.datasetSlug)
+        .neq("data_version", dataVersion)
+        .limit(opts.limit ?? 50);
 
-    let attempted = 0;
-    let refreshed = 0;
-    let ranOutOfTime = false;
+      if (error || !stale || stale.length === 0) continue;
+      result.staleTotal += stale.length;
 
-    for (const row of stale) {
-      if (Date.now() - opts.startedAt > opts.deadlineMs) {
-        ranOutOfTime = true;
-        break;
+      for (const row of stale) {
+        if (Date.now() - opts.startedAt > opts.deadlineMs) {
+          result.ranOutOfTime = true;
+          break;
+        }
+        result.attempted++;
+        if (await regenerateOne(supabase, row, scope, dataVersion)) result.refreshed++;
       }
-      attempted++;
-      if (await regenerateOne(supabase, row, dataVersion)) refreshed++;
     }
 
-    return { staleTotal: stale.length, attempted, refreshed, ranOutOfTime };
+    return result;
   } catch {
     return EMPTY;
   }
@@ -77,6 +88,7 @@ type StaleRow = { cache_key: string; question_display: string; question_norm: st
 async function regenerateOne(
   supabase: ReturnType<typeof createSupabaseServiceClient>,
   row: StaleRow,
+  scope: DatasetScope,
   dataVersion: string,
 ): Promise<boolean> {
   // Reconstruct the same page-context line the chat route injects, so the regenerated answer is
@@ -90,17 +102,17 @@ async function regenerateOne(
   }
 
   const messages: ChatMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT + contextLine },
+    { role: "system", content: scope.systemPrompt + contextLine },
     { role: "user", content: row.question_display },
   ];
 
-  const result = await runToolLoop(messages);
+  const result = await runToolLoop(messages, undefined, scope.createTools());
   if (result.allCapped || !result.finalText) return false;
 
   const audited = auditNarrative(result.finalText, result.toolPayloads);
   if (!audited.text) return false; // nothing grounded survived — keep the dormant old row, retry next run
 
-  const newKey = askCacheKey(dataVersion, row.geo_code, row.question_norm);
+  const newKey = askCacheKey(dataVersion, scope.datasetSlug, row.geo_code, row.question_norm);
   const { error: upsertErr } = await supabase.from("ai_ask_cache").upsert({
     cache_key: newKey,
     question_norm: row.question_norm,
@@ -109,6 +121,7 @@ async function regenerateOne(
     answer_md: audited.text,
     provider: result.provider,
     data_version: dataVersion,
+    dataset_slug: scope.datasetSlug,
     status: "approved", // stays approved so it keeps getting refreshed on the next version bump
     generated_at: new Date().toISOString(),
   });

@@ -1,10 +1,20 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getOrGenerateNarrative } from "@/lib/ai/narrative";
+import { getOrGenerateNarrative, type NarrativeType } from "@/lib/ai/narrative";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
 
-type AiInsightProps = { geoCode: string; geoLevel: GeoLevel; geoName: string };
+type AiInsightProps = {
+  geoCode: string;
+  geoLevel: GeoLevel;
+  geoName: string;
+  /** Which dataset's insight this slot holds. It is the `narrative_type` half of the cache key,
+   * and therefore the thing that keeps a UUC insight for Region VII from colliding with the BHW
+   * insight for Region VII (plan §8, defect 2). Defaults to the BHW overview. */
+  narrativeType?: NarrativeType;
+  /** Where "how this works" points. The BHW methodology page describes the BHW chat. */
+  methodologyHref?: string;
+};
 
 function AiInsightSkeleton() {
   return (
@@ -16,8 +26,14 @@ function AiInsightSkeleton() {
   );
 }
 
-async function AiInsightContent({ geoCode, geoLevel, geoName }: AiInsightProps) {
-  const narrative = await getOrGenerateNarrative(geoCode, geoLevel, geoName);
+async function AiInsightContent({
+  geoCode,
+  geoLevel,
+  geoName,
+  narrativeType = "overview",
+  methodologyHref = "/methodology#ai",
+}: AiInsightProps) {
+  const narrative = await getOrGenerateNarrative(geoCode, geoLevel, geoName, narrativeType);
   // No AI generation available and nothing cached (e.g. every provider capped on a cold cache) —
   // the page's existing template headlines already cover this figure, so render nothing extra
   // rather than an empty/broken-looking card (BUILD_PLAN.md §4.5: never an error state).
@@ -31,7 +47,7 @@ async function AiInsightContent({ geoCode, geoLevel, geoName }: AiInsightProps) 
       <p className="mt-2 text-sm">{narrative.content}</p>
       <p className="mt-2 text-xs text-muted">
         Written from the same figures shown on this page — see{" "}
-        <Link href="/methodology#ai" className="underline hover:text-accent">
+        <Link href={methodologyHref} className="underline hover:text-accent">
           how this works
         </Link>
         .

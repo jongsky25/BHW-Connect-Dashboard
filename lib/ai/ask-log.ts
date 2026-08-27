@@ -26,6 +26,10 @@ export type AskLogEntry = {
   /** 'cache' = exact-match bank hit, 'cache_near' = trigram near-match hit (A4), 'live' = generated. */
   servedFrom: "live" | "cache" | "cache_near";
   dataVersion: string | null;
+  /** `dim_dataset.slug` of the dataset this turn was grounded in. The curation corpus
+   * (ASK_CACHE_PLAN.md §3) is filtered on it — an answer about a different dataset is a different
+   * question wearing the same words. */
+  datasetSlug: string | null;
   toolTrace: { name: string; args: Record<string, unknown> }[];
   latencyMs: number;
 };
@@ -45,6 +49,7 @@ export async function recordAsk(entry: AskLogEntry): Promise<void> {
       provider: entry.provider,
       served_from: entry.servedFrom,
       data_version: entry.dataVersion,
+      dataset_slug: entry.datasetSlug,
       tool_trace: entry.toolTrace as unknown as Json,
       latency_ms: entry.latencyMs,
     });

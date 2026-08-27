@@ -295,7 +295,19 @@ describe("executeQueryDataset", () => {
     expect(result).toEqual({
       error: expect.stringContaining("fact_bhw_raw is not registered for public use"),
     });
-    expect(getRegisteredDataset).toHaveBeenCalledWith("fact_bhw_raw", "public");
+    expect(getRegisteredDataset).toHaveBeenCalledWith("fact_bhw_raw", "public", undefined);
+  });
+
+  it("refuses a table outside the caller's dataset scope, and says the scope is why", async () => {
+    // The catalogue is not a boundary on its own: a model that names a table it was never shown
+    // has to be refused by the tool that would read it. `agg_bhw_counts` is public — the scope,
+    // not the exposure, is what stops the UUC surface reading it (plan U8).
+    getRegisteredDataset.mockResolvedValue(null);
+    const result = await executeQueryDataset({ table: "agg_bhw_counts" }, "public", ["uuc-phc-2025"]);
+    expect(result).toEqual({
+      error: expect.stringContaining("agg_bhw_counts is not registered for public use on this page"),
+    });
+    expect(getRegisteredDataset).toHaveBeenCalledWith("agg_bhw_counts", "public", ["uuc-phc-2025"]);
   });
 
   it("refuses a row limit past the cap before any query is issued", async () => {
