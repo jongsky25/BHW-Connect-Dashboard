@@ -68,6 +68,50 @@ export function uucDeckCaption(counts: UucPhcCounts | null, areaLabel: string): 
   return `N = ${n} listed barangays · ${areaLabel} · 2025 list (DC No. 2025-0549)`;
 }
 
+/**
+ * Route this area's UUC for PHC coverage lives at. National is the section landing page
+ * (`/uuc-phc`) — where the drill-down starts — and every other level is the per-area route.
+ * There is no barangay route: `/uuc-phc/barangay/*` 404s by design, because a barangay page would
+ * be one yes/no the city/municipality page already renders.
+ */
+export function uucPhcAreaHref(geoLevel: GeoLevel, geoCode: string): string {
+  return geoLevel === "national" ? "/uuc-phc" : `/uuc-phc/${geoLevel}/${geoCode}`;
+}
+
+/**
+ * The cross-dataset context chip's sentence (plan §9 U12a), or null when there is nothing to say.
+ * Pure, and here rather than in the component on `uucDeckCaption`'s precedent — this section keeps
+ * its copy rules next to the counts they read.
+ *
+ * **The sentence names its own universe in its own words.** The pages this appears on
+ * (`/explore`, `/place/*`) are about *BHW profiles*; this is a count of *barangays*. That is the
+ * denominator switch §9 U12 refuses to put behind the map's indicator switcher, where one legend
+ * and one colour ramp would span two universes with nothing telling a reader they had changed. A
+ * sentence can do what a colour ramp cannot: say "barangays" out loud, beside its own denominator.
+ * That is the whole reason this is a chip and not a map layer.
+ *
+ * **"this area's", not the area name.** Both host pages already carry the place name in their
+ * heading directly above, and the generic phrasing keeps one string for every level — the
+ * alternative needs a possessive, which "Philippines" and "Cebu Province" do not share.
+ *
+ * **A zero renders, and says so positively.** `agg_uuc_phc_counts` carries a row for every geo, so
+ * NCR is a real 0 of 1,675 rather than an absence. A chip that vanished at zero would be
+ * indistinguishable from one that failed to load, and a reader could not tell "none listed here"
+ * from "we did not look".
+ */
+export function uucContextSentence(counts: UucPhcCounts | null): string | null {
+  // Null is a read failure *or* a level the aggregate does not cover — it stops at citymun, so a
+  // barangay geo has no row. Neither is a statement about the area, so the chip makes none.
+  if (!counts) return null;
+  // No denominator, no sentence: "0 of 0 barangays" asserts nothing, and no real area has none.
+  if (counts.nBarangays <= 0) return null;
+
+  const suffix = `of this area's ${counts.nBarangays.toLocaleString()} barangays`;
+  if (counts.nListed === 0) return `None ${suffix} are on the 2025 UUC for PHC list`;
+  if (counts.nListed === 1) return `1 ${suffix} is on the 2025 UUC for PHC list`;
+  return `${counts.nListed.toLocaleString()} ${suffix} are on the 2025 UUC for PHC list`;
+}
+
 export type Row = {
   geo_code: string;
   geo_level: GeoLevel;
