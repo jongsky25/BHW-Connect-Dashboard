@@ -108,7 +108,22 @@ create policy "fact_uuc_phc_indicators public read" on fact_uuc_phc_indicators
 --
 -- max() is safe for the value itself: the seed migration asserts that no province carries two
 -- different reference values (verified — 0 do), so where a value exists it is unambiguous.
-create or replace view ref_uuc_phc_provincial as
+--
+-- **security_invoker (plan U5).** Without it a view runs as its owner, so it reads through the
+-- owner's permissions and the RLS beneath it never applies to the caller — an ERROR-level
+-- Supabase advisor finding (security_definer_view), and a real one: this view's whole body is a
+-- read of fact_uuc_phc_indicators, whose access is meant to be decided by that table's own
+-- policy. This is the repository's only view, so there was no local convention to copy; the
+-- convention it sets is that the table's policy is the thing that grants access, and the view
+-- adds no privilege of its own. fact_uuc_phc_indicators is public-read to anon and
+-- authenticated, so nothing about who can read this view changes — only who decides it.
+--
+-- lineage: table:fact_uuc_phc_indicators derived-from doc:docs/UUC_PHC_2025_CLEANING_REPORT.md
+-- The values in this table are the output of the bounding process that report documents (1,584
+-- of them across 1,397 barangays); no join in this file says so, so ingestion/build_kb_lineage.py
+-- takes the edge from the line above rather than inferring it.
+create or replace view ref_uuc_phc_provincial
+with (security_invoker = true) as
 select
   g.province_code,
   count(*)::int as n_listed_barangays,

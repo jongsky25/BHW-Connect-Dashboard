@@ -9,6 +9,9 @@ from national down to city/municipality with each listed barangay showing the fa
 on and its health indicators (capped values marked), and every area has a downloadable PNG
 one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
 
+**U5 landed 2026-08-26** — the registry/lineage debt is cleared and the ERROR-level advisor
+finding is closed; U6 through U12 remain.
+
 **What this revision adds (2026-08-26): U5 through U12**, bringing the section up to the shape the
 2025 BHW Census section already has — present mode, ask-the-data chat, an AI insight slot,
 dataset-aware feedback, and sub-pages that show the data at levels the current two-page drill-down
@@ -569,7 +572,12 @@ Same discipline as U1–U4: each is independently shippable, each states its Ver
 started before its dependency lands. Dependencies: **U5 → U8**; **U7 → U9's factor view**;
 everything else is parallel.
 
-### U5 — Registry, lineage, and the SECURITY DEFINER view
+### U5 — Registry, lineage, and the SECURITY DEFINER view — **LANDED 2026-08-26**
+
+All four relations are registered with full column dictionaries, every table node in `kb_node`
+carries a `built-by` edge (the generator's stderr finding is clear for the first time), and
+`ref_uuc_phc_provincial` runs `security_invoker = true` with the advisor clean. See
+`docs/DECISIONS.md` and `docs/uuc-phc-feature.md`. The scope below is kept as written.
 
 **Carried debt, not new work.** PRs #75 (this dataset) and #76 (the internal AI assistant) were
 written against each other's absence and both merged. Three statements committed to `main` are now
