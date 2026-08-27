@@ -1,15 +1,22 @@
 import "server-only";
-import { getActiveDataset } from "@/lib/db/dataset";
+import { getDatasetBySlug } from "@/lib/db/dataset";
 import { createSupabaseServiceClient } from "@/lib/db/service-client";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { runToolLoop } from "./agent-loop";
 import { auditNarrative } from "./audit";
-import { SYSTEM_PROMPT } from "./system-prompt";
+import { scopeForNarrativeType, type NarrativeType } from "./dataset-scope";
 
-export type NarrativeType = "overview";
+export type { NarrativeType };
 
-/** `data_version|geo|narrative_type`, per BUILD_PLAN.md §4.1 — bumping the active dataset's
- * `last_updated_at` (a fresh ingestion) invalidates every cached narrative automatically. */
+/** `data_version|geo|narrative_type`, per BUILD_PLAN.md §4.1 — bumping the source dataset's
+ * `last_updated_at` (a fresh ingestion) invalidates every cached narrative automatically.
+ *
+ * **`narrative_type` is what separates the datasets** (`UUC_PHC_2025_PLAN.md` §8, defect 2). It was
+ * already in the key and already a free extension point, so the fix cost one enum value rather
+ * than a migration: before U8 the only value was `'overview'` and `dataVersion` was always the BHW
+ * census's, so a UUC insight for Region VII and the BHW insight for Region VII computed the same
+ * key and the second one written won. `dataVersion` is now the *scope's* dataset version too, so
+ * a UUC republication invalidates UUC insights and a BHW ingestion no longer does. */
 function cacheKey(dataVersion: string, geoCode: string, narrativeType: NarrativeType): string {
   return `${dataVersion}|${geoCode}|${narrativeType}`;
 }
@@ -61,7 +68,12 @@ async function generateOrReadCache(
   geoName: string,
   narrativeType: NarrativeType,
 ): Promise<Narrative | null> {
-  const dataset = await getActiveDataset();
+  // A narrative_type nothing claims has no prompt and no tool set to generate it with; refusing
+  // beats generating one under the wrong scope, which is the defect this key change exists to fix.
+  const scope = scopeForNarrativeType(narrativeType);
+  if (!scope) return null;
+
+  const dataset = await getDatasetBySlug(scope.datasetSlug);
   const dataVersion = dataset?.lastUpdatedAt ?? "unknown";
   const key = cacheKey(dataVersion, geoCode, narrativeType);
 
@@ -76,12 +88,16 @@ async function generateOrReadCache(
     return asNarrative(cached);
   }
 
-  const prompt = `Write a short (2-4 sentence) narrative summarizing BHW figures for ${geoName} (geo_code ${geoCode}, geoLevel ${geoLevel}). Call getIndicatorByGeo for the accreditation and demographics indicators, and check getTrainingCoverage/getHonorariumStats for anything worth mentioning. Lead with the Total BHWs vs. Validated profiles framing, then one or two more findings from the data. When you cite a headline figure, situate it against this place's region and the nation (call getIndicatorByGeo again with the region's or the national 'PH' geo_code), note where it stands among same-level places if the data you have shows that, and always state the N (validated profiles) behind any percentage, flagging plainly when N is small enough that the figure could swing widely. One paragraph, plain language, WPSAR tone.`;
+  const prompt = scope.narrativePrompt({ geoCode, geoLevel, geoName });
 
-  const result = await runToolLoop([
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: prompt },
-  ]);
+  const result = await runToolLoop(
+    [
+      { role: "system", content: scope.systemPrompt },
+      { role: "user", content: prompt },
+    ],
+    undefined,
+    scope.createTools(),
+  );
 
   if (result.allCapped || !result.finalText) {
     return cached ? asNarrative(cached) : null;

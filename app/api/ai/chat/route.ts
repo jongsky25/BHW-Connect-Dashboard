@@ -4,16 +4,20 @@ import { runToolLoop } from "@/lib/ai/agent-loop";
 import { lookupAskCache, lookupAskCacheNearMatch, normalizeQuestion, storeAskAnswer } from "@/lib/ai/ask-cache";
 import { recordAsk, type AskLogEntry } from "@/lib/ai/ask-log";
 import { auditNarrative } from "@/lib/ai/audit";
+import { datasetScope } from "@/lib/ai/dataset-scope";
 import { isChatRateLimited, recordChatCacheHit, recordChatMessage } from "@/lib/ai/rate-limit";
-import { SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
+import { DATASET_SCOPE_IDS } from "@/lib/ai/scope-id";
 import type { ChatMessage } from "@/lib/ai/providers/types";
-import { getActiveDataset } from "@/lib/db/dataset";
+import { getDatasetBySlug } from "@/lib/db/dataset";
 import { geoLevelSchema } from "@/lib/filters/schema";
 
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
   sessionId: z.string().uuid(),
+  // Which dataset this turn is about. Defaults to the BHW census so every pre-U8 caller — and any
+  // client that predates the field — behaves exactly as before.
+  dataset: z.enum(DATASET_SCOPE_IDS).default("bhw"),
   geoCode: z.string().min(1).max(20).optional(),
   geoLevel: geoLevelSchema.optional(),
   messages: z
@@ -65,17 +69,21 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { sessionId, geoCode, geoLevel, messages } = parsed.data;
+  const { sessionId, dataset, geoCode, geoLevel, messages } = parsed.data;
+  // One object carries the prompt, the tool set, the cache version and the cache scope, because
+  // getting any one of those from the wrong dataset produces an answer that is fluent, passes the
+  // numeric audit, and is about something else — see lib/ai/dataset-scope.ts.
+  const scope = datasetScope(dataset);
 
   const userMessages = messages.filter((m) => m.role === "user");
   const questionRaw = userMessages[userMessages.length - 1]?.content ?? "";
   const questionNorm = normalizeQuestion(questionRaw);
   const isSingleTurn = messages.length === 1 && messages[0].role === "user";
 
-  // Same staleness scheme as ai_narrative_cache: the active dataset's last_updated_at is the
-  // cache version, so a fresh ingestion invalidates every stored answer. getActiveDataset
-  // degrades to null (→ "unknown") when the database is unreachable.
-  const dataVersion = (await getActiveDataset())?.lastUpdatedAt ?? "unknown";
+  // Same staleness scheme as ai_narrative_cache: this scope's dataset last_updated_at is the
+  // cache version, so a fresh ingestion of *that* dataset invalidates its stored answers and
+  // leaves the other's alone. Degrades to null (→ "unknown") when the database is unreachable.
+  const dataVersion = (await getDatasetBySlug(scope.datasetSlug))?.lastUpdatedAt ?? "unknown";
 
   const logEntry = (partial: Pick<AskLogEntry, "answerMd" | "outcome" | "provider" | "servedFrom" | "toolTrace">) =>
     recordAsk({
@@ -86,6 +94,7 @@ export async function POST(request: Request) {
       geoLevel: geoLevel ?? null,
       turnIndex: Math.max(0, userMessages.length - 1),
       dataVersion,
+      datasetSlug: scope.datasetSlug,
       latencyMs: Date.now() - startedAt,
       ...partial,
     });
@@ -96,9 +105,14 @@ export async function POST(request: Request) {
   let bankHit: { answerMd: string; provider: string | null } | null = null;
   let servedFrom: "cache" | "cache_near" = "cache";
   if (isSingleTurn) {
-    bankHit = await lookupAskCache(questionNorm, geoCode ?? null, dataVersion);
+    bankHit = await lookupAskCache(questionNorm, geoCode ?? null, dataVersion, scope.datasetSlug);
     if (!bankHit) {
-      const near = await lookupAskCacheNearMatch(questionNorm, geoCode ?? null, dataVersion);
+      const near = await lookupAskCacheNearMatch(
+        questionNorm,
+        geoCode ?? null,
+        dataVersion,
+        scope.datasetSlug,
+      );
       if (near) {
         bankHit = { answerMd: near.answerMd, provider: near.provider };
         servedFrom = "cache_near";
@@ -131,14 +145,18 @@ export async function POST(request: Request) {
           : "";
 
       const chatMessages: ChatMessage[] = [
-        { role: "system", content: SYSTEM_PROMPT + contextLine },
+        { role: "system", content: scope.systemPrompt + contextLine },
         ...messages.map((m): ChatMessage => ({ role: m.role, content: m.content })),
       ];
 
-      const result = await runToolLoop(chatMessages, (event) => {
-        toolTrace.push(event);
-        send({ type: "tool_call", name: event.name, args: event.args });
-      });
+      const result = await runToolLoop(
+        chatMessages,
+        (event) => {
+          toolTrace.push(event);
+          send({ type: "tool_call", name: event.name, args: event.args });
+        },
+        scope.createTools(),
+      );
 
       if (result.allCapped) {
         send({ type: "capacity", message: "Live AI is at capacity right now — please try again shortly." });
@@ -150,9 +168,7 @@ export async function POST(request: Request) {
         const audited = auditNarrative(result.finalText, result.toolPayloads);
         send({
           type: "message",
-          content:
-            audited.text ||
-            "I couldn't find a fully grounded answer to that in the dataset — try asking about a specific place or indicator (accreditation, demographics, training, honorarium, or service years).",
+          content: audited.text || scope.emptyAnswer,
           provider: result.provider,
         });
         if (audited.text && isSingleTurn) {
@@ -161,6 +177,7 @@ export async function POST(request: Request) {
             questionDisplay: questionRaw,
             geoCode: geoCode ?? null,
             dataVersion,
+            datasetSlug: scope.datasetSlug,
             answerMd: audited.text,
             provider: result.provider,
           });

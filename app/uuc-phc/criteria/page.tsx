@@ -6,6 +6,7 @@ import { getUucPhcCriteria, getUucPhcCriteriaChildren } from "@/lib/db/uuc-phc-c
 import { CriteriaSection } from "@/components/uuc-phc/criteria-section";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentButton } from "@/components/present/present-button";
+import { AskTheList } from "@/components/uuc-phc/ask-the-list";
 
 // 1 hour, matching the rest of the section and for the same reason: the page is statically
 // prerendered, so a transient empty read during (re)generation would otherwise cache an
@@ -77,6 +78,8 @@ export default async function UucPhcCriteriaLanding() {
           childAreas={children}
           coverageHref="/uuc-phc"
         />
+
+        <AskTheList geoCode={NATIONAL_GEO_CODE} geoLevel="national" geoName="Philippines" />
       </div>
     </PresentationProvider>
   );

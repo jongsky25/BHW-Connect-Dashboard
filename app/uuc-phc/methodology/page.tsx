@@ -155,6 +155,37 @@ export default function UucPhcMethodology() {
         </ul>
       </section>
 
+      <section id="ask" className="flex flex-col gap-2 scroll-mt-6">
+        <h2 className="text-lg font-semibold">Asking this data a question</h2>
+        <p className="text-muted">
+          The <strong>Ask the data</strong> box on these pages is an AI assistant with no knowledge
+          of its own. Every number it gives you comes from a query it ran against this dataset while
+          answering, and any sentence carrying a number it cannot trace back to one of those queries
+          is removed before you see it. It reads only this list — not the Barangay Health Worker
+          census, which is a separate dashboard at{" "}
+          <Link href="/bhw" className="underline hover:text-accent">
+            BHW Connect
+          </Link>
+          .
+        </p>
+        <p className="text-muted">
+          <strong>There is one question it will not answer, and the reason matters.</strong> This
+          dataset records which barangays are on the 2025 list. It does not record the assessment
+          that put them there, and the barangays that were assessed and <em>not</em> listed are not
+          in it at all. So it can tell you whether a barangay is listed and which of the recorded
+          criteria its own values meet — and it cannot tell you whether a barangay{" "}
+          <em>should</em> be listed, why any barangay was included or left out, or whether an
+          unlisted barangay would qualify. Those are the source office&rsquo;s to answer: the DOH
+          Bureau of Local Health Systems Development, which issues the list. The correction link at
+          the foot of every page in this section is the route to them.
+        </p>
+        <p className="text-muted">
+          Two of the caveats above are rules it follows rather than notes it might mention. A value
+          bounded during cleaning is never reported without saying so, and the four qualifying
+          routes are never added together — they overlap, so their sum is not a total of anything.
+        </p>
+      </section>
+
       <p className="text-sm text-muted">
         <Link href="/uuc-phc" className="underline hover:text-accent">
           ← Back to the overview

@@ -55,9 +55,14 @@ it or not. Every figure on the section is therefore one count against one denomi
   socio-economic routes per area. The routes **overlap**, so they render as four independent
   shares against their own denominators — never stacked, never a pie, and the page prints the
   sum (146% nationally) to say so in words rather than let a reader infer a partition.
-- **Not built yet:** an `/explore` overlay, ask-the-data chat, an AI insight slot, and the
-  sub-pages that would show the indicator distributions and the data-quality caveats above
-  barangay grain. All planned as U8–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
+- **Ask the data, scoped to this list** (U8). The chat and the AI insight slot both run on a
+  grounding scope that carries this dataset's slug, prompt, tools and cache version together — the
+  two caches previously keyed on the BHW census's version and would have served its answers here.
+  The chat reaches only this dataset's five relations plus `dim_geo`/`dim_dataset`, and it refuses
+  the question this list attracts: *should my barangay be on it?* See "Asking the list" below.
+- **Not built yet:** an `/explore` overlay, and the sub-pages that would show the indicator
+  distributions and the data-quality caveats above barangay grain. Planned as U9–U12 in
+  `docs/UUC_PHC_2025_PLAN.md` §8–§9.
 
 ## The indicators (U3)
 
@@ -119,6 +124,57 @@ the 25% floor never entered the list.
   a full set.
 - **Children with nothing listed are dropped from this breakdown**, unlike the coverage one, where
   "0 of 1,675" is the finding. Here the row would be four empty tracks restating one zero.
+
+## Asking the list (U8)
+
+`ChatLauncher` runs on all four routes — the overview, the area pages and both criteria pages —
+and `AiInsight` sits on the area pages. Both are grounded in this dataset alone.
+
+- **The two AI caches had no dataset in their keys, and that is what U8 fixed first.** Both keyed
+  on `getActiveDataset()`'s `last_updated_at`, i.e. the *BHW census's*, so the same words asked on
+  `/uuc-phc` and `/bhw` computed the same key. The failure is invisible: a cross-dataset hit is
+  fluent, names a real place, and passes the numeric audit, because it *is* grounded — in the other
+  dataset. `narrative_type` gained `'uuc_overview'` (it was already in the key, so this cost one
+  enum value); `askCacheKey` gained the dataset slug; `ai_ask_cache.dataset_slug` and a `dataset`
+  argument to `match_ask_answer` close the near-match path, which never reads the cache key at all;
+  and `refreshApprovedAskAnswers` now walks one dataset scope at a time, since regenerating a UUC
+  question under the BHW prompt would write a wrong-dataset answer back at `approved`.
+- **One scope object, not four settings** (`lib/ai/dataset-scope.ts`). Dataset slug, system prompt,
+  tool set, narrative type and empty-answer line travel together, because the failure worth
+  preventing is a *partial* switch — the right tools with the wrong prompt still produces a fluent,
+  audited, wrong-dataset answer. The BHW scope is the pre-U8 behaviour verbatim, so `/bhw`,
+  `/place/*` and `/explore` are unchanged by construction.
+- **The tool set is this dataset's, not everything public.** `createDatasetTools('public')` would
+  hand over all 26 public relations. Nothing unsafe — `anon` reads them all — but it would make the
+  two sections answer each other's questions by construction. Scoped to `uuc-phc-2025`, the chat
+  sees seven relations: the five UUC ones plus `dim_geo` and `dim_dataset`, which carry no dataset
+  slug because they are the coordinate system, not a dataset. `dim_geo` is what lets an answer tell
+  **"not on the 2025 list"** apart from **"there is no such barangay"**.
+- **Refusals are the point of the increment.** Presence is recorded; the assessment behind it is
+  not, and the barangays assessed and *not* listed were never loaded. So the chat can say whether a
+  barangay is listed and which recorded criteria its values meet, and it must never say whether one
+  *should* be listed, why the source office included or excluded any barangay, or whether an
+  unlisted barangay would qualify. It points at BLHSD and the footer's correction link instead.
+  `/uuc-phc/methodology#ask` says the same thing to the reader — a refusal policy that lives only
+  in a prompt is a policy nobody can read.
+- **The section's caveats are prompt rules, not hopes.** `health_indicators` is reported as the
+  source's recorded score and never as something checkable against `imr`/`fic`/`water`; a value
+  named in `capped_indicators` is reported as a ceiling in the same sentence and the seven boundable
+  columns are never averaged; the four routes are never added, and route (d)'s denominator is
+  `n_health_evaluable`.
+- **The model is told not to quote the order's thresholds**, because `auditNarrative` strips them:
+  it collects numbers from tool payloads, and a number inside a dictionary string is not collected,
+  so "at least 10 percent" is untraceable and its sentence is dropped. Widening the audit's
+  allow-list was refused — it is shared with `/bhw`. Pointing at the methodology page is the fix.
+- **`ChatLauncher`'s BHW copy is props**, defaulted to the BHW values on `DeckMeta.brandLabel`'s
+  discipline. `components/uuc-phc/ask-the-list.tsx` binds this section's starters, intro,
+  placeholder and methodology link once.
+- **Two wrong figures were found in the column dictionaries and fixed**: `ref_uuc_phc_provincial`
+  still said 238 barangays cannot support criterion (d) (U7 established 226), and
+  `agg_uuc_phc_criteria` said the routes come to "about 141 percent" where the live row gives 146 —
+  the figure the criteria page prints. The dictionary is what a model reads before composing a
+  query, so a stale number there reaches an answer with nothing rendering it for a person to catch.
+  Every other figure in the five UUC dictionaries was checked against live data and is correct.
 
 ## Data model
 
@@ -235,6 +291,12 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Dataset slug | `lib/db/dataset.ts` (`DATASET_SLUGS.uucPhc`) |
 | Section landing + sub-pages | `app/uuc-phc/` (`page.tsx`, `[geoLevel]/[geoCode]/page.tsx`, `methodology/`, `layout.tsx`) |
 | Section components | `components/uuc-phc/` (coverage-hero, share-bar, child-breakdown, barangay-list, barangay-detail) |
+| Grounding scopes (chat + narrative) | `lib/ai/dataset-scope.ts` (+ `.test.ts`), `lib/ai/scope-id.ts` |
+| UUC system prompt | `lib/ai/uuc-phc-system-prompt.ts` |
+| Section chat launcher | `components/uuc-phc/ask-the-list.tsx` → `components/chat/chat-launcher.tsx` |
+| Chat route + its tests | `app/api/ai/chat/route.ts` (+ `.test.ts`) |
+| Dataset-scoped registry reads | `lib/db/dataset-registry.ts` (+ `dataset-registry-scope.test.ts`) |
+| Ask-cache dataset column | `supabase/migrations/20260827110000_ai_ask_cache_dataset_slug.sql` |
 | Criteria read layer | `lib/db/uuc-phc-criteria.ts` (+ `.test.ts`) |
 | Criteria page + components | `app/uuc-phc/criteria/`, `components/uuc-phc/` (criteria-section, route-shares, route-not-evaluable, route-breakdown) |
 | PNG one-pager | `lib/exports/uuc-phc-figure.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/route.ts` |
@@ -299,6 +361,21 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   CARAGA (184%, 156 excluded), Agusan del Sur (all 156 excluded, "Not evaluable here"), Mayoyao
   (104%) and NCR (0 listed, empty state); the deck starts, advances and exits on the route;
   `/uuc-phc/criteria/barangay/*` and unknown geos 404.
+- Ask the data (U8): the migration backfilled 10 `ai_ask_cache` and 36 `ai_ask_log` rows to
+  `bhw-2025` with **0 nulls**; the one real `approved` row near-matches at **1.000** under
+  `bhw-2025` and returns **no rows** under `uuc-phc-2025` at the same words, version and geo scope.
+  The UUC scope resolves to exactly **7** relations and no BHW aggregate, and all five UUC
+  `notes_md` hash-match the committed seed after the 238→226 and 141→146 corrections. The chat path
+  was run end to end against live data with a **scripted model** in place of the provider (no
+  provider key in this environment): `agg_bhw_counts` refused as "not registered for public use on
+  this page", the national criteria row returned with its overlap caveat, a capped barangay
+  returned with `capped_indicators` beside its values, a real NCR barangay resolved in `dim_geo` and
+  counted **0** in the fact table, and a fabricated threshold sentence was stripped while the
+  queried figure survived. In Chromium: all four UUC routes show the section's starters, intro,
+  placeholder and `/uuc-phc/methodology#ask` link and POST `dataset: "uuc-phc"`; `/bhw` and
+  `/explore` are unchanged; the deck still reads "UUC FOR PHC" over five slides and `/bhw`'s eight
+  still read "BHW CONNECT"; **zero console errors**. A live model answering a real question is
+  **not** verified — the surfaces degrade to "Live AI is at capacity right now", which was seen.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,

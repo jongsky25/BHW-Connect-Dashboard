@@ -265,6 +265,25 @@ describe("the UUC for PHC entries (plan U5)", () => {
     expect(score?.meaning).toMatch(/NOT recomputable/i);
   });
 
+  it("states the overlap at the figure the criteria page prints, and no other", () => {
+    // The caveat said "about 141 percent". The live national row is 61 + 38 + 12 + 35 = 146 with
+    // route (d) over its own denominator — what /uuc-phc/criteria prints beneath the four tracks —
+    // and 145 as a naive sum over n_listed. A dictionary that disagrees with the page about the
+    // one number the caveat exists to make vivid teaches the model to contradict the screen.
+    const table = registry.find((r) => r.tableName === "agg_uuc_phc_criteria");
+    expect(table?.notesMd).toMatch(/sum to 146 percent/);
+    expect(table?.notesMd).not.toMatch(/141 percent/);
+  });
+
+  it("carries the corrected not-evaluable figure, not the 238 U7 replaced", () => {
+    // The dictionary is what a model reads before composing a query, so a stale figure here is
+    // worse than a stale figure in prose: nothing renders it for a person to notice. U7 corrected
+    // 238 -> 226 in the plan, the cleaning report and the page, and left this copy behind.
+    const view = registry.find((r) => r.tableName === "ref_uuc_phc_provincial");
+    expect(view?.notesMd).toMatch(/226 barangays carry no usable reference/);
+    for (const r of registry) expect(r.notesMd ?? "", r.tableName).not.toMatch(/238 barangays/);
+  });
+
   it("marks surrogate ids unqueryable and measures as measures", () => {
     const ids = columns.filter((c) => c.tableName.includes("uuc") && c.columnName === "id");
     expect(ids.length).toBeGreaterThan(0);

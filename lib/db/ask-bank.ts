@@ -27,6 +27,10 @@ export type AskBankRow = {
   answerMd: string;
   provider: string | null;
   dataVersion: string;
+  /** `dim_dataset.slug` this answer is about. An approver has to see it: two datasets can attract
+   * the same words, and approving one dataset's answer for the other's question is exactly the
+   * failure the key and the near-match filter were changed to make impossible. */
+  datasetSlug: string;
   status: AskBankStatus;
   hitCount: number;
   generatedAt: string;
@@ -40,7 +44,7 @@ export async function listAskBank(limit = 200): Promise<AskBankRow[]> {
   const { data, error } = await supabase
     .from("ai_ask_cache")
     .select(
-      "cache_key, question_display, question_norm, geo_code, answer_md, provider, data_version, status, hit_count, generated_at, last_hit_at",
+      "cache_key, question_display, question_norm, geo_code, answer_md, provider, data_version, dataset_slug, status, hit_count, generated_at, last_hit_at",
     )
     .order("hit_count", { ascending: false })
     .order("generated_at", { ascending: false })
@@ -55,6 +59,7 @@ export async function listAskBank(limit = 200): Promise<AskBankRow[]> {
     answerMd: row.answer_md,
     provider: row.provider,
     dataVersion: row.data_version,
+    datasetSlug: row.dataset_slug,
     status: (isAskBankStatus(row.status) ? row.status : "auto"),
     hitCount: row.hit_count,
     generatedAt: row.generated_at,

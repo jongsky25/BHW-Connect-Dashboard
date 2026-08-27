@@ -9,12 +9,15 @@ from national down to city/municipality with each listed barangay showing the fa
 on and its health indicators (capped values marked), and every area has a downloadable PNG
 one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
 
-**U5 and U6 landed 2026-08-26; U7 landed 2026-08-27** — the registry/lineage debt is cleared, the
-ERROR-level advisor finding is closed, both `/uuc-phc` routes present, route their feedback by
-dataset and carry social cards, and `/uuc-phc/criteria` now answers *why* each barangay qualified,
-as four overlapping shares rather than a partition. U8 through U12 remain. §8's defect 1 (the
-hard-coded brand in the slide chrome) is fixed; defects 2, 3 and 4 are still open and belong to
-U8.
+**U5 and U6 landed 2026-08-26; U7 and U8 landed 2026-08-27** — the registry/lineage debt is
+cleared, the ERROR-level advisor finding is closed, both `/uuc-phc` routes present, route their
+feedback by dataset and carry social cards, `/uuc-phc/criteria` answers *why* each barangay
+qualified as four overlapping shares rather than a partition, and the section now has its own
+grounded chat and AI insight slot, scoped so neither can answer from the BHW census. U9 through
+U12 remain. **All four of §8's defects are closed**: defect 1 in U6, defects 2 and 3 in U8 (which
+found a third place with the same hole — the answer-bank refresh — and a second hole in the
+near-match path that the cache key alone did not close), and defect 4 is routed around by U5's
+registry.
 
 **What this revision adds (2026-08-26): U5 through U12**, bringing the section up to the shape the
 2025 BHW Census section already has — present mode, ask-the-data chat, an AI insight slot,
@@ -535,8 +538,8 @@ what a visitor experiences. This is the gap, verified file by file rather than f
 | Landing page | `app/bhw/page.tsx` — hero + 4 stat tiles, each with a mini-viz and an enlarge chart | Hero + one two-state bar |
 | Area profile | `app/place/[geoLevel]/[geoCode]/page.tsx` — 10 figure cards, benchmark rows, peer-rank chips, locator map, completeness | Hero + bar + child list + (at citymun) barangay list |
 | Present mode | `PresentationProvider` / `PresentationSlide` / `PresentButton` on `/bhw`, `/place/*`, `/explore`, `/compare` | **landed (U6)** |
-| Ask the data (chat) | `ChatLauncher` → `/api/ai/chat` on `/bhw`, `/explore` | **none** |
-| AI insight slot | `AiInsight` → `getOrGenerateNarrative` on `/bhw`, `/place/*` | **none** |
+| Ask the data (chat) | `ChatLauncher` → `/api/ai/chat` on `/bhw`, `/explore` | **landed (U8)** |
+| AI insight slot | `AiInsight` → `getOrGenerateNarrative` on `/bhw`, `/place/*` | **landed (U8)** |
 | Curated insight cards | `InsightsGrid` ← `lib/db/insights.ts` (718 lines of generators) | **none** |
 | Spot feedback | `SpotFeedback`, mounted globally in `app/layout.tsx` | **already renders** — it is gated off `/admin` and `/` only |
 | Map / filters | `/explore` — choropleth, geo cascade, breakdown picker, 15 figures | **none** |
@@ -559,20 +562,27 @@ increment that first needs it.
    `PresentationDeck`'s closing slide. `DeckMeta.brandLabel` now carries it, optional and
    defaulting to `"BHW Connect"`; resolution is `brandLabelOf` in `deck-logic.ts`.
    `/profiling-status` can adopt it with a one-line change.
-2. **The AI narrative cache key has no dataset dimension.** `lib/ai/narrative.ts` keys on
-   `data_version|geo|narrative_type`, where `data_version` is `getActiveDataset()`'s — the *BHW*
-   dataset's. A UUC insight for Region VII would collide with the BHW insight for Region VII.
-   `narrative_type` is already in the key and is a free extension point (`'overview'` today), so
-   this costs one enum value, not a migration.
-3. **The ask-cache key has the same hole.** `askCacheKey(dataVersion, geoCode, questionNorm)`
-   (`lib/ai/ask-cache.ts:41`) would serve a BHW answer to an identically-worded UUC question, and
-   the answer would pass the audit — because it *is* grounded, just in the other dataset.
-4. **The chat's tools are BHW-shaped.** `lib/ai/tools.ts` exposes seven hand-written tools
+2. ~~**The AI narrative cache key has no dataset dimension.**~~ **Fixed in U8.** It keyed on
+   `data_version|geo|narrative_type` with `data_version` from `getActiveDataset()` — the *BHW*
+   dataset's — so a UUC insight for Region VII collided with the BHW insight for Region VII.
+   `narrative_type` was already a free extension point, so the fix was one enum value
+   (`'uuc_overview'`) and no migration, as predicted. `data_version` is now the scope's own
+   dataset's, which is what makes a *UUC republication* invalidate UUC insights.
+3. ~~**The ask-cache key has the same hole.**~~ **Fixed in U8, and it was larger than this.**
+   `askCacheKey` gained the dataset slug — but the A4 near-match path never reads the cache key at
+   all, matching on the `data_version` and `geo_code` *columns*, so `ai_ask_cache.dataset_slug` and
+   a `dataset` argument to `match_ask_answer` were needed too. And `refreshApprovedAskAnswers` had
+   the same hole a third time: it would have found every UUC row stale against the BHW version and
+   regenerated it under the BHW prompt and tools, writing a wrong-dataset answer back at
+   `status = 'approved'` — the one status the near-match path is allowed to reuse.
+4. ~~**The chat's tools are BHW-shaped.**~~ **Routed around by U5, used in U8.** `lib/ai/tools.ts` exposes seven hand-written tools
    (`getIndicatorByGeo`, `getTrainingCoverage`, …), none of which can see this dataset. The
    generic path already exists — `runToolLoop` takes a `tools` argument
    (`lib/ai/agent-loop.ts:29`) and `lib/ai/query-dataset.ts` queries any *registered* table under
    a per-column allowlist. That path reaches this dataset only once the registry knows about it,
-   which is U5.
+   which is U5. U8 uses it, narrowed further to this dataset's own relations: exposure alone would
+   have handed the section all 26 public relations and let the two sections answer each other's
+   questions by construction.
 
 ---
 
@@ -709,7 +719,35 @@ the four shares sum above 100%, confirming the rendering does not imply a partit
 not-evaluable barangays are excluded from the health route's denominator and the exclusion is
 stated on the page.
 
-### U8 — Ask the data: chat and an AI insight slot
+### U8 — Ask the data: chat and an AI insight slot — **LANDED 2026-08-27**
+
+Both surfaces are live on the section, and §8's defects 2 and 3 are fixed. Three things the scope
+below did not anticipate, all recorded in `docs/DECISIONS.md`:
+
+- **The ask-cache key was not the whole of defect 3.** `match_ask_answer` (the A4 near-match path)
+  never reads the cache key — it matches on the `data_version` and `geo_code` *columns* — so
+  `ai_ask_cache.dataset_slug` and a `dataset` argument to the function were needed too. And there
+  is a **third** place the plan does not name: `refreshApprovedAskAnswers` would have found every
+  UUC row stale against the *BHW* version and regenerated it under the BHW prompt with the BHW
+  tools, writing a wrong-dataset answer back at `status = 'approved'`.
+- **The tool set is narrowed to this dataset, not left at `public` exposure.**
+  `createDatasetTools('public')` hands over all 26 public relations. Nothing unsafe — `anon` reads
+  them all — but it would make the two sections answer each other's questions by construction.
+  Relations with no `dataset_slug` (`dim_geo`, `dim_dataset`) stay in scope: `dim_geo` is what lets
+  an answer tell "not on the 2025 list" apart from "there is no such barangay".
+- **Two wrong figures in the column dictionaries**, which is the text a model reads before
+  composing a query: `ref_uuc_phc_provincial` still carried **238** (U7 established 226), and
+  `agg_uuc_phc_criteria` said the four routes come to "about **141** percent" where the live row
+  gives **146** — the figure `/uuc-phc/criteria` prints. Both corrected and guarded by tests; every
+  other figure in the five UUC dictionaries was checked against live data and is correct.
+
+**Phase 2's document corpus is deliberately not reachable from this chat.** PR #81 landed
+`searchDocuments`, and the corpus is the 2027 Budget Cue Cards — internal budget material, with
+`AI_ASSISTANT_PLAN.md` §12.5 explicit that clearance to load is not clearance to expose. Slides 37
+and 141 carry this list's own regional distribution, which is exactly what makes it tempting and
+exactly what `agg_uuc_phc_counts` already answers.
+
+The scope below is kept as written.
 
 **Depends on U5.** Both surfaces the BHW section has, scoped so they cannot answer from the wrong
 dataset.
@@ -736,6 +774,15 @@ and two distinct cache rows; a question about a barangay not on the list gets "n
 list", never an inferred one; a question about *why* a barangay qualified is answered from
 `fact_uuc_phc_indicators` where the data supports it and refused where it does not; a capped value
 is never reported without its caveat; rate limiting and the audit behave as on `/bhw`.
+
+*What was verified, and the one thing that was not.* Everything below the provider boundary: two
+distinct cache keys and two distinct near-match scopes, proved live at the database; the tool set,
+the refusals and the payload caveats, exercised end to end against live data with a **scripted
+model** in place of the provider; the surfaces, the copy and the deck, driven in Chromium. A live
+model answering a real question is **not** verified — this environment has no provider key, so the
+chat degrades to "Live AI is at capacity right now" (the correct `allCapped` path, and what was
+seen). That is the same gap Increments 1.3, 1.4, 2.2 and 2.3 record, and it closes with a key on
+the deployed preview.
 
 ### U9 — `/uuc-phc/indicators`: the indicators above barangay grain, without averaging
 
