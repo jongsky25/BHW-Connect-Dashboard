@@ -342,6 +342,7 @@ async function runPlan(
 export async function executeQueryDataset(
   rawArgs: Record<string, unknown>,
   exposure: Exposure,
+  datasetSlugs?: readonly string[],
 ): Promise<QueryResult | QueryError> {
   const parsed = queryArgsSchema.safeParse(rawArgs);
   if (!parsed.success) {
@@ -350,10 +351,13 @@ export async function executeQueryDataset(
     };
   }
 
-  const dataset = await getRegisteredDataset(parsed.data.table, exposure);
+  // The dataset scope is resolved here, not only in `listDatasets`: a model that names a table it
+  // was never shown must be refused by the tool that would read it, or the catalogue is a
+  // suggestion rather than a boundary.
+  const dataset = await getRegisteredDataset(parsed.data.table, exposure, datasetSlugs);
   if (!dataset) {
     return {
-      error: `Table ${parsed.data.table} is not registered${exposure === "public" ? " for public use" : ""}. Call listDatasets first — only registered tables can be queried.`,
+      error: `Table ${parsed.data.table} is not registered${exposure === "public" ? " for public use" : ""}${datasetSlugs ? " on this page" : ""}. Call listDatasets first — only registered tables can be queried.`,
     };
   }
 

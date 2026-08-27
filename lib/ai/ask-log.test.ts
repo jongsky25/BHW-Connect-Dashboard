@@ -28,6 +28,7 @@ const entry = {
   provider: "gemini",
   servedFrom: "live" as const,
   dataVersion: "v1",
+  datasetSlug: "bhw-2025",
   toolTrace: [{ name: "getIndicatorByGeo", args: { geoCode: "07" } }],
   latencyMs: 1234,
 };

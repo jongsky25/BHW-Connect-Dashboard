@@ -18,6 +18,7 @@ import { formatCount } from "@/lib/format";
 import { CriteriaSection } from "@/components/uuc-phc/criteria-section";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentButton } from "@/components/present/present-button";
+import { AskTheList } from "@/components/uuc-phc/ask-the-list";
 
 // 1 hour. Region and province are prerendered by the coverage section's params; citymun renders on
 // demand. Same reasoning as the rest of the section.
@@ -164,6 +165,8 @@ export default async function UucPhcCriteriaAreaPage({ params }: { params: Promi
             </Link>
           </div>
         )}
+
+        <AskTheList geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
       </div>
     </PresentationProvider>
   );

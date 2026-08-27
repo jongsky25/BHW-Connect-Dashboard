@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import type { DatasetScopeId } from "@/lib/ai/scope-id";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { logEvent } from "@/lib/usage/log-client";
 
@@ -27,13 +28,24 @@ const TOOL_LABELS: Record<string, string> = {
   getHonorariumStats: "honorarium figures",
   getDataCompleteness: "data completeness",
   searchGeo: "a place lookup",
+  // The registry-driven pair (lib/ai/dataset-tools.ts), which the UUC for PHC scope runs on.
+  listDatasets: "what this dataset records",
+  queryDataset: "figures from this dataset",
 };
 
+/**
+ * BHW Census defaults. Every prop below is optional and falls back to one of these, so `/bhw` and
+ * `/explore` are unchanged by construction rather than by inspection — the same discipline
+ * `DeckMeta.brandLabel` follows (plan U6).
+ */
 const STARTER_QUESTIONS = [
   "How many BHWs are validated profiles vs. the total?",
   "What's the biggest training gap nationally?",
   "Which region has the highest accreditation rate?",
 ];
+
+const INTRO_LINE = "Ask a question about BHW figures.";
+const INPUT_PLACEHOLDER = "Ask about accreditation, training, honorarium…";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string; cached?: boolean };
 type StreamEvent =
@@ -46,10 +58,25 @@ export function ChatLauncher({
   geoCode,
   geoLevel,
   geoName,
+  dataset = "bhw",
+  starterQuestions = STARTER_QUESTIONS,
+  introLine = INTRO_LINE,
+  inputPlaceholder = INPUT_PLACEHOLDER,
+  methodologyHref = "/methodology#ai",
 }: {
   geoCode?: string;
   geoLevel?: GeoLevel;
   geoName?: string;
+  /** Which dataset this launcher asks about. Sent to the route, which resolves it to the tool set,
+   * the system prompt and the answer-bank scope — see lib/ai/dataset-scope.ts. */
+  dataset?: DatasetScopeId;
+  /** The three prompts offered on an empty conversation. BHW questions are wrong on a section that
+   * holds no BHW data, and a starter question is the strongest hint a visitor gets about what this
+   * chat can actually answer. */
+  starterQuestions?: string[];
+  introLine?: string;
+  inputPlaceholder?: string;
+  methodologyHref?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -67,7 +94,7 @@ export function ChatLauncher({
     setInput("");
     setToolTrace([]);
     setStatus("sending");
-    logEvent("ai_chat_open_question", { geoCode });
+    logEvent("ai_chat_open_question", { geoCode, meta: { dataset } });
 
     try {
       const res = await fetch("/api/ai/chat", {
@@ -75,6 +102,7 @@ export function ChatLauncher({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: getSessionId(),
+          dataset,
           geoCode,
           geoLevel,
           messages: history.filter((m) => m.role !== "system"),
@@ -155,14 +183,14 @@ export function ChatLauncher({
         {messages.length === 0 && (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted">
-              Ask a question about BHW figures. Answers are AI-generated and grounded only in this
-              site&apos;s own data — see{" "}
-              <a href="/methodology#ai" className="underline hover:text-accent">
+              {introLine} Answers are AI-generated and grounded only in this site&apos;s own data —
+              see{" "}
+              <a href={methodologyHref} className="underline hover:text-accent">
                 how this works
               </a>
               .
             </p>
-            {STARTER_QUESTIONS.map((q) => (
+            {starterQuestions.map((q) => (
               <button
                 key={q}
                 type="button"
@@ -215,7 +243,7 @@ export function ChatLauncher({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about accreditation, training, honorarium…"
+          placeholder={inputPlaceholder}
           maxLength={2000}
           disabled={status === "sending"}
           className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"

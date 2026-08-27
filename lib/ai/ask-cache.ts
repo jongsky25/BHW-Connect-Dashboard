@@ -35,11 +35,26 @@ export function normalizeQuestion(raw: string): string {
   return q;
 }
 
-/** `data_version|geo_scope|question_norm` — same shape and delimiter as ai_narrative_cache's key.
+/** `data_version|dataset_slug|geo_scope|question_norm` — same shape and delimiter as
+ * ai_narrative_cache's key.
+ *
  * Geo context is part of the question: the route injects "currently viewing geo_code X" into the
- * system prompt, so identical words mean different answers on different place pages. */
-export function askCacheKey(dataVersion: string, geoCode: string | null, questionNorm: string): string {
-  return `${dataVersion}|${geoCode ?? "national"}|${questionNorm}`;
+ * system prompt, so identical words mean different answers on different place pages.
+ *
+ * **The dataset is part of it for the same reason, and its absence was a live defect**
+ * (`UUC_PHC_2025_PLAN.md` §8, defect 3). `dataVersion` is one dataset's `last_updated_at`, so
+ * before U8 an identically-worded question asked on `/uuc-phc` and on `/bhw` produced one key and
+ * served one answer to both. That failure is invisible: a cross-dataset hit is fluent, it names a
+ * real place, and it passes the numeric audit — because it *is* grounded, in the other dataset.
+ * Two datasets happening to carry different `last_updated_at` values is not a property to lean on;
+ * the slug says it outright. */
+export function askCacheKey(
+  dataVersion: string,
+  datasetSlug: string,
+  geoCode: string | null,
+  questionNorm: string,
+): string {
+  return `${dataVersion}|${datasetSlug}|${geoCode ?? "national"}|${questionNorm}`;
 }
 
 export type AskCacheHit = { answerMd: string; provider: string | null };
@@ -65,10 +80,11 @@ export async function lookupAskCache(
   questionNorm: string,
   geoCode: string | null,
   dataVersion: string,
+  datasetSlug: string,
 ): Promise<AskCacheHit | null> {
   try {
     const supabase = createSupabaseServiceClient();
-    const key = askCacheKey(dataVersion, geoCode, questionNorm);
+    const key = askCacheKey(dataVersion, datasetSlug, geoCode, questionNorm);
     const { data, error } = await supabase
       .from("ai_ask_cache")
       .select("answer_md, provider, status, hit_count")
@@ -104,16 +120,21 @@ export function nearMatchThreshold(): number {
 export type AskNearHit = AskCacheHit & { matchedNorm: string; score: number };
 
 /**
- * Near-match lookup (A4): the best `approved` entry in the same geo scope and data version whose
- * normalized question is trigram-similar to the asked one, at/above the configured threshold.
- * Returns null when disabled, on a miss, or on any error. Held to a stricter bar than exact match
- * (approved-only) because the numeric audit verified the stored answer against the *stored*
- * question, not the asked one — see the match_ask_answer migration.
+ * Near-match lookup (A4): the best `approved` entry in the same dataset, geo scope and data
+ * version whose normalized question is trigram-similar to the asked one, at/above the configured
+ * threshold. Returns null when disabled, on a miss, or on any error. Held to a stricter bar than
+ * exact match (approved-only) because the numeric audit verified the stored answer against the
+ * *stored* question, not the asked one — see the match_ask_answer migration.
+ *
+ * This path does not read the cache key at all — it matches on the `data_version`, `geo_code` and
+ * `dataset_slug` *columns* — so fixing `askCacheKey` alone would have left the cross-dataset hole
+ * open here. `dataset_slug` is passed and filtered in the function itself.
  */
 export async function lookupAskCacheNearMatch(
   questionNorm: string,
   geoCode: string | null,
   dataVersion: string,
+  datasetSlug: string,
 ): Promise<AskNearHit | null> {
   if (!isNearMatchEnabled()) return null;
   try {
@@ -122,6 +143,7 @@ export async function lookupAskCacheNearMatch(
       q: questionNorm,
       scope: geoCode ?? "national",
       version: dataVersion,
+      dataset: datasetSlug,
       min_sim: nearMatchThreshold(),
     });
 
@@ -153,12 +175,13 @@ export async function storeAskAnswer(params: {
   questionDisplay: string;
   geoCode: string | null;
   dataVersion: string;
+  datasetSlug: string;
   answerMd: string;
   provider: string | null;
 }): Promise<void> {
   try {
     const supabase = createSupabaseServiceClient();
-    const key = askCacheKey(params.dataVersion, params.geoCode, params.questionNorm);
+    const key = askCacheKey(params.dataVersion, params.datasetSlug, params.geoCode, params.questionNorm);
 
     const { data: existing } = await supabase
       .from("ai_ask_cache")
@@ -175,6 +198,7 @@ export async function storeAskAnswer(params: {
       answer_md: params.answerMd,
       provider: params.provider,
       data_version: params.dataVersion,
+      dataset_slug: params.datasetSlug,
       status: "auto",
       generated_at: new Date().toISOString(),
     });

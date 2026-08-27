@@ -24,6 +24,18 @@
 -- through PostgREST exactly as it reads a table, and refuses any relation with no approved
 -- dictionary, so leaving it out would not make it unreachable — it would make it unusable while
 -- still being the canonical form of the provincial benchmark.
+--
+-- U8 corrected one figure carried in ref_uuc_phc_provincial's notes_md: the barangays whose
+-- provincial benchmarks cannot support criterion (d) are 226, not 238. U7 established that (the
+-- five per-province figures always summed to 226) and corrected the plan, the cleaning report and
+-- the page, but not this seed -- and this is the one copy a model reads before composing a query,
+-- which is exactly the text that must not carry a wrong number.
+--
+-- And a second, found the same way: agg_uuc_phc_criteria's caveat said the four routes come to
+-- "about 141 percent" of the list. The live national row gives 61 + 38 + 12 + 35 = 146 (route (d)
+-- over its own denominator), which is what the page prints and what DECISIONS.md records; the
+-- naive sum over n_listed is 145. 141 is neither. The note now names 146 and says where a reader
+-- sees it, so the dictionary and the page can be checked against each other.
 insert into dataset_registry (
   table_name, title, summary, grain, dataset_slug, exposure, row_estimate,
   source_kind, status, notes_md, doc_path
@@ -194,7 +206,7 @@ insert into dataset_registry (
    'How many of an area listed barangays qualified by each of the four socio-economic routes of DOH AO No. 2020-0023 section VI.A: Indigenous Peoples, conflict or displacement, 4Ps enrolment, and health indicators against the province.',
    'One geography per dataset.',
    'uuc-phc-2025', 'public', 1788, 'hand_written', 'approved',
-   'THE FOUR ROUTE COUNTS OVERLAP AND DO NOT SUM TO n_listed. A barangay can qualify on three routes at once; nationally the four counts come to about 141 percent of the list. Never present them as parts of a whole, never compute a remainder or an "other" category from them, and never render them stacked or as a pie - each is an independent share of its own denominator. ROUTE (d) HAS A DIFFERENT DENOMINATOR: n_route_health is a share of n_health_evaluable, not of n_listed, because for 226 barangays in 5 provinces the provincial benchmark cannot support the comparison at all. The physical factor is not counted here because it holds for every listed barangay by construction. Rows exist for every geography including those with none listed. National / region / province / citymun only.',
+   'THE FOUR ROUTE COUNTS OVERLAP AND DO NOT SUM TO n_listed. A barangay can qualify on three routes at once; nationally the four shares sum to 146 percent of the list, which is the figure /uuc-phc/criteria prints beneath them. Never present them as parts of a whole, never compute a remainder or an "other" category from them, and never render them stacked or as a pie - each is an independent share of its own denominator. ROUTE (d) HAS A DIFFERENT DENOMINATOR: n_route_health is a share of n_health_evaluable, not of n_listed, because for 226 barangays in 5 provinces the provincial benchmark cannot support the comparison at all. The physical factor is not counted here because it holds for every listed barangay by construction. Rows exist for every geography including those with none listed. National / region / province / citymun only.',
    'docs/UUC_PHC_2025_PLAN.md'),
   ('fact_uuc_phc_indicators',
    'UUC for PHC 2025 indicator values',
@@ -208,7 +220,7 @@ insert into dataset_registry (
    'One row per province: the benchmark values criterion (d) of DOH AO No. 2020-0023 tests a barangay against, with how many of that province listed barangays actually carry a reference.',
    'One province.',
    'uuc-phc-2025', 'public', 87, 'hand_written', 'approved',
-   'A view over fact_uuc_phc_indicators, not a stored table - it runs with security_invoker, so the fact table own public-read policy decides access rather than the view owner. 87 provinces, not the source 88: the source files Zamboanga City under two province names and dim_geo files both under 09317. Read n_with_reference against n_listed_barangays before quoting a benchmark - reference values are all-or-nothing per barangay, and in province 09317 only 1 of 8 listed barangays carries one, so a single value would otherwise stand for the whole province. Five provinces / 238 barangays carry no usable reference at all and cannot support criterion (d); FIC benchmarks are uncapped while barangay FIC values are capped at 100, so 113 barangays in 2 provinces read as worse than their province by construction. To compare one barangay to its province, read that barangay own *_prov_ref columns, which are NULL exactly where the source supplied none.',
+   'A view over fact_uuc_phc_indicators, not a stored table - it runs with security_invoker, so the fact table own public-read policy decides access rather than the view owner. 87 provinces, not the source 88: the source files Zamboanga City under two province names and dim_geo files both under 09317. Read n_with_reference against n_listed_barangays before quoting a benchmark - reference values are all-or-nothing per barangay, and in province 09317 only 1 of 8 listed barangays carries one, so a single value would otherwise stand for the whole province. Five provinces / 226 barangays carry no usable reference at all and cannot support criterion (d); FIC benchmarks are uncapped while barangay FIC values are capped at 100, so 113 barangays in 2 provinces read as worse than their province by construction. To compare one barangay to its province, read that barangay own *_prov_ref columns, which are NULL exactly where the source supplied none.',
    'docs/UUC_PHC_2025_CLEANING_REPORT.md')
 on conflict (table_name) do update set
   title = excluded.title,

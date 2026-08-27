@@ -84,24 +84,44 @@ export const DATASET_SLUGS = {
 } as const;
 
 /**
- * Resolve a dataset_id by slug regardless of `status`. Used to reach the
- * StepZero companion dataset (`bhw-stepzero-2026`), which is intentionally not
- * `status = 'active'` so `getActiveDatasetId()` keeps returning only the
- * per-person `bhw-2025` dataset. Returns null on any read failure.
+ * One dataset by slug regardless of `status`. Used to reach the companion
+ * datasets that are intentionally not `status = 'active'` — StepZero,
+ * profiling status, UUC for PHC — so `getActiveDataset()` keeps returning only
+ * the per-person `bhw-2025` dataset. Returns null on any read failure.
  * Per-request `cache()`d for the same reason as `getActiveDataset`.
+ *
+ * `lastUpdatedAt` is what makes this more than an id lookup: it is the version
+ * string the AI caches key on, and reading it *per dataset* is what stops a BHW
+ * ingestion from invalidating UUC answers and — the direction that matters — a
+ * UUC republication from leaving stale UUC answers in place
+ * (`UUC_PHC_2025_PLAN.md` §9 U8).
  */
-export const getDatasetIdBySlug = cache(async (slug: string): Promise<number | null> => {
+export const getDatasetBySlug = cache(async (slug: string): Promise<DatasetInfo | null> => {
   try {
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
       .from("dim_dataset")
-      .select("dataset_id")
+      .select("dataset_id, slug, name, source_name, license, as_of_date, last_updated_at")
       .eq("slug", slug)
       .maybeSingle();
 
     if (error || !data) return null;
-    return data.dataset_id;
+
+    return {
+      datasetId: data.dataset_id,
+      slug: data.slug,
+      name: data.name,
+      sourceName: data.source_name,
+      license: data.license,
+      asOfDate: data.as_of_date,
+      lastUpdatedAt: data.last_updated_at,
+    };
   } catch {
     return null;
   }
 });
+
+/** Convenience accessor for the many query helpers that only need the numeric FK. */
+export async function getDatasetIdBySlug(slug: string): Promise<number | null> {
+  return (await getDatasetBySlug(slug))?.datasetId ?? null;
+}

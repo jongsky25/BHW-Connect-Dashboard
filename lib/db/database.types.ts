@@ -1062,6 +1062,7 @@ export type Database = {
           answer_md: string;
           cache_key: string;
           data_version: string;
+          dataset_slug: string;
           generated_at: string;
           geo_code: string | null;
           hit_count: number;
@@ -1075,6 +1076,7 @@ export type Database = {
           answer_md: string;
           cache_key: string;
           data_version: string;
+          dataset_slug: string;
           generated_at?: string;
           geo_code?: string | null;
           hit_count?: number;
@@ -1088,6 +1090,7 @@ export type Database = {
           answer_md?: string;
           cache_key?: string;
           data_version?: string;
+          dataset_slug?: string;
           generated_at?: string;
           geo_code?: string | null;
           hit_count?: number;
@@ -1104,6 +1107,7 @@ export type Database = {
           answer_md: string | null;
           created_at: string;
           data_version: string | null;
+          dataset_slug: string | null;
           geo_code: string | null;
           geo_level: string | null;
           id: number;
@@ -1121,6 +1125,7 @@ export type Database = {
           answer_md?: string | null;
           created_at?: string;
           data_version?: string | null;
+          dataset_slug?: string | null;
           geo_code?: string | null;
           geo_level?: string | null;
           id?: never;
@@ -1138,6 +1143,7 @@ export type Database = {
           answer_md?: string | null;
           created_at?: string;
           data_version?: string | null;
+          dataset_slug?: string | null;
           geo_code?: string | null;
           geo_level?: string | null;
           id?: never;
@@ -2341,7 +2347,7 @@ export type Database = {
         Returns: string;
       };
       match_ask_answer: {
-        Args: { min_sim?: number; q: string; scope: string; version: string };
+        Args: { dataset: string; min_sim?: number; q: string; scope: string; version: string };
         Returns: {
           answer_md: string;
           cache_key: string;

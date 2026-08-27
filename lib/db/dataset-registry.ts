@@ -146,7 +146,24 @@ export function describeDataset(dataset: RegisteredDataset): string {
   return `${header}${size}\nCOLUMNS:\n${columns}${notes}`;
 }
 
-async function fetchRegistry(exposure?: Exposure): Promise<RegisteredDataset[]> {
+/**
+ * Whether a relation is inside a caller's dataset scope. No scope means every relation the
+ * exposure allows, which is what the internal assistant and the pre-U8 callers get.
+ *
+ * A relation with a null `dataset_slug` is in *every* scope. Those are the structural ones —
+ * `dim_geo`, `dim_dataset` — and they are the coordinate system datasets are expressed in rather
+ * than datasets of their own; a scope without them cannot resolve a place name, or tell a
+ * geography this dataset does not cover apart from one that does not exist.
+ */
+function inDatasetScope(dataset: RegisteredDataset, datasetSlugs?: readonly string[]): boolean {
+  if (!datasetSlugs) return true;
+  return dataset.datasetSlug === null || datasetSlugs.includes(dataset.datasetSlug);
+}
+
+async function fetchRegistry(
+  exposure?: Exposure,
+  datasetSlugs?: readonly string[],
+): Promise<RegisteredDataset[]> {
   const supabase = createSupabaseServiceClient();
 
   let registryQuery = supabase.from("dataset_registry").select("*").eq("status", "approved");
@@ -164,9 +181,11 @@ async function fetchRegistry(exposure?: Exposure): Promise<RegisteredDataset[]> 
     );
   if (columnError || !columns) return [];
 
+  // Scoping happens here, in the module's single fetch path, for the same reason the `approved`
+  // filter does: both public entry points go through it, so there is no caller that can forget.
   return registries
     .map((registry) => toRegisteredDataset(registry, columns))
-    .filter((d): d is RegisteredDataset => d !== null);
+    .filter((d): d is RegisteredDataset => d !== null && inDatasetScope(d, datasetSlugs));
 }
 
 /**
@@ -174,9 +193,12 @@ async function fetchRegistry(exposure?: Exposure): Promise<RegisteredDataset[]> 
  * than throwing — the assistant degrades to the hand-written tools, which is the existing
  * "degrade, never error" contract, not a silent wrong answer.
  */
-export async function listRegisteredDatasets(exposure?: Exposure): Promise<RegisteredDataset[]> {
+export async function listRegisteredDatasets(
+  exposure?: Exposure,
+  datasetSlugs?: readonly string[],
+): Promise<RegisteredDataset[]> {
   try {
-    return await fetchRegistry(exposure);
+    return await fetchRegistry(exposure, datasetSlugs);
   } catch {
     return [];
   }
@@ -189,7 +211,8 @@ export async function listRegisteredDatasets(exposure?: Exposure): Promise<Regis
 export async function getRegisteredDataset(
   tableName: string,
   exposure?: Exposure,
+  datasetSlugs?: readonly string[],
 ): Promise<RegisteredDataset | null> {
-  const datasets = await listRegisteredDatasets(exposure);
+  const datasets = await listRegisteredDatasets(exposure, datasetSlugs);
   return datasets.find((d) => d.tableName === tableName) ?? null;
 }

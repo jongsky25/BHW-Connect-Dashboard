@@ -20,6 +20,8 @@ import { getUucPhcBarangayDetails } from "@/lib/db/uuc-phc-indicators";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
 import { PresentButton } from "@/components/present/present-button";
+import { AiInsight } from "@/components/narrative/ai-insight";
+import { AskTheList } from "@/components/uuc-phc/ask-the-list";
 
 // 1 hour. ISR: citymun render on demand; region/province are prerendered. Same reasoning as the
 // landing page — a shorter window bounds how long a transient empty read can stay cached.
@@ -176,6 +178,20 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
               </section>
             </PresentationSlide>
 
+            {/* The insight is promoted like /bhw's, and unlike U6's barangay disclosures: its
+                caveats are inside its sentences (UUC_PHC_SYSTEM_PROMPT rule 4) rather than in a
+                footnote that promotion would leave behind, so there is nothing here for a slide to
+                strip. `narrativeType` is what keeps this out of the BHW insight's cache row. */}
+            <PresentationSlide id="ai-insight" title="AI insight">
+              <AiInsight
+                geoCode={geo.geoCode}
+                geoLevel={geo.geoLevel}
+                geoName={geo.geoName}
+                narrativeType="uuc_overview"
+                methodologyHref="/uuc-phc/methodology#ask"
+              />
+            </PresentationSlide>
+
             {childHeading && children.length > 0 && (
               <PresentationSlide id="children" title={childHeading}>
                 <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
@@ -203,6 +219,8 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
             </Link>
           </div>
         )}
+
+        <AskTheList geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
       </div>
     </PresentationProvider>
   );

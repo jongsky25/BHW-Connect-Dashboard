@@ -144,6 +144,7 @@ function AnswerBankItem({ row }: { row: AskBankRow }) {
           {STATUS_LABEL[row.status]}
         </span>
         <span className="font-medium text-foreground">{row.hitCount} hits</span>
+        <span>· {row.datasetSlug}</span>
         <span>· scope {scopeLabel(row.geoCode)}</span>
         {row.provider && <span>· {row.provider}</span>}
         <span>· generated {new Date(row.generatedAt).toLocaleDateString()}</span>

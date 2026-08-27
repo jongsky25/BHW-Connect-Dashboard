@@ -14,6 +14,7 @@ import { ChildBreakdown } from "@/components/uuc-phc/child-breakdown";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
 import { PresentButton } from "@/components/present/present-button";
+import { AskTheList } from "@/components/uuc-phc/ask-the-list";
 
 // 1 hour, matching /profiling-status and for the same reason: the page is statically prerendered,
 // so a transient empty read during (re)generation would otherwise cache an "unavailable" state.
@@ -119,6 +120,8 @@ export default async function UucPhcLanding() {
           </Link>{" "}
           for how the {formatCount(counts.nListed)} barangays were counted.
         </p>
+
+        <AskTheList geoCode={NATIONAL_GEO_CODE} geoLevel="national" geoName="Philippines" />
       </div>
     </PresentationProvider>
   );
