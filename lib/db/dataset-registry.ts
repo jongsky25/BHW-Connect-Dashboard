@@ -13,9 +13,17 @@ import type { Database } from "./database.types";
  *    proposal from the ingest-time profiling pass (Phase 4), not a description anyone has
  *    checked; serving one would let an inferred column meaning become a stated fact. Filtering
  *    happens in the query, not in a caller, so there is no path that forgets.
- * 2. **`exposure` is a boundary, not a hint.** `internal` tables (`fact_*`/raw) exist in this
- *    registry so the internal assistant can reach them; a public-facing caller must pass
- *    `exposure: "public"` and gets exactly the layer the public tools already read.
+ * 2. **`exposure` is a boundary in one direction, not two exact matches.** `public` is exact and
+ *    is the real boundary: a public-facing caller must pass `exposure: "public"` and sees only
+ *    rows tagged `public` — never the `internal` tables (`fact_*`/raw) that exist in this
+ *    registry so the internal assistant can reach them. `internal` is the superset, not a mirror
+ *    of that exactness: the internal assistant needs everything the public layer already exposes
+ *    *plus* the internal-only rows, so `exposure: "internal"` returns both. An exact match on
+ *    `internal` — what an earlier version of this function did — makes every approved row
+ *    invisible to the internal assistant the instant a single row is tagged `internal`, and the
+ *    live registry had exactly that shape for months: 27 rows, all `public`, none `internal`, so
+ *    `listDatasets`/`queryDataset` returned nothing at all to the internal assistant, silently,
+ *    until a live end-to-end run surfaced it (see `docs/DECISIONS.md`).
  *
  * Reads go through the service-role client because both tables are service-role only — they carry
  * the exposure flag itself, so publishing them under RLS would hand out the map of what is meant
@@ -167,7 +175,11 @@ async function fetchRegistry(
   const supabase = createSupabaseServiceClient();
 
   let registryQuery = supabase.from("dataset_registry").select("*").eq("status", "approved");
-  if (exposure) registryQuery = registryQuery.eq("exposure", exposure);
+  // `public` is the exact, real boundary. `internal` is a superset — it must see `public` rows
+  // too, or the internal assistant loses every registered dataset the moment one row is tagged
+  // `internal` (see the module comment above). Only `public` narrows the query; `internal` and no
+  // exposure at all both read every approved row regardless of its tag.
+  if (exposure === "public") registryQuery = registryQuery.eq("exposure", "public");
 
   const { data: registries, error } = await registryQuery.order("table_name");
   if (error || !registries || registries.length === 0) return [];

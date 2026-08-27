@@ -328,7 +328,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           <AiInsight geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
         </PresentationSlide>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4">
           <PresentationSlide id="accreditation" title="Accreditation">
             <FigureCard
               title="Accreditation"

@@ -3880,6 +3880,68 @@ pgvector cannot index an unconstrained `vector` column, and pinning the column n
 dimension to pin it to. That dimension now exists. At 212 rows an exact scan is sub-millisecond, so
 the trigger for doing it is corpus growth, not this entry — but the blocker 2.1 named is gone.
 
+## 2026-08-27 — Two bugs behind "0 registered datasets" and "no answer came back"
+
+A live run of the internal assistant against the deployed admin panel — "how are village health
+volunteers paid a monthly stipend" — burned all 9 available tool calls and returned "No answer came
+back — try rephrasing the question," after first showing "0 registered datasets it can query." Both
+symptoms are real bugs, not one, and both were confirmed against live data rather than guessed at
+from reading code alone.
+
+**Bug 1 — `exposure: "internal"` was an exact match, not the superset it needs to be
+(`lib/db/dataset-registry.ts`).** The registry's own module doc already states the intended rule:
+`public` is the real boundary and must stay exact, `internal` is a superset that has to return
+`public` rows too, since the internal assistant needs everything the public layer sees *plus* the
+internal-only tables. `fetchRegistry` implemented `internal` as a second `.eq("exposure", exposure)`
+instead. Read straight off the live table: **27 approved rows, all tagged `public`, zero tagged
+`internal`** — so an exact match on `internal` returned nothing, silently, to every internal-assistant
+call since the registry shipped. `listRegisteredDatasets`/`getRegisteredDataset` degrade to an empty
+list on any read failure by design (the existing "degrade, never error" contract), which is exactly
+why this had no error to surface anywhere — it looked identical to a successful call that happened to
+find nothing.
+
+  Fix: only `exposure === "public"` narrows the query now; `"internal"` and no exposure at all both
+  read every approved row regardless of its tag. Covered by a new `lib/db/dataset-registry-exposure.test.ts`
+  (7 tests, using a mock query builder that actually applies `.eq()` — the existing
+  `dataset-registry-scope.test.ts` mock ignores `.eq()` entirely and would pass either way, so it gave
+  zero signal on this bug). Proved the tests have teeth by reverting the one-line fix and confirming 3
+  of 7 fail, then restoring it.
+
+**Bug 2 — the forced wrap-up call had no instruction that it must produce output
+(`lib/ai/agent-loop.ts`).** `runToolLoop` caps tool-calling at `MAX_TOOL_ROUNDS = 4` rounds, then
+withdraws every tool and makes one final call to force an answer from whatever was already gathered.
+That final call's content was returned unconditionally — nothing told the model this was its last
+chance to answer, and nothing checked for an empty reply. Live evidence, not speculation: querying
+`ai_provider_quota` for the request's timeframe showed **five clean Gemini completions, all well
+under Gemini's per-minute cap, nothing logged against Groq/OpenRouter/Mistral**, and Vercel's runtime
+logs showed zero errors or warnings for the request. So this was Gemini returning a genuinely empty
+completion on a request that succeeded in every technical sense — not a rate limit, not a quota
+exhaustion, not a fallback, not a thrown error.
+
+  A provider-specific pitfall shaped the fix: `lib/ai/providers/gemini.ts` builds `systemInstruction`
+  from `messages.find((m) => m.role === "system")` — only the *first* system-role message survives;
+  every later one is dropped (the same function's per-message loop explicitly `continue`s past any
+  further `role === "system"` entry). A nudge added as a second system message would have been
+  invisible to Gemini specifically, the exact provider that produced the failure. The nudge is sent
+  as a `role: "user"` turn instead, the one shape both provider families (`gemini.ts`,
+  `openai-compatible.ts`) carry through unchanged.
+
+  Fix: the wrap-up call is now preceded by an explicit user-turn instruction that this turn must
+  answer or explicitly say what's missing. If it still comes back empty (or whitespace-only), the
+  model's empty turn is folded into history and one retry is made with a stronger, failure-naming
+  nudge; only if that also comes back empty does the loop give up and return `finalText: null`.
+  `allCapped` is still checked and propagated at each of the three call sites (round loop, wrap-up,
+  retry) so a real rate-limit still short-circuits instead of retrying pointlessly. Covered by 10 new
+  tests in `lib/ai/agent-loop.test.ts`, including an explicit assertion that the nudge lands as a
+  `user` message and the message array still has exactly one `system` entry — the regression this
+  guards against would otherwise be silent.
+
+**Verify.** `npm run lint`, `npm run typecheck`, and `npm test` (508/508, including the 17 new tests
+across both files) all clean on this branch, rebased onto current `main`. Neither fix touches a
+public-facing code path: `fetchRegistry`'s `public` branch is byte-for-byte the same query it always
+was, and every real call site already passes an explicit `"public"` or `"internal"` — none call
+`listRegisteredDatasets`/`getRegisteredDataset` with `exposure` left undefined — so this closes the
+gap only for the internal assistant, the caller that was actually broken.
 ## 2026-08-27 — UUC for PHC 2025: U9, the indicators as distributions — and the rule that had two copies
 
 `docs/UUC_PHC_2025_PLAN.md` §9 U9. The 12 indicators become legible above barangay grain for the

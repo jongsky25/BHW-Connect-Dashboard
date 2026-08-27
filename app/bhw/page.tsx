@@ -186,11 +186,9 @@ export default async function Home() {
           <PresentButton variant="secondary" />
         </section>
 
-        {/* Hero spans the full top row; the four supporting tiles sit 2×2 below
-          it, so the grid reads hero-first instead of an unbalanced 3+2
-          (HOME_SEARCH_REVIEW item 16 / D7). */}
+        {/* Hero and supporting tiles stack in a single column, full width. */}
         <PresentationSlide id="national-figures" title="National figures">
-          <section aria-label="National figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <section aria-label="National figures" className="grid grid-cols-1 gap-4">
             <StatHero
               label="Total BHWs"
               value={formatCount(overview.totalBhw)}
