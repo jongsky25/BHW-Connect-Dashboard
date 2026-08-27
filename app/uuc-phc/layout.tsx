@@ -47,6 +47,12 @@ function SectionHeader() {
             Indicators
           </Link>
           <Link
+            href="/uuc-phc/data-quality"
+            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+          >
+            Data quality
+          </Link>
+          <Link
             href="/uuc-phc/methodology"
             className="rounded-md px-3 py-2 font-medium hover:bg-surface"
           >

@@ -829,7 +829,29 @@ benchmark line renders for Ilocos Sur or City of Butuan on FIC; no summary stati
 the DOM; the page renders at national, a region, a province and a citymun, and at a zero area
 (NCR) shows an empty state rather than an empty chart.
 
-### U10 — `/uuc-phc/data-quality`: the cleaning report as a surface
+### U10 — `/uuc-phc/data-quality`: the cleaning report as a surface — **LANDED 2026-08-27**
+
+`/uuc-phc/data-quality` renders all four sections, and **not one figure on it is typed** — two
+`security_invoker` views recompute the national facts and the per-province findings on every read,
+and the published-total reconciliation is parsed from the corpus copy of cue cards p37 rather than
+transcribed. Three of the four sections needed no new object at all: U9's `agg_uuc_phc_indicator_dist`
+already carried per-indicator capping, and U7's `agg_uuc_phc_criteria` already carried the
+excluded counts. What was added is what those could not say — *how many barangays* (1,397, not
+1,584), *why* each province's benchmarks are unusable, and the reconciliation. Recorded in
+`docs/DECISIONS.md`; two things worth naming here:
+
+- **The reconciliation is computed, not transcribed.** p37 is loaded in `doc_chunk`, so the
+  migration parses all 17 of its regional figures, checks they resolve to `dim_geo` and sum to its
+  own printed total, and stores only the geographies that actually differ. Which regions those are
+  is therefore a finding rather than a pair chosen by hand. Only the differing rows are stored:
+  `doc_source` marks the cue cards `exposure = 'internal'`, and a matching row carries no
+  reconciliation.
+- **The methodology page's typed counts are gone.** It carried "1,584 values across 1,397
+  barangays", "886", "456", "57" and "113" as literals — exactly the drift this increment exists to
+  remove — and now links to the computed page instead. It also gained the placeholder-benchmark
+  case U9 added, which it had never mentioned.
+
+The scope below is kept as written.
 
 `UUC_PHC_2025_CLEANING_REPORT.md` §6 is the most important thing written about this dataset and
 it is invisible to anyone using it. `/data-quality` already exists as the pattern for the BHW

@@ -40,8 +40,8 @@ it or not. Every figure on the section is therefore one count against one denomi
   count, the two-state split and the child table — **but no indicator values**: a one-pager cannot
   carry the † marker's footnote, and reproducing bounded values without it is exactly the unmarked
   artefact U3 was built to avoid.
-- **All six relations are registered and queryable by the internal assistant** (U5, extended by
-  U7 and U9). The column dictionaries are the allowlist `queryDataset` enforces, not documentation:
+- **All nine relations are registered and queryable by the internal assistant** (U5, extended by
+  U7, U9 and U10). The column dictionaries are the allowlist `queryDataset` enforces, not documentation:
   `capped_indicators` and each of the seven boundable indicators carry the capping caveat in the
   column meaning itself, because that is what travels with a returned value. `agg_uuc_phc_criteria`
   carries the overlap warning the same way — on the table *and* on each of the four route columns,
@@ -66,8 +66,12 @@ it or not. Every figure on the section is therefore one count against one denomi
   A mean absorbs the 1,584 bounded values into a figure the source does not support; a histogram
   leaves each value where it is and counts the bounded ones in the top bin. See "The indicator
   distributions" below.
-- **Not built yet:** an `/explore` overlay, and the data-quality page that would render the
-  cleaning report's §6 as a surface. Planned as U10–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
+- **What is wrong with the data is published beside it** (U10). `/uuc-phc/data-quality` renders
+  the cleaning report's §6 as a surface, with every figure recomputed on each read rather than
+  written down — a stale data-quality page is worse than none, because it is read as an assurance.
+  See "Data quality" below.
+- **Not built yet:** downloads, and the `/explore` overlay. Planned as U11–U12 in
+  `docs/UUC_PHC_2025_PLAN.md` §9.
 
 ## The indicators (U3)
 
@@ -182,6 +186,59 @@ rather than as any summary figure.
   real zeroes, and the page reads `agg_uuc_phc_counts` alongside the distributions so a transient
   read failure renders as "unavailable" rather than as "no unserved barangays here".
 
+## Data quality (U10)
+
+`/uuc-phc/data-quality` renders `docs/UUC_PHC_2025_CLEANING_REPORT.md` §6 — the most important
+thing written about this dataset, and until U10 invisible to anyone using it. Four sections: what
+was bounded, where the criterion (d) comparison cannot be made, how the list stands against the
+published total, and what remains unresolved.
+
+- **Every figure is computed, and none is typed.** That decides the shape of everything behind the
+  page. A hand-written "1,584" drifts the first time the extract is regenerated, and a stale
+  data-quality page is worse than none because it is read as an assurance. So the two new relations
+  are **views** — they cannot go stale against the fact table they read — and the one new table is
+  re-derived by its own migration rather than seeded.
+- **Three of the four sections needed no new object at all.** Per-indicator capping comes from
+  `agg_uuc_phc_indicator_dist`'s national rows (U9); the count of barangays criterion (d) cannot be
+  evaluated for comes from `agg_uuc_phc_criteria` (U7). What U10 added is what those cannot say.
+- **1,397 barangays, not 1,584 values.** 167 barangays carry more than one bounded value, so the
+  two counts differ and no per-indicator aggregate can count a barangay once. Presenting the value
+  count as a barangay count overstates the affected share of the list by about 13%, which is why
+  `ref_uuc_phc_quality` exists at all and why both column dictionaries say so.
+- **Four reasons a benchmark is unusable, kept apart.** "No reference supplied", "every value
+  zero", "every value exactly 1" and "fractions where percentages were wanted" are four different
+  things for the source office to fix, and a page that collapses them into "unusable" throws away
+  the part they would act on. The kinds are computed from the values, never from a list of province
+  codes.
+- **The two benchmark findings are never added together.** 226 barangays cannot support criterion
+  (d) at all; a different 113 are affected on the FIC comparison alone and remain evaluable on the
+  other six indicators. Summing them to 339 would be wrong in both directions at once, so the view
+  carries a `finding` column and the page renders two tables.
+- **The published-total reconciliation is parsed, not transcribed.** Cue cards p37 is loaded in
+  `doc_chunk`, so the migration reads all 17 of its regional figures out of the chunk, checks they
+  resolve to `dim_geo` and sum to its own printed TOTAL, and stores only the geographies that
+  differ. *Which* regions differ is therefore a finding rather than a pair chosen by hand — and a
+  typo in a hand-copied 400 would have been indistinguishable from a real discrepancy.
+- **Only the differing rows are stored, deliberately.** `doc_source` marks the cue cards
+  `exposure = 'internal'`; plan §3 records the owner approving publication of the *reconciliation*,
+  and U10 asks for the two affected regions. p37's other 15 rows match to the unit and carry no
+  reconciliation, so storing them would republish an internal document's table for nothing. The
+  migration still checks all 17.
+- **A table, not a view, for that one relation** — `doc_source` and `doc_chunk` are service-role
+  only, so a `security_invoker` view over them would read as empty for the caller the page runs as.
+  Parsing once into a public-read table is what makes the figure reachable.
+- **The vintage reading is rendered as inference.** A vintage gap is the likeliest explanation of
+  the +4 and neither document states it, so the page prints the two figures, their dates and where
+  the gap sits — and says in as many words that why they differ is not recorded.
+- **The criterion (d) recomputation is performed on purpose, to measure itself.** This is the one
+  place the derivation `fact_uuc_phc_indicators.health_indicators` warns against is actually run.
+  It disagrees on 664 of 5,991 barangays, always lower, and would leave 98 listed barangays
+  qualifying on no route at all — which the AO makes impossible. That pair is the evidence for
+  loading the score rather than deriving it, and showing it beats asserting it.
+- **An empty page must never read as a clean bill of health.** A failed read renders an explicit
+  "not available right now — that is a failure to load, not a finding that there is nothing to
+  report", because silence on this page is the one message it cannot afford to send by accident.
+
 ## Asking the list (U8)
 
 `ChatLauncher` runs on all four routes — the overview, the area pages and both criteria pages —
@@ -289,6 +346,20 @@ and `AiInsight` sits on the area pages. Both are grounded in this dataset alone.
     above province level; `n_comparable` agrees with `agg_uuc_phc_criteria.n_health_evaluable` on
     the six health indicators FIC's extra exclusion does not touch; every level rolls up to the
     national totals per indicator.
+- View **`ref_uuc_phc_quality`** (U10) — one row: the national data-quality facts no per-indicator
+  aggregate can express. `n_barangays_capped` (1,397) against `n_values_capped` (1,584) and
+  `n_barangays_multi_capped` (167); plus the criterion (d) recomputation's disagreement (664) and
+  the 98 barangays it would leave routeless. `security_invoker`, and a view rather than a table
+  precisely so it cannot go stale.
+- View **`ref_uuc_phc_benchmark_gaps`** (U10) — one row per province with a benchmark finding,
+  **7 rows**: 5 whose whole set cannot carry criterion (d) (`finding = 'criterion_d'`, 226
+  barangays) and 2 whose FIC benchmark exceeds the ceiling barangay values were bounded to
+  (`finding = 'fic_only'`, 113 barangays). `n_affected` is barangays and is not always the
+  province's whole list — province 09317 has 7 of 8. `security_invoker`.
+- Table **`ref_uuc_phc_published_delta`** (U10) — **3 rows**: the national total and the two regions
+  where cue cards p37 differs from this dashboard. A table rather than a view because `doc_chunk` is
+  service-role only. Rows that stop differing are deleted on re-run, so a corrected source empties
+  the table rather than leaving a closed gap on the page.
 - Column **`fact_uuc_phc_indicators.health_indicators`** (U7) — the source's criterion (d) score,
   0–7, loaded as supplied and *not* recomputable from the columns beside it. See "The qualifying
   routes" above.
@@ -296,9 +367,9 @@ and `AiInsight` sits on the area pages. Both are grounded in this dataset alone.
   one place, the same discipline as the profiling-status stage totals.
 - Dataset row in `dim_dataset` (`uuc-phc-2025`, `geo_join_level = 'barangay'`, status `published`).
 
-## Registry and lineage (U5, extended by U7 and U9)
+## Registry and lineage (U5, extended by U7, U9 and U10)
 
-All six relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
+All nine relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
 edges in `kb_node` / `kb_edge`.
 
 - **The dictionary is the allowlist.** `queryDataset` (`lib/ai/query-dataset.ts`) refuses any
@@ -355,10 +426,15 @@ edges in `kb_node` / `kb_edge`.
      --out supabase/migrations/<timestamp>_seed_fact_uuc_phc_barangay.sql
    ```
 3. Re-run the aggregate blocks of `20260826140000_agg_uuc_phc_counts.sql`,
-   `20260827100000_agg_uuc_phc_criteria.sql` and `20260827160000_agg_uuc_phc_indicator_dist.sql`,
-   in that order. All three recompute from the fact tables, so they need no regeneration — only
-   re-execution, after the fact seed. The distributions read `agg_uuc_phc_counts`, which is why
-   they go last.
+   `20260827100000_agg_uuc_phc_criteria.sql`, `20260827160000_agg_uuc_phc_indicator_dist.sql` and
+   `20260827170000_uuc_phc_data_quality.sql`, in that order. All four recompute from the fact
+   tables, so they need no regeneration — only re-execution, after the fact seed. Each reads the
+   one before it, which is what fixes the order.
+
+   The data-quality page needs no step of its own beyond that: its two views recompute on every
+   read, and only `ref_uuc_phc_published_delta` is stored — re-running its migration re-parses cue
+   cards p37 and deletes any geography that has stopped differing, so a corrected source empties
+   the table rather than leaving a closed gap on the page.
 
 The loader refuses to emit on a failed check (row count, PSGC format, duplicates, `UUA`-only, the
 87-code Sulu count, all 17 regional counts): a silently short load is worse than a failed one when
@@ -384,6 +460,9 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Criteria page + components | `app/uuc-phc/criteria/`, `components/uuc-phc/` (criteria-section, route-shares, route-not-evaluable, route-breakdown) |
 | Indicators page + components | `app/uuc-phc/indicators/`, `components/uuc-phc/` (indicators-section, indicator-histogram) |
 | Distribution aggregate | `supabase/migrations/20260827160000_agg_uuc_phc_indicator_dist.sql` |
+| Data-quality read layer | `lib/db/uuc-phc-quality.ts` |
+| Data-quality page + components | `app/uuc-phc/data-quality/`, `components/uuc-phc/` (quality-sections, quality-format + `.test.ts`) |
+| Data-quality relations | `supabase/migrations/20260827170000_uuc_phc_data_quality.sql` |
 | PNG one-pager | `lib/exports/uuc-phc-figure.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/route.ts` |
 | Fact loader | `ingestion/ingest_uuc_phc.py` |
 | Cleaning step | `ingestion/clean_uuc_phc_indicators.py` |
@@ -484,6 +563,23 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   the production build. Driven against `next start`, not `next dev`, so the root layout's
   dev-only theme-attribute hydration warning — which reproduces identically on `/uuc-phc` and
   `/uuc-phc/criteria` — is out of the picture.
+- Data quality (U10): all seven in-migration assertion groups pass. `ref_uuc_phc_quality` returns
+  **1,397 / 1,584 / 167** and **664 / 98 / 0**, matching the cleaning report and
+  `docs/UUC_PHC_2025_PLAN.md` §1a exactly; `n_values_capped` equals the sum of
+  `agg_uuc_phc_indicator_dist`'s national `bin_capped`. `ref_uuc_phc_benchmark_gaps` returns 7 rows
+  totalling **226** (`criterion_d`, matching `agg_uuc_phc_criteria.n_health_evaluable` row for row)
+  and **113** (`fic_only`, matching the province rows with `provincial_ref > value_max`), with
+  Zamboanga City correctly reading **7 of 8**. The p37 parse reads **17 region rows summing to
+  5,987 = its own TOTAL**, all 17 resolving to `dim_geo`, and the one region it does not print is
+  NCR — which has nothing listed. `ref_uuc_phc_published_delta` holds exactly **3 discovered rows**:
+  PH +4, CALABARZON +5, BARMM −1.
+
+  Rendered and read at `/uuc-phc/data-quality`: the bounded table prints the cleaning report's own
+  per-indicator counts and shares (Water 886 = 14.8%, FIC 456 = 7.6%), the three single-value rows
+  read **`<0.1%`** rather than `0%`, and the two FIC benchmarks print at full precision
+  (**102.15%** and **100.96%**) rather than rounding Butuan's back to the 101.00 U9 corrected. No
+  new advisor finding: both views are `security_invoker`, so neither raises `security_definer_view`.
+  The methodology page's five typed counts are gone, replaced by links here.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,

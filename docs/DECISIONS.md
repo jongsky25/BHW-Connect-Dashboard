@@ -4008,3 +4008,136 @@ same set the coverage and criteria routes prerender, from the same helper.
 no live-model gap here. The one thing left open is upstream and unchanged: the encoding error behind
 the capping. If a corrected extract arrives, the top bins move and `bin_capped` empties — which is
 the point of computing both rather than typing either.
+
+## 2026-08-27 — UUC for PHC 2025: U10, the cleaning report as a surface — and the page that must not be typed
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U10. `docs/UUC_PHC_2025_CLEANING_REPORT.md` §6 is the most important
+thing written about this dataset and it was invisible to anyone using it. `/uuc-phc/data-quality`
+renders it.
+
+### One constraint decides the whole design
+
+The plan states it plainly: *this page is a claim about our own data, so every figure on it must be
+computed, not typed.* A hand-written "1,584" drifts the first time the extract is regenerated, and a
+**stale data-quality page is worse than none, because it is read as an assurance.** Everything
+below follows from taking that literally:
+
+- **Two views, not tables**, for anything derivable from `fact_uuc_phc_indicators`. A view cannot go
+  stale against the table it reads, which is the exact property this page needs and the only one it
+  needs. Both are cheap (5,991 rows) and both run `security_invoker = true` on
+  `ref_uuc_phc_provincial`'s precedent — the fact table's own public-read policy decides access.
+- **One table**, and only because its other side is not our data at all. See the reconciliation
+  below.
+- **Three of the page's four sections needed no new object.** `agg_uuc_phc_indicator_dist` (U9)
+  already carried per-indicator capping against `n_listed`; `agg_uuc_phc_criteria` (U7) already
+  carried `n_listed - n_health_evaluable`. Writing that down in the migration header matters as much
+  as the code: the next reader's instinct will be to add a fourth relation for figures that already
+  exist twice.
+
+### `ref_uuc_phc_quality`: 1,397 barangays, not 1,584 values
+
+The one figure no per-indicator aggregate can produce. 1,584 bounded values fall across **1,397**
+barangays, because **167** carry more than one — and a per-indicator table cannot count a barangay
+once. Presenting the value count as a barangay count overstates the affected share of the list by
+about 13% (26% against 23.3%), which is a materially different claim about how much of this dataset
+is unreliable. Both column dictionaries say so in capitals, and the page prints the two counts in
+one sentence with the reason they differ.
+
+**The criterion (d) recomputation is performed here on purpose, to measure itself.** This is the one
+place in the build that runs the derivation `fact_uuc_phc_indicators.health_indicators`'s column note
+warns against. That note is a claim about our own data, so the page has to *show* it rather than
+assert it: the recomputation disagrees on **664** of 5,991 barangays, every one of them lower, and
+would leave **98** listed barangays qualifying on no route at all — which DOH AO No. 2020-0023 makes
+impossible, against **0** on the source's own score. That pair is the argument for loading the score
+rather than deriving it, and it is worth more rendered than asserted.
+
+One detail settled while building it and deliberately not rendered: the recomputation uses
+`comparesWorse` alone, **not** U9's placeholder rule. Adding the placeholder rule makes the
+recomputation disagree on *more* rows (802) and leave *more* routeless (99), not fewer. Both figures
+are real; 664/98 is the one the column note characterises, and putting two disagreement figures on
+one page would invite a reader to think one of them is the right way to derive the score. Neither
+is.
+
+### `ref_uuc_phc_benchmark_gaps`: four reasons, kept apart
+
+`agg_uuc_phc_criteria` counts *how many* barangays are excluded. It cannot say whether a province
+supplied nothing, supplied zeroes, supplied a placeholder 1, or supplied fractions where
+percentages were wanted — and those are four different things for the source office to fix. A page
+that collapses them into "unusable" throws away the part they would act on. The kinds are computed
+from the values, never from a list of province codes, so a corrected extract stops the rule firing
+rather than leaving it wrong.
+
+**The two findings in this view must never be added together.** 226 barangays in 5 provinces cannot
+support criterion (d) at all; a *different* 113 in 2 provinces are affected on the FIC comparison
+alone and remain evaluable on the other six indicators. 339 would be wrong in both directions at
+once — overstating the first group and understating what the second group can still do. Hence the
+`finding` column, two separate tables on the page, and a dictionary entry that says so.
+
+The view also surfaces something `agg_uuc_phc_criteria` rounds away: Zamboanga City has 8 listed
+barangays and **7** of them lack a reference. `n_affected` beside `n_listed_province` is what lets
+the page print "7 of 8" rather than implying the whole province.
+
+### The reconciliation is parsed out of the corpus, not transcribed
+
+Cue cards p37 publishes its own distribution by region, totalling 5,987 against the workbook's
+5,991. It is loaded in `doc_chunk` (Increment 2.1), so the migration **reads the figures out of the
+chunk**: 17 region rows, each resolving to a `dim_geo` region by its printed name, summing to the
+page's own printed TOTAL. All three are asserted, so a mis-parse aborts the migration.
+
+That makes *which* regions differ a computed finding rather than a pair copied by hand — and the
+distinction is not academic. A typo in a hand-copied `400` would have been indistinguishable from a
+real discrepancy, on the one page whose entire job is telling real discrepancies from noise.
+
+**Only the differing geographies are stored, and that was a judgement call put to the owner.**
+`doc_source` marks the cue cards `exposure = 'internal'`. Plan §3 records the owner approving
+publication of the *reconciliation* — 5,991 with p37's 5,987 footnoted and dated — and U10 asks for
+the two affected regions. p37's other 15 rows match to the unit and carry no reconciliation, so
+storing them would republish an internal document's table for no benefit. The owner chose that
+scope; the migration still parses and checks all 17, so the three stored rows remain a finding.
+
+**A table rather than a view, for a reason worth recording:** `doc_source` and `doc_chunk` are
+service-role only, with no anon policy. A `security_invoker` view over them would read as *empty*
+for the very caller the page runs as — silently, and on a page where an empty section reads as "no
+problem here". Parsing once into a public-read table is what makes the figure reachable at all.
+
+**The vintage reading renders as inference.** A vintage gap is the likeliest explanation, and
+neither document states it. The page prints the two figures, their as-of dates and where the gap
+sits, and then says in as many words that why they differ is not recorded. Rows that stop differing
+are deleted on re-run, so a corrected source empties the table rather than leaving a closed gap on
+display.
+
+### What the page found in the rest of the build
+
+Building it turned up two things that were already wrong:
+
+1. **The methodology page carried five typed counts** — "1,584 values across 1,397 barangays",
+   "886", "456", "57", "113" — which is exactly the drift U10 exists to remove, sitting on the page
+   a careful reader goes to first. They are gone, replaced by links to the computed page.
+2. **The methodology page had never mentioned the placeholder-benchmark case** U9 added, so it
+   described two reasons a comparison is not made where the build now has three. Corrected.
+
+Two smaller rendering decisions, both tested, both cases where the obvious rounding makes the page
+say the opposite of the data: a share floors at **`<0.1%`** rather than rounding to `0%` (two
+bounded ABR values in 5,991 is 0.03%, and `0%` says the cap never binds), and a benchmark prints at
+two decimals so City of Butuan's **100.96** does not round back to the 101.00 U9 had just corrected
+out of two documents.
+
+### Verification
+
+All seven in-migration assertion groups pass. `ref_uuc_phc_quality` returns 1,397 / 1,584 / 167 and
+664 / 98 / 0, matching the cleaning report and §1a exactly, with `n_values_capped` equal to the sum
+of `agg_uuc_phc_indicator_dist`'s national `bin_capped`. `ref_uuc_phc_benchmark_gaps` returns 7 rows
+totalling 226 (`criterion_d`, agreeing with `agg_uuc_phc_criteria.n_health_evaluable`) and 113
+(`fic_only`, agreeing with the province rows whose `provincial_ref > value_max`). The p37 parse
+reads 17 region rows summing to 5,987 = its own TOTAL, all 17 resolving to `dim_geo`, and the single
+region it does not print is NCR — which has nothing listed, asserted rather than assumed.
+`ref_uuc_phc_published_delta` holds exactly 3 discovered rows: PH +4, CALABARZON +5, BARMM −1.
+
+Rendered and read in Chromium: the bounded table prints the report's own per-indicator counts and
+shares (Water 886 = 14.8%, FIC 456 = 7.6%), the three single-value rows read `<0.1%`, and the two
+FIC benchmarks print 102.15% and 100.96%. Computed text colours checked rather than eyeballed. No
+new advisor finding — both views are `security_invoker`, so neither raises `security_definer_view`.
+`npm run typecheck`, `npm run lint` and `npm test` (46 files, 530 tests) are clean.
+
+**Not verified:** nothing here sits behind the provider boundary. The one thing this page reports
+and cannot resolve is the upstream encoding error itself — which is the point of publishing it.

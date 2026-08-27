@@ -174,17 +174,20 @@ describe("the committed dataset registry seed", () => {
 describe("the UUC for PHC entries (plan U5)", () => {
   const uuc = registry.filter((r) => r.datasetSlug === "uuc-phc-2025");
 
-  it("registers all six objects, approved and public", () => {
-    // Four from U5, plus agg_uuc_phc_criteria from U7 and agg_uuc_phc_indicator_dist from U9. A
-    // new relation the registry does not know about is one queryDataset refuses outright, so this
-    // list is the thing that has to grow.
+  it("registers all nine objects, approved and public", () => {
+    // Four from U5, plus agg_uuc_phc_criteria from U7, agg_uuc_phc_indicator_dist from U9 and
+    // U10's three data-quality relations. A new relation the registry does not know about is one
+    // queryDataset refuses outright, so this list is the thing that has to grow.
     expect(uuc.map((r) => r.tableName).sort()).toEqual([
       "agg_uuc_phc_counts",
       "agg_uuc_phc_criteria",
       "agg_uuc_phc_indicator_dist",
       "fact_uuc_phc_barangay",
       "fact_uuc_phc_indicators",
+      "ref_uuc_phc_benchmark_gaps",
       "ref_uuc_phc_provincial",
+      "ref_uuc_phc_published_delta",
+      "ref_uuc_phc_quality",
     ]);
     for (const row of uuc) {
       expect(row.status).toBe("approved");
@@ -283,6 +286,58 @@ describe("the UUC for PHC entries (plan U5)", () => {
       (c) => c.tableName === "agg_uuc_phc_indicator_dist" && c.columnName === "n_worse",
     );
     expect(worse?.meaning).toMatch(/never as a share/i);
+  });
+
+  it("keeps the barangay count and the value count apart on the data-quality totals", () => {
+    // U10's central trap, and the one a model would fall into first: 1,584 values fall across
+    // 1,397 barangays, so reporting the value count as a barangay count overstates the affected
+    // share of the list by about 13%. Both columns say so, because a column meaning is the only
+    // text that travels with a returned value.
+    const brgy = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_quality" && c.columnName === "n_barangays_capped",
+    );
+    const values = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_quality" && c.columnName === "n_values_capped",
+    );
+    expect(brgy?.meaning).toMatch(/BARANGAYS/);
+    expect(brgy?.meaning).toMatch(/NOT the number of bounded values/i);
+    expect(values?.meaning).toMatch(/VALUES/);
+  });
+
+  it("says the recomputed criterion (d) columns are a measurement, never a score", () => {
+    // The one place in this dataset where a derivation the docs warn against is performed on
+    // purpose. If the dictionary does not say why, a reader of the column has every reason to
+    // treat it as the score.
+    const table = registry.find((r) => r.tableName === "ref_uuc_phc_quality");
+    expect(table?.notesMd).toMatch(/MEASUREMENT OF A GAP, NEVER A SCORE/);
+    const disagreement = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_quality" && c.columnName === "n_score_disagreement",
+    );
+    expect(disagreement?.meaning).toMatch(/NOT A CORRECTION/);
+  });
+
+  it("keeps the two benchmark findings from being added together", () => {
+    // 226 barangays cannot support criterion (d) at all; a different 113 are affected on FIC
+    // alone and remain evaluable on the other six indicators. Summing them to 339 would be wrong
+    // in both directions at once.
+    const finding = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_benchmark_gaps" && c.columnName === "finding",
+    );
+    expect(finding?.meaning).toMatch(/never added together/i);
+    const table = registry.find((r) => r.tableName === "ref_uuc_phc_benchmark_gaps");
+    expect(table?.notesMd).toMatch(/MUST NOT BE ADDED TOGETHER/);
+  });
+
+  it("marks the published-total gap as unexplained, and its absence as agreement", () => {
+    // Two ways to misread this table: inferring the vintage cause neither document states, and
+    // reading a missing geography as missing data rather than as the two sources agreeing.
+    const table = registry.find((r) => r.tableName === "ref_uuc_phc_published_delta");
+    expect(table?.notesMd).toMatch(/INFERENCE, NOT A STATEMENT EITHER SOURCE MAKES/);
+    expect(table?.notesMd).toMatch(/absence from a geography means the two sources AGREE/);
+    const delta = columns.find(
+      (c) => c.tableName === "ref_uuc_phc_published_delta" && c.columnName === "delta",
+    );
+    expect(delta?.meaning).toMatch(/Never zero/);
   });
 
   it("describes health_indicators as a recorded score, not a derivable one", () => {

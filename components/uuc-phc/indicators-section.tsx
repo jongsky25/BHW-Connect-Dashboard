@@ -126,6 +126,10 @@ export function IndicatorsSection({
         dissolves them into one figure that asserts coverage the data does not support; a
         distribution keeps every value at its own position and lets the bounded ones be counted
         where they land.{" "}
+        <Link href="/uuc-phc/data-quality" className="underline hover:text-accent">
+          What was bounded, and what else is known to be wrong
+        </Link>
+        {" · "}
         <Link href="/uuc-phc/methodology" className="underline hover:text-accent">
           Methodology
         </Link>

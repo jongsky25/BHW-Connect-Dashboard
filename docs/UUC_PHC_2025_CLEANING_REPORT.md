@@ -113,6 +113,10 @@ Checked by re-reading the output against the source, cell by cell:
 
 ## 6. What this does not fix
 
+*Rendered, from the data, at `/uuc-phc/data-quality` (plan U10) — every figure in this section is
+recomputed there rather than transcribed, so if the two ever disagree the page is right and this
+document has drifted.*
+
 **Capping bounds a value; it does not validate it.** A Water figure encoded as 9,594 is not a
 household-coverage percentage by any reading, and recording it as 100 asserts full coverage for a
 barangay whose true figure is unknown. The cap is the right call — every alternative rendering is

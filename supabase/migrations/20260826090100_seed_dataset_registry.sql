@@ -15,9 +15,9 @@
 -- Idempotent: re-running refreshes descriptions in place, so this file stays the single source
 -- for what the registry says. That is why plan U5's four UUC for PHC objects were added here
 -- rather than in a follow-on seed, and why U7's fifth (agg_uuc_phc_criteria, with
--- fact_uuc_phc_indicators.health_indicators) and U9's sixth (agg_uuc_phc_indicator_dist) joined
--- them here too: two files both claiming to describe the registry is the drift this one exists to
--- prevent. The rows added there also close a statement that had gone false —
+-- fact_uuc_phc_indicators.health_indicators), U9's sixth (agg_uuc_phc_indicator_dist) and U10's
+-- three data-quality relations joined them here too: two files both claiming to describe the
+-- registry is the drift this one exists to prevent. The rows added there also close a statement that had gone false —
 -- fact_uuc_phc_barangay's note said it had no committed migration, written while PR #75 was still
 -- unmerged; 20260826121000_fact_uuc_phc_barangay.sql has been committed since.
 --
@@ -229,7 +229,28 @@ insert into dataset_registry (
    'One province.',
    'uuc-phc-2025', 'public', 87, 'hand_written', 'approved',
    'A view over fact_uuc_phc_indicators, not a stored table - it runs with security_invoker, so the fact table own public-read policy decides access rather than the view owner. 87 provinces, not the source 88: the source files Zamboanga City under two province names and dim_geo files both under 09317. Read n_with_reference against n_listed_barangays before quoting a benchmark - reference values are all-or-nothing per barangay, and in province 09317 only 1 of 8 listed barangays carries one, so a single value would otherwise stand for the whole province. Five provinces / 226 barangays carry no usable reference at all and cannot support criterion (d); FIC benchmarks are uncapped while barangay FIC values are capped at 100, so 113 barangays in 2 provinces read as worse than their province by construction. To compare one barangay to its province, read that barangay own *_prov_ref columns, which are NULL exactly where the source supplied none.',
-   'docs/UUC_PHC_2025_CLEANING_REPORT.md')
+   'docs/UUC_PHC_2025_CLEANING_REPORT.md'),
+  ('ref_uuc_phc_quality',
+   'UUC for PHC data-quality totals',
+   'One row: the national facts behind the UUC for PHC data-quality page - how many values were bounded during cleaning and across how many barangays, and how far a recomputation of criterion (d) from the published columns lands from the score the source office actually recorded.',
+   'One dataset (a single row).',
+   'uuc-phc-2025', 'public', 1, 'hand_written', 'approved',
+   'A view over fact_uuc_phc_indicators, computed on every read so it cannot go stale against the fact table - that is the whole point, because this table is a claim about our own data quality. security_invoker, so the fact table own public-read policy decides access. DO NOT SWAP n_barangays_capped AND n_values_capped: 1,584 values fall across 1,397 barangays, because 167 barangays carry more than one bounded value. Reporting 1,584 as a barangay count overstates the affected share of the list by about 13 percent. THE SCORE COLUMNS ARE A MEASUREMENT OF A GAP, NEVER A SCORE. They recompute criterion (d) from the published columns purely to show how far that derivation lands from fact_uuc_phc_indicators.health_indicators, which the source office scored before cleaning bounded the values: it disagrees on 664 rows, always understating, and would leave 98 listed barangays qualifying on no route at all, which DOH AO No. 2020-0023 makes impossible. Never report a recomputed score as a barangay score, and never use these columns to correct health_indicators.',
+   'docs/UUC_PHC_2025_CLEANING_REPORT.md'),
+  ('ref_uuc_phc_benchmark_gaps',
+   'UUC for PHC provinces whose benchmarks cannot carry criterion (d)',
+   'One row per province whose provincial benchmarks carry a data-quality finding, naming which finding it is: no reference supplied, every value zero, every value exactly 1, fractions where percentages were wanted, or an FIC benchmark above the ceiling barangay values were bounded to.',
+   'One province and one finding.',
+   'uuc-phc-2025', 'public', 7, 'hand_written', 'approved',
+   'A view over fact_uuc_phc_indicators and dim_geo; security_invoker. TWO DIFFERENT FINDINGS SHARE THIS VIEW AND MUST NOT BE ADDED TOGETHER. finding = criterion_d covers the 226 barangays in 5 provinces whose whole benchmark set cannot support criterion (d) at all - they are excluded from agg_uuc_phc_criteria.n_health_evaluable. finding = fic_only covers the 113 barangays in 2 provinces whose real FIC benchmark exceeds 100 while barangay FIC was bounded to 100; those barangays are excluded from the FIC comparison ONLY and still support criterion (d) on the other six indicators. n_affected counts barangays and is not always the province whole listed count: in province 09317 only 7 of 8 lack a reference, which is what n_listed_province is beside it for. The kinds are computed from the values, never from a list of province codes, so a corrected extract stops the rule firing rather than leaving it wrong.',
+   'docs/UUC_PHC_2025_CLEANING_REPORT.md'),
+  ('ref_uuc_phc_published_delta',
+   'UUC for PHC published-total reconciliation',
+   'Every geography where the 2027 Budget Cue Cards p37 distribution of UUC for PHC barangays differs from the figure this dashboard publishes: the national total and the two regions the difference sits in.',
+   'One geography that differs.',
+   'uuc-phc-2025', 'public', 3, 'hand_written', 'approved',
+   'Three rows only, and their absence from a geography means the two sources AGREE there - matching geographies are deliberately not stored, so this table is a list of discrepancies rather than a comparison table. Nationally the dashboard publishes 5,991 against the cue cards 5,987, a delta of +4 sitting in CALABARZON (+5) and BARMM (-1); the other 15 regions match to the unit and the migration checks that they do. Parsed from the doc_chunk copy of p37 rather than transcribed, so a discrepancy here is a real one rather than a typo. THE VINTAGE READING IS INFERENCE, NOT A STATEMENT EITHER SOURCE MAKES: p37 is a snapshot as of 2025 per DC No. 2025-0549 and the workbook file name reads as a later revision, but neither document says so - report the difference and the as-of date, never a cause. source_as_of carries the date p37 speaks as of, and any quote of n_published must travel with it.',
+   'docs/UUC_PHC_2025_PLAN.md')
 on conflict (table_name) do update set
   title = excluded.title,
   summary = excluded.summary,
@@ -574,7 +595,35 @@ from (values
   ('ref_uuc_phc_provincial','ref_abr',7,'numeric',null,'Provincial benchmark for adolescent birth rate. NULL where no listed barangay in the province carries one.','per 1,000 women aged 10-19','measure',false,null,true),
   ('ref_uuc_phc_provincial','ref_pre_natal',8,'numeric',null,'Provincial benchmark for pre-natal care coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true),
   ('ref_uuc_phc_provincial','ref_sba',9,'numeric',null,'Provincial benchmark for skilled birth attendance coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true),
-  ('ref_uuc_phc_provincial','ref_water',10,'numeric',null,'Provincial benchmark for access to safe water coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true)
+  ('ref_uuc_phc_provincial','ref_water',10,'numeric',null,'Provincial benchmark for access to safe water coverage. NULL where no listed barangay in the province carries one.','percent (0-100)','measure',false,null,true),
+  -- ref_uuc_phc_quality
+  ('ref_uuc_phc_quality','n_listed',1,'integer',null,'Barangays on the 2025 list - the denominator every share on the data-quality page is taken against.','count','measure',false,null,true),
+  ('ref_uuc_phc_quality','n_barangays_capped',2,'integer',null,'BARANGAYS carrying at least one value bounded during cleaning: 1,397. NOT the number of bounded values, which is 1,584 - see n_values_capped. Quoting the wrong one of these two overstates the affected share of the list by about 13 percent.','count','measure',false,null,true),
+  ('ref_uuc_phc_quality','n_values_capped',3,'integer',null,'VALUES bounded during cleaning across all seven boundable indicators: 1,584. Larger than n_barangays_capped because 167 barangays carry more than one. Equal to the sum of agg_uuc_phc_indicator_dist bin_capped over the national rows; the migration aborts if the two disagree.','count','measure',false,null,true),
+  ('ref_uuc_phc_quality','n_barangays_multi_capped',4,'integer',null,'Barangays carrying more than one bounded value: 167. This is the whole difference between the barangay count and the value count.','count','measure',false,null,true),
+  ('ref_uuc_phc_quality','n_score_disagreement',5,'integer',null,'Listed barangays where recomputing criterion (d) from the published columns gives a different answer from the score the source office recorded: 664. A MEASUREMENT OF A GAP, NOT A CORRECTION - the source scored the values before cleaning bounded them, so the recomputation is a different quantity wearing the same name.','count','measure',false,null,true),
+  ('ref_uuc_phc_quality','n_score_understated',6,'integer',null,'Of n_score_disagreement, how many recompute LOWER than the recorded score. Currently all of them, which is what capping the values would predict.','count','measure',false,null,true),
+  ('ref_uuc_phc_quality','n_no_route_if_recomputed',7,'integer',null,'Listed barangays that would qualify on NO route at all if criterion (d) were recomputed from the published columns: 98. DOH AO No. 2020-0023 makes that impossible - a barangay reaches this list only with a socio-economic factor present - which is the evidence that the recomputation is wrong rather than merely different.','count','measure',false,null,true),
+  ('ref_uuc_phc_quality','n_no_route_as_recorded',8,'integer',null,'The same count against the source own recorded score: 0. The pair of this and n_no_route_if_recomputed is the argument for loading health_indicators rather than deriving it.','count','measure',false,null,true),
+  -- ref_uuc_phc_benchmark_gaps
+  ('ref_uuc_phc_benchmark_gaps','province_code',1,'text',null,'Province the finding applies to.',null,'key',true,'dim_geo.geo_code',true),
+  ('ref_uuc_phc_benchmark_gaps','n_listed_province',2,'integer',null,'Listed barangays in this province in total - read beside n_affected, which can be smaller.','count','measure',false,null,true),
+  ('ref_uuc_phc_benchmark_gaps','kind',3,'text','no reference supplied|every value zero|every value exactly 1|fractions where percentages were wanted|FIC benchmark above the 100 ceiling barangay values were bounded to','What is wrong with this province benchmarks, in words. Computed from the values themselves, never from a list of province codes.',null,'dimension',false,null,true),
+  ('ref_uuc_phc_benchmark_gaps','n_affected',4,'integer',null,'Barangays in this province the finding applies to. Not always the province whole listed count: in province 09317 only 7 of 8 lack a reference.','count','measure',false,null,true),
+  ('ref_uuc_phc_benchmark_gaps','witness_value',5,'numeric',null,'The value that identifies the finding - the largest of the seven benchmarks for a criterion_d row (1, or 0, or a fraction; NULL where none was supplied), or the FIC benchmark itself for a fic_only row.',null,'measure',false,null,true),
+  ('ref_uuc_phc_benchmark_gaps','finding',6,'text','criterion_d|fic_only','WHICH finding this row is, so the two are never added together. criterion_d rows total 226 barangays whose whole benchmark set cannot support criterion (d); fic_only rows total 113 barangays affected on the FIC comparison alone and still evaluable on the other six indicators.',null,'dimension',false,null,true),
+  -- ref_uuc_phc_published_delta
+  ('ref_uuc_phc_published_delta','id',1,'bigint',null,'Surrogate row identifier; carries no meaning.',null,'meta',false,null,false),
+  ('ref_uuc_phc_published_delta','dataset_id',2,'bigint',null,'Source dataset this row belongs to.',null,'key',true,'dim_dataset.dataset_id',true),
+  ('ref_uuc_phc_published_delta','geo_code',3,'text',null,'Geography that differs. PH for the national total.',null,'key',true,'dim_geo.geo_code',true),
+  ('ref_uuc_phc_published_delta','geo_level',4,'geo_level_enum','national|region','Level of the differing geography. Only these two levels are reconciled - the cue cards publish no figure below region.',null,'dimension',false,null,true),
+  ('ref_uuc_phc_published_delta','source_label',5,'text',null,'The label exactly as the cue cards print it, so a reader can find the row in the source. TOTAL for the national row.',null,'dimension',false,null,true),
+  ('ref_uuc_phc_published_delta','n_published',6,'integer',null,'What the 2027 Budget Cue Cards p37 publish for this geography. Always quote it with source_as_of: it is a snapshot as of that date, not a current figure.','count','measure',false,null,true),
+  ('ref_uuc_phc_published_delta','n_listed',7,'integer',null,'What this dashboard publishes for the same geography, from agg_uuc_phc_counts.','count','measure',false,null,true),
+  ('ref_uuc_phc_published_delta','delta',8,'integer',null,'n_listed minus n_published. Never zero - geographies where the two sources agree are not stored, so the absence of a row means agreement.','count','measure',false,null,true),
+  ('ref_uuc_phc_published_delta','source_doc_key',9,'text',null,'doc_source key of the document the published figure was read from.',null,'key',false,null,true),
+  ('ref_uuc_phc_published_delta','source_page',10,'integer',null,'Page of that document carrying the figure.',null,'dimension',false,null,true),
+  ('ref_uuc_phc_published_delta','source_as_of',11,'date',null,'The date the published document speaks as of. The likeliest reading of the difference is a vintage gap, but NEITHER SOURCE STATES THAT - report the date and the delta, never a cause.',null,'dimension',false,null,true)
 ) as c (
   table_name, column_name, ordinal, data_type, allowed_values,
   meaning, unit, role, is_join_key, joins_to, is_queryable
