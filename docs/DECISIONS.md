@@ -2850,3 +2850,153 @@ The generator's stderr findings list is empty: every table node has a `built-by`
   A regeneration is still worth doing — **once the concurrent branches have merged**, as its own
   change with nothing else in it, so the diff is reviewable as the mechanical reformat it is.
 
+
+## 2026-08-27 — Internal AI assistant, Increment 3.1: document extraction into the graph
+
+Phase 3 opens. This is the first increment in the project that writes graph rows a **model
+proposed** rather than rows a committed file asserts, and §13 is explicit about why that is the
+dangerous kind: *"a wrong lineage edge is visibly wrong to anyone who opens the migration, whereas
+a wrong extracted edge looks exactly like a right one."* Everything below is arranged around that
+one sentence.
+
+**79 nodes and 90 edges, all `origin='extracted'`, `status='auto'`, `source_kind='chunk'`, every
+one with a `source_chunk_id` and a verbatim `evidence_quote`.** The graph is now 272 nodes / 407
+edges, of which 193 / 317 are asserted (the extra 4 / 10 over Phase 2's 189 / 307 are the
+concurrent UUC-criteria work, seeded live from a branch this one cannot see).
+
+- **`evidence_quote` and a trigger, which is the load-bearing decision.** The Verify asks that
+  "every edge resolves to a chunk whose text actually supports it", and `source_chunk_id` cannot
+  deliver that: it records which chunk was *read*, not that the chunk *says this*. So every
+  chunk-sourced row carries the span it was drawn from, and `kb_evidence_is_grounded()` refuses
+  the insert unless that span appears verbatim in `doc_chunk.content`.
+
+  It lives in the database rather than in the loader for the reason 1.6 put the traversal there
+  and 2.2 put the search there: it then holds however a row is written, including by the next
+  extractor nobody has written yet. And it enforces the inverse too — a row that is *not*
+  chunk-sourced must not carry a quotation. A lineage edge has a file behind it, not a passage,
+  and letting it carry one would make the column mean two things.
+
+  **Proven by making it fail, live.** Four probes: a quote absent from the chunk was refused, a
+  chunk-sourced row with no quote was refused, an asserted row carrying a quote was refused, and a
+  control quote taken verbatim from the same chunk was accepted (then removed). The first probe is
+  the one worth reading — it is not nonsense, it is the *tidied* form of a real line
+  ("Guidelines on Identifying Geographically-Isolated Areas" against the deck's run-together
+  "GuidelinesonIdentifyingGeographically-\nIsolated and Disadvantaged Areas"). Paraphrase and
+  invention fail this check identically, which is the point: an offset that does not resolve is
+  not a citation.
+
+- **The vocabulary is small on purpose, and typed by endpoint.** Three relations — `defined-by`
+  (program → issuance), `issued-by` (issuance → organization), `part-of` (program → program) —
+  and two new node kinds, `program` and `organization`. A check constraint is what makes an
+  extraction *typed* rather than free-form, and a relation the deck states on ten slides is
+  checkable in a way that one invented for a single slide is not. Each relation carries a required
+  endpoint signature, so a backwards edge is refused rather than silently flipped.
+
+  `program` and `organization` would both have fitted the existing catch-all `entity`, and that is
+  the argument against it: §9.9 asks that rows be distinguishable by column rather than by
+  convention, and a review queue that cannot tell a programme from an agency without reading the
+  label is a queue that gets skimmed.
+
+- **Proposal and load are separate commands, for the reason 2.1 split `--embed` from extraction.**
+  `--propose` calls the provider and writes a **transcript** — one JSON line per slide with the
+  raw proposal, who proposed it, the prompt digest and the chunk hash. Every other mode reads that
+  transcript and calls nothing. A proposal costs quota and is not reproducible; validating and
+  loading it is deterministic and free, and tying the two together is the surest way to end up
+  with a validator nobody tightens. The transcript is also the auditable record of what the model
+  *said* as against what survived: `--verify` prints the difference. The 3.2 queue is where
+  someone judges rows; this is where someone judges the extractor.
+
+- **Chunk text is re-derived from the committed PDF, not read from the database.** Grounding has
+  to be checked against the text a citation resolves to. Re-running 2.1's extractor over the
+  committed PDF reproduces the corpus byte for byte — verified: the aggregate sha256 over all 213
+  stored `content_sha256` values is `d9f3c271…`, identical locally and live — so the extractor
+  needs no credentials to know exactly what each slide says, and the trigger re-checks it anyway.
+
+- **Target slides are selected by a rule, not by a list.** Any chunk whose letters-only text
+  contains `LEGALANDPOLICYBASIS` or `MANDATECREATING` (14 slides), plus three named pages with a
+  stated reason each: 47 and 48 (the only slides that say which programmes exist) and 140 (the
+  annual list issuances, which 3.4 chains). Selecting by the phrase keeps the target set derivable
+  from the corpus — add a programme slide and it is picked up — and keeps this increment from
+  looking like a hand-picked demonstration.
+
+- **Page 40 is in the target set deliberately.** It is an unfilled template slide: *"INSERT NAME OF
+  OFFICE HERE … Cite the relevant laws, issuances, policies, or frameworks that mandate or support
+  the implementation of the PAP (e.g., RA, EO, DOH AO, UHC Law, SDG, PDP, etc.)"*. It is both an
+  instruction addressed to a reader — the §1 hazard, present in the corpus, unprompted — and a
+  list of issuance *types with no numbers*. The prompt restates §1 in its own words and says that
+  a slide consisting only of instructions extracts to nothing; the canonical-key check is what
+  catches `issuance:RA` if the prompt is ever ignored. Page 40 extracted to zero rows.
+
+- **Canonical issuance keys are enforced, never normalised.** This deck writes one issuance as
+  "AO No. 2020-0023", "A.O.No.2020-0023" and "AdministrativeOrderNo.2020-0023". The model must
+  emit `issuance:AO 2020-0023`; anything else is refused. Normalising instead would silently
+  accept a misparse, and catching a misparse is the whole point.
+
+**Verify (live against the project, and in tests).**
+
+- 79 nodes / 90 edges extracted. **0 rows break the contract in either direction**: no extracted
+  row lacks `status='auto'`, `source_kind='chunk'`, a `source_chunk_id` or an `evidence_quote`,
+  and no asserted row carries an evidence quote or sits at anything but `approved`. §9.9 holds by
+  column across all 272 nodes and 407 edges.
+- **0 of 169 extracted rows quote text their chunk does not contain**, re-checked in SQL with
+  `position(evidence_quote in content)` independently of the trigger that enforced it.
+- **An independent check of the canonical key, which grounding cannot make**: an edge can quote
+  real text and still attach the wrong issuance number. Stripping every non-digit from both the
+  key and the chunk, **55 of 55 issuance nodes and 65 of 65 issuance-pointing edges** carry a
+  number that is present on the page they were extracted from.
+- **Nothing at `status='auto'` is citable**: `traverse_kb('program:PuroKalusugan', …)` returns 0
+  rows, because 1.6's traversal filters `status='approved'` on both nodes and edges. The rows are
+  in the database and unreachable by the assistant until 3.2 approves them — which is owner
+  decision 5 working as designed, not a gap.
+- All 90 edges were read end to end against their quotes. The spot-check §8 asks for is in the
+  transcript itself: every triple names the slide it came from and the span it was drawn from.
+- `python ingestion/extract_kb.py --verify` reports **108 nodes and 93 edges proposed → 79 and 90
+  accepted, +28 repeat sightings merged by key, +2 repeat edges, 2 rejected**. The arithmetic
+  balances by construction: a proposal that vanishes without appearing under a reason is a bug in
+  the report, and this is what would show it.
+- 10 new tests (389 total). `lib/kb/extraction-transcript.test.ts` reads the committed transcript
+  and the committed prompt, because CI runs Node and nothing else — a transcript hand-edited in a
+  later PR would otherwise pass every check that actually runs. It asserts the typed relations and
+  their directions, that every row carries a bounded evidence span, that no endpoint is invented,
+  that one key keeps one label, and that the prompt still contains its §1 paragraph and still reads
+  the model name from the environment with no default.
+- `npm run lint`, `npm run typecheck`, `npm test` clean.
+
+**The two rejections are both real findings, not noise.**
+
+1. **`NCIP Memorandum Order No. 0151` (p129) has no canonical form.** The pattern covers RA, AO,
+   DC, DM, JMC, JAO, COA-C, DILG-MC and NCIP-MO in `YYYY-NNNN` shape, and this issuance is numbered
+   `0151` with no year. It was refused, and the `defined-by` edge that pointed at it was refused
+   with it. Widening the pattern is a one-line change; doing it without a reader deciding whether
+   `NCIP-MO 0151` is the right canonical form would be the extractor answering a question that is
+   not its to answer.
+2. **The same programme is named two ways in the deck, and both nodes were kept.** Slide 47 lists
+   "Local Investments Plan for Health/ Annual Operational Plan (LIPH/AOP)" while slide 87's profile
+   is headed "LOCAL INVESTMENT PLANS FOR HEALTH"; slide 48 lists "Good Practice in Health and
+   Replication" while slide 208 is headed "Good Practices in Health". Two nodes each. **Collapsing
+   them in the extractor would be a model deciding an identity question**, which is exactly what
+   §11's open "edge dedup" question reserves for review — so both are proposed, both land at
+   `auto`, and 3.2 is where a person merges or rejects. Recorded as the first real instance of
+   that question, with two independent examples rather than one.
+
+**How the transcript was produced, stated plainly.** `--propose` is written, typed and unrun: it
+needs `GEMINI_API_KEY` and `GEMINI_EXTRACTION_MODEL`, and this build environment has neither — the
+same position 2.1 recorded for `--embed` and 2.2 for the vector half. The committed transcript was
+therefore produced in the session that built this increment, by an assistant reading each slide
+under the committed prompt, and every record says so in its `proposed_by` field rather than naming
+a provider it did not come from.
+
+What this does and does not establish. It does **not** establish anything about how well the
+committed Gemini call path extracts; that is unrun and unclaimed. It does establish everything that
+does not depend on which model proposed the rows: the schema, the typed vocabulary, the endpoint
+signatures, the canonical-key refusal, the grounding trigger, the arithmetic of the report, and the
+fact that a model-proposed row is distinguishable from an asserted one by column and is unreachable
+until approved. Those are the properties 3.1 is for. When the owner runs `--propose` with a key,
+the transcript is replaced and everything downstream re-runs unchanged for free — which is the
+whole reason the two halves are separate commands.
+
+**Migration renumbered mid-increment, for the third time in this project.** `20260827100000` was
+taken by the concurrent UUC work (`agg_uuc_phc_criteria`), applied live at 01:01 while this was
+being written. Ours is `20260827110000_kb_extraction.sql`. The handoff warned about exactly this and
+it happened anyway, which suggests the check belongs somewhere a person cannot forget it — noted,
+not built here.

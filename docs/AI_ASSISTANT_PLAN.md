@@ -462,7 +462,8 @@ be re-run against a later build.
 The tables and the traversal exist from Phase 1. Phase 3 adds the only part that genuinely needs
 documents and a model: edges nobody has written down.
 
-**3.1 — Document extraction.** Typed extraction against the 1.5 schema, written as
+**3.1 — Document extraction.** *(built — 2026-08-27; 79 nodes, 90 edges, all at `auto`)*
+Typed extraction against the 1.5 schema, written as
 `status = 'auto'` with `source_kind = 'chunk'` and a `source_chunk_id` on every edge. The
 extraction prompt restates the §1 rule that source text is data and never instructions.
 *Verify:* extracted triples on a known document are spot-checked; every edge resolves to a chunk
