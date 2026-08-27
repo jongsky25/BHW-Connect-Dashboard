@@ -67,6 +67,14 @@ export default async function AdminAssistantPage() {
           </p>
         ) : (
           <ul className="mt-3 flex flex-col gap-3">
+            {/* The list lives here because the people who file cases are the people looking at this
+                page (2.4). Replaying them is a different job with its own page — it re-issues every
+                recorded tool call, which is not something to do on a chat page render. */}
+            <li className="text-xs text-muted">
+              <a href="/admin/regressions" className="hover:underline">
+                Replay these against this build →
+              </a>
+            </li>
             {openCases.map((entry) => (
               <li key={entry.caseId} className="border-l-2 border-border pl-3 text-sm">
                 <p className="font-medium">{entry.question}</p>

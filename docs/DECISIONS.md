@@ -3499,3 +3499,85 @@ scan would have had to guess which of the file's tables the mention belonged to.
 live-only rows left**, because the branch that had been carrying the difference has merged. Total
 graph: **276 nodes / 428 edges**. `npm run lint`, `npm run typecheck` and `npm test` (426 tests,
 including #83's 13) are clean on the merge result.
+
+## 2026-08-27 — §10 gets a runner: replaying a stored case against the build in front of it
+
+Not an increment in §8's list. §10 has said since Phase 2 that it "becomes load-bearing exactly
+when a change to one path can silently degrade another", and Increment 2.4's own entry closed with
+the gap: *"there is no batch runner that re-executes them against a build and diffs the result.
+Until there is, §10's list accumulates evidence without automatically spending it."* Phase 3 added
+a fourth retrieval path. This spends it.
+
+**`/admin/regressions`.** Every open case, and a link that replays them: re-issue the tool calls
+the case recorded, with the arguments it recorded, and re-resolve every passage it cited. Three
+verdicts — `ok`, `degraded`, `broken` — and a finding line per problem.
+
+- **It does not re-ask the question, and says so on the page.** That half needs a provider key, and
+  tying the two together is the same trade 2.1 made between extraction and `--embed`: the
+  deterministic half is free and can run against any build, and a suite that only runs when someone
+  has a key is a suite that never runs. `REPLAY_CAVEAT` is returned with every result and rendered
+  above the list, because the one thing that would make this misleading is a green run being read
+  as "the answers are fine".
+
+- **The split is also where the value is.** §10's own framing is that "the regressions worth
+  catching are usually in which tools were selected or which page was cited rather than in how the
+  answer reads". *Which page was cited* is precisely what a replay can check with no model at all —
+  and a retrieval change that quietly stops returning the chunk an answer was built on is invisible
+  in the prose and obvious here.
+
+- **Four checks per citation, because they fail differently.** Does the chunk still exist; is it
+  still on the page the case recorded; is its text still what the case quoted; and does the case's
+  *own recorded search* still return it. The last is the interesting one: the first three catch a
+  corpus change, and only the fourth catches a *ranking* change, which is the failure mode a
+  document assistant actually has.
+
+- **A refusal returned as data is read as a failure.** Every tool in this set degrades rather than
+  throwing (§1), so `{ error: … }` is the normal failure shape and a runner that only caught
+  exceptions would score a refusing tool as passing.
+
+- **Replays run sequentially.** Firing twenty concurrent tool loops at the database to save a few
+  seconds is how a diagnostic becomes an outage — guardrail 4's reasoning, applied to the thing
+  that is *supposed* to be safe to run.
+
+- **It replays on request, not on page load.** A page that re-issues every recorded tool call on
+  every visit is a page people stop visiting, and §10 only works if the list is looked at.
+
+**A bug the live data caught, before the page ever rendered.** The one seeded case stores a
+citation with a `chunkId` and a `page` and **no `text`** — §10.1 seeds are hand-written from what is
+on screen, so there is no captured passage. The first version compared the stored text against the
+chunk's and would have reported *"chunk 26 has different text than the case quoted"* on the only
+case in the list: a false failure, on the first run, on every seeded case. `textUnchanged` is now
+`boolean | null`, null meaning "the case recorded nothing to compare", and the page renders
+"no text recorded" rather than a red line. A suite whose first run cries wolf is a suite nobody
+runs twice.
+
+**Verify.**
+
+- **The live case replays green, checked against the database by hand first.** Case #1
+  (`searchDocuments`, `{query: "How many BHWs are there", limit: 6}`, citing slide 26): chunk 26
+  still resolves and is still page 26; the recorded search returns `26/26, 29/29, 164/178, 32/32,
+  161/175, 163/177` — the cited chunk is still the **top** hit; the text check is skipped because
+  the case recorded none. Verdict `ok`.
+- That result also shows why the runner resolves by chunk id rather than page: `chunk_id` and
+  `page_from` coincide for the first fifty-odd chunks and diverge after (chunk 178 is slide 164),
+  so a replay keyed on either alone would silently compare the wrong rows.
+- 12 new tests (438 total), each one a failure a diff of the answer prose would miss: the cited
+  slide dropping out of its own search, the chunk's text changing under it, the chunk moving to
+  another page, the chunk disappearing, the tool being renamed, the tool refusing as data, the tool
+  throwing, a case with no tool calls not being blamed for an unretrieved citation, and a seeded
+  case with no recorded passage passing.
+- `next build` puts `/admin/regressions` under `ƒ`. `npm run lint`, `npm run typecheck`,
+  `npm test` clean.
+
+**What this still does not do, stated so the next reader does not have to find out.**
+
+1. **It does not check a value.** A `queryDataset` case is scored on whether the call still runs,
+   not on whether it returns the same figure, because `ai_regression_case` has nowhere to record an
+   expected payload — only free-text `note`. §10.1's route 1 ("seed from the dashboard", ten
+   questions whose answers are already rendered on public pages) wants exactly that column, and
+   seeding those cases before it exists would produce a suite that cannot fail on the thing it was
+   seeded for. That column, and those seeds, are the next thing worth building.
+2. **The list is one case long.** Route 2 (grow from failures) is live and route 3 (harvest
+   `ai_ask_cache` rows at `status = 'approved'`) is still unbuilt. A runner over one case proves the
+   runner, not the corpus — and §10's own words are that "three answers read by hand say nothing
+   about the other forty".

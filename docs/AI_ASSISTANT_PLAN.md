@@ -581,10 +581,20 @@ see the list growing. Route 1 (seed from the dashboard) and route 3 (harvest `ai
 exists and carries a `source` column that keeps seeded cases distinguishable from reported ones.
 One seeded case is in the list already, recording §12.4 rule 3.
 
-**What is still missing is the runner.** A stored case is replayable in the sense that everything a
-replay needs is in the row; nothing yet re-runs them in a batch and diffs the result. That is the
-next thing worth building, and it is what would turn "these five queries look right" into a claim
-about the other forty.
+**The runner is built** *(2026-08-27)*. `/admin/regressions` replays every open case against the
+build in front of it: it re-issues the tool calls the case recorded, with the arguments it
+recorded, and re-resolves every passage it cited — checking that the chunk still exists, is still
+on its page, still carries the text the case quoted, and is *still returned by the case's own
+search*. That last check is the one a model cannot help with and a prose diff cannot see.
+
+It deliberately does not re-ask the question: that needs a provider key, and a suite that only runs
+when someone has one never runs. Every result carries the caveat saying so.
+
+**Two things are still missing, and they are about the list rather than the runner.** There is
+nowhere to record an *expected payload*, so a `queryDataset` case is scored on whether the call
+still runs and not on whether it returns the same figure — which is exactly what route 1 below
+needs, so route 1 waits on that column. And the list is one case long: route 2 is live, route 3 is
+unbuilt.
 
 ## 11. Open questions
 

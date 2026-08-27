@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/admin/answer-bank", label: "Answer bank" },
   { href: "/admin/assistant", label: "Assistant" },
   { href: "/admin/kb-review", label: "KB review" },
+  { href: "/admin/regressions", label: "Regressions" },
 ];
 
 export function AdminNav() {
