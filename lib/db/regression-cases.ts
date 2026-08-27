@@ -39,6 +39,70 @@ export type RegressionCase = {
   createdAt: string;
 };
 
+/**
+ * A case with everything a replay needs, as against the summary the assistant page renders.
+ *
+ * The two readers are separate on purpose. `listOpenRegressionCases` returns tool *names* and a
+ * citation *count* — enough to see the list growing, which is what that surface is for. A replay
+ * needs the arguments and the cited passages themselves, and loading those for a page that only
+ * counts them would pull the whole answer history into a render nobody asked for.
+ */
+export type ReplayableCase = {
+  caseId: number;
+  question: string;
+  note: string | null;
+  toolCalls: { name: string; args: Record<string, unknown> }[];
+  citations: { chunkId: number; page: number; text: string }[];
+};
+
+export async function loadReplayableCases(limit = 20): Promise<ReplayableCase[]> {
+  try {
+    const supabase = createSupabaseServiceClient();
+    const { data, error } = await supabase
+      .from("ai_regression_case")
+      .select("case_id, question, note, tool_calls, citations")
+      .eq("status", "open")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+
+    return data.map((row) => ({
+      caseId: row.case_id,
+      question: row.question,
+      note: row.note,
+      toolCalls: (Array.isArray(row.tool_calls) ? row.tool_calls : [])
+        .map((call) => {
+          if (!call || typeof call !== "object") return null;
+          const name = (call as { name?: unknown }).name;
+          if (typeof name !== "string") return null;
+          const args = (call as { args?: unknown }).args;
+          return {
+            name,
+            args: (args && typeof args === "object" ? args : {}) as Record<string, unknown>,
+          };
+        })
+        .filter((call): call is { name: string; args: Record<string, unknown> } => call !== null),
+      // A citation with no chunk id cannot be re-resolved, so it is dropped rather than replayed
+      // as a hole: a replay that reports "0 citations checked" is clearer than one reporting a
+      // failure the case never actually made.
+      citations: (Array.isArray(row.citations) ? row.citations : [])
+        .map((cite) => {
+          if (!cite || typeof cite !== "object") return null;
+          const { chunkId, page, text } = cite as {
+            chunkId?: unknown;
+            page?: unknown;
+            text?: unknown;
+          };
+          if (typeof chunkId !== "number" || typeof page !== "number") return null;
+          return { chunkId, page, text: typeof text === "string" ? text : "" };
+        })
+        .filter((cite): cite is { chunkId: number; page: number; text: string } => cite !== null),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** Returns the new case id, or null when the write did not land. Never throws. */
 export async function recordRegressionCase(input: RegressionCaseInput): Promise<number | null> {
   try {
@@ -102,7 +166,9 @@ export async function listOpenRegressionCases(limit = 20): Promise<RegressionCas
         source: row.source,
         toolNames: toolCalls
           .map((call) =>
-            call && typeof call === "object" && typeof (call as { name?: unknown }).name === "string"
+            call &&
+            typeof call === "object" &&
+            typeof (call as { name?: unknown }).name === "string"
               ? (call as { name: string }).name
               : null,
           )

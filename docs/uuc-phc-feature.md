@@ -296,7 +296,7 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Section chat launcher | `components/uuc-phc/ask-the-list.tsx` → `components/chat/chat-launcher.tsx` |
 | Chat route + its tests | `app/api/ai/chat/route.ts` (+ `.test.ts`) |
 | Dataset-scoped registry reads | `lib/db/dataset-registry.ts` (+ `dataset-registry-scope.test.ts`) |
-| Ask-cache dataset column | `supabase/migrations/20260827110000_ai_ask_cache_dataset_slug.sql` |
+| Ask-cache dataset column | `supabase/migrations/20260827150000_ai_ask_cache_dataset_slug.sql` |
 | Criteria read layer | `lib/db/uuc-phc-criteria.ts` (+ `.test.ts`) |
 | Criteria page + components | `app/uuc-phc/criteria/`, `components/uuc-phc/` (criteria-section, route-shares, route-not-evaluable, route-breakdown) |
 | PNG one-pager | `lib/exports/uuc-phc-figure.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/route.ts` |

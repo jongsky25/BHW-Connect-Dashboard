@@ -11,8 +11,17 @@ import type { Tool } from "./tools";
  *   fetches one geography and `compareGeos` two named ones, so "which places inside Cebu sit below
  *   their provincial peers" — a subtree walk joined to `agg_peer_ranks` — has been unanswerable
  *   against data that has been in production for a month.
- * - **lineage** — the `kb_edge` graph seeded in 1.5: what a table derives from, what built it,
- *   which write-up reconciled it.
+ * - **lineage** — the `kb_edge` graph: what a table derives from, what built it, which write-up
+ *   reconciled it (seeded from repository structure in 1.5) and, from Increment 3.3, which
+ *   issuance a dataset rests on and which programme that issuance governs — the second half of
+ *   which was extracted from the document corpus and approved through the 3.2 queue.
+ *
+ * Increment 3.3 adds `direction: "both"`. The crossing edges meet nose to nose at an issuance —
+ * a dataset declares its basis, and a programme declares the same one — so no single-direction
+ * walk gets from one side to the other. With an undirected walk the relation name alone stops
+ * saying which way a hop was taken, so every result now also carries `directions`, and `via`
+ * renders a backwards hop as `←relation—` rather than `—relation→`. 1.6's contract is not
+ * relaxed to fit the new mode; it is made precise enough to carry it.
  *
  * The recursion itself lives in `traverse_geo` / `traverse_kb` (Postgres). That is deliberate:
  * §9.8's guardrails — depth cap, visited-set cycle guard, row cap, statement timeout — are
@@ -27,6 +36,9 @@ import type { Tool } from "./tools";
 /** Mirrors the hard caps in the SQL functions; kept in sync deliberately, not derived. */
 export const GEO_MAX_DEPTH = 5;
 export const LINEAGE_MAX_DEPTH = 6;
+/** An undirected walk fans out faster, so it gets a lower cap — §11 says raise a depth cap against
+ * real questions rather than guessing upward, and this is the guess-downward end of that. */
+export const LINEAGE_BOTH_MAX_DEPTH = 4;
 export const MAX_TRAVERSAL_ROWS = 500;
 export const DEFAULT_TRAVERSAL_ROWS = 100;
 export const DEFAULT_DEPTH = 3;
@@ -38,16 +50,33 @@ export const KB_RELATIONS = [
   "reconciled-in",
   "joins-on",
   "has-column",
+  // Increment 3.1's extraction vocabulary, plus the asserted crossing edges 3.3 derives from
+  // migration text. `defined-by` carries both — a programme's legal basis and a dataset's — since
+  // the relation means the same thing in each and splitting it would make one traversal two.
+  "defined-by",
+  "issued-by",
+  "part-of",
+  // Increment 3.4. The only three relations that may carry validity, and the only three whose
+  // direction the endpoint signature cannot check — both ends are issuances, so "A supersedes B"
+  // and its reverse are equally well typed and only one is true.
+  "supersedes",
+  "amends",
+  "implements",
 ] as const;
 
 export const traverseArgsSchema = z.object({
   source: z.enum(["geo", "lineage"]),
   /** A geo_code for geo ('0722'), or a node key for lineage ('table:agg_honorarium'). */
   start: z.string().min(1).max(120),
-  direction: z.enum(["down", "up", "out", "in"]).optional(),
+  direction: z.enum(["down", "up", "out", "in", "both"]).optional(),
   relations: z.array(z.enum(KB_RELATIONS)).max(KB_RELATIONS.length).optional(),
   maxDepth: z.number().int().min(1).max(LINEAGE_MAX_DEPTH).optional(),
   limit: z.number().int().min(1).max(MAX_TRAVERSAL_ROWS).optional(),
+  /** lineage only: walk the graph as it stood on this date. YYYY-MM-DD. */
+  asOf: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export type TraverseArgs = z.infer<typeof traverseArgsSchema>;
@@ -63,16 +92,17 @@ export type LineagePlan = {
   fn: "traverse_kb";
   params: {
     start_key: string;
-    direction: "out" | "in";
+    direction: "out" | "in" | "both";
     relations: string[] | null;
     max_depth: number;
     row_cap: number;
+    as_of: string | null;
   };
 };
 export type TraversalPlan = GeoPlan | LineagePlan;
 
 const GEO_DIRECTIONS = ["down", "up"] as const;
-const LINEAGE_DIRECTIONS = ["out", "in"] as const;
+const LINEAGE_DIRECTIONS = ["out", "in", "both"] as const;
 
 /**
  * Validates a traversal request and returns the RPC call to make, or a refusal the model can act
@@ -87,6 +117,15 @@ export function planTraversal(args: TraverseArgs): { plan: TraversalPlan } | Tra
     if (args.relations?.length) {
       return {
         error: "relations apply to the lineage graph only; a geo traversal follows containment.",
+      };
+    }
+    if (args.asOf) {
+      // dim_geo has no validity of its own — `dim_psgc_crosswalk` is where a geography's vintage
+      // lives, and it is deferred (§13 agent 4). Accepting the argument and ignoring it would be
+      // an "as of" answer that was never filtered.
+      return {
+        error:
+          "asOf applies to the lineage graph only; the geography tree carries no validity dates.",
       };
     }
     const direction = args.direction ?? "down";
@@ -115,12 +154,13 @@ export function planTraversal(args: TraverseArgs): { plan: TraversalPlan } | Tra
   const direction = args.direction ?? "out";
   if (!(LINEAGE_DIRECTIONS as readonly string[]).includes(direction)) {
     return {
-      error: `A lineage traversal goes out (what this was built from) or in (what depends on it), not ${direction}.`,
+      error: `A lineage traversal goes out (what this was built from), in (what depends on it), or both (either way, for a chain that changes direction), not ${direction}.`,
     };
   }
-  if (depth > LINEAGE_MAX_DEPTH) {
+  const ceiling = direction === "both" ? LINEAGE_BOTH_MAX_DEPTH : LINEAGE_MAX_DEPTH;
+  if (depth > ceiling) {
     return {
-      error: `maxDepth ${depth} exceeds the lineage traversal limit of ${LINEAGE_MAX_DEPTH}.`,
+      error: `maxDepth ${depth} exceeds the ${direction} lineage traversal limit of ${ceiling}.`,
     };
   }
   if (!args.start.includes(":")) {
@@ -134,10 +174,11 @@ export function planTraversal(args: TraverseArgs): { plan: TraversalPlan } | Tra
       fn: "traverse_kb",
       params: {
         start_key: args.start,
-        direction: direction as "out" | "in",
+        direction: direction as "out" | "in" | "both",
         relations: args.relations?.length ? [...args.relations] : null,
         max_depth: depth,
         row_cap: limit,
+        as_of: args.asOf ?? null,
       },
     },
   };
@@ -158,6 +199,8 @@ type KbRow = {
   path: string[];
   relation_path: string[];
   source_path: string[];
+  direction_path: string[];
+  validity_path: string[];
 };
 
 export type GeoResult = {
@@ -176,6 +219,12 @@ export type LineageResult = {
   relations: string[];
   /** The file asserting each step, in step order — the provenance the §1 ground rule requires. */
   sources: string[];
+  /** Which way each step was walked: 'out' along the edge, 'in' against it. Only `both` produces
+   * a mixture, but it is always returned so a reader never has to know which mode ran. */
+  directions: string[];
+  /** When each step holds: 'always' for a structural edge, 'from..to' for a dated one. A hop that
+   * is only true for a period is not the same claim as one that is always true (Increment 3.4). */
+  validity: string[];
   /** One-line rendering of the whole chain, so a cited answer can quote it verbatim. */
   via: string;
 };
@@ -204,7 +253,13 @@ function renderVia(row: KbRow): string {
   const steps = row.path.slice(1).map((node, i) => {
     const relation = row.relation_path[i] ?? "?";
     const source = row.source_path[i] ?? "?";
-    return `${relation} → ${node} [${source}]`;
+    // A backwards hop reads backwards. "defined-by → issuance:AO 2020-0023" and
+    // "←defined-by— program:UUC for PHC" are opposite claims, and a chain that renders them the
+    // same is a chain a reader cannot check — which 1.6 treats as worse than no chain at all.
+    const arrow = row.direction_path?.[i] === "in" ? `←${relation}—` : `—${relation}→`;
+    const validity = row.validity_path?.[i];
+    const when = validity && validity !== "always" ? ` {${validity}}` : "";
+    return `${arrow} ${node}${when} [${source}]`;
   });
   return `${row.path[0]} ${steps.join(" ; ")}`;
 }
@@ -266,6 +321,8 @@ export async function executeTraverseGraph(
       path: row.path,
       relations: row.relation_path,
       sources: row.source_path,
+      directions: row.direction_path ?? [],
+      validity: row.validity_path ?? [],
       via: renderVia(row),
     }));
     return {
@@ -293,7 +350,7 @@ export function createTraversalTool(): Tool {
     definition: {
       name: "traverseGraph",
       description:
-        "Walk a graph and get back paths, not just endpoints. source 'geo' walks the dim_geo containment tree — down for everything inside a place (its cities, its barangays), up for its ancestors — which is how you answer questions about a whole subtree rather than one named geography. source 'lineage' walks the knowledge graph: out from a table for what it was derived from, what built it and which write-up reconciled it; in for what depends on it. Every lineage result carries the file that asserts each step; quote it when you describe where a figure comes from.",
+        "Walk a graph and get back paths, not just endpoints. source 'geo' walks the dim_geo containment tree — down for everything inside a place (its cities, its barangays), up for its ancestors — which is how you answer questions about a whole subtree rather than one named geography. source 'lineage' walks the knowledge graph, which spans two populations: the datasets, tables, columns, migrations and write-ups this project builds, and the programmes, issuances and agencies described in the document corpus. Go out from a node for what it rests on (what a table was derived from, what built it, which circular defines a dataset), in for what depends on it, and both when the chain changes direction — which it does whenever you cross between a dataset and the policy behind it, because a dataset and a programme each point AT the same issuance. Issuances also carry supersedes, amends and implements: walk in along supersedes from any issuance in a chain to reach the one currently in force, and pass asOf to see the chain as it stood on a past date. Every lineage result carries the file or slide that asserts each step, which way it was walked, and when the step holds; quote that chain when you describe where something comes from.",
       parameters: {
         type: "object",
         properties: {
@@ -305,8 +362,9 @@ export function createTraversalTool(): Tool {
           },
           direction: {
             type: "string",
-            enum: ["down", "up", "out", "in"],
-            description: "geo: down (default) or up. lineage: out (default) or in.",
+            enum: ["down", "up", "out", "in", "both"],
+            description:
+              "geo: down (default) or up. lineage: out (default), in, or both (an undirected walk, for a chain that crosses from a dataset to the policy behind it).",
           },
           relations: {
             type: "array",
@@ -315,11 +373,16 @@ export function createTraversalTool(): Tool {
           },
           maxDepth: {
             type: "number",
-            description: `Steps to walk (default ${DEFAULT_DEPTH}; geo max ${GEO_MAX_DEPTH}, lineage max ${LINEAGE_MAX_DEPTH}).`,
+            description: `Steps to walk (default ${DEFAULT_DEPTH}; geo max ${GEO_MAX_DEPTH}, lineage max ${LINEAGE_MAX_DEPTH}, lineage 'both' max ${LINEAGE_BOTH_MAX_DEPTH}).`,
           },
           limit: {
             type: "number",
             description: `Rows to return, 1-${MAX_TRAVERSAL_ROWS} (default ${DEFAULT_TRAVERSAL_ROWS}).`,
+          },
+          asOf: {
+            type: "string",
+            description:
+              "lineage only, YYYY-MM-DD: walk the graph as it stood on this date, so a supersession that had not happened yet is not followed. Omit for the position today.",
           },
         },
         required: ["source", "start"],
