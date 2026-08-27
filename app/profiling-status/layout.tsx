@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SiteBreadcrumbs } from "@/components/layout/site-breadcrumbs";
 
 // This section is its own dataset, distinct from the 2025 BHW Census — so it carries its own
 // title template instead of the root layout's "%s · BHW Connect". The shared BHW header/footer
@@ -72,7 +73,12 @@ export default function ProfilingStatusLayout({ children }: { children: ReactNod
   return (
     <div className="flex min-h-screen flex-col">
       <SectionHeader />
-      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10">{children}</div>
+      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+        {/* Static routes get their trail from the pathname; the area pages below
+            need a resolved geo name, so they render their own in the same spot. */}
+        <SiteBreadcrumbs className="mb-8" />
+        {children}
+      </div>
       <SectionFooter />
     </div>
   );

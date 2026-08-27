@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { aboutNavLinks, primaryNavLinks } from "./nav-links";
+import { SiteBreadcrumbBar } from "./site-breadcrumbs";
 import { SettingsMenu } from "@/components/settings/settings-menu";
 
 function NavLink({ href, label }: { href: string; label: string }) {
@@ -72,6 +73,16 @@ export function Header() {
               ))}
             </div>
           </details>
+          {/* The way back up to the portal. The census section's "Home" points at
+              /bhw, so without this the only route to "/" was a footer link below
+              a very long page — the sibling sections have carried this link in
+              their own headers all along. */}
+          <Link
+            href="/"
+            className="rounded-md px-3 py-2 text-sm font-medium text-muted hover:bg-surface hover:text-foreground"
+          >
+            ← Portal
+          </Link>
           <SettingsMenu />
         </nav>
 
@@ -118,9 +129,19 @@ export function Header() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                href="/"
+                className="block rounded-md px-3 py-2.5 text-sm font-medium text-muted hover:bg-surface hover:text-foreground"
+              >
+                ← Portal
+              </Link>
+            </li>
           </ul>
         </nav>
       )}
+
+      <SiteBreadcrumbBar />
     </header>
   );
 }

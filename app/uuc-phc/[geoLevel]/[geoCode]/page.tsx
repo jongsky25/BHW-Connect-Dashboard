@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { PORTAL_CRUMB, UUC_PHC_CRUMB } from "@/lib/nav/breadcrumbs";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getGeoAncestors, getGeoByCode } from "@/lib/db/geo";
@@ -16,6 +18,7 @@ import { CoverageHero } from "@/components/uuc-phc/coverage-hero";
 import { ShareBar } from "@/components/uuc-phc/share-bar";
 import { ChildBreakdown } from "@/components/uuc-phc/child-breakdown";
 import { BarangayList } from "@/components/uuc-phc/barangay-list";
+import { DownloadLinks } from "@/components/uuc-phc/download-links";
 import { getUucPhcBarangayDetails } from "@/lib/db/uuc-phc-indicators";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
@@ -109,28 +112,19 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
   return (
     <PresentationProvider meta={deckMeta}>
       <div className="flex flex-col gap-8">
-        {/* Breadcrumb */}
-        <nav
-          aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-1 text-sm text-muted"
-        >
-          <Link href="/uuc-phc" className="hover:text-accent hover:underline">
-            Overview
-          </Link>
-          {crumbAncestors.map((a) => (
-            <span key={a.geoCode} className="flex items-center gap-1">
-              <span aria-hidden="true">›</span>
-              <Link
-                href={`/uuc-phc/${a.geoLevel}/${a.geoCode}`}
-                className="hover:text-accent hover:underline"
-              >
-                {a.geoName}
-              </Link>
-            </span>
-          ))}
-          <span aria-hidden="true">›</span>
-          <span className="font-medium text-foreground">{geo.geoName}</span>
-        </nav>
+        {/* Breadcrumb — built here rather than by the layout's `SiteBreadcrumbs`
+            because the ancestor names come from the database. */}
+        <Breadcrumbs
+          items={[
+            PORTAL_CRUMB,
+            UUC_PHC_CRUMB,
+            ...crumbAncestors.map((a) => ({
+              label: a.geoName,
+              href: `/uuc-phc/${a.geoLevel}/${a.geoCode}`,
+            })),
+            { label: geo.geoName },
+          ]}
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geo.geoName}</h1>
@@ -145,7 +139,7 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
                 <div className="mt-6">
                   <ShareBar counts={counts} />
                 </div>
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4">
                   <p className="text-xs text-muted">
                     Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
                     {counts.nListed > 0 && (
@@ -167,12 +161,11 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
                       </>
                     )}
                   </p>
-                  <a
-                    href={`/api/export/uuc-phc?geoLevel=${geo.geoLevel}&geoCode=${encodeURIComponent(geo.geoCode)}`}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-accent"
-                  >
-                    Download summary (PNG)
-                  </a>
+                  <DownloadLinks
+                    geoLevel={geo.geoLevel}
+                    geoCode={geo.geoCode}
+                    nListed={counts.nListed}
+                  />
                 </div>
                 {counts.nListed === 0 && (
                   // A real zero, not a gap: this dataset is a single national publication, so an

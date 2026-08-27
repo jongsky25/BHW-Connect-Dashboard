@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { PORTAL_CRUMB, UUC_PHC_CRUMB } from "@/lib/nav/breadcrumbs";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getGeoAncestors, getGeoByCode } from "@/lib/db/geo";
@@ -90,31 +92,20 @@ export default async function UucPhcIndicatorsAreaPage({ params }: { params: Pro
   return (
     <PresentationProvider meta={deckMeta}>
       <div className="flex flex-col gap-8">
-        <nav
-          aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-1 text-sm text-muted"
-        >
-          <Link href="/uuc-phc" className="hover:text-accent hover:underline">
-            Overview
-          </Link>
-          <span aria-hidden="true">›</span>
-          <Link href="/uuc-phc/indicators" className="hover:text-accent hover:underline">
-            Indicators
-          </Link>
-          {crumbAncestors.map((a) => (
-            <span key={a.geoCode} className="flex items-center gap-1">
-              <span aria-hidden="true">›</span>
-              <Link
-                href={`/uuc-phc/indicators/${a.geoLevel}/${a.geoCode}`}
-                className="hover:text-accent hover:underline"
-              >
-                {a.geoName}
-              </Link>
-            </span>
-          ))}
-          <span aria-hidden="true">›</span>
-          <span className="font-medium text-foreground">{geo.geoName}</span>
-        </nav>
+        {/* Breadcrumb — built here rather than by the layout's `SiteBreadcrumbs`
+            because the ancestor names come from the database. */}
+        <Breadcrumbs
+          items={[
+            PORTAL_CRUMB,
+            UUC_PHC_CRUMB,
+            { label: "Indicators", href: "/uuc-phc/indicators" },
+            ...crumbAncestors.map((a) => ({
+              label: a.geoName,
+              href: `/uuc-phc/indicators/${a.geoLevel}/${a.geoCode}`,
+            })),
+            { label: geo.geoName },
+          ]}
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">

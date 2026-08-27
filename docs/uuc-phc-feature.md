@@ -70,6 +70,12 @@ it or not. Every figure on the section is therefore one count against one denomi
   the cleaning report's §6 as a surface, with every figure recomputed on each read rather than
   written down — a stale data-quality page is worse than none, because it is read as an assurance.
   See "Data quality" below.
+- **The rows are downloadable, with the marker in a column** (U11). `/api/export/uuc-phc/data`
+  emits one row per listed barangay as CSV or XLSX, scoped to any area — and it carries the
+  indicator values U4 kept off the PNG, because a spreadsheet has somewhere to put the † marker
+  that a picture does not: an explicit `capped_indicators` column, sat next to the values it
+  qualifies, plus a notes block above the data. Same rule, a format that can satisfy it. See
+  "Downloads" below.
 - **The section announces itself on the BHW surfaces** (U12a). A one-line chip on `/explore` and
   `/place/*` reads "141 of this area's 176 barangays are on the 2025 UUC for PHC list →", from
   `agg_uuc_phc_counts` with no new aggregate and no new relation. It is deliberately a sentence
@@ -247,6 +253,62 @@ published total, and what remains unresolved.
 - **An empty page must never read as a clean bill of health.** A failed read renders an explicit
   "not available right now — that is a failure to load, not a finding that there is nothing to
   report", because silence on this page is the one message it cannot afford to send by accident.
+
+## Downloads (U11)
+
+`/api/export/uuc-phc/data?geoLevel=&geoCode=&format=csv|xlsx` — one row per listed barangay for any
+area, from national down to a city or municipality. `/uuc-phc` and every area page carry the three
+links (`components/uuc-phc/download-links.tsx`); the PNG one-pager is unchanged beside them.
+
+- **This is the export U4 refused, in the format that makes it publishable.** The rule has always
+  been *mark the value, never average it*. U4 kept indicator values off the PNG because a
+  794-pixel sheet has nowhere to carry the † marker, and 886 Water readings sitting at exactly 100
+  without it are the unmarked artefact U3 was built to avoid. A spreadsheet has somewhere:
+  `capped_indicators` is a column of its own, and it sits **immediately before the seven boundable
+  indicators** rather than at the far right, because a marker 30 columns away from the value does
+  not travel with it. On the XLSX, each bounded cell is additionally shaded — the marker reaching
+  the value itself, which is exactly what the PNG could not do — but the column stays authoritative,
+  since shading survives neither a copy-paste nor a colour-blind reader.
+- **Every figure in the notes block is counted from the rows in the file.** A header that typed
+  "1,584 values across 1,397 barangays" would print a national total onto a municipal file and
+  would drift the first time the extract is regenerated — U10's rule, applied to something that
+  leaves the building. A Mayoyao file reads "2 value(s) across 2 of the 27 barangay row(s)
+  (fic 2)"; the national one reads 1,584 across 1,397 with the cleaning report's own per-indicator
+  breakdown, because that is what counting the rows produces.
+- **Its own contract, deliberately not `/api/export/csv`'s.** `parseExportQuery` is keyed to the
+  BHW `indicatorSchema` — every shape it admits is a label/value pair from a BHW aggregate — and
+  this is 40 columns of a membership list. `geoLevel` / `geoCode` / `format` is the whole of this
+  one.
+- **The route refuses to emit a short file.** `rows.length` is compared against
+  `agg_uuc_phc_counts.n_listed` — computed from a *different* fact table — and a disagreement is a
+  500 rather than a file. That is the fact loader's own discipline ("a silently short load is worse
+  than a failed one when 5,991 is a headline figure"), and it matters more here than anywhere: a
+  page that renders one province short can be noticed later, a spreadsheet cannot.
+- **`maxDuration = 60`, because the deployment measured it.** A national export is 5,991 rows read
+  a page of 1,000 at a time — PostgREST's own cap — so it costs six sequential round trips, and on
+  a real Vercel preview it took **8.5s (CSV) / 9.0s (XLSX)**. That is inside the platform's default
+  ceiling but not comfortably, and the file it would drop is the largest one on the section. Raised
+  on `app/api/cron/precompute/route.ts`'s precedent. The constraint is time, not response size: a
+  national CSV is 1.6 MB.
+- **An area with nothing listed gets a file, not a 404.** NCR's export is the notes block, the
+  header row and no data rows, and the page says so rather than hiding the links — nothing listed
+  is a result, and a missing download would read as a failure. A 404 is reserved for an area with
+  no `agg_uuc_phc_counts` row at all.
+- **No licence is claimed.** `dim_dataset.license` is null for this dataset, so the notes read
+  "Licence: not stated by the source". A downloaded file travels further from anyone who could
+  correct it than any page does, which makes it the worst possible place to invent one.
+- **`dataset_id` is the one view column the file omits** — a surrogate key into `dim_dataset`,
+  constant down every row, meaningless to anyone not holding this database. Which dataset the file
+  is gets said in words instead.
+- **Column names are `ref_uuc_phc_list`'s, verbatim**, so a file and the relation it came from can
+  be checked against each other column for column, and `capped_indicators` is encoded
+  pipe-separated exactly as `ingestion/data/uuc_phc_2025_cleaned.csv` encodes it. The XLSX carries
+  the full column dictionary on an "About this data" sheet, because that sheet is the only
+  explanation still attached to the file once it is off the site.
+- **A route flag reads a missing value as not qualifying**, following `agg_uuc_phc_criteria` — which
+  is what makes the flags in a file add up to the counts `/uuc-phc/criteria` prints (3,677 / 2,302 /
+  726 / 2,000). The per-barangay disclosure renders the same null as "—", so the column dictionary
+  says which reading applies rather than leaving a reader to think two surfaces disagree.
 
 ## Asking the list (U8)
 
@@ -447,6 +509,28 @@ datasets meet: households per BHW in an area's listed barangays, against all its
   where cue cards p37 differs from this dashboard. A table rather than a view because `doc_chunk` is
   service-role only. Rows that stop differing are deleted on re-run, so a corrected source empties
   the table rather than leaving a closed gap on the page.
+- View **`ref_uuc_phc_list`** (U11) — the list as rows: **5,991**, one per listed barangay, joining
+  `fact_uuc_phc_barangay` (the record) to `fact_uuc_phc_indicators` (the evidence) and resolving the
+  geography against `dim_geo`. 41 columns: the barangay's PSGC and PSA name plus its city, province
+  and region codes and names; the workbook's own code and four names; the four route flags and
+  `health_evaluable`; the 12 indicators, the ELCAC flag, the 7 benchmarks, `health_indicators` and
+  `capped_indicators`. `security_invoker`.
+  - **The only relation in the dataset carrying both barangay values and the ancestor codes above
+    them**, which is what makes "every listed barangay under this area" one predicate. Neither fact
+    table has an ancestor code, so scoping a national export otherwise means naming 41,958
+    barangays in a URL — and `queryDataset` performs no joins at all, so the internal assistant
+    could not ask for a named province's barangays before this existed.
+  - **A view, not a table**, on `ref_uuc_phc_quality`'s precedent: it cannot go stale against the
+    fact tables, and staleness is the failure that matters for a file somebody works from.
+  - **No rule is computed here that is not computed elsewhere too.** The four route flags are the
+    same expressions `agg_uuc_phc_criteria` sums, written per row instead of per area — and the
+    migration asserts they roll up to it exactly on every one of its 1,788 geo rows and all five
+    measures, which is what stops one copy being edited alone.
+  - Five assertions run after creation: the view is the list whole and once (5,991 rows, 5,991
+    distinct barangays); every row can be scoped and named from `dim_geo`; **every geo's row count
+    equals `agg_uuc_phc_counts.n_listed`**, so an area's export matching its page is true by
+    construction at all four levels at once; the route flags agree with `agg_uuc_phc_criteria`; and
+    the capped-barangay count equals `ref_uuc_phc_quality.n_barangays_capped` with no null array.
 - Table **`agg_bhw_by_uuc_status`** (U12b) — public-read aggregate keyed `(dataset_id, geo_code,
   geo_level)` at the same four levels, **1,788 rows**. Paired `listed_*` / `other_*` columns:
   barangay counts, contributing-barangay counts, barangays with no BHW, the StepZero BHW total,
@@ -474,9 +558,9 @@ datasets meet: households per BHW in an area's listed barangays, against all its
   one place, the same discipline as the profiling-status stage totals.
 - Dataset row in `dim_dataset` (`uuc-phc-2025`, `geo_join_level = 'barangay'`, status `published`).
 
-## Registry and lineage (U5, extended by U7, U9 and U10)
+## Registry and lineage (U5, extended by U7, U9, U10 and U11)
 
-All nine relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
+All ten relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
 edges in `kb_node` / `kb_edge`.
 
 - **The dictionary is the allowlist.** `queryDataset` (`lib/ai/query-dataset.ts`) refuses any
@@ -496,6 +580,11 @@ edges in `kb_node` / `kb_edge`.
   `fact_uuc_phc_indicators derived-from docs/UUC_PHC_2025_CLEANING_REPORT.md` is asserted — a real
   derivation that no `from` or `join` states. Regenerate into a temp file and move it: redirecting
   onto the seed truncates a file the generator itself reads.
+- **`ref_uuc_phc_list` is the first entry that widens what the assistant can answer** rather than
+  describing something it could already reach — see the Data model note above. Its column meanings
+  repeat the capping caveat rather than deferring to `fact_uuc_phc_indicators`', because those
+  meanings are what the XLSX dictionary sheet is built from, and that sheet is the only explanation
+  travelling with a downloaded file.
 - `lib/db/dataset-registry-seed.test.ts` guards the seed, including the invariant that every
   registered relation has a `create table` or `create view` in `supabase/migrations`.
 
@@ -537,9 +626,15 @@ edges in `kb_node` / `kb_edge`.
    ```
 3. Re-run the aggregate blocks of `20260826140000_agg_uuc_phc_counts.sql`,
    `20260827100000_agg_uuc_phc_criteria.sql`, `20260827160000_agg_uuc_phc_indicator_dist.sql`,
-   `20260827170000_uuc_phc_data_quality.sql` and `20260827190000_agg_bhw_by_uuc_status.sql`, in
-   that order. All five recompute from the fact tables, so they need no regeneration — only
-   re-execution, after the fact seed. Each reads the one before it, which is what fixes the order.
+   `20260827170000_uuc_phc_data_quality.sql`, `20260827180000_ref_uuc_phc_list.sql` and
+   `20260827190000_agg_bhw_by_uuc_status.sql`, in that order. All six recompute from the fact
+   tables, so they need no regeneration — only re-execution, after the fact seed. Each reads the
+   one before it, which is what fixes the order.
+
+   `ref_uuc_phc_list` is a view and so needs no refresh of its own — the downloads are correct the
+   moment the fact tables are. Re-running its migration re-runs its five assertions, which is the
+   reason to do it: they check the new extract against `agg_uuc_phc_counts`, `agg_uuc_phc_criteria`
+   and `ref_uuc_phc_quality` before anyone downloads anything.
 
    `agg_bhw_by_uuc_status` is the one that also has to be re-run when a **BHW** dataset reloads,
    not only when this one does: it sums `agg_bhw_stepzero_counts` and `agg_bhw_counts`, so a
@@ -580,6 +675,10 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Data-quality page + components | `app/uuc-phc/data-quality/`, `components/uuc-phc/` (quality-sections, quality-format + `.test.ts`) |
 | Data-quality relations | `supabase/migrations/20260827170000_uuc_phc_data_quality.sql` |
 | PNG one-pager | `lib/exports/uuc-phc-figure.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/route.ts` |
+| CSV / XLSX download | `lib/exports/uuc-phc-data.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/data/route.ts` |
+| Download read layer | `lib/db/uuc-phc-list.ts` |
+| Download links | `components/uuc-phc/download-links.tsx` |
+| Export relation | `supabase/migrations/20260827180000_ref_uuc_phc_list.sql` |
 | Fact loader | `ingestion/ingest_uuc_phc.py` |
 | Cleaning step | `ingestion/clean_uuc_phc_indicators.py` |
 | Source data | `ingestion/data/uuc_phc_2025_cleaned.csv` |
@@ -700,6 +799,47 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   (**102.15%** and **100.96%**) rather than rounding Butuan's back to the 101.00 U9 corrected. No
   new advisor finding: both views are `security_invoker`, so neither raises `security_definer_view`.
   The methodology page's five typed counts are gone, replaced by links here.
+- Downloads (U11): all five in-migration assertions pass. The **national CSV has 5,991 data rows
+  and round-trips against the committed extract with 0 mismatches** — all 5,991 rows joined on
+  `source_geo_code`, compared field by field on the 12 indicators, the 7 benchmarks,
+  `health_indicators`, `elcac_brgy`, `capped_indicators` and the four source names, with numerics
+  compared as decimals. `capped_indicators` is non-empty on exactly **1,397** rows totalling
+  **1,584** values, and the computed notes block prints the cleaning report's own per-indicator
+  figures (water 886, fic 456, pre_natal 208, sba 30, abr 2, imr 1, ufmr 1) without either number
+  being typed anywhere. The four route flags count **3,677 / 2,302 / 726 / 2,000** with **5,765**
+  evaluable — `agg_uuc_phc_criteria`'s national row exactly. The Mayoyao export is 27 rows and
+  **all 27 barangay names appear verbatim in that page's HTML**. NCR returns 200 with its notes,
+  its header row and no data rows; 400 on an unknown level, an unsupported format or barangay
+  grain; 404 on an unknown geo.
+
+  The XLSX was written by `exceljs` and **read back with an independent reader (openpyxl)**: the
+  capping caveat is at **A3** of the sheet the file opens on, the header lands at row 15 with panes
+  frozen at A16 and an autofilter across all 40 columns, numbers and booleans are typed rather than
+  stringified, and on BONGAN (Mayoyao) the `fic` cell reads 100 **shaded**, while `water` 78.31 and
+  `fic_prov_ref` 66.33 beside it are not. The "About this data" sheet carries all 40 column
+  meanings. **Excel and Google Sheets themselves were not exercised** — neither is available here;
+  what is verified is that a second, independent OOXML implementation opens the file and finds the
+  caveat above the fold.
+
+  Registry and lineage: the tenth relation registers `approved`/`public` with **41** approved
+  columns, and both its column dictionary and its `notes_md` **hash-match the committed seed**
+  field for field. `ingestion/build_kb_lineage.py` regenerates the seed to 216 nodes / 384 edges —
+  an additive diff of 7 nodes and 16 edges — **printing nothing to stderr**, so the view has its
+  `built-by` edge; **no table node lacks one**. `get_advisors` reports no `security_definer_view`
+  and nothing new. `anon` reads all **5,991** rows of the view over PostgREST, scopes by
+  `citymun_code`, and returns `["fic","water"]` beside two 100s and Ilocos Sur's uncapped 102.15.
+
+  In Chromium against `next start`: `/uuc-phc` and the region, province and city/municipality pages
+  all show the three links with the right hrefs and a row count (`5,991 rows`, `17 rows`,
+  `27 rows`, and NCR's zero-state copy); an XLSX downloads on a real click as
+  `uuc-phc-2025-listed-barangays-mayoyao.xlsx`; **zero console errors**. `npm test` is 49 files / 584 tests
+  clean, and `npm run build` compiles `/api/export/uuc-phc/data` as a dynamic route beside the PNG
+  one.
+
+  **Exercised on the deployed Vercel preview**, not only locally: national CSV 200 / 1,613,747 bytes
+  / **8.5s** / 5,991 data rows, national XLSX 200 / 926,724 bytes / **9.0s**, Ilocos Norte 0.9s and
+  NCR 0.8s. Those two national figures are why the route carries `maxDuration = 60` — the
+  measurement is the reason, and it is recorded beside it in the route.
 - Context chip (U12a): the figure the chip prints was compared against `agg_uuc_phc_counts` for
   every geo it was rendered at, and against the section's own hero after clicking through —
   IFUGAO's chip reads "141 of this area's 176" and `/uuc-phc/province/14027` reads "141 of 176
