@@ -252,11 +252,29 @@ def read_migrations(graph: Graph) -> tuple[set[str], dict[str, str]]:
 
     for path in sorted(MIGRATIONS.glob("*.sql")):
         sql = path.read_text()
+        # The table and view scans read STRIPPED sql; the docs/ scan reads RAW. The asymmetry is
+        # deliberate and is the whole point of doing this separately.
+        #
+        # A migration header in this repository is prose, and prose says things like "RLS in the
+        # same statement block as each CREATE TABLE with no anon policy" — which a raw scan reads
+        # as a table named `with` and asserts into the graph. That is the same class of error
+        # DECISIONS.md records twice for this script (a quote-tracking splitter desynchronising on
+        # apostrophes; an illustrative doc path asserted as a real edge): a parser reading prose as
+        # data. It recurred here because the earlier fix stripped comments for the dim_dataset scan
+        # only, and the table scans kept reading raw text. The view scan added by #79 is included
+        # for the same reason: a header saying "CREATE VIEW ..." would assert a view that is not
+        # there. (split_statements strips comments itself, so the view-lineage walk below is
+        # already safe.)
+        #
+        # The docs/ scan must NOT be stripped: a migration's citation of the write-up that
+        # reconciled its data lives in the header comment, which is exactly where it belongs. That
+        # scan looks for a `docs/*.md` path, which prose cannot produce by accident.
+        statements = strip_sql_comments(sql)
         name = path.name
         ref = f"supabase/migrations/{name}"
-        created = [t.lower() for t in CREATE_TABLE_RE.findall(sql)]
-        views = [v.lower() for v in CREATE_VIEW_RE.findall(sql)]
-        altered = [t.lower() for t in ALTER_TABLE_RE.findall(sql)]
+        created = [t.lower() for t in CREATE_TABLE_RE.findall(statements)]
+        views = [v.lower() for v in CREATE_VIEW_RE.findall(statements)]
+        altered = [t.lower() for t in ALTER_TABLE_RE.findall(statements)]
         docs = sorted(set(DOC_PATH_RE.findall(sql)))
         touched = created + views + altered
         if not touched and "dim_dataset" not in sql and "lineage:" not in sql:
@@ -302,7 +320,7 @@ def read_migrations(graph: Graph) -> tuple[set[str], dict[str, str]]:
         # Read the slug out of the column position the insert itself names, rather than pattern
         # matching for something slug-shaped: source names and dates in the same tuple look enough
         # like slugs to produce datasets that do not exist.
-        for columns, values_block in DATASET_INSERT_RE.findall(strip_sql_comments(sql)):
+        for columns, values_block in DATASET_INSERT_RE.findall(statements):
             column_names = [c.strip().lower() for c in columns.split(",")]
             if "slug" not in column_names:
                 continue

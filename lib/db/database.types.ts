@@ -1126,6 +1126,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_regression_case: {
+        Row: {
+          answer_given: string;
+          case_id: number;
+          citations: Json;
+          conversation: Json;
+          created_at: string;
+          note: string | null;
+          provider: string | null;
+          question: string;
+          reported_by: string | null;
+          source: string;
+          status: string;
+          tool_calls: Json;
+          updated_at: string;
+        };
+        Insert: {
+          answer_given: string;
+          case_id?: never;
+          citations?: Json;
+          conversation: Json;
+          created_at?: string;
+          note?: string | null;
+          provider?: string | null;
+          question: string;
+          reported_by?: string | null;
+          source?: string;
+          status?: string;
+          tool_calls?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          answer_given?: string;
+          case_id?: never;
+          citations?: Json;
+          conversation?: Json;
+          created_at?: string;
+          note?: string | null;
+          provider?: string | null;
+          question?: string;
+          reported_by?: string | null;
+          source?: string;
+          status?: string;
+          tool_calls?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       ai_provider_quota: {
         Row: {
           id: number;
@@ -1507,6 +1555,186 @@ export type Database = {
             referencedColumns: ["geo_code"];
           },
         ];
+      };
+      doc_chunk: {
+        Row: {
+          char_end: number;
+          char_start: number;
+          chunk_id: number;
+          chunk_index: number;
+          content: string;
+          content_sha256: string;
+          created_at: string;
+          doc_id: number;
+          heading: string | null;
+          page_from: number;
+          page_to: number;
+          updated_at: string;
+        };
+        Insert: {
+          char_end: number;
+          char_start: number;
+          chunk_id?: never;
+          chunk_index: number;
+          content: string;
+          content_sha256: string;
+          created_at?: string;
+          doc_id: number;
+          heading?: string | null;
+          page_from: number;
+          page_to: number;
+          updated_at?: string;
+        };
+        Update: {
+          char_end?: number;
+          char_start?: number;
+          chunk_id?: never;
+          chunk_index?: number;
+          content?: string;
+          content_sha256?: string;
+          created_at?: string;
+          doc_id?: number;
+          heading?: string | null;
+          page_from?: number;
+          page_to?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "doc_chunk_doc_id_fkey";
+            columns: ["doc_id"];
+            isOneToOne: false;
+            referencedRelation: "doc_source";
+            referencedColumns: ["doc_id"];
+          },
+        ];
+      };
+      doc_chunk_embedding: {
+        Row: {
+          chunk_id: number;
+          dim: number;
+          // pgvector renders as its text form ("[0.1,0.2,...]") over PostgREST.
+          embedding: string;
+          embedded_at: string;
+          model: string;
+        };
+        Insert: {
+          chunk_id: number;
+          dim: number;
+          embedding: string;
+          embedded_at?: string;
+          model: string;
+        };
+        Update: {
+          chunk_id?: number;
+          dim?: number;
+          embedding?: string;
+          embedded_at?: string;
+          model?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "doc_chunk_embedding_chunk_id_fkey";
+            columns: ["chunk_id"];
+            isOneToOne: false;
+            referencedRelation: "doc_chunk";
+            referencedColumns: ["chunk_id"];
+          },
+          {
+            foreignKeyName: "doc_chunk_embedding_model_dim_fkey";
+            columns: ["model", "dim"];
+            isOneToOne: false;
+            referencedRelation: "doc_embedding_model";
+            referencedColumns: ["model", "dim"];
+          },
+        ];
+      };
+      doc_embedding_model: {
+        Row: {
+          created_at: string;
+          dim: number;
+          distance: string;
+          model: string;
+          notes_md: string | null;
+          provider: string;
+        };
+        Insert: {
+          created_at?: string;
+          dim: number;
+          distance?: string;
+          model: string;
+          notes_md?: string | null;
+          provider: string;
+        };
+        Update: {
+          created_at?: string;
+          dim?: number;
+          distance?: string;
+          model?: string;
+          notes_md?: string | null;
+          provider?: string;
+        };
+        Relationships: [];
+      };
+      doc_source: {
+        Row: {
+          as_of: string | null;
+          char_count: number;
+          created_at: string;
+          doc_id: number;
+          exposure: string;
+          extractor: string;
+          ingested_at: string;
+          issuer: string | null;
+          key: string;
+          media_type: string;
+          notes_md: string | null;
+          page_count: number;
+          source_path: string;
+          source_sha256: string;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          as_of?: string | null;
+          char_count: number;
+          created_at?: string;
+          doc_id?: never;
+          exposure?: string;
+          extractor: string;
+          ingested_at?: string;
+          issuer?: string | null;
+          key: string;
+          media_type?: string;
+          notes_md?: string | null;
+          page_count: number;
+          source_path: string;
+          source_sha256: string;
+          status?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          as_of?: string | null;
+          char_count?: number;
+          created_at?: string;
+          doc_id?: never;
+          exposure?: string;
+          extractor?: string;
+          ingested_at?: string;
+          issuer?: string | null;
+          key?: string;
+          media_type?: string;
+          notes_md?: string | null;
+          page_count?: number;
+          source_path?: string;
+          source_sha256?: string;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       fact_bhw_raw: {
         Row: {
@@ -2060,6 +2288,32 @@ export type Database = {
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
           geo_name: string;
           path: string[];
+        }[];
+      };
+      search_documents: {
+        Args: {
+          p_doc_key?: string | null;
+          p_embedding?: string | null;
+          p_limit?: number;
+          p_min_lexical?: number;
+          p_model?: string | null;
+          p_query: string;
+        };
+        Returns: {
+          char_end: number;
+          char_start: number;
+          chunk_id: number;
+          content: string;
+          doc_as_of: string | null;
+          doc_key: string;
+          doc_title: string;
+          heading: string | null;
+          lexical_score: number | null;
+          matched_by: string;
+          page_from: number;
+          page_to: number;
+          score: number;
+          vector_distance: number | null;
         }[];
       };
       traverse_kb: {

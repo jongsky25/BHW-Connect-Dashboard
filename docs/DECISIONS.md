@@ -1929,6 +1929,7 @@ question and `queryDataset` for a single-geography one, with both answers passin
 That needs a live provider key, which this environment does not have. Every layer below the
 provider — the SQL, the guardrails, the tool contract — is verified above.
 
+
 ## 2026-08-26 — UUC for PHC 2025: U1 (classification) loaded, 5,991 barangays
 
 First increment of `docs/UUC_PHC_2025_PLAN.md`. The 2025 list of Unserved and Underserved
@@ -2132,6 +2133,7 @@ an over-long line runs off the page with no error to catch it) all clean.
 That completes `docs/UUC_PHC_2025_PLAN.md`: U1 (load), U2 (rollup + section), U3 (indicators),
 U4 (one-pager). The remaining idea in the plan is an `/explore` overlay, which is out of its scope.
 
+
 ## 2026-08-26 — UUC for PHC 2025: U5, the registry, the lineage, and the SECURITY DEFINER view
 
 `docs/UUC_PHC_2025_PLAN.md` §9 U5. No user-visible change: this pays off debt that two branches
@@ -2318,3 +2320,533 @@ were **looked at**, not just status-checked. Exactly one `SpotFeedback` widget a
 entry point on the page. The one console error on `/uuc-phc` is the pre-existing theme-script
 hydration warning, identical on `/bhw` and `/explore`. `npm run lint`, `npm run typecheck` and
 `npm test` (309 tests, 14 new) all clean.
+
+## 2026-08-26 — Owner decision 1 answered: Supabase Pro
+
+The owner has upgraded the project to Supabase Pro. `AI_ASSISTANT_PLAN.md` §0 carried this as a
+*proposal* through all of Phase 1; it is now recorded as answered, and §0 gained a Status column
+so a settled decision is no longer indistinguishable from a proposed default.
+
+- **What it changes:** the §6 Free-tier fallback — pruning `agg_demographics` and `agg_training`
+  (265 MB between them) to get back under 500 MB — is moot and should not be done. That fallback
+  traded recurring engineering attention for $25/month indefinitely, and the trade is now closed.
+- **What it does not change:** §5 (pre-computed aggregates only when a page renders them) stands
+  either way, exactly as §6 said. Pro removes a ceiling; it does not make cross-tabs cheap.
+- **Headroom, measured.** The database is **602 MB** at the time of writing, against Pro's 8 GB of
+  included disk. The 2.1 corpus below adds ~150 KB of text plus, once embedded, on the order of
+  0.6–2.5 MB of vectors for 212 chunks depending on the dimension the provider returns. Documents
+  are not the cost driver; §6 said so and the measured figures agree.
+- Decisions 2, 3 and 4 were confirmed and implemented in Increment 1.4; decision 7 is answered as
+  Gemini and implemented in 2.1. §0's Status column now records all of this in one place.
+
+## 2026-08-26 — Internal AI assistant, Increment 2.1: the document corpus
+
+Phase 2 opens. Phase 1 gave the assistant SQL over registered tables (`queryDataset`) and a
+traversal over asserted edges (`traverseGraph`); this adds the third retrieval path from §2 —
+prose — by ingesting the 2027 Budget Cue Cards into `doc_source` / `doc_chunk`.
+
+**213 chunks over 213 pages, 147,262 characters**, chunked and loaded by
+`ingestion/ingest_documents.py`. One slide, one chunk (§12.3).
+
+- **Four tables, not the two the plan named.** `doc_source` (one row per document) and `doc_chunk`
+  (one row per slide) are the plan's; `doc_embedding_model` and `doc_chunk_embedding` are added,
+  and they exist for one reason given below. All four are service-role only with RLS enabled in
+  the same statement block as each `CREATE TABLE` (the 0.3 guardrail).
+
+- **The embedding dimension is a row, not a type modifier — this is the load-bearing decision.**
+  §11 asks for the dimension to be "confirmed against the provider's live model at implementation
+  time". A `vector(768)` column cannot do that: it hard-codes a provider's current output width
+  into a migration written *before* anyone measured it, and it is exactly the class of constant §1
+  forbids ("the model name is configuration, not code" — this project has already lost a day to a
+  pinned model that was shut down). So `doc_chunk_embedding.embedding` is an **unconstrained
+  `vector`**, the width lives in `doc_embedding_model.dim`, a composite FK on `(model, dim)` forces
+  every row of a model to share one width, and a check constraint asserts
+  `vector_dims(embedding) = dim`. A provider that quietly changes its output width fails the
+  insert instead of poisoning an index. Verified live before the schema was committed: an
+  unconstrained column accepts mixed widths, `<=>` works within a width, and both the check and
+  the composite FK reject the bad cases.
+
+  The cost is real and accepted: pgvector cannot build HNSW/IVFFlat on an unconstrained column.
+  At 212 embeddable chunks an exact scan is sub-millisecond and an approximate index would trade
+  recall for nothing. Pinning the column and adding the ANN index is a later migration, written
+  once a *measured* dimension exists to pin it to — which is a better trigger than a date.
+
+- **Offsets are asserted by construction, and the constraint earned its place immediately.**
+  Increment 2.3 makes citation accuracy a correctness requirement (§7), so `char_start`/`char_end`
+  index the document's canonical extracted text and `doc_chunk_offsets_match` requires
+  `char_end - char_start = length(content)`. While loading, a hand-transferred chunk was mangled
+  (two characters and a line break) and the constraint **rejected the whole batch** rather than
+  storing a citation that pointed at text the document does not contain. A length-preserving
+  corruption would have slipped past it, so the load was additionally verified by recomputing
+  sha256 in SQL over every stored chunk and comparing to the hash the pipeline computed: **0
+  mismatches across 213 chunks**. Both checks are cheap; neither is optional once a citation is
+  the only thing standing behind a prose claim.
+
+- **The slide-number hazard, measured rather than assumed — and §12.3 corrected.** §12.3 reports
+  three corrupted strings as evidence. The hazard is real, but those strings do not reproduce
+  against this file with this extractor, and the plan has been corrected in place. What is
+  actually there: a **3.0pt `38,Bold` span at x = 325.9**, one digit per span stacked vertically,
+  148 spans on 52 of 213 pages, spelling the deck's own printed slide number. It is the only
+  sub-5pt text in the deck (body text never goes below 7pt), so `size < 5.0` isolates it exactly.
+  It corrupts only a *flat sorted* extraction and lands **after** a token, not inside one
+  (`MIMAROPA REGION42`, `reported19`); page 157's `workshops` is clean in every mode tested.
+  The pipeline extracts line-structured and span-aware, which is not exposed to the hazard at all,
+  **and** strips the element anyway — left in, it is a stray digit line that gets embedded and
+  quoted. Verified live: 0 rows contain any of the three corrupted forms; the clean forms are
+  present.
+
+- **Citations use the PDF page number.** The deck's printed numbers exist on 52 of 213 pages and
+  their offset from the PDF page index runs +4 to +33, so they are not derivable. §12 already
+  cites by PDF page (p37 *is* the UUC distribution slide), and the load matches: `chunk_index` is
+  `page_from - 1` for all 213 rows, with no gaps.
+
+- **Extraction and embedding are separate flags, on purpose.** `--verify` / `--emit-sql-dir` /
+  `--database-url` follow the existing `ingest_population.py` convention; `--embed` is additive.
+  Extraction needs only the committed PDF, so it runs and is verifiable anywhere; embedding needs
+  a provider key and network. Splitting them means the corpus can be loaded, inspected and
+  searched by trigram before any vector exists, and re-embedded onto a new model later without
+  re-extracting. `doc_chunk_embedding` is keyed `(chunk_id, model)`, so a model swap is an insert
+  alongside rather than a destructive rewrite.
+
+- **The corpus is not seeded from a migration.** The PDF is committed and the pipeline is
+  committed, so the chunks are reproducible by re-running it — the same posture as `fact_bhw_raw`,
+  which `ingest.py` loads and no migration seeds. The migration carries schema only.
+
+- **`fact_uuc_phc_barangay`'s lineage gap closed while this was being built** — not here, but on
+  `main`. It was flagged in 1.2 and 1.5 as live and public-read with no committed migration;
+  `20260826121000_fact_uuc_phc_barangay.sql` (#75) is that migration. Surfacing the gap rather
+  than inferring a source was the right call: it was filled by the branch that actually knew the
+  answer.
+
+- **Two findings from reading the corpus, recorded because they change how 2.2 must behave.**
+  (1) The UUC-for-PHC regional distribution appears **twice**, on pages 37 and 141, byte-identical
+  (same `content_sha256`). Retrieval will return both; a citation must name the page it actually
+  quoted rather than collapsing them. (2) Table-heavy slides extract in poor reading order
+  (`662 M1,383 M1,497 M`, `TOTA` / `L` split across lines) — 85 of 213 pages carry tables per
+  §12.1. This is acceptable for retrieval and *not* acceptable as a quoted span, which is a
+  constraint on 2.3's quoting, not a defect to fix in extraction.
+
+**Verify (all live against the project).**
+
+- 213 chunks over 213 distinct pages, range 1–213; `chunk_index = page_from - 1` for every row;
+  0 multi-page chunks.
+- **Offsets tile the document exactly.** Every consecutive gap is exactly 1 (the single page
+  separator), first offset 0, last offset 147,262, and
+  `sum(char_end - char_start) + (count - 1) = 147,262` = `doc_source.char_count`. The stored
+  offsets reconstruct the canonical text with nothing missing and nothing double-counted.
+- **0 sha256 mismatches** across all 213 chunks, recomputed in SQL.
+- The slides §12 names resolve to the pages it names: p26 carries 277,767; p27 carries 35,645;
+  p37 and p141 carry `DC No. 2025-0549` and 5987; p160 and p163 carry `JMC. 2023-001`.
+- 1 chunk is empty (page 172 has no text layer, consistent with §12.1's "2 of 213 pages below 20
+  extracted characters" — the other is page 44, `Summary Slides`, at 14 chars). It keeps its row
+  so `chunk_index` stays aligned to page number, and is skipped by the embed step rather than sent
+  to a provider that would reject it.
+- **RLS is real, not merely declared:** `set local role anon` returns 0 rows from all four new
+  tables while a control read of `agg_bhw_counts` returns 41,052 — proving the role switch took
+  effect. §12.5's admin-only constraint holds at the database layer, not only at the route.
+- Advisors: the four new tables appear only under the pre-existing INFO `rls_enabled_no_policy`
+  lint, alongside `ai_ask_cache` / `fact_*` / `kb_*`. **No new WARN or ERROR from this work.**
+- The 1.5 FK debt is paid: `kb_node_source_chunk_fk` and `kb_edge_source_chunk_fk` both reference
+  `doc_chunk (chunk_id)` `ON DELETE RESTRICT`. Restrict, not cascade — deleting a chunk that a
+  graph row cites should fail loudly, because cascading would delete the assertion along with its
+  evidence. This also forces §11's retention question (what happens to chunks for a withdrawn
+  document) to be answered deliberately rather than by a default.
+
+**Not verified, and not claimed.** No embedding exists. This environment has no `GEMINI_API_KEY`,
+so `--embed` has never run, `doc_embedding_model` and `doc_chunk_embedding` are empty, and **no
+dimension is recorded anywhere** — which is the intended state of a design that measures the
+dimension instead of declaring it, but it does mean the vector half of 2.2 is unexercised until
+the owner runs the pipeline with a key. Running it is a single command and the schema is already
+live.
+
+**Unrelated advisor finding, now resolved.** `public.ref_uuc_phc_provincial` was an ERROR-level
+`security_definer_view` when 1.6 flagged it. The concurrent UUC work fixed it directly
+(`20260826165048_ref_uuc_phc_provincial_security_invoker` on the live project) while this
+increment was in progress. Re-checked after the merge: **the project has no ERROR-level security
+advisor at all.** Recorded here because 1.6 left it open and a reader following the thread would
+otherwise still be looking for it.
+
+
+## 2026-08-26 — Internal AI assistant, Increment 2.2: `searchDocuments`
+
+The tool over 2.1's corpus. With it the internal assistant spans all three retrieval paths §2
+names: SQL for numbers, edges for provenance, documents for prose. The model chooses; the loop is
+unchanged.
+
+- **Hybrid, because neither half is sufficient and their failures are opposite.** The corpus is a
+  budget deck, and roughly half the questions it answers are natural language ("what support does
+  DOH give BHWs") while half are identifier lookups ("what is DC No. 2025-0549"). Embeddings are
+  good at the first and quietly terrible at the second — a memo number is a near-random token
+  whose neighbours in embedding space are other numbers, so a vector-only search returns plausible
+  slides that do not contain the code. Trigram is the exact inverse. The plan already said
+  "vector plus pg_trgm"; this records *why* that is not belt-and-braces.
+
+- **Ranks are fused, scores are not blended.** Reciprocal Rank Fusion (`1/(k + rank)`, k = 60).
+  A cosine distance and a trigram similarity are not on the same scale and never will be;
+  normalising them into a weighted sum would invent a comparison and bury a tuning constant where
+  nobody would find it. RRF needs only that each half orders its own results, which is the one
+  thing both genuinely do. Verified: a chunk found by both halves scores 0.0328 against 0.0161 for
+  a single-half hit — being found twice, independently, is what ranks it first.
+
+- **The recursion of 1.6's argument: the search lives in Postgres.** `search_documents` carries the
+  row cap, the statement timeout, the `status = 'approved'` filter and the empty-chunk exclusion,
+  so they hold however the function is called rather than only when the one caller remembers them.
+  `search_path` is pinned and EXECUTE is revoked from `public` and granted only to `service_role` —
+  it reads `doc_chunk`, and PostgREST would otherwise expose internal budget material to `anon`.
+
+- **The vector half is nullable, and the payload says which halves ran.** Every reason the query
+  embedding can fail — no key, no model configured, nothing embedded yet, provider down or slow, a
+  width that disagrees with the corpus — collapses to "no vector this time", and the search runs
+  lexically with a warning naming the degradation. This is not a hypothetical path: **it is the
+  live state**, because 2.1 measures the dimension from a live provider response and this
+  environment has no key. A document search returning trigram hits is worth far more than one
+  returning an error, and `retrieval: { lexical, vector }` lets a reader tell a thin result from a
+  degraded one. Same reasoning as `queryDataset`'s warnings.
+
+- **Embedding the *query* in a request is not the thing the plan forbids.** §8 says chunk and embed
+  "in the Python pipeline, never in a Vercel function". That is about the corpus: 213 slides is a
+  batch workload that would blow a serverless timeout and belongs with the rest of ingestion. A
+  query embedding is one short call for text that does not exist until the request arrives, so
+  there is nowhere else it could happen — vector search inherently requires embedding the query.
+  Recorded because the rule reads absolute and a later reader would be right to check.
+
+- **Document and query embeddings use different task types.** `RETRIEVAL_DOCUMENT` at ingest,
+  `RETRIEVAL_QUERY` at search. Gemini's retrieval embeddings are asymmetric by design and the two
+  are easy to conflate, both being "just embedding some text"; using the document type for a query
+  degrades recall silently, which is the worst way for it to fail.
+
+- **The model the corpus was embedded with is read from the database, not from configuration.**
+  Searching with a different model than the chunks were embedded with returns confident nonsense —
+  the vectors are not in the same space. `doc_embedding_model` is the record of what was actually
+  used, and a mismatch against `GEMINI_EMBEDDING_MODEL` degrades to lexical rather than silently
+  embedding with something else: the environment is the record of what this deployment is
+  configured to call, and quietly calling another model would make a later migration impossible to
+  reason about.
+
+- **Citations are rendered as one quotable string, not as fields to reassemble.** An assistant that
+  has to build "cue cards, slide 37" out of three fields will eventually build it wrong, and per §7
+  a citation naming the wrong page is worse than none because it reads as verified. Each hit also
+  carries `chunkId`, `charStart`/`charEnd` and the document's `as_of`, which is what makes it
+  resolvable — and what 2.3 renders.
+
+- **An empty result is explained, not just empty.** "No chunk matched" means the words were not
+  found, not that the corpus lacks the topic; the payload says so, because a model handed zero rows
+  will otherwise state the emptiness as a finding about the corpus.
+
+- **Registered and described in the same increment**, per the plan. `createInternalTools()` gains
+  `searchDocuments`; the internal prompt gains rules 10 and 11. Rule 11 is §12.4's rule, now
+  enforceable: a figure carried by a document renders attributed and dated, and where it disagrees
+  with a SQL figure **both** are surfaced with their as-of dates rather than either being preferred.
+  `auditNarrative` cannot enforce that — it strips sentences whose numbers are unsupported, which
+  is exactly backwards for a correctly-cited document figure — so the prompt is where it lives.
+
+**Verify (live against the project, and in tests).**
+
+Live, against the real 213-chunk corpus:
+
+- Exact-identifier retrieval, which is the case the trigram half exists for:
+  `DC No. 2025-0549` → slides 37, 140 and 141 at lexical score 1.000 (the three slides that carry
+  it), ahead of two slides at 0.813 carrying *other* DC numbers. `JMC 2023-001` → 160/161/162.
+  `RA 7883` → 154/156/157. `277,767` → 8/26/151, slide 26 being §12.4's case.
+- Fuzzy retrieval: `Magna Carta honorarium` ranks slide 27 first at 0.697 — the honorarium
+  allocation slide §12.2 names — with no embedding involved at all.
+- **Guardrails refuse rather than clamp**: `limit 99` raises `limit 99 exceeds the search limit of
+  25`; an empty query is refused; an embedding supplied without naming its model is refused.
+- The empty slide (page 172, no text layer) is never returned, at any limit.
+- **The vector half was exercised with a synthetic fixture**, since no real embedding exists: a
+  4-dimension probe model with three hand-placed vectors. It confirmed vector-only hits, `both`
+  hits, and the RRF ordering above. The fixture was deleted afterwards and asserted gone — 0 rows
+  in `doc_chunk_embedding` and `doc_embedding_model`, 213 chunks intact. Recorded as synthetic
+  because it proves the *plumbing*, not retrieval quality; nothing here says the vector half
+  retrieves well, only that it runs, fuses and cleans up.
+- Advisors: `search_documents` does not appear under `function_search_path_mutable`. The project
+  has no ERROR-level security advisor.
+
+In tests: 32 new cases across two files. `search-documents.test.ts` (19) asserts the exact RPC the
+tool issues — a silently dropped `document` filter is the failure a payload assertion alone would
+miss — plus every refusal path, the degraded path, and what a citation carries.
+`internal-tool-set.test.ts` (13) closes a gap the route tests left: `app/api/ai/assistant/route.test.ts`
+mocks `createInternalTools`, so nothing checked that the real set contains what each increment
+claims to have added. It now also asserts the inverse, which is a security property rather than a
+packaging detail: the **public** tool set contains none of `searchDocuments`, `traverseGraph`,
+`queryDataset` or `listDatasets` (§9.1).
+
+`npm run lint`, `npm run typecheck`, `npm test` (313 tests) clean.
+
+**Not verified.** Retrieval *quality* of the vector half, and whether the model selects
+`searchDocuments` unprompted — both need a live provider key this environment does not have. The
+lexical half is verified against the real corpus above; the vector half is verified only as
+plumbing. §10's regression list is what would turn "these five queries look right" into a claim
+about the other forty, and it is the next thing worth having.
+
+**A finding that constrains 2.3.** The UUC regional distribution appears twice, on slides 37 and
+141, byte-identical. Search returns both, correctly — but a citation must name the slide the quoted
+words were actually taken from rather than collapsing them, and table-heavy slides extract in poor
+reading order (`662 M1,383 M1,497 M`), which is acceptable for *retrieval* and not acceptable as a
+*quoted span*. Both are constraints on how 2.3 quotes, not defects to fix in extraction.
+
+## 2026-08-26 — Internal AI assistant, Increment 2.3: citations
+
+§7 calls this a correctness feature rather than presentation, and the reasoning inverts the usual
+instinct, so it is worth restating: `auditNarrative` strips sentences whose **numbers** are absent
+from the tool payloads, which means numbers are checked and prose is not. "A highly technical
+request has a 20-working-day deadline" carries no figure, passes the audit untouched, and is
+believed. For that claim the citation is the only check there is — and a citation pointing at the
+wrong page is *worse* than none, because it reads as verified.
+
+Two rules follow, and this increment is both of them.
+
+- **The citation comes from retrieval, never from the model's prose.** `collectCitations` reads
+  what `searchDocuments` actually returned this turn and the route emits it as a `citations`
+  stream event. The model never authors a citation, so it cannot mis-cite a passage it was never
+  handed. This is the same move the numeric audit makes — the model proposes an answer, the system
+  supplies the evidence — and it is why the source list is trustworthy without anyone checking it.
+
+- **A page the model names in prose must be a page it was given.** Rule 1 secures the source list
+  but not the sentence: nothing stops the model writing "slide 42 says" when it was handed 26, 27
+  and 37. `auditCitations` drops those sentences, exactly as `auditNarrative` drops a sentence
+  with an untraceable number. When *nothing* was retrieved, any page reference at all is
+  fabricated — a document claim made without ever opening a document — and the same pass catches
+  it.
+
+  It audits pages only, never paraphrase. A sentence that restates a retrieved passage without
+  naming a slide is left alone: this pass cannot judge whether prose is supported, and pretending
+  to would drop good answers while proving nothing. What it can do exactly is refuse to let a
+  specific, checkable, wrong pointer through.
+
+**The two audits interact, and the order decides what the reader is told.** Found by a test that
+failed for the right reason. A slide number *is* a number, so `auditNarrative` strips "per slide
+42" for containing an untraceable 42 before the citation pass ever sees it — the removal is
+correct, but the reader is told the figures were ungrounded when the actual fault was a fabricated
+citation. Citations therefore run **first**: a sentence still has to pass both, so which sentences
+survive is unchanged, but the specific failure gets to explain itself and name the slide.
+
+That ordering also exposes where the citation pass is genuinely load-bearing rather than
+redundant: when a fabricated page number happens to appear elsewhere in the payloads — 42 as a row
+count — the numeric audit has no objection and only this check catches it. There is a test for
+exactly that case, because it is the one that would otherwise rot silently.
+
+- **Click-through resolves from the database, not from the stream.**
+  `/admin/assistant/source/[chunkId]` re-reads the chunk **by id** and renders the stored text
+  verbatim, rather than re-showing what the answer was built from. A check nobody can perform is
+  not a check; this is where a reader performs it, and if the assistant's copy ever disagreed with
+  the stored row, this page is what would reveal it. It also shows the offsets 2.1 asserted at
+  ingest, which are what make a quotation resolvable to a position in the source PDF rather than
+  merely plausible.
+
+- **The passage is shown, not summarised.** Each source expands in place to the exact stored text.
+  A citation is only a check if the reader can compare the claim against the words it came from,
+  and a title-and-page footnote asks to be trusted instead.
+
+- **`lib/db/doc-chunks.ts` is service-role only and degrades to null.** `doc_chunk` holds internal
+  budget material (§12.5); the click-through page is admin-gated by the `(dashboard)` layout, the
+  same boundary the assistant sits behind. A citation that cannot be resolved renders as "not
+  found", never as a stack trace on an admin page — matching `lib/db/dataset-registry.ts`.
+
+- **`collectCitations` identifies search results by shape, not by tool name.** `runToolLoop`
+  records payloads as a bare array and does not carry which tool produced which; widening its
+  result type would change a surface shared with the public chat, which this increment has no
+  business touching. `chunkId` + `citation` together are unique to `searchDocuments` across the
+  whole tool set.
+
+**Verify (live against the project, and in tests).**
+
+- **Ten sampled citations resolve to text that actually supports the claim — 10/10.** Each probe
+  pairs a claim a reader might make with the search that would ground it, and asserts the returned
+  passage contains the supporting words: the published BHW count (slide 26), the honorarium split
+  by income class (27), the UUC total and its circular (37), the retention JMC (160), the UUC
+  physical-factor criterion (139), the SHF legal basis (99), the accreditation requirement (159),
+  PuroKalusugan site selection (149), and the Magna Carta priority-bill line (12). All ten also
+  satisfy `char_end - char_start = length(content)`, so every citation's offsets are internally
+  consistent as well as pointing at the right slide.
+- The click-through read returns the chunk with its document, as-of date, source path, extractor
+  and offsets — verified against the same chunk a search returns.
+- `next build` puts `/admin/assistant`, `/admin/assistant/source/[chunkId]` and
+  `/api/ai/assistant` all under `ƒ` (dynamic): no prerender attempt on an auth-gated page.
+- 30 new tests. `citations.test.ts` (23) covers collection, page-reference parsing and the audit,
+  including a bug it found on the way: a single "slide 37" was parsed as two references, because
+  the range branch handled `to === from` by pushing both endpoints. `route.test.ts` gains 6 that
+  run the **real** `collectCitations` and `auditCitations` through the route — mocking them would
+  test that the route calls two functions, which is not the claim §7 makes.
+- `npm run lint`, `npm run typecheck`, `npm test` (343 tests) clean.
+
+**Not verified.** Whether a live model, given the tool and rules 10–11, actually cites well — that
+needs a provider key this environment does not have. What is verified is the property that does
+not depend on the model: a citation it emits is one it was handed, and a page it invents does not
+reach the reader.
+
+## 2026-08-26 — Internal AI assistant, Increment 2.4: failure capture
+
+The last of Phase 2, and the one that makes §10 self-sustaining. §10 is explicit that a fixed
+evaluation corpus chosen up front would be stale by Phase 2 — sources arrive incrementally and are
+not known in advance — so the list has to grow from real failures, which means someone has to be
+able to file one in a click.
+
+§7 frames the same decision from the other side. There is deliberately no queue of answers awaiting
+approval (owner decision 8): reviewing every answer is unbounded work that grows with usage and
+degrades to rubber-stamping. Failure capture is the opposite trade — effort is spent only on
+answers that were actually wrong, and that effort permanently guards against a repeat.
+
+- **What "replayable" actually requires, and why the table is wider than the plan's sentence.**
+  The plan names question, answer, tools and provider. The Verify asks that the case "can be re-run
+  against a later build", and those four are not sufficient for that:
+
+  - `conversation` — the full history, not just the last question. The assistant is multi-turn and
+    an answer often depends on what came before it; replaying the question alone replays a
+    different question.
+  - `tool_calls` — names **and arguments**, in order. The regressions worth catching are usually in
+    tool *selection*: a later build that answers the same question by calling `queryDataset` where
+    it used to call `searchDocuments` has changed behaviour even when the prose reads the same, and
+    that is precisely what §10 exists to detect.
+  - `citations` — the passages a document answer leaned on, so 2.3's failure mode (right answer,
+    wrong page) is visible in the case rather than hidden inside the text.
+  - `provider` — the cascade means two runs of the same question can be answered by different
+    models. "It regressed" and "it was answered by Groq this time" look identical without it.
+
+- **The note is optional, and that is the whole design.** A reader who knows an answer is wrong but
+  not what the right one is should still be able to say so; a case with no expected answer is still
+  worth re-running by hand. Requiring the correct answer would convert a one-click report into a
+  small piece of homework, and §10's list only grows if reporting is cheaper than shrugging.
+
+- **A failed write says so.** `recordRegressionCase` returns null rather than throwing, and the
+  route answers 503 with "nothing was saved". Telling a reader "recorded" when nothing was written
+  is how a regression list quietly stops growing — they report once, see no effect, and never
+  report again.
+
+- **Not rate-limited.** The assistant's own limit protects a shared provider quota; this endpoint
+  calls no provider, and throttling the act of reporting a bad answer would suppress exactly the
+  signal §10 depends on.
+
+- **Admin-gated on the route itself**, before the body is parsed, for the reason 1.4 documents:
+  `proxy.ts` matches `/admin/:path*` and never sees an `/api/*` request, so the route handler is
+  the security boundary. Verified by a test that posts unparseable garbage and still gets 401.
+
+- **The open list renders on the assistant page.** Not on a page of its own: a report that vanishes
+  into a table nobody reads is a report that stops being made, and the people best placed to file
+  cases are the ones already looking at this page.
+
+- **`status` keeps `invalid`, and cases are never deleted.** "We looked and it was fine" is itself
+  worth knowing the next time the same answer is reported.
+
+**Verify (live against the project, and in tests).**
+
+- A case inserted exactly as the UI sends it reads back with everything a replay needs: **2 turns
+  to replay**, the first tool (`searchDocuments`) and its arguments recoverable from jsonb, the
+  provider, the status and the expected answer.
+- **The stored citation still resolves.** The case's cited `chunkId` and `charStart` were checked
+  against `doc_chunk` and matched — so a citation regression is detectable from the stored case,
+  not merely a text diff. This is the check that makes 2.3 and 2.4 worth having together.
+- **RLS is real**: `set local role anon` returns 0 rows from `ai_regression_case` while a control
+  read of `agg_bhw_counts` returns 41,052.
+- Advisors: the table appears only under the pre-existing INFO `rls_enabled_no_policy` lint. No new
+  WARN or ERROR, and the project still has no ERROR-level security advisor at all.
+- `next build` puts `/api/ai/assistant/regression` under `ƒ` (dynamic).
+- 8 new route tests (351 total), covering the admin boundary, the replay payload, an absent note, a
+  whitespace-only note, an answer that used no tools, a malformed body, and the failed-write path.
+- `npm run lint`, `npm run typecheck`, `npm test` clean.
+
+**One seeded case, honestly labelled.** The verification insert originally carried an invented
+reporter id. Rather than delete it, it was re-filed as `source = 'seeded'` with `reported_by` null,
+because the expectation it records is real and useful: §12.4 rule 3 — where a document figure and a
+SQL figure disagree, the assistant must surface **both** with their as-of dates (the cue cards'
+277,767 as of Dec 2025 *and* `agg_bhw_counts`' 270,917 profiled records) rather than reconcile
+them. An invented *report* in the list would have misled about how the list is being used; a
+labelled *seed* is exactly what §10.1 describes.
+
+**Not verified, and the honest gap in Phase 2's evaluation story.** Nothing yet *runs* the stored
+cases. A case is replayable in the sense that every input a replay needs is in the row, and that is
+what the Verify asks for and what was checked — but there is no batch runner that re-executes them
+against a build and diffs the result. Until there is, §10's list accumulates evidence without
+automatically spending it. That runner is the obvious next increment and needs no schema change.
+
+## 2026-08-26 — Lineage graph re-run for Phase 2, and a parser bug it exposed
+
+Increment 1.5's workflow is "add a migration, re-run `build_kb_lineage.py`, re-apply". Phase 2
+added five tables — `doc_source`, `doc_chunk`, `doc_embedding_model`, `doc_chunk_embedding` and
+`ai_regression_case` — and the graph knew about none of them, so a lineage question about the
+document corpus returned nothing at all. This is that re-run.
+
+**The generator asserted a table called `with`, and the cause is worth recording.** The re-run
+emitted a node `table:with`, built by `20260826160000_doc_corpus.sql`. The source was that
+migration's own header comment: *"RLS is enabled in the same statement block as each CREATE TABLE
+with no anon or authenticated policy"*. `read_migrations` scanned **raw** text with
+`CREATE_TABLE_RE`, so it read that prose as a table definition.
+
+This is the third instance of one failure mode in this script, and `DECISIONS.md` already records
+the other two: a quote-tracking SQL splitter desynchronising on the apostrophes in this
+repository's prose headers, and an illustrative `docs/` path in a migration header asserted as a
+real `reconciled-in` edge. All three are a parser reading prose as data. The comment-stripping fix
+from 1.5 was applied to the `dim_dataset` scan only; the `create table` and `alter table` scans
+kept reading raw text, and nothing had happened to trip them until a header used the words "CREATE
+TABLE" followed by another word.
+
+**Fixed at the cause, not at the comment.** `read_migrations` now scans stripped SQL for tables.
+The obvious alternative — rewording the comment — would have left the trap armed for the next
+person who writes a migration header describing what it does.
+
+**The docs/ scan deliberately still reads raw text, and the asymmetry is the point.** A migration's
+citation of the write-up that reconciled its data lives *in the header comment*, which is exactly
+where it belongs; stripping comments there would delete the `reconciled-in` edges the graph most
+wants. That scan looks for a `docs/*.md` path, which prose cannot produce by accident — unlike a
+bare word after "create table". Both choices are commented in place so the inconsistency reads as
+deliberate.
+
+**What the re-run produced.** 183 nodes / 287 edges from this branch's files, against 180 / 289 on
+the live project (which carries the concurrent UUC work's rows, seeded there but not committed on
+this branch). 44 table nodes, none of them phantom. **Only the delta — 9 nodes and 16 edges — was
+applied live**, because the generated seed is a full regeneration and the live database holds rows
+from a branch this one cannot see. The seed is upsert-only with no deletes anywhere, so a full
+re-apply would also have been safe; applying the delta simply keeps the change reviewable.
+
+**Verify.** `traverse_kb('table:doc_chunk', 'out', …)` now returns the migration that created it,
+the ingestion script that writes it, and `docs/AI_ASSISTANT_PLAN.md` as the write-up that
+reconciled it — each step citing the file that asserts it. Before this it returned nothing.
+The generator's stderr finding list is **empty**: every table node has a `built-by` edge, which is
+the first time that has been true since 1.5, and it is true because #75 committed
+`fact_uuc_phc_barangay`'s migration.
+
+**Merged with #79, which changed the same generator.** #79 taught `build_kb_lineage.py` to read
+`create view` (so `ref_uuc_phc_provincial` becomes a node) and regenerated
+`20260826120100_seed_kb_lineage.sql` **in place** rather than adding a dated seed. Both changes are
+better than what this branch did:
+
+- The view scan is kept, and now reads *stripped* SQL like the table scans, for the reason above —
+  a header saying "CREATE VIEW …" would otherwise assert a view that is not there. The fix and the
+  feature compose; neither side had to lose.
+- The separate `20260826160300_seed_kb_lineage_phase2.sql` this branch added is **deleted**. One
+  generated file regenerated in place is the better convention: two seeds drift, and the second one
+  is only ever a snapshot of a moment. `split_statements` was checked and needs no change — it
+  already strips comments itself, so #79's view-lineage walk was never exposed.
+
+**Live reconciled to the committed seed: 189 nodes, 307 edges, exact match.** Getting there needed
+three corrections, found by diffing the generator's output against the live rows rather than
+assuming a re-apply would converge:
+
+- Two rows were missing live — `table:feedback built-by 20260827090000_feedback_dataset_slug.sql`
+  and its `reconciled-in` — because #80 applied that migration without re-seeding the graph.
+- One node was **stale**: `migration:20260826160300_seed_kb_lineage_phase2.sql`, created by this
+  branch and then deleted with the file. Upserts never remove anything, so a full re-apply would
+  have left it there — a node naming a file that no longer exists, which is precisely the
+  unverifiable assertion the graph exists to prevent. It was deleted explicitly.
+
+The generator's stderr findings list is empty: every table node has a `built-by` edge.
+
+### Carry-forward items from the Phase 1 handoff, settled
+
+- **`agg_uuc_phc_counts` registration — done, by the concurrent work, not here.** The registry is
+  now 25 tables / 270 columns, and all four UUC tables (`agg_uuc_phc_counts`,
+  `fact_uuc_phc_barangay`, `fact_uuc_phc_indicators`, `ref_uuc_phc_provincial`) are registered
+  live. 1.2's decision to leave it out rather than describe it from a live table comment was
+  right: it was registered by the branch that had its migration.
+- **`fact_uuc_phc_barangay`'s missing migration — closed** by #75, as above.
+- **`ref_uuc_phc_provincial`'s SECURITY DEFINER view — fixed** by the concurrent work. The project
+  now has no ERROR-level security advisor at all.
+- **`database.types.ts` regeneration — deliberately NOT done, and the reason changed since the
+  handoff proposed it.** The handoff suggested a regeneration pass via the Supabase MCP. Two
+  branches are now hand-editing that file concurrently (this one added five tables and one
+  function; the UUC work added its own), and a wholesale regeneration would reformat every entry
+  and turn a clean append-only merge into a file-wide conflict for whichever branch lands second.
+  The additions here follow the existing hand-maintained style and `npm run typecheck` is clean.
+  A regeneration is still worth doing — **once the concurrent branches have merged**, as its own
+  change with nothing else in it, so the diff is reviewable as the mechanical reformat it is.
+

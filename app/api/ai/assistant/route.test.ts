@@ -181,3 +181,158 @@ describe("POST /api/ai/assistant — grounding is not relaxed", () => {
     expect(event).toMatchObject({ type: "capacity" });
   });
 });
+
+describe("POST /api/ai/assistant — citations (Increment 2.3)", () => {
+  /**
+   * These run the REAL `collectCitations` and `auditCitations` through the route, the same way the
+   * grounding tests run the real `auditNarrative`. Mocking them would test that the route calls two
+   * functions, which is not the claim §7 makes; the claim is that a fabricated page does not reach
+   * the reader and a real one arrives with the passage behind it.
+   */
+  function searchPayload(...pages: number[]) {
+    return {
+      query: "deadline",
+      count: pages.length,
+      retrieval: { lexical: true, vector: false },
+      warnings: [],
+      results: pages.map((page) => ({
+        chunkId: page - 1,
+        document: "blhsd-2027-budget-cue-cards",
+        documentTitle: "[BLHSD] 2027 Budget Cue Cards",
+        asOf: "2025-09-18",
+        page,
+        heading: "FAQs",
+        text: `text of slide ${page}`,
+        truncated: false,
+        charStart: 100 * page,
+        charEnd: 100 * page + 40,
+        citation: `[BLHSD] 2027 Budget Cue Cards, slide ${page}`,
+      })),
+    };
+  }
+
+  it("emits the retrieved passages as citations, with the text and offsets behind them", async () => {
+    runToolLoop.mockResolvedValue({
+      finalText: "The cue cards describe the FAQ section on slide 26.",
+      toolPayloads: [searchPayload(26)],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    const citations = events.find((e) => e.type === "citations") as
+      | { citations: Record<string, unknown>[]; droppedPages: number[] }
+      | undefined;
+
+    expect(citations?.citations).toHaveLength(1);
+    expect(citations?.citations[0]).toMatchObject({
+      chunkId: 25,
+      page: 26,
+      label: "[BLHSD] 2027 Budget Cue Cards, slide 26",
+      text: "text of slide 26",
+      charStart: 2600,
+      asOf: "2025-09-18",
+    });
+    expect(citations?.droppedPages).toEqual([]);
+  });
+
+  it("drops a sentence citing a slide no search returned, and says which", async () => {
+    runToolLoop.mockResolvedValue({
+      finalText:
+        "The FAQ section begins on slide 26. A highly technical request has a 20-working-day deadline, per slide 42.",
+      toolPayloads: [searchPayload(26)],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    const message = events.find((e) => e.type === "message") as { content: string };
+    const citations = events.find((e) => e.type === "citations") as { droppedPages: number[] };
+
+    expect(message.content).toContain("slide 26");
+    expect(message.content).not.toContain("slide 42");
+    expect(message.content).not.toContain("20-working-day");
+    expect(citations.droppedPages).toEqual([42]);
+  });
+
+  it("explains itself when every sentence cited a fabricated slide", async () => {
+    runToolLoop.mockResolvedValue({
+      finalText: "Slide 42 sets a 20-working-day deadline.",
+      toolPayloads: [],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    const message = events.find((e) => e.type === "message") as { content: string };
+
+    // A document claim made without ever opening a document is the worst case, and must not
+    // reach the reader as a bare "no answer".
+    expect(message.content).toContain("42");
+    expect(message.content).toContain("no document search");
+  });
+
+  it("emits no citations event for an answer that used no documents", async () => {
+    runToolLoop.mockResolvedValue({
+      finalText: "Region VII has 41052 records.",
+      toolPayloads: [{ table: "agg_bhw_counts", rows: [{ n: 41052 }] }],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    expect(events.find((e) => e.type === "citations")).toBeUndefined();
+  });
+
+  it("keeps the numeric audit in force alongside the citation audit", async () => {
+    runToolLoop.mockResolvedValue({
+      finalText: "Slide 26 states 277767 BHWs. Region VII has 99999 records.",
+      toolPayloads: [searchPayload(26), { table: "agg_bhw_counts", rows: [{ n: 277767 }] }],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    const message = events.find((e) => e.type === "message") as { content: string };
+
+    // Slide 26 was retrieved and 277767 is in a payload, so the first sentence passes both
+    // audits. 99999 is in neither, so the numeric audit still drops the second — the citation
+    // pass running first does not weaken it.
+    expect(message.content).toContain("Slide 26");
+    expect(message.content).not.toContain("99999");
+  });
+
+  it("blames the citation pass, not the numeric one, when a page is fabricated", async () => {
+    // A slide number is a number, so without ordering these deliberately the numeric audit
+    // strips "slide 42" for containing an untraceable 42 and the reader is told the figures were
+    // ungrounded — true, but not the useful thing to say about a fabricated citation.
+    runToolLoop.mockResolvedValue({
+      finalText: "The deadline is set on slide 42.",
+      toolPayloads: [searchPayload(26)],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    const citations = events.find((e) => e.type === "citations") as { droppedPages: number[] };
+    expect(citations.droppedPages).toEqual([42]);
+  });
+
+  it("catches a fabricated page even when that number appears in another payload", async () => {
+    // The case where the citation pass is genuinely load-bearing: 42 is a legitimate figure
+    // somewhere in the results, so the numeric audit has no objection to it.
+    runToolLoop.mockResolvedValue({
+      finalText: "The deadline is set on slide 42.",
+      toolPayloads: [searchPayload(26), { table: "agg_workload", rows: [{ caseload: 42 }] }],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    const message = events.find((e) => e.type === "message") as { content: string };
+    const citations = events.find((e) => e.type === "citations") as { droppedPages: number[] };
+
+    expect(citations.droppedPages).toEqual([42]);
+    expect(message.content).not.toContain("slide 42");
+  });
+});

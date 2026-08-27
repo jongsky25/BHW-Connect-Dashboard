@@ -9,11 +9,13 @@ Follow the working conventions in `BUILD_PLAN.md` §5 (engineering standards) an
 per-increment logging convention of `DECISIONS.md` (append an entry per increment: what was
 built, what was decided, verify evidence).
 
-**Status:** Phase 1 complete — Increments 1.1–1.6 are built (see `DECISIONS.md`, 2026-08-26), on
-the §0 defaults for decisions 2, 3 and 4, which the owner confirmed. Decision 1 (Supabase Pro) is
-still open and nothing built so far depends on it; decision 7 (embedding provider) is the next one
-that matters, at Phase 2. Phases ship in order; each increment is an independently shippable
-PR-sized unit.
+**Status:** Phase 1 complete (Increments 1.1–1.6) and **Phase 2 open at 2.1** — the document
+corpus is ingested (see `DECISIONS.md`, 2026-08-26). Owner decisions 1, 2, 3 and 4 are all
+**answered**: the project is on Supabase Pro, the assistant is admin-only, the numeric audit is
+retained and the answer cache is bypassed. Decision 7 (embedding provider) is answered as Gemini;
+what remains open is not the provider but the *dimension*, which 2.1 deliberately made a stored
+row rather than a schema constant so it can be measured rather than declared (§6, §11). Phases
+ship in order; each increment is an independently shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -54,18 +56,22 @@ not introduce a second AI system.
 
 ---
 
-## 0. Owner decisions (proposed defaults — confirm or override before Increment 1.2)
+## 0. Owner decisions
 
-| # | Question | Proposed default |
-|---|---|---|
-| 1 | Supabase plan | **Upgrade to Pro ($25/mo).** The database is 596 MB against a 500 MB Free-plan ceiling *today*, before this plan adds anything. See §6. |
-| 2 | Who can reach the internal assistant? | **Admin session only**, reusing the existing `app/admin/(dashboard)` auth. Never linked from public navigation. |
-| 3 | Does the internal assistant keep the numeric audit? | **Yes.** Relaxing rate limits and dataset scope is the point; relaxing *grounding* is not. The audit is what makes answers usable in a briefing. |
-| 4 | Does the internal assistant use the answer cache? | **No.** Cache exists to save provider credits on repeated public questions. Internal use is exploratory and low-volume; a stale answer costs more than a call. |
-| 5 | Auto-generated KB entries: served or reviewed? | **Proposed, then approved.** Ingest-time extraction writes rows with `status = 'auto'`; only `status = 'approved'` rows are citable. Mirrors `ai_ask_cache`'s existing pattern. *Applies to extraction only* — lineage edges derived from migrations and ingestion scripts (Increment 1.5) are asserted, not inferred, and land approved. |
-| 6 | Do new datasets get pre-computed aggregates? | **Only when a dashboard page renders them.** See §5 — this is the load-bearing decision of the whole plan. |
-| 7 | Embedding provider | **Gemini**, same key and cascade as chat. The model name lives in the environment, never as a code constant (see §1). |
-| 8 | Are answers human-reviewed before use? | **No queue.** Review happens at ingestion, which is one-time per source and compounds; reviewing every answer is unbounded and degrades to rubber-stamping. See §7 for the reasoning and the three layers that cover answers instead. |
+Proposed as defaults; the **Status** column records what the owner has since settled. A decision
+that is answered is no longer a proposal — where the answer changed what gets built, the
+increment that implemented it is named.
+
+| # | Question | Decision | Status |
+|---|---|---|---|
+| 1 | Supabase plan | **Upgrade to Pro ($25/mo).** The database was 596 MB against a 500 MB Free-plan ceiling *before* this plan added anything. See §6. | **Answered — the owner has upgraded to Pro** (2026-08-26). The Free-tier pruning fallback in §6 is moot; 2.1's corpus lands with headroom rather than against a ceiling. |
+| 2 | Who can reach the internal assistant? | **Admin session only**, reusing the existing `app/admin/(dashboard)` auth. Never linked from public navigation. | **Answered — confirmed.** Implemented in 1.4; load-bearing for the 2.1 corpus (§12.5). |
+| 3 | Does the internal assistant keep the numeric audit? | **Yes.** Relaxing rate limits and dataset scope is the point; relaxing *grounding* is not. The audit is what makes answers usable in a briefing. | **Answered — confirmed.** Implemented in 1.4. §12.4 records the one case the audit handles wrongly, and the rule that covers it. |
+| 4 | Does the internal assistant use the answer cache? | **No.** Cache exists to save provider credits on repeated public questions. Internal use is exploratory and low-volume; a stale answer costs more than a call. | **Answered — confirmed.** Implemented in 1.4. |
+| 5 | Auto-generated KB entries: served or reviewed? | **Proposed, then approved.** Ingest-time extraction writes rows with `status = 'auto'`; only `status = 'approved'` rows are citable. Mirrors `ai_ask_cache`'s existing pattern. *Applies to extraction only* — lineage edges derived from migrations and ingestion scripts (Increment 1.5) are asserted, not inferred, and land approved. | Open until Phase 3, which is the first increment that extracts anything. `doc_source.status` carries the same three values from 2.1 onward. |
+| 6 | Do new datasets get pre-computed aggregates? | **Only when a dashboard page renders them.** See §5 — this is the load-bearing decision of the whole plan. | Open; bites at the next dataset increment, not at Phase 2. |
+| 7 | Embedding provider | **Gemini**, same key and cascade as chat. The model name lives in the environment, never as a code constant (see §1). | **Answered — Gemini.** Implemented in 2.1: `GEMINI_EMBEDDING_MODEL` is read from the environment with no default. The *dimension* is not part of this decision — see §11. |
+| 8 | Are answers human-reviewed before use? | **No queue.** Review happens at ingestion, which is one-time per source and compounds; reviewing every answer is unbounded and degrades to rubber-stamping. See §7 for the reasoning and the three layers that cover answers instead. | Answered — no queue. Layers 2 and 3 (citations, failure capture) are Increments 2.3 and 2.4. |
 
 ---
 
@@ -386,19 +392,48 @@ single-geography one, and both answers pass `auditNarrative`.
 primitive proven against two edge shapes before anything depends on a model having extracted
 them.**
 
+**At the end of Phase 2 you have all three retrieval paths from §2 live, a document corpus whose
+citations are checkable rather than decorative, and a regression list that grows from real
+failures.** The one thing Phase 2 does not have is a *measured* embedding: the schema, the
+pipeline and the search all handle vectors, but none has been run against a live provider, so the
+vector half of retrieval is proven as plumbing and not as quality. Running
+`ingestion/ingest_documents.py --embed` with a key is what closes that, and it needs no further
+code.
+
 ### Phase 2 — Documents
 
-**2.1 — Ingest pipeline for documents.** `doc_source` + `doc_chunk`, chunk and embed in the
-Python pipeline (`ingestion/`), never in a Vercel function — the pipeline is already local-only
-per the README, which sidesteps serverless timeouts entirely.
+**2.1 — Ingest pipeline for documents.** *(built — 2026-08-26; 213 chunks, 147,262 chars)*
+`doc_source` + `doc_chunk`, chunk and embed in the Python pipeline (`ingestion/`), never in a
+Vercel function — the pipeline is already local-only per the README, which sidesteps serverless
+timeouts entirely.
+
+Shipped with two tables the plan did not name — `doc_embedding_model` and `doc_chunk_embedding` —
+because they are what let the embedding **dimension be a stored row rather than a schema
+constant**, which §11 requires and a `vector(768)` column would have quietly foreclosed. The
+`kb_edge`/`kb_node` `source_chunk_id` foreign keys, left unpayable in 1.5 because `doc_chunk` did
+not exist, land here.
+
 *Verify:* a known document ingests; chunk count and page offsets are correct.
 
-**2.2 — `searchDocuments` tool.** Vector search plus the already-installed `pg_trgm` for exact
-codes and memo numbers. Returns text with a document and page citation.
+**2.2 — `searchDocuments` tool.** *(built — 2026-08-26)*
+Vector search plus the already-installed `pg_trgm` for exact codes and memo numbers. Returns text
+with a document and page citation.
+
+Both halves are fused in Postgres by Reciprocal Rank Fusion rather than by blending scores — a
+cosine distance and a trigram similarity are not on the same scale, and normalising them would
+invent a comparison. The vector half is nullable and the payload reports which halves ran, so a
+keyword-only search is visibly degraded rather than quietly thinner (§1: degrade, never error).
+
 *Verify:* a question answerable only from a document returns a correct, cited answer.
 
-**2.3 — Citations in the UI.** Extend the stream events so document answers render their source —
-document title, page, and the quoted span — each one clickable through to the stored chunk.
+**2.3 — Citations in the UI.** *(built — 2026-08-26)*
+Extend the stream events so document answers render their source — document title, page, and the
+quoted span — each one clickable through to the stored chunk.
+
+Built on one inversion worth stating: **the citation is emitted from the retrieval payload, never
+authored by the model.** A model cannot mis-cite a passage it was never handed. What the model
+*can* still do is name a page in prose that it was not given, so a second audit sits beside the
+numeric one and drops those sentences — the citation-shaped version of an untraceable figure.
 
 Per §7 this is a correctness feature, not presentation: for prose claims the citation is the only
 check, since `auditNarrative` covers numbers alone. A citation that points at the wrong page is
@@ -407,9 +442,14 @@ worse than no citation, so the stored page/offset must be asserted, not assumed.
 *Verify:* every document-grounded sentence shows a traceable citation; on a document with known
 page numbers, ten sampled citations resolve to text that actually supports the sentence.
 
-**2.4 — Failure capture.** A "this is wrong" control on any answer, writing the question, the
-answer given, the tools called, and the provider into a regression table. Optional free-text note
-for the correct answer.
+**2.4 — Failure capture.** *(built — 2026-08-26)*
+A "this is wrong" control on any answer, writing the question, the answer given, the tools called,
+and the provider into a regression table. Optional free-text note for the correct answer.
+
+A case also stores the **whole conversation** and the **citations**, because the Verify asks for
+replayability and neither the question alone nor the prose alone gives it: the assistant is
+multi-turn, and the regressions worth catching are usually in which tools were selected or which
+page was cited rather than in how the answer reads.
 
 This is what makes §10 self-sustaining: the regression list grows from real failures rather than
 from an authoring session, so it tracks whatever sources have actually been loaded.
@@ -524,13 +564,30 @@ It costs nothing up front and requires no advance knowledge of the corpus:
 third retrieval path goes live and a change to one can silently degrade another — one phase
 earlier than originally written, because Phase 1 now ends with two paths rather than one.
 
+**Status after Increment 2.4.** Route 2 is built: `ai_regression_case` captures a replayable case
+from any answer, and the open list renders on the assistant page so the people who file cases can
+see the list growing. Route 1 (seed from the dashboard) and route 3 (harvest `ai_ask_cache` rows at
+`status = 'approved'`) are still unbuilt, and both are now cheap — the table they would write into
+exists and carries a `source` column that keeps seeded cases distinguishable from reported ones.
+One seeded case is in the list already, recording §12.4 rule 3.
+
+**What is still missing is the runner.** A stored case is replayable in the sense that everything a
+replay needs is in the row; nothing yet re-runs them in a batch and diffs the result. That is the
+next thing worth building, and it is what would turn "these five queries look right" into a claim
+about the other forty.
+
 ## 11. Open questions
 
 - ~~**Document corpus.** Which documents go in first, and does the DOH hosting clearance gate
   apply?~~ **Both answered — see §12.** The 2027 Budget Cue Cards are the first corpus, and the
   owner has cleared loading them (§12.5). The admin-only exposure rule is unchanged.
-- **Embedding model and dimensions.** Confirm against the provider's live model at implementation
-  and record in `DECISIONS.md`.
+- ~~**Embedding model and dimensions.**~~ **Half answered.** The *model* is Gemini (§0 #7), read
+  from `GEMINI_EMBEDDING_MODEL` with no default. The *dimension* is deliberately not answered in
+  any document: 2.1 makes it a row in `doc_embedding_model`, measured from a live response by
+  `ingestion/ingest_documents.py` and enforced by a check constraint, so it is confirmed against
+  the provider by construction rather than by a reader remembering to. **Not yet run** — this
+  build environment has no provider key, so no vector is stored and no dimension is recorded yet.
+  Running `--embed` is what closes this, and it is the one prerequisite 2.2's vector half has.
 - **Retention.** How long do `doc_chunk` rows live for a document that is later withdrawn?
 - **Traversal depth.** What maximum depth stays explainable? Set a low cap in 1.6 and raise it
   against real questions rather than guessing upward — an answer whose path nobody can follow is
@@ -579,19 +636,34 @@ A slide is the natural chunk and gives an exact citation ("cue cards, slide 37")
 average, slides sit well under any embedding limit; merge consecutive slides within a section for
 retrieval context, but cite the range rather than flattening it.
 
-**Extraction hazard, evidenced.** The deck's own slide numbers sit in the text layer and bleed
-into extracted text mid-token:
+**Extraction hazard, evidenced — and corrected against the file in 2.1.** The deck's own slide
+numbers sit in the text layer and bleed into extracted text. This section originally reported
+three corrupted strings:
 
-| Slide | Extracted | Should be |
+| Slide | Reported as extracted | Should be |
 |---|---|---|
 | 37 | `MIMAROPA REG42ION 458` | `MIMAROPA REGION 458` (42 = the slide number) |
 | 157 | `w190orkshops` | `workshops` |
 | 163 | `report196ed` | `reported` |
 
-Naive extraction carries these into the embedding *and* into any quoted span. Per §7 the citation
-**is** the check for prose claims, so a corrupted quotation is a correctness failure, not a
-cosmetic one. Strip the slide-number element by position before chunking, and assert page and
-offset per Increment 2.3 rather than assuming them.
+**The hazard is real; those three strings are not, for this extractor.** Increment 2.1 measured it
+directly (see `ingestion/ingest_documents.py`): the element is a **3.0pt `38,Bold` span at
+x = 325.9**, one digit per span stacked vertically, and it is the only sub-5pt text in the whole
+deck — 148 spans on 52 of 213 pages. Under PyMuPDF it corrupts only a *flat sorted* extraction,
+and it lands **after** a token rather than inside one (`MIMAROPA REGION42`, `reported19`); page
+157's `workshops` is not corrupted in any mode tested. The corrupted forms above come from a
+different extractor.
+
+Two consequences the original text got right anyway. The element is stripped by its measured
+signature before any line is assembled, because left in it becomes a stray digit line that gets
+embedded and quoted. And per §7 the citation **is** the check for prose claims, so a corrupted
+quotation is a correctness failure rather than a cosmetic one — which is why 2.1 asserts page and
+offset by construction (a check constraint ties `char_end - char_start` to `length(content)`)
+rather than assuming them.
+
+**Cite by PDF page, not by the deck's printed number.** The printed numbers appear on only 52 of
+213 pages and their offset from the PDF page index runs from +4 to +33, so they are not derivable.
+§12 itself already uses PDF pages (p37 *is* the UUC distribution slide), and 2.1 follows that.
 
 ### 12.4 A gap this corpus exposes in the audit model
 

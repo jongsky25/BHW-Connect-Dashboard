@@ -13,6 +13,7 @@ import {
   DEFAULT_ROWS,
 } from "./query-dataset";
 import { TOOLS, type Tool } from "./tools";
+import { createSearchDocumentsTool } from "./search-documents";
 import { createTraversalTool } from "./traverse-graph";
 
 /**
@@ -133,9 +134,14 @@ export function createDatasetTools(exposure: Exposure): Tool[] {
  * The internal assistant's tool set (Increment 1.4): the public indicator tools plus the
  * registry-driven pair at `internal` exposure.
  *
- * `traverseGraph` (Increment 1.6) is internal-only for the same reason `queryDataset` is: it reads
- * `kb_edge`, which is service-role only. A traversal the model never selects has not shipped, so it
- * is registered here and described in the internal system prompt in the same increment.
+ * `traverseGraph` (Increment 1.6) and `searchDocuments` (2.2) are internal-only for the same
+ * reason `queryDataset` is: they read `kb_edge` and `doc_chunk`, which are service-role only —
+ * and the document corpus is internal budget material besides (§12.5). A tool the model never
+ * selects has not shipped, so each is registered here and described in the internal system prompt
+ * in the increment that builds it.
+ *
+ * With `searchDocuments` the set now spans all three retrieval paths in §2: SQL for numbers,
+ * edges for provenance, documents for prose. The model chooses; the loop is unchanged.
  *
  * The hand-written tools are kept rather than replaced. `searchGeo` resolves a place name to a
  * geo_code in one call — the registry path would need a `like` scan of `dim_geo` and still guess
@@ -144,5 +150,10 @@ export function createDatasetTools(exposure: Exposure): Tool[] {
  * users too. `queryDataset` covers everything they do not.
  */
 export function createInternalTools(): Tool[] {
-  return [...TOOLS, ...createDatasetTools("internal"), createTraversalTool()];
+  return [
+    ...TOOLS,
+    ...createDatasetTools("internal"),
+    createTraversalTool(),
+    createSearchDocumentsTool(),
+  ];
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runToolLoop } from "@/lib/ai/agent-loop";
 import { auditNarrative } from "@/lib/ai/audit";
+import { auditCitations, collectCitations, type Citation } from "@/lib/ai/citations";
 import { createInternalTools } from "@/lib/ai/dataset-tools";
 import { INTERNAL_SYSTEM_PROMPT } from "@/lib/ai/internal-system-prompt";
 import {
@@ -25,6 +26,10 @@ const bodySchema = z.object({
 type AssistantStreamEvent =
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
   | { type: "message"; content: string; provider: string | null }
+  // Increment 2.3. Emitted from the retrieval payload, never from the answer text: the model does
+  // not get to author its own citations, so it cannot mis-cite a passage it was never handed.
+  // `droppedPages` names the pages a sentence claimed before the citation audit removed it.
+  | { type: "citations"; citations: Citation[]; droppedPages: number[] }
   | { type: "capacity"; message: string }
   | { type: "error"; message: string };
 
@@ -66,6 +71,14 @@ function ndjsonStream(
  *
  * The numeric audit is unchanged (decision 3): `auditNarrative` strips any sentence whose numbers
  * are not in the tool payloads, on internal answers exactly as on public ones.
+ *
+ * Increment 2.3 adds a second audit beside it, for the half the first one cannot see. The numeric
+ * audit checks numbers; a document claim carries no number and passes untouched, so per §7 its
+ * citation is the only check it gets. `auditCitations` therefore drops any sentence naming a
+ * document page that was not retrieved this turn, and `collectCitations` emits the passages that
+ * *were* — which is what the UI renders and links to. Both run on the same `toolPayloads` the
+ * numeric audit uses, in the same place, for the same reason: evidence comes from the tool
+ * results, never from the prose.
  */
 export async function POST(request: Request) {
   const admin = await getAdminUser();
@@ -116,14 +129,40 @@ export async function POST(request: Request) {
         return;
       }
 
-      const audited = auditNarrative(result.finalText, result.toolPayloads);
+      // Pages first, then numbers. A sentence must pass both, so the order cannot change which
+      // sentences survive — but it decides which check gets to explain a removal, and the two
+      // overlap more than they look. `auditNarrative` counts a slide number as a number, so
+      // "per slide 42" is usually stripped for containing an untraceable 42 before the citation
+      // pass ever sees it, and the reader is told the *figures* were ungrounded when the actual
+      // fault was a fabricated page. Running citations first reports the specific, actionable
+      // failure and names the slide.
+      //
+      // This also makes clear where the citation pass is genuinely load-bearing rather than
+      // redundant: when a fabricated page number happens to appear elsewhere in the payloads —
+      // 42 as a row count, say — the numeric audit passes it and only this check catches it.
+      const citations = collectCitations(result.toolPayloads);
+      const cited = auditCitations(result.finalText, citations);
+      const audited = auditNarrative(cited.text, result.toolPayloads);
+
+      const droppedPages = [...new Set(cited.rejected.flatMap((r) => r.pages))];
+      const strippedEverything = Boolean(result.finalText.trim()) && !audited.text;
+
       send({
         type: "message",
         content:
           audited.text ||
-          "Every sentence in that answer was stripped by the numeric audit, which means the figures in it were not in any tool result. Ask for a specific table or geography and try again.",
+          (droppedPages.length > 0
+            ? `That answer cited ${droppedPages.length === 1 ? "a slide" : "slides"} (${droppedPages.join(", ")}) that no document search returned, so it was dropped. Ask again and it will search before answering.`
+            : strippedEverything
+              ? "Every sentence in that answer was stripped by the numeric audit, which means the figures in it were not in any tool result. Ask for a specific table or geography and try again."
+              : "No answer came back — try rephrasing the question."),
         provider: result.provider,
       });
+
+      // After the message, so the answer renders first and its sources settle beneath it.
+      if (citations.length > 0 || droppedPages.length > 0) {
+        send({ type: "citations", citations, droppedPages });
+      }
     } catch {
       send({ type: "error", message: "Something went wrong answering that — please try again." });
     }
