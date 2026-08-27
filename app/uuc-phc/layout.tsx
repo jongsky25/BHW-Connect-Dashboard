@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ListCorrection } from "@/components/uuc-phc/list-correction";
 
 // Its own dataset and its own section, distinct from the BHW Census and the 2026 Profiling
 // Status — so it carries its own title template rather than the root layout's "%s · BHW Connect",
@@ -54,16 +55,19 @@ function SectionHeader() {
 function SectionFooter() {
   return (
     <footer className="mt-auto border-t border-border">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-6 text-sm text-muted sm:px-6">
-        <span className="equity-mark sm" aria-hidden="true" />
-        <span>
-          Source: DOH Bureau of Local Health Systems Development — 2025 list of Unserved and
-          Underserved Communities for Primary Health Care (DC No. 2025-0549). Places, not people: no
-          personal data.
-        </span>
-        <Link href="/" className="underline hover:text-accent">
-          Equity in Health portal
-        </Link>
+      <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6 text-sm text-muted sm:px-6">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="equity-mark sm" aria-hidden="true" />
+          <span>
+            Source: DOH Bureau of Local Health Systems Development — 2025 list of Unserved and
+            Underserved Communities for Primary Health Care (DC No. 2025-0549). Places, not people:
+            no personal data.
+          </span>
+          <Link href="/" className="underline hover:text-accent">
+            Equity in Health portal
+          </Link>
+        </div>
+        <ListCorrection />
       </div>
     </footer>
   );

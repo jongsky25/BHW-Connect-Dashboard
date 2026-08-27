@@ -9,8 +9,10 @@ from national down to city/municipality with each listed barangay showing the fa
 on and its health indicators (capped values marked), and every area has a downloadable PNG
 one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
 
-**U5 landed 2026-08-26** — the registry/lineage debt is cleared and the ERROR-level advisor
-finding is closed; U6 through U12 remain.
+**U5 and U6 landed 2026-08-26** — the registry/lineage debt is cleared, the ERROR-level advisor
+finding is closed, and both `/uuc-phc` routes now present, route their feedback by dataset and
+carry social cards. U7 through U12 remain. §8's defect 1 (the hard-coded brand in the slide chrome)
+is fixed; defects 2, 3 and 4 are still open and belong to U8.
 
 **What this revision adds (2026-08-26): U5 through U12**, bringing the section up to the shape the
 2025 BHW Census section already has — present mode, ask-the-data chat, an AI insight slot,
@@ -525,7 +527,7 @@ what a visitor experiences. This is the gap, verified file by file rather than f
 |---|---|---|
 | Landing page | `app/bhw/page.tsx` — hero + 4 stat tiles, each with a mini-viz and an enlarge chart | Hero + one two-state bar |
 | Area profile | `app/place/[geoLevel]/[geoCode]/page.tsx` — 10 figure cards, benchmark rows, peer-rank chips, locator map, completeness | Hero + bar + child list + (at citymun) barangay list |
-| Present mode | `PresentationProvider` / `PresentationSlide` / `PresentButton` on `/bhw`, `/place/*`, `/explore`, `/compare` | **none** |
+| Present mode | `PresentationProvider` / `PresentationSlide` / `PresentButton` on `/bhw`, `/place/*`, `/explore`, `/compare` | **landed (U6)** |
 | Ask the data (chat) | `ChatLauncher` → `/api/ai/chat` on `/bhw`, `/explore` | **none** |
 | AI insight slot | `AiInsight` → `getOrGenerateNarrative` on `/bhw`, `/place/*` | **none** |
 | Curated insight cards | `InsightsGrid` ← `lib/db/insights.ts` (718 lines of generators) | **none** |
@@ -534,7 +536,7 @@ what a visitor experiences. This is the gap, verified file by file rather than f
 | Side-by-side | `/compare` | **none** |
 | Data downloads | CSV / XLSX / PNG / PPTX per figure via `ExportMenu` | One whole-area PNG one-pager |
 | Glossary hooks | `GlossaryTerm` throughout | **none** |
-| Social card | `opengraph-image.tsx` on `/bhw` and `/place/*` | **none** |
+| Social card | `opengraph-image.tsx` on `/bhw` and `/place/*` | **landed (U6)** |
 
 `/profiling-status` has the same gaps. Where an increment below changes shared machinery, it is
 noted — the fix should land in a form that section can adopt too, not a `/uuc-phc` fork of it.
@@ -545,10 +547,11 @@ These are not opinions about design; they are defects that would produce wrong o
 components were simply dropped onto `/uuc-phc`. Each is small, and each has to be fixed by the
 increment that first needs it.
 
-1. **`PresentationSlide` hard-codes the brand.** Its promoted-slide header prints the literal
-   `BHW Connect` (`components/present/presentation-slide.tsx`). Presenting a UUC deck would put
-   the wrong section's name above every slide. Fix: carry the label on `DeckMeta`, which already
-   crosses the server→client boundary as plain strings.
+1. ~~**`PresentationSlide` hard-codes the brand.**~~ **Fixed in U6.** Its promoted-slide header
+   printed the literal `BHW Connect` (`components/present/presentation-slide.tsx`), as did
+   `PresentationDeck`'s closing slide. `DeckMeta.brandLabel` now carries it, optional and
+   defaulting to `"BHW Connect"`; resolution is `brandLabelOf` in `deck-logic.ts`.
+   `/profiling-status` can adopt it with a one-line change.
 2. **The AI narrative cache key has no dataset dimension.** `lib/ai/narrative.ts` keys on
    `data_version|geo|narrative_type`, where `data_version` is `getActiveDataset()`'s — the *BHW*
    dataset's. A UUC insight for Region VII would collide with the BHW insight for Region VII.
@@ -613,7 +616,12 @@ adjacent explanation will report full coverage, which is exactly the failure U3 
 table without a `built-by` edge; `get_advisors` returns no `security_definer_view` for
 `ref_uuc_phc_provincial`; a public read of the view still works as `anon`.
 
-### U6 — Present mode, section chrome, and dataset-aware feedback
+### U6 — Present mode, section chrome, and dataset-aware feedback — **LANDED 2026-08-26**
+
+Both routes present, with `DeckMeta.brandLabel` defaulting to `"BHW Connect"` so the four existing
+decks are unchanged; `feedback.dataset_slug` is derived server-side from the page path; the
+correction entry point is in the section footer; both routes have social cards. See
+`docs/DECISIONS.md` and `docs/uuc-phc-feature.md`. The scope below is kept as written.
 
 Bring the two existing pages up to the chrome the BHW pages carry.
 

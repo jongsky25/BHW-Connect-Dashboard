@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { clampIndex, slideKeyIntent, sortByDocumentOrder } from "./deck-logic";
+import {
+  DEFAULT_BRAND_LABEL,
+  brandLabelOf,
+  clampIndex,
+  slideKeyIntent,
+  sortByDocumentOrder,
+} from "./deck-logic";
 
 const DOCUMENT_POSITION_FOLLOWING = 4;
 const DOCUMENT_POSITION_PRECEDING = 2;
@@ -85,5 +91,28 @@ describe("slideKeyIntent", () => {
     expect(slideKeyIntent({ ...base, key: " ", targetIsInteractive: true })).toBeNull();
     // Arrow keys have no click default, so they navigate even from a button.
     expect(slideKeyIntent({ ...base, key: "ArrowRight", targetIsInteractive: true })).toBe("next");
+  });
+});
+
+describe("brandLabelOf", () => {
+  it("defaults to BHW Connect, so every deck that predates the field is unchanged", () => {
+    // The four decks that existed before plan U6 — /bhw, /place/*, /explore, /compare — pass no
+    // brandLabel, and each must still present as BHW Connect.
+    expect(brandLabelOf({})).toBe(DEFAULT_BRAND_LABEL);
+    expect(brandLabelOf({})).toBe("BHW Connect");
+    expect(brandLabelOf({ brandLabel: undefined })).toBe("BHW Connect");
+  });
+
+  it("uses the section's own label when one is given", () => {
+    expect(brandLabelOf({ brandLabel: "UUC for PHC" })).toBe("UUC for PHC");
+  });
+
+  it("treats blank and whitespace as unset rather than printing an empty header", () => {
+    expect(brandLabelOf({ brandLabel: "" })).toBe("BHW Connect");
+    expect(brandLabelOf({ brandLabel: "   " })).toBe("BHW Connect");
+  });
+
+  it("keeps a label's own surrounding text intact apart from trimming", () => {
+    expect(brandLabelOf({ brandLabel: " UUC for PHC " })).toBe("UUC for PHC");
   });
 });

@@ -23,6 +23,24 @@ export function sortByDocumentOrder<T extends DocumentOrderable>(items: T[]): T[
   );
 }
 
+/**
+ * Section name printed above every promoted slide and on the closing slide.
+ *
+ * Default rather than required (plan U6): the deck chrome hard-coded the literal "BHW Connect",
+ * which is right for /bhw, /place, /explore and /compare and wrong for every other section — a
+ * UUC for PHC deck would have carried the BHW Census's name above each of its slides. Carrying it
+ * on DeckMeta makes it a fact the page states, and defaulting it keeps every existing caller
+ * unchanged: a page that says nothing still presents as BHW Connect.
+ */
+export const DEFAULT_BRAND_LABEL = "BHW Connect";
+
+export function brandLabelOf(meta: { brandLabel?: string }): string {
+  // Blank is treated as unset: an empty header reads as a rendering bug, not as a deliberate
+  // choice, and a page with nothing to say here wants the default.
+  const label = meta.brandLabel?.trim();
+  return label ? label : DEFAULT_BRAND_LABEL;
+}
+
 /** Keep a stored slide position in bounds when the live slide count changes. */
 export function clampIndex(rawIndex: number, count: number): number {
   return Math.max(0, Math.min(rawIndex, count - 1));

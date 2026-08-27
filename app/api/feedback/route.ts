@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/db/supabase";
 import { createSupabaseServiceClient } from "@/lib/db/service-client";
+import { datasetSlugForPath } from "@/lib/feedback/dataset";
 import type { Json } from "@/lib/db/database.types";
 
 export const runtime = "nodejs";
@@ -78,6 +79,9 @@ export async function POST(request: Request) {
   const { error } = await supabase.from("feedback").insert({
     session_id: data.sessionId,
     page_path: data.pagePath,
+    // Derived here, not accepted from the caller: one derivation for both entry points, and a
+    // slug nobody can set is a slug nobody can set wrongly (plan U6).
+    dataset_slug: datasetSlugForPath(data.pagePath),
     category: data.category,
     message: data.message,
     email: data.email || null,

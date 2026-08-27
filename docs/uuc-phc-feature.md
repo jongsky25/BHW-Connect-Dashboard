@@ -42,9 +42,16 @@ it or not. Every figure on the section is therefore one count against one denomi
   dictionaries are the allowlist `queryDataset` enforces, not documentation: `capped_indicators`
   and each of the seven boundable indicators carry the capping caveat in the column meaning
   itself, because that is what travels with a returned value.
-- **Not built yet:** an `/explore` overlay, present mode, ask-the-data chat, an AI insight slot,
-  and the sub-pages that would show the criteria, the indicator distributions and the data-quality
-  caveats above barangay grain. All planned as U6–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
+- **Present mode on both pages** (U6), with the section's own name in the slide chrome. The
+  barangay list is one slide rather than one per barangay: its indicator disclosures stay closed
+  on promotion, so a capped value cannot reach a projected screen without its † footnote.
+- **Corrections are routed, not just collected** (U6). `feedback.dataset_slug` is derived from the
+  page path at write time, and the section footer asks the question this list actually attracts —
+  "Is a barangay missing from this list, or listed in error?" — while saying plainly that the list
+  is DOH's to change, not ours.
+- **Not built yet:** an `/explore` overlay, ask-the-data chat, an AI insight slot, and the
+  sub-pages that would show the criteria, the indicator distributions and the data-quality caveats
+  above barangay grain. All planned as U7–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
 
 ## The indicators (U3)
 
@@ -123,6 +130,28 @@ edges in `kb_node` / `kb_edge`.
 - `lib/db/dataset-registry-seed.test.ts` guards the seed, including the invariant that every
   registered relation has a `create table` or `create view` in `supabase/migrations`.
 
+## Section chrome (U6)
+
+- **Present mode** wraps both pages (`PresentationProvider`), with `PresentButton` beside each
+  page's `<h1>` — it has to live inside the provider, and the provider needs page-specific
+  `DeckMeta`. Slides: the coverage card, the child breakdown, and at city/municipality the
+  barangay list.
+- **`DeckMeta.brandLabel`** is the shared-machinery fix behind it. `PresentationSlide` and
+  `PresentationDeck` printed the literal `BHW Connect`; the field is optional and defaults to it,
+  so `/bhw`, `/place/*`, `/explore` and `/compare` are unchanged, and this section passes
+  `"UUC for PHC"`. `/profiling-status` can adopt the same field with a one-line change.
+  Resolution is `brandLabelOf` in `components/present/deck-logic.ts`, unit-tested.
+- **The deck caption's N is the area's listed count**, not the national 5,991 — a deck presented on
+  Mayoyao reads `N = 27 listed barangays · MAYOYAO · 2025 list (DC No. 2025-0549)`.
+- **Feedback is dataset-aware.** `SpotFeedback` already rendered here; what was added is
+  `feedback.dataset_slug`, derived server-side from `page_path` in `app/api/feedback/route.ts` via
+  `lib/feedback/dataset.ts`, and the section-specific entry point in the footer
+  (`components/uuc-phc/list-correction.tsx`). `/explore` and `/compare` stay null on purpose:
+  they render several datasets, and a filterable wrong slug is worse than none.
+- **Social cards** at both routes carry the count as the headline and no indicator values — a
+  1200×630 card cannot hold the † footnote a capped value needs (U4's rule). A zero renders as a
+  zero: NCR reads "0 of 1,675 barangays".
+
 ## Refreshing / adding data
 
 1. Replace the reconciled workbook in `ingestion/data/` and regenerate the cleaned extract:
@@ -154,6 +183,10 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Fact loader | `ingestion/ingest_uuc_phc.py` |
 | Cleaning step | `ingestion/clean_uuc_phc_indicators.py` |
 | Source data | `ingestion/data/uuc_phc_2025_cleaned.csv` |
+| Present mode wiring | `components/present/` (`deck-logic.ts` `brandLabelOf`), both `app/uuc-phc` pages |
+| Correction entry point | `components/uuc-phc/list-correction.tsx` |
+| Feedback dataset routing | `lib/feedback/dataset.ts` (+ `.test.ts`), `app/api/feedback/route.ts` |
+| Social cards | `app/uuc-phc/opengraph-image.tsx`, `app/uuc-phc/[geoLevel]/[geoCode]/opengraph-image.tsx` |
 | Registry seed + its guard | `supabase/migrations/20260826090100_seed_dataset_registry.sql`, `lib/db/dataset-registry-seed.test.ts` |
 | Lineage generator + seed | `ingestion/build_kb_lineage.py`, `supabase/migrations/20260826120100_seed_kb_lineage.sql` |
 | Plan + provenance | `docs/UUC_PHC_2025_PLAN.md`, `docs/UUC_PHC_2025_CLEANING_REPORT.md` |
@@ -189,6 +222,13 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   for field; **no table node in `kb_node` lacks a `built-by` edge** and the generator prints nothing
   to stderr; `get_advisors` reports no `security_definer_view`; `anon` still reads all 87 rows of
   `ref_uuc_phc_provincial` over PostgREST.
+- Section chrome (U6): the deck was driven end to end in a real browser on seven routes — the three
+  UUC routes start, advance, show **"UUC FOR PHC"** in the slide header and exit; `/bhw`,
+  `/place/*`, `/explore` and `/compare` all still read **"BHW Connect"**. Feedback from
+  `/uuc-phc/citymun/1402706` landed with `dataset_slug = 'uuc-phc-2025'` and from `/explore` with
+  null. OG images render 1200×630 at national, region (NCR's zero included), province and
+  city/municipality, and were looked at rather than only status-checked. Exactly one `SpotFeedback`
+  widget and one correction entry point on the page.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,
