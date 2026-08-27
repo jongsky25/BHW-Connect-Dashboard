@@ -3942,6 +3942,7 @@ public-facing code path: `fetchRegistry`'s `public` branch is byte-for-byte the 
 was, and every real call site already passes an explicit `"public"` or `"internal"` — none call
 `listRegisteredDatasets`/`getRegisteredDataset` with `exposure` left undefined — so this closes the
 gap only for the internal assistant, the caller that was actually broken.
+
 ## 2026-08-27 — UUC for PHC 2025: U9, the indicators as distributions — and the rule that had two copies
 
 `docs/UUC_PHC_2025_PLAN.md` §9 U9. The 12 indicators become legible above barangay grain for the
