@@ -9,10 +9,12 @@ from national down to city/municipality with each listed barangay showing the fa
 on and its health indicators (capped values marked), and every area has a downloadable PNG
 one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
 
-**U5 and U6 landed 2026-08-26** — the registry/lineage debt is cleared, the ERROR-level advisor
-finding is closed, and both `/uuc-phc` routes now present, route their feedback by dataset and
-carry social cards. U7 through U12 remain. §8's defect 1 (the hard-coded brand in the slide chrome)
-is fixed; defects 2, 3 and 4 are still open and belong to U8.
+**U5 and U6 landed 2026-08-26; U7 landed 2026-08-27** — the registry/lineage debt is cleared, the
+ERROR-level advisor finding is closed, both `/uuc-phc` routes present, route their feedback by
+dataset and carry social cards, and `/uuc-phc/criteria` now answers *why* each barangay qualified,
+as four overlapping shares rather than a partition. U8 through U12 remain. §8's defect 1 (the
+hard-coded brand in the slide chrome) is fixed; defects 2, 3 and 4 are still open and belong to
+U8.
 
 **What this revision adds (2026-08-26): U5 through U12**, bringing the section up to the shape the
 2025 BHW Census section already has — present mode, ask-the-data chat, an AI insight slot,
@@ -140,7 +142,7 @@ exceed its benchmark, so all of them read as worse than province on FIC. The eff
 to 2 provinces and the excess is under 3%, but it is a live inconsistency rather than a resolved
 one.
 
-**Five provinces have references that cannot support the comparison at all** — 238 barangays, 4%
+**Five provinces have references that cannot support the comparison at all** — 226 barangays, 4%
 of the list:
 
 | Province | Barangays | Problem |
@@ -150,6 +152,11 @@ of the list:
 | Cagayan | 12 | Every reference is `0` |
 | Zamboanga City (HUC) | 7 | No reference at all (`#N/A`) |
 | Special Geographic Area (BARMM) | 1 | All values below 1 — recorded as fractions, not percentages |
+
+*(Corrected in U7 from 238, which this document and `UUC_PHC_2025_CLEANING_REPORT.md` §6 both
+carried: the five per-province figures above have always been right and sum to 226.
+`agg_uuc_phc_criteria` computes the figure — `n_listed - n_health_evaluable` — rather than
+quoting it, so it cannot drift again.)*
 
 For these, criterion (d) is not evaluable. It does not invalidate their inclusion — the
 socio-economic test passes on any one of four routes — but any analysis that leans on the
@@ -651,7 +658,23 @@ every existing `/bhw`, `/place/*`, `/explore` and `/compare` deck still reads "B
 feedback submitted from `/uuc-phc` lands with `dataset_slug = 'uuc-phc-2025'` and is visible in the
 admin inbox; OG images render at 1200×630 at national, a region and a citymun.
 
-### U7 — `/uuc-phc/criteria`: why these barangays qualified
+### U7 — `/uuc-phc/criteria`: why these barangays qualified — **LANDED 2026-08-27**
+
+`agg_uuc_phc_criteria` is built and registered, and `/uuc-phc/criteria` renders the four routes as
+four independent shares at national, region, province and city/municipality. Two things the scope
+below did not anticipate, both recorded in `docs/DECISIONS.md`:
+
+- **`health_indicators` had to be loaded first.** The Verify below names a column that was never in
+  `fact_uuc_phc_indicators` — U3 left it out on §10's advice. Recomputing it from the published
+  (capped) columns disagrees with the source on 664 rows and leaves **98 listed barangays
+  qualifying on no route at all**, which §1a makes impossible. So the column is loaded as the
+  source's own recorded classification, which is also what keeps this a count of classifications.
+- **The not-evaluable figure is 226, not 238.** §1a's and the cleaning report's own per-province
+  tables sum to 226; 238 was an addition error carried through both. Corrected above, and the page
+  computes it.
+
+The scope below is kept as written.
+
 
 **The single largest analytical gap.** §1a establishes that a barangay qualifies on a physical
 factor *and* one of four socio-economic routes — and today that "why" is visible only inside a
@@ -667,7 +690,7 @@ declined per-indicator aggregates because a mean absorbs the capped ceilings and
 the source does not support. A route count is a count of *classifications*, not of measurements:
 it never averages a bounded value, so the † problem does not arise. The one route that touches the
 capped columns is the health-indicator route, and it inherits §1a's caveat rather than a new one —
-which is why the page names the 238 barangays where criterion (d) is not evaluable at all
+which is why the page names the 226 barangays where criterion (d) is not evaluable at all
 (U10 renders the same set).
 
 Two things the page must say plainly:
@@ -682,7 +705,7 @@ Two things the page must say plainly:
 *Verify:* every area's per-route counts are ≤ its `n_listed` and ≥ 0; the national count for each
 route matches a direct count over the fact table; the health-indicator route count equals the
 number of rows with `health_indicators >= 4`; at least one area is shown where routes overlap and
-the four shares sum above 100%, confirming the rendering does not imply a partition; the 238
+the four shares sum above 100%, confirming the rendering does not imply a partition; the 226
 not-evaluable barangays are excluded from the health route's denominator and the exclusion is
 stated on the page.
 
@@ -731,7 +754,7 @@ One page, one section per indicator, scoped to any geo level:
 - The provincial benchmark from `ref_uuc_phc_provincial` drawn as a reference line, absent where
   the province has none, and **omitted entirely where the benchmark exceeds the indicator's own
   maximum** — the same `comparesWorse` rule U3 applied per barangay, applied to the axis.
-- A count, never a percentage, of barangays worse than their province — with the 238
+- A count, never a percentage, of barangays worse than their province — with the 226
   not-evaluable barangays named and excluded.
 
 **No mean, median or national "average water coverage" anywhere on this page**, and the page says
@@ -752,7 +775,7 @@ dataset. Render, from the data rather than transcribed:
 
 - **What was bounded**: 1,584 values across 1,397 barangays, per indicator, with the share of the
   list each represents (Water 886 = 14.8%).
-- **Where the comparison cannot be made**: the 5 provinces / 238 barangays whose references are
+- **Where the comparison cannot be made**: the 5 provinces / 226 barangays whose references are
   placeholders, zeroes, `#N/A` or fractions, and the 113 barangays in 2 provinces with an
   impossible FIC benchmark.
 - **The published-total reconciliation**: 5,991 vs the cue cards' 5,987, the two affected regions,
@@ -861,7 +884,7 @@ for the source office (BLHSD) rather than for the build:
   capping the reference to 100 would close it properly, and was outside the instruction given.
 - **Criterion (b) is implemented as a sum, not the order's "or"** — matches all 5,991 rows, but
   disagrees with an either-alone reading on 15 (§1a).
-- **Five provinces / 238 barangays cannot support criterion (d) at all.** U7 and U9 exclude them
+- **Five provinces / 226 barangays cannot support criterion (d) at all.** U7 and U9 exclude them
   and say so; the references themselves still need fixing at source.
 - **The 5,991 vs 5,987 vintage reading is inference, not a statement either source makes** (§3).
   U10 renders it as such. Worth confirming.

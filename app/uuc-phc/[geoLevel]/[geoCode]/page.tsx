@@ -146,6 +146,17 @@ export default async function UucPhcAreaPage({ params }: { params: Promise<Param
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                   <p className="text-xs text-muted">
                     Issued under DC No. 2025-0549 · criteria per DOH AO No. 2020-0023
+                    {counts.nListed > 0 && (
+                      <>
+                        {" · "}
+                        <Link
+                          href={`/uuc-phc/criteria/${geo.geoLevel}/${geo.geoCode}`}
+                          className="underline hover:text-accent"
+                        >
+                          Why these {formatCount(counts.nListed)} qualified
+                        </Link>
+                      </>
+                    )}
                   </p>
                   <a
                     href={`/api/export/uuc-phc?geoLevel=${geo.geoLevel}&geoCode=${encodeURIComponent(geo.geoCode)}`}

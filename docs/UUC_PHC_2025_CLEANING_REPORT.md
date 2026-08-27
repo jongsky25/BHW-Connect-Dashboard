@@ -134,12 +134,12 @@ their own barangays cannot reach. Every barangay in those two provinces therefor
 than province on FIC. Confined to 2 provinces with an excess under 3%, but unresolved — capping
 FIC's reference to 100 would close it, and was outside the instruction given.
 
-**Five provinces have references that cannot support criterion (d) at all** — 238 barangays, 4% of
+**Five provinces have references that cannot support criterion (d) at all** — 226 barangays, 4% of
 the list: Agusan del Sur (156, every reference exactly `1`), Nueva Vizcaya (50, `#N/A`), Cagayan
 (12, every reference `0`), Zamboanga City HUC (7, `#N/A`), and BARMM's Special Geographic Area
 (1, all values below 1, recorded as fractions). Their inclusion is not in doubt — the
 socio-economic test passes on any of four routes — but exclude them from any analysis leaning on
-the health-indicator comparison. See `UUC_PHC_2025_PLAN.md` §1a.
+the health-indicator comparison. See `UUC_PHC_2025_PLAN.md` §1a. *(226 corrected in U7 from 238: the five per-province figures above have always been right and sum to 226. `agg_uuc_phc_criteria` now computes it — `n_listed - n_health_evaluable` — rather than quoting it, so it cannot drift again.)*
 
 **`dataentry_comment` is unreliable as a flag** and was not used: it marks 1,895 rows "With values
 above 100", but 381 of those have no such value, and 9 rows marked "Recheck entry" do. Everything
