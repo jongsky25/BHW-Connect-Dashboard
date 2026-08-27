@@ -13,13 +13,21 @@ import {
 } from "@/lib/exports/uuc-phc-data";
 
 export const runtime = "nodejs";
+// The national export is 5,991 rows read a page of 1,000 at a time — PostgREST's own cap — so it
+// costs six sequential round trips plus serialisation, and it measured **8.5s (CSV) / 9.0s (XLSX)
+// on a real Vercel preview deployment**. That is inside the platform's default ceiling but not
+// comfortably: one slow cold start or one slow Supabase response and the largest file on the
+// section is the one that fails. Raised on `app/api/cron/precompute/route.ts`'s precedent. The
+// figure it protects is worth keeping in view — a national CSV is 1.6 MB, so the constraint is
+// time, not response size.
+export const maxDuration = 60;
 
 /**
  * The 2025 UUC for PHC list as rows, for a chosen area (plan U11).
  *
  * **Its own contract, deliberately not `/api/export/csv`'s.** `parseExportQuery`
  * (`lib/exports/query.ts`) is keyed to the BHW `indicatorSchema` — every one of its shapes is a
- * label/value pair from a BHW aggregate — and this is 41 columns of a membership list. Widening
+ * label/value pair from a BHW aggregate — and this is 40 columns of a membership list. Widening
  * that schema to admit a dataset it was not built for would put two unrelated contracts behind one
  * parser; `geoLevel` / `geoCode` / `format` is the whole of this one.
  *

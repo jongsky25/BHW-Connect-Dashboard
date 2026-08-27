@@ -274,6 +274,12 @@ links (`components/uuc-phc/download-links.tsx`); the PNG one-pager is unchanged 
   500 rather than a file. That is the fact loader's own discipline ("a silently short load is worse
   than a failed one when 5,991 is a headline figure"), and it matters more here than anywhere: a
   page that renders one province short can be noticed later, a spreadsheet cannot.
+- **`maxDuration = 60`, because the deployment measured it.** A national export is 5,991 rows read
+  a page of 1,000 at a time — PostgREST's own cap — so it costs six sequential round trips, and on
+  a real Vercel preview it took **8.5s (CSV) / 9.0s (XLSX)**. That is inside the platform's default
+  ceiling but not comfortably, and the file it would drop is the largest one on the section. Raised
+  on `app/api/cron/precompute/route.ts`'s precedent. The constraint is time, not response size: a
+  national CSV is 1.6 MB.
 - **An area with nothing listed gets a file, not a 404.** NCR's export is the notes block, the
   header row and no data rows, and the page says so rather than hiding the links — nothing listed
   is a result, and a missing download would read as a failure. A 404 is reserved for an area with
@@ -707,6 +713,11 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   `uuc-phc-2025-listed-barangays-mayoyao.xlsx`; **zero console errors**. `npm test` is 49 files / 584 tests
   clean, and `npm run build` compiles `/api/export/uuc-phc/data` as a dynamic route beside the PNG
   one.
+
+  **Exercised on the deployed Vercel preview**, not only locally: national CSV 200 / 1,613,747 bytes
+  / **8.5s** / 5,991 data rows, national XLSX 200 / 926,724 bytes / **9.0s**, Ilocos Norte 0.9s and
+  NCR 0.8s. Those two national figures are why the route carries `maxDuration = 60` — the
+  measurement is the reason, and it is recorded beside it in the route.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,

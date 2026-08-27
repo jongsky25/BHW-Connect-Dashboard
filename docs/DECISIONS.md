@@ -4339,6 +4339,23 @@ value from a low one. Guarded by tests in both the seed and the export column ta
 conflict/displacement test **or** the ELCAC designation, as criterion (b) is defined; the disclosure
 shows the two components separately. Same criterion, two renderings, neither wrong.
 
+### `maxDuration = 60`, and why the deployment is where that was found
+
+A national export is 5,991 rows read a page of 1,000 at a time — PostgREST's own cap — so it costs
+six sequential round trips plus serialisation. Locally that is ~6s and looks fine. **On the deployed
+Vercel preview it measured 8.5s for the CSV and 9.0s for the XLSX**, which is inside the platform's
+default function ceiling but not comfortably: one slow cold start or one slow Supabase response and
+the file that fails is the largest one on the section.
+
+So the route sets `maxDuration = 60`, on `app/api/cron/precompute/route.ts`'s precedent, with the
+measurement written beside it — the number is the reason, and a future reader changing the paging
+needs to know which figure the limit was protecting. The constraint is time and not response size:
+a national CSV is 1.6 MB.
+
+Worth recording as a method note rather than only as a fix: this is the one thing in the increment
+that **local verification could not have found**, because `next start` imposes no such ceiling. The
+export was correct locally and would have been correct in production too — right up until it wasn't.
+
 ### Verification
 
 All five in-migration assertions pass. **The national CSV has 5,991 data rows and round-trips
@@ -4374,6 +4391,11 @@ In Chromium against `next start`: `/uuc-phc` and the region, province and city/m
 show the three links with the right hrefs and a row count (5,991 / 17 / 27, and NCR's zero-state
 copy); an XLSX downloads on a real click as `uuc-phc-2025-listed-barangays-mayoyao.xlsx`; zero
 console errors.
+
+**Exercised on the deployed Vercel preview**, not only locally: national CSV 200 / 1,613,747 bytes /
+8.5s / 5,991 data rows, national XLSX 200 / 926,724 bytes / 9.0s, Ilocos Norte 0.9s, NCR 0.8s. The
+repo's own CI (`lint-typecheck-test`) is green on the head; `playwright-smoke` is skipped by the
+workflow's own condition on PRs, not by anything in this change.
 
 `npm run typecheck`, `npm run lint` and `npm test` (49 files, 584 tests) are clean, and
 `npm run build` compiles `/api/export/uuc-phc/data` as a dynamic route beside the existing PNG one.
