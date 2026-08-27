@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SiteBreadcrumbs } from "@/components/layout/site-breadcrumbs";
 import { ListCorrection } from "@/components/uuc-phc/list-correction";
 
 // Its own dataset and its own section, distinct from the BHW Census and the 2026 Profiling
@@ -95,7 +96,12 @@ export default function UucPhcLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <SectionHeader />
-      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10">{children}</div>
+      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+        {/* Static routes get their trail from the pathname; the area pages below
+            need a resolved geo name, so they render their own in the same spot. */}
+        <SiteBreadcrumbs className="mb-8" />
+        {children}
+      </div>
       <SectionFooter />
     </div>
   );
