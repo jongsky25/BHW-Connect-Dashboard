@@ -16,7 +16,7 @@ export default async function AdminOverviewPage() {
   const hitRate = totalChat > 0 ? Math.round((savings.cacheHits / totalChat) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4">
       <div className="rounded-lg border border-border p-4">
         <p className="text-sm text-muted">Open feedback</p>
         <p className="mt-1 text-2xl font-semibold">{openFeedback.length}</p>
