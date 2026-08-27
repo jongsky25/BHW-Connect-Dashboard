@@ -931,9 +931,13 @@ colour ramp, and nothing on the map would tell a reader they had changed denomin
 choropleth is to carry it, it is a **second, separately-legended layer** with its own caption —
 that is a design decision to take with the map, not a line in a `Record`.
 
-**U12b — `agg_bhw_by_uuc_status`: are BHWs thinner on the ground where communities are unserved?
-NOT STARTED — held pending an owner decision on question 3 below.** This is the reason both
-datasets sit in one dashboard, and it is answerable: `agg_bhw_counts` is
+**U12b — `agg_bhw_by_uuc_status`: is BHW coverage consistent with what the list already implies?
+NOT STARTED. Question 3 below was put to the owner on 2026-08-27 and settled: build it, but as a
+check rather than as a discovery.** The definitional overlap leads the caption, and the reportable
+finding is the *exception* — a listed area with good BHW coverage, or an unlisted one with bad —
+rather than the average gap, which the list's own criteria partly manufacture. The title question
+below is kept as originally written because the rest of the scope still holds; the framing above
+governs. This is the reason both datasets sit in one dashboard, and it is answerable: `agg_bhw_counts` is
 built at **all five levels including barangay** (`ingestion/build_aggregates.sql` §2), and
 `fact_uuc_phc_barangay` is barangay-grain, so the join key exists. Per geo and level, BHW
 indicators split listed vs. not-listed.

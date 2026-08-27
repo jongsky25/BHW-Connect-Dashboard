@@ -4508,11 +4508,25 @@ Regenerating broke `npm run typecheck` in exactly two files, and both breaks wer
    `GET /api/geo/search?q=poblacion` returns six barangays all named POBLACION, every one of them
    with `"parentChain":{}` — which is precisely the results list that migration exists to prevent.
 
-   Not fixed here, because applying DDL to the live project is a different decision from
-   regenerating a types file, and it is the owner's. `searchGeo` now reads the column as
-   **optional** rather than asserting it: it claims nothing the live database does not provide, and
-   it starts rendering the chain the moment the migration is applied, with no code change. The
-   remedy is to apply that one committed migration.
+   **Applied, on the owner's decision, later in this session.** The repo's migration was run
+   verbatim against the live project; `search_geo` now returns six columns and all six rows of
+   `search_geo('poblacion', 6)` carry a chain. `lib/db/database.types.ts` was regenerated again for
+   it, in its own commit — and that diff is **one line**, `parent_chain: Json` on `search_geo`'s
+   Returns, which is the cleanest available evidence that the regeneration above was faithful: the
+   live schema moved by exactly one column and the generated file by exactly one line. `searchGeo`
+   drops the widening it had needed and reads the column directly again; the null guard stays,
+   because the column is a `jsonb` the aggregate builds rather than a typed record.
+
+   Rendered and looked at on `/bhw`: typing "poblacion" now returns POBLACION — CITY OF MUNTINLUPA,
+   POBLACION — NORALA, SOUTH COTABATO, POBLACION — CLAVERIA, MISAMIS ORIENTAL and three more, each
+   with its own parents. **This feature worked for the first time today**, six weeks after it was
+   written and merged.
+
+   Worth taking as a general finding rather than a one-off: nothing in the build compares the
+   repo's `supabase/migrations` against the live migration history, and the one thing that would
+   have caught this — a types file generated from the live schema, in CI or otherwise — was the
+   file that had been hand-maintained instead. Regenerating found it in one step. That is the
+   argument for the standing decision, stated better than the standing decision states it.
 
 2. **A view cannot declare `not null`.** `ref_uuc_phc_benchmark_gaps`' columns were hand-typed
    non-nullable; the generator widens them, because that is all Postgres can promise through a
@@ -4555,21 +4569,28 @@ promoted slide**, both exiting on Esc, **zero console errors**. Looked at in lig
 zero denominator, and that it names "barangays") and the href. `npm run typecheck`, `npm run lint`
 and `npm test` (**48 files, 557 tests**) are clean, and `npm run build` compiles.
 
+The `search_geo` migration was applied live and verified end to end: six columns on the function,
+six of six rows carrying a chain, and the disambiguated results list rendered in Chromium with
+**zero console errors**. `npx playwright test` passes 3/3.
+
 **Not verified:** the two barangay-grain cases are verified as *absent*, which is what the design
 asks for, but that means `/place/barangay/*` gains nothing from this increment and no alternative
-was tried. And the `search_geo` finding is verified as a fact about the live database — that
-applying the missing migration fixes the home search is **not** verified, because the migration was
-deliberately not applied.
+was tried.
 
-### U12b is not started, and the question is the owner's
+### U12b is not started, and the owner has now framed it
 
 The plan names three things to settle. Two are ours to decide and are already answered by this
 section's reasoning: "not listed" means *every other barangay in the area* and the label must say
 so, and cells below the §4.1 threshold get suppressed rather than zeroed.
 
-The third is not ours. **UUC status is defined partly on distance to a health facility**, so a gap
+The third was not ours. **UUC status is defined partly on distance to a health facility**, so a gap
 in BHW coverage between listed and unlisted barangays is **partly definitional, not a finding**.
 Publishing "unserved barangays have fewer BHWs per household" as a discovery, when the list was
-drawn partly on health-system access, is circular — and a caption disclaiming it is a weaker
-instrument than not publishing the framing at all. Whether the aggregate ships, and under what
-framing, is an owner decision. Nothing was built.
+drawn partly on health-system access, is circular.
+
+Put to the owner in this session, who chose the third option available: **build it, but framed as a
+check rather than as a discovery** — *is BHW coverage consistent with what the list already
+implies?* — with the definitional overlap leading the caption, and the reportable finding being the
+*exception*: a listed area with good BHW coverage, or an unlisted one with bad. That inverts what
+the surface is for, and it is a better question than the one the plan's title asks. Recorded here;
+nothing is built yet.
