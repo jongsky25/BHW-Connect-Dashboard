@@ -14,14 +14,14 @@ as well as asserted ones, a review queue gates them, one traversal crosses betwe
 supersession chains answer "what is the rule now" (see `DECISIONS.md`, 2026-08-27). Owner decisions
 1, 2, 3, 4 and 5 are all **answered**: the project is on Supabase Pro, the assistant is admin-only,
 the numeric audit is retained, the answer cache is bypassed, and extraction is reviewed at
-`/admin/kb-review` before anything becomes citable. Decision 7 (embedding provider) is answered as
-Gemini; what remains open is not the provider but the *dimension*, which 2.1 deliberately made a
-stored row rather than a schema constant so it can be measured rather than declared (§6, §11).
-**Two things still need a provider key and nothing else:** running
-`ingestion/ingest_documents.py --embed` (which measures the dimension and turns on the vector half
-of 2.2) and `ingestion/extract_kb.py --propose` (which replaces Phase 3's committed transcript with
-one the deployed model produced). Phases ship in order; each increment is an independently
-shippable PR-sized unit.
+`/admin/kb-review` before anything becomes citable. Decision 7 (embedding provider) is answered in
+full: Gemini, `gemini-embedding-001`, at a dimension of **3072 measured from a live response** —
+which 2.1 deliberately made a stored row rather than a schema constant so it could be measured
+rather than declared (§6, §11). The corpus is embedded (212 of 213 chunks) and the model is
+configured on Vercel, so the vector half of 2.2 is live in production rather than merely built.
+**One thing still needs a provider key and nothing else:** `ingestion/extract_kb.py --propose`,
+which replaces Phase 3's committed hand-authored transcript with one the deployed model produced.
+Phases ship in order; each increment is an independently shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -400,11 +400,12 @@ them.**
 
 **At the end of Phase 2 you have all three retrieval paths from §2 live, a document corpus whose
 citations are checkable rather than decorative, and a regression list that grows from real
-failures.** The one thing Phase 2 does not have is a *measured* embedding: the schema, the
-pipeline and the search all handle vectors, but none has been run against a live provider, so the
-vector half of retrieval is proven as plumbing and not as quality. Running
-`ingestion/ingest_documents.py --embed` with a key is what closes that, and it needs no further
-code.
+failures.** The one thing Phase 2 shipped without was a *measured* embedding: the schema, the
+pipeline and the search all handled vectors, but none had been run against a live provider, so the
+vector half of retrieval was proven as plumbing and not as quality. **Closed (2026-08-27)** —
+`--embed` measured the dimension at 3072 and embedded 212 chunks, `GEMINI_EMBEDDING_MODEL` is set
+on Vercel, and the paraphrase probe that trigram cannot answer at any limit returns the right slide
+by vector. See `DECISIONS.md`.
 
 ### Phase 2 — Documents
 
