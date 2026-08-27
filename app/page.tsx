@@ -46,7 +46,7 @@ export default function Portal() {
           section's ways forward. */}
       <section aria-label="Datasets" className="flex flex-col gap-4">
         <h2 className="sr-only">Datasets</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4">
           <DatasetCard
             title="2025 BHW Census"
             description="The Philippine BHW workforce — accreditation, training, demographics, and honorarium, down to the city/municipality level."

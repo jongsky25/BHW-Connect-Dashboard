@@ -777,7 +777,7 @@ export default async function ExplorePage({
           {/* Per-theme figure groups (E1.5 parity): certification, demographics,
             training, and completeness — each now responding to the geo filter,
             with exports, matching what the place page shows for one geo. */}
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <PresentationSlide id="accreditation-sources" title="Accreditation sources">
               <AccreditationSourcesFigure
                 lguReported={overview.pctRegisteredAccredited}
