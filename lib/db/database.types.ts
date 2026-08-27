@@ -2629,6 +2629,7 @@ export type Database = {
           geo_name: string;
           match_rank: number;
           n_total: number;
+          parent_chain: Json;
         }[];
       };
       traverse_geo: {
