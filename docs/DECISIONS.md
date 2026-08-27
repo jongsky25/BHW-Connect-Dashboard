@@ -3475,3 +3475,27 @@ nothing, and the generator's stderr finding for tables with no `built-by` has no
 functions, since functions are not nodes at all. Fixing it means a new node kind and a `create
 function` scan, which is its own change; recorded here so it is a known gap rather than a silent
 one.
+
+### Merged with #83 (UUC for PHC U7) — and the crossing scan picked up a fifth edge by itself
+
+`main` moved while Phase 3 was being written: #83 landed `agg_uuc_phc_criteria`, its registry rows
+and its own lineage seeding. Two conflicts, both resolved the way the conventions say:
+
+- **`docs/DECISIONS.md`** — both branches appended. Both kept, #83's entry first.
+- **`20260826120100_seed_kb_lineage.sql`** — a wholly generated file, so it was taken from `main`
+  and then **regenerated**, which is the only resolution that cannot leave a hand-merged
+  half-truth in a file nobody reads end to end.
+
+**The regeneration produced a crossing edge nobody wrote.** 3.3's scan reads canonical issuance
+codes out of `comment on table` statements, and #83's comment on `agg_uuc_phc_criteria` opens
+*"Per-geo counts of listed barangays qualifying by each socio-economic route of DOH AO No.
+2020-0023 §VI.A"* — so `table:agg_uuc_phc_criteria defined-by issuance:AO 2020-0023` appeared with
+no edit to the generator and no edit to #83. That is the property the scan was built for, arriving
+unprompted from a branch that had never heard of it, and it is also the case for reading statement
+text rather than raw file text: the same migration's *header* mentions no issuance, and a prose
+scan would have had to guess which of the file's tables the mention belonged to.
+
+**Live now matches the committed seed exactly — 197 asserted nodes / 329 asserted edges, with no
+live-only rows left**, because the branch that had been carrying the difference has merged. Total
+graph: **276 nodes / 428 edges**. `npm run lint`, `npm run typecheck` and `npm test` (426 tests,
+including #83's 13) are clean on the merge result.
