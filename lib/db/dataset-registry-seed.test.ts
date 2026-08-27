@@ -174,9 +174,12 @@ describe("the committed dataset registry seed", () => {
 describe("the UUC for PHC entries (plan U5)", () => {
   const uuc = registry.filter((r) => r.datasetSlug === "uuc-phc-2025");
 
-  it("registers all four objects, approved and public", () => {
+  it("registers all five objects, approved and public", () => {
+    // Four from U5, plus agg_uuc_phc_criteria from U7. A new relation the registry does not know
+    // about is one queryDataset refuses outright, so this list is the thing that has to grow.
     expect(uuc.map((r) => r.tableName).sort()).toEqual([
       "agg_uuc_phc_counts",
+      "agg_uuc_phc_criteria",
       "fact_uuc_phc_barangay",
       "fact_uuc_phc_indicators",
       "ref_uuc_phc_provincial",
@@ -224,6 +227,42 @@ describe("the UUC for PHC entries (plan U5)", () => {
     )) {
       expect(column.meaning, column.columnName).toMatch(/Never capped/);
     }
+  });
+
+  it("warns that the four route counts overlap, on the table and on every route column", () => {
+    // The single thing a model must not do with agg_uuc_phc_criteria is add the four counts or
+    // derive a remainder from them. The table's note says so, and each route column repeats it,
+    // because a column meaning is the only text that travels with a returned value.
+    const table = registry.find((r) => r.tableName === "agg_uuc_phc_criteria");
+    expect(table?.notesMd).toMatch(/do not sum/i);
+    for (const name of ["n_route_ip", "n_route_conflict", "n_route_four_ps", "n_route_health"]) {
+      const column = columns.find(
+        (c) => c.tableName === "agg_uuc_phc_criteria" && c.columnName === name,
+      );
+      expect(column, name).toBeDefined();
+      expect(column?.meaning, name).toMatch(/do not add them/i);
+    }
+  });
+
+  it("says on the health route which denominator it takes", () => {
+    // n_route_health over n_listed is the wrong figure and looks entirely plausible, so the
+    // correction has to be on the column rather than only in the plan.
+    const health = columns.find(
+      (c) => c.tableName === "agg_uuc_phc_criteria" && c.columnName === "n_route_health",
+    );
+    expect(health?.meaning).toMatch(/n_health_evaluable/);
+    expect(health?.meaning).toMatch(/NEVER n_listed/);
+  });
+
+  it("describes health_indicators as a recorded score, not a derivable one", () => {
+    // docs/UUC_PHC_2025_PLAN.md §10 asks for this column to be dropped or recomputed before
+    // anything depends on it. U7 depends on it, so the dictionary carries why it is neither.
+    const score = columns.find(
+      (c) => c.tableName === "fact_uuc_phc_indicators" && c.columnName === "health_indicators",
+    );
+    expect(score).toBeDefined();
+    expect(score?.isQueryable).toBe(true);
+    expect(score?.meaning).toMatch(/NOT recomputable/i);
   });
 
   it("marks surrogate ids unqueryable and measures as measures", () => {
