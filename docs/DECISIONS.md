@@ -2570,3 +2570,68 @@ cases. A case is replayable in the sense that every input a replay needs is in t
 what the Verify asks for and what was checked — but there is no batch runner that re-executes them
 against a build and diffs the result. Until there is, §10's list accumulates evidence without
 automatically spending it. That runner is the obvious next increment and needs no schema change.
+
+## 2026-08-26 — Lineage graph re-run for Phase 2, and a parser bug it exposed
+
+Increment 1.5's workflow is "add a migration, re-run `build_kb_lineage.py`, re-apply". Phase 2
+added five tables — `doc_source`, `doc_chunk`, `doc_embedding_model`, `doc_chunk_embedding` and
+`ai_regression_case` — and the graph knew about none of them, so a lineage question about the
+document corpus returned nothing at all. This is that re-run.
+
+**The generator asserted a table called `with`, and the cause is worth recording.** The re-run
+emitted a node `table:with`, built by `20260826160000_doc_corpus.sql`. The source was that
+migration's own header comment: *"RLS is enabled in the same statement block as each CREATE TABLE
+with no anon or authenticated policy"*. `read_migrations` scanned **raw** text with
+`CREATE_TABLE_RE`, so it read that prose as a table definition.
+
+This is the third instance of one failure mode in this script, and `DECISIONS.md` already records
+the other two: a quote-tracking SQL splitter desynchronising on the apostrophes in this
+repository's prose headers, and an illustrative `docs/` path in a migration header asserted as a
+real `reconciled-in` edge. All three are a parser reading prose as data. The comment-stripping fix
+from 1.5 was applied to the `dim_dataset` scan only; the `create table` and `alter table` scans
+kept reading raw text, and nothing had happened to trip them until a header used the words "CREATE
+TABLE" followed by another word.
+
+**Fixed at the cause, not at the comment.** `read_migrations` now scans stripped SQL for tables.
+The obvious alternative — rewording the comment — would have left the trap armed for the next
+person who writes a migration header describing what it does.
+
+**The docs/ scan deliberately still reads raw text, and the asymmetry is the point.** A migration's
+citation of the write-up that reconciled its data lives *in the header comment*, which is exactly
+where it belongs; stripping comments there would delete the `reconciled-in` edges the graph most
+wants. That scan looks for a `docs/*.md` path, which prose cannot produce by accident — unlike a
+bare word after "create table". Both choices are commented in place so the inconsistency reads as
+deliberate.
+
+**What the re-run produced.** 183 nodes / 287 edges from this branch's files, against 180 / 289 on
+the live project (which carries the concurrent UUC work's rows, seeded there but not committed on
+this branch). 44 table nodes, none of them phantom. **Only the delta — 9 nodes and 16 edges — was
+applied live**, because the generated seed is a full regeneration and the live database holds rows
+from a branch this one cannot see. The seed is upsert-only with no deletes anywhere, so a full
+re-apply would also have been safe; applying the delta simply keeps the change reviewable.
+
+**Verify.** `traverse_kb('table:doc_chunk', 'out', …)` now returns the migration that created it,
+the ingestion script that writes it, and `docs/AI_ASSISTANT_PLAN.md` as the write-up that
+reconciled it — each step citing the file that asserts it. Before this it returned nothing.
+The generator's stderr finding list is **empty**: every table node has a `built-by` edge, which is
+the first time that has been true since 1.5, and it is true because #75 committed
+`fact_uuc_phc_barangay`'s migration.
+
+### Carry-forward items from the Phase 1 handoff, settled
+
+- **`agg_uuc_phc_counts` registration — done, by the concurrent work, not here.** The registry is
+  now 25 tables / 270 columns, and all four UUC tables (`agg_uuc_phc_counts`,
+  `fact_uuc_phc_barangay`, `fact_uuc_phc_indicators`, `ref_uuc_phc_provincial`) are registered
+  live. 1.2's decision to leave it out rather than describe it from a live table comment was
+  right: it was registered by the branch that had its migration.
+- **`fact_uuc_phc_barangay`'s missing migration — closed** by #75, as above.
+- **`ref_uuc_phc_provincial`'s SECURITY DEFINER view — fixed** by the concurrent work. The project
+  now has no ERROR-level security advisor at all.
+- **`database.types.ts` regeneration — deliberately NOT done, and the reason changed since the
+  handoff proposed it.** The handoff suggested a regeneration pass via the Supabase MCP. Two
+  branches are now hand-editing that file concurrently (this one added five tables and one
+  function; the UUC work added its own), and a wholesale regeneration would reformat every entry
+  and turn a clean append-only merge into a file-wide conflict for whichever branch lands second.
+  The additions here follow the existing hand-maintained style and `npm run typecheck` is clean.
+  A regeneration is still worth doing — **once the concurrent branches have merged**, as its own
+  change with nothing else in it, so the diff is reviewable as the mechanical reformat it is.
