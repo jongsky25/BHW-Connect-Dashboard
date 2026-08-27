@@ -4419,6 +4419,115 @@ diff against when the supersession question below is settled.
 than before**, the label case having become two. `npx prettier --check .` fails on 149 files on
 untouched `main` and is unchanged by this branch; the rewritten test file is prettier-clean.
 
+## 2026-08-27 — The supersession question, settled: the two readings were never in competition
+
+The previous entry left one thing for a person: whether p140's annual list series is a supersession
+(keep the approved chain, reject the model's `implements`), an implementation relationship (the
+reverse), or both. **It is both, and the framing that made it a choice was wrong.** The two readings
+do not describe the same fact and never did.
+
+**Checked as edge sets rather than as prose.** The stand-in's `supersedes` edges run DM → DM over
+consecutive pairs. The model's `implements` edges run DM/DC → `AO 2020-0023`, all six at one target.
+
+| | src → dst | pairs |
+|---|---|---|
+| `supersedes` (stand-in, approved) | issuance → the previous year's issuance | 5 |
+| `implements` (model, was `auto`) | issuance → `AO 2020-0023` | 6 |
+| **node pairs carrying both** | | **0** |
+
+Zero overlap, and the vocabulary makes them orthogonal by construction: `extract_kb.py` defines
+`supersedes` as *"the FIRST replaces the SECOND for the same subject"* and `implements` as *"the
+FIRST is issued pursuant to the SECOND"*. A memo can be pursuant to the AO **and** replace last
+year's memo; those are different claims about different pairs. "Both" is not a compromise between
+two readings — it is the only reading that accounts for all the evidence, and the reason the earlier
+entry could frame it as a choice is that it compared the two transcripts by counting relations
+instead of by comparing endpoints.
+
+**The chain is documented, not inferred — in three places, two of which neither transcript quoted.**
+The previous entry's charge was that 3.4's central behaviour "rested on an inference a person made
+and a model declines to make". That overstated it:
+
+1. **p140's first bullet, quoted by neither**: *"BLHSD releases **a list** for the UUAs (**formerly
+   GIDAs**)"* — singular, and an explicit statement of continuity across the GIDA → UUA rename,
+   which is the fact a chain spanning three different names needs.
+2. **p140's header, quoted by the model and read past**: *"**Annual updating** and issuance of **UUA
+   List**"* — a singular noun and "updating", not "issuance of annual lists".
+3. **`AO 2020-0023` itself**, §VI.B.2: *"The DOH Central Office, through [BLHSD], shall issue **an
+   official GIDA list that shall be updated annually**"*, restated at §VII.A.4 as a standing BLHSD
+   role. **The document all six `implements` edges point at is the document that says the list is
+   one list, updated annually.** Follow the model's own reading one step further and it grounds the
+   stand-in's chain.
+
+The extractor's rule is *"not a chain unless the slide describes it as one (an annual list 'updated
+annually' is)"*. The slide does describe it as one. **The stand-in was inside the rule; the model was
+more conservative than the rule required.** Those are not the same finding, and only the first would
+have been a defect.
+
+**What changed in the graph.** The six `implements` edges (519–524) are approved — endpoints already
+approved, quotes already grounded against `doc_chunk`, so nothing else moved. The seven `supersedes`
+edges are untouched. `review_note` on each new approval records that it was approved *alongside* the
+chain and why, including the AO clause. **That clause is reviewer reasoning, not evidence, and is
+recorded as such**: `AO 2020-0023` sits in `ingestion/data/` but is not an ingested document, so it
+cannot legally appear in `evidence_quote` — the grounding trigger checks quotes against
+`doc_chunk.content` and there is no chunk to check against. **That is the real gap this exposed: the
+document that settles the question is in the repository and outside the corpus.** Ingesting it is its
+own increment and is not done here.
+
+**Two questions are answerable that were not before**, at no cost to the one that already worked:
+
+```
+traverse_kb('issuance:DM 2020-0490','in',['supersedes'],5)   → DC 2025-0549, 2025-01-01..open   (unchanged)
+traverse_kb('issuance:DC 2025-0549','out',['implements'],2)  → AO 2020-0023                     (new)
+traverse_kb('issuance:AO 2020-0023','in',['implements'],1)   → all six annual list issuances    (new)
+```
+
+### The sharper defect, which was not the relation-typing question
+
+p138 — the legal-basis slide for the *same* programme, already ingested, already extracted — names
+**`DM 2026-0063`, "Annual Updating of the UUC for PHC for CY 2026"**, an approved node in the graph.
+The chain terminates at `DC 2025-0549` with `valid_to` open and 3.4's traversal answers "current".
+A later issuance about annual updating, sitting in the corpus, unaccounted for by the chain, is a
+currency risk for the exact claim 3.4 verifies — and a much likelier source of a wrong answer than
+anything about `implements`.
+
+**Investigated, and the chain is right.** The chain is a chain of **list** issuances: each link
+disseminates one year's list, which is what p140's labels say (*"GIDA List 2020"* … *"2025 UUC for
+PHC List"*). `DM 2026-0063` is a **process** issuance opening the CY2026 update cycle — the analogue
+of `DM 2024-0508` ("Profiling, Validation, and Encoding Using UUA 2025 Toolkit") and `DM 2025-0305`
+("Extension of Deadline"), **neither of which is on the chain either**. The 2025 cycle ran the same
+way: two process memos, then `DC 2025-0549`, *"Dissemination of the 2025 … List"*.
+
+**The deck settles it in its own words, twice.** p37 and p141 both read *"Distribution of UUC for PHC
+Barangays by Region (**as of 2025 per DC No. 2025-0549**)"*. The same document that names the CY2026
+cycle still reports its own list as of `DC 2025-0549`. So `valid_to` stays open, no edge changes, and
+**the answer to "which list is current" was correct for a reason nobody had written down.** It is
+written down now, on edge 428's `review_note`, because the next reader of p138 will have the same
+doubt and deserves the answer rather than the doubt.
+
+**A mistake made and corrected, recorded rather than quietly fixed.** Annotating edge 428 also
+overwrote its `reviewed_by`/`reviewed_at`, reattributing `phase-3-build-session`'s approval to this
+session — an audit trail saying the wrong person decided. Caught on read-back and restored: all seven
+p140/p167 review rows share one batch timestamp (`2026-08-27 04:32:23.05996+00`), so 428's original
+values were recoverable exactly rather than guessed, and the annotation now carries its own
+attribution inside the note text. **The extractor's `note` column was never touched** — it must keep
+matching the transcript byte for byte, which is why the finding went to `review_note` instead.
+
+**Integrity re-checked after the change, all zero**: no extracted row without a chunk and a quote; no
+asserted row carrying a quote or a date; no extracted quote absent from its chunk; **no approved edge
+with an unapproved endpoint**; no dated edge on an undatable relation; no chain edge between
+non-issuances; no `supersedes` with a closed `valid_to`.
+
+**What this does and does not establish.** It establishes that p140 carries both relations, that the
+chain has textual support in the corpus and in the AO, and that the terminal link is correct as of
+this deck. **It does not vindicate the extraction as a whole**: 35 edges and 16 nodes remain at
+`auto`, and §11's duplicate-identity question — six keys carrying more than one label, seven
+casing-variant key pairs — is untouched and still needs a person. Nor does it establish that the
+chain is right *outside* this deck: `DC 2025-0549` is current because the corpus says so, and a 2026
+list issued after the deck was written would not be visible here at all.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — 548 tests, unchanged; this
+entry changes data and documentation, not code. `npx prettier --check .` fails on the same 149 files
+as untouched `main`.
 ## 2026-08-27 — UUC for PHC 2025: U12a, the chip that says "barangays" out loud — and two things the generated types found
 
 `docs/UUC_PHC_2025_PLAN.md` §9 U12a, plus the `database.types.ts` regeneration three earlier
