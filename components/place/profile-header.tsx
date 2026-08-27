@@ -1,7 +1,8 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { BHW_CRUMB, PORTAL_CRUMB } from "@/lib/nav/breadcrumbs";
 
 const GEO_LEVEL_LABEL: Record<GeoLevel, string> = {
   national: "Country",
@@ -67,19 +68,21 @@ export function ProfileHeader({
   return (
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 flex-col gap-2">
-        <nav aria-label="Breadcrumb" className="text-xs text-muted">
-          <ol className="flex flex-wrap items-center gap-1">
-            {ancestors.map((a) => (
-              <li key={a.geoCode} className="flex items-center gap-1">
-                <Link href={`/place/${a.geoLevel}/${a.geoCode}`} className="hover:text-accent">
-                  {a.label}
-                </Link>
-                <span aria-hidden="true">/</span>
-              </li>
-            ))}
-            <li aria-current="page">{geoName}</li>
-          </ol>
-        </nav>
+        {/* Rooted at the portal and the census section, then the geo ancestry —
+            one trail rather than a place-only one that led nowhere above
+            "Philippines". Built here rather than by `SiteBreadcrumbs` because
+            the ancestor names come from the database. */}
+        <Breadcrumbs
+          items={[
+            PORTAL_CRUMB,
+            BHW_CRUMB,
+            ...ancestors.map((a) => ({
+              label: a.label,
+              href: `/place/${a.geoLevel}/${a.geoCode}`,
+            })),
+            { label: geoName },
+          ]}
+        />
 
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geoName}</h1>

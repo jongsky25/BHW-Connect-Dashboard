@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { NATIONAL_GEO_CODE } from "@/lib/filters/schema";
 import { UUC_PHC_BRAND_LABEL, uucDeckCaption, getUucPhcCounts } from "@/lib/db/uuc-phc";
 import { getUucPhcCriteria, getUucPhcCriteriaChildren } from "@/lib/db/uuc-phc-criteria";
@@ -46,17 +45,6 @@ export default async function UucPhcCriteriaLanding() {
   return (
     <PresentationProvider meta={deckMeta}>
       <div className="flex flex-col gap-8">
-        <nav
-          aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-1 text-sm text-muted"
-        >
-          <Link href="/uuc-phc" className="hover:text-accent hover:underline">
-            Overview
-          </Link>
-          <span aria-hidden="true">›</span>
-          <span className="font-medium text-foreground">Qualifying criteria</span>
-        </nav>
-
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">

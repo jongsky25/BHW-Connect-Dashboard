@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
+import { PORTAL_CRUMB, PROFILING_STATUS_CRUMB } from "@/lib/nav/breadcrumbs";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getGeoAncestors, getGeoByCode } from "@/lib/db/geo";
@@ -87,25 +89,19 @@ export default async function ProfilingStatusAreaPage({ params }: { params: Prom
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm text-muted">
-        <Link href="/profiling-status" className="hover:text-accent hover:underline">
-          Overview
-        </Link>
-        {crumbAncestors.map((a) => (
-          <span key={a.geoCode} className="flex items-center gap-1">
-            <span aria-hidden="true">›</span>
-            <Link
-              href={`/profiling-status/${a.geoLevel}/${a.geoCode}`}
-              className="hover:text-accent hover:underline"
-            >
-              {a.geoName}
-            </Link>
-          </span>
-        ))}
-        <span aria-hidden="true">›</span>
-        <span className="font-medium text-foreground">{geo.geoName}</span>
-      </nav>
+      {/* Breadcrumb — built here rather than by the layout's `SiteBreadcrumbs`
+          because the ancestor names come from the database. */}
+      <Breadcrumbs
+        items={[
+          PORTAL_CRUMB,
+          PROFILING_STATUS_CRUMB,
+          ...crumbAncestors.map((a) => ({
+            label: a.geoName,
+            href: `/profiling-status/${a.geoLevel}/${a.geoCode}`,
+          })),
+          { label: geo.geoName },
+        ]}
+      />
 
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geo.geoName}</h1>
 

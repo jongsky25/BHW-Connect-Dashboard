@@ -216,7 +216,7 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
   const childLevelLabel = CHILD_LEVEL_PLURAL[geo.geoLevel];
 
   const breadcrumbAncestors: BreadcrumbAncestor[] = [
-    { label: "Philippines", geoLevel: "national", geoCode: NATIONAL_GEO_CODE },
+    { label: "Philippines", geoLevel: "national" as const, geoCode: NATIONAL_GEO_CODE },
     ...(ancestors.region
       ? [
           {
@@ -244,7 +244,11 @@ export default async function PlacePage({ params }: { params: Promise<PlaceParam
           },
         ]
       : []),
-  ];
+    // `getGeoAncestors` includes this geo's own level, and "Philippines" is
+    // seeded unconditionally above — so drop this place itself, which the
+    // breadcrumb already ends with (a region page otherwise read
+    // "… › Region VII › Region VII") and which is not its own context chip.
+  ].filter((a) => a.geoCode !== geo.geoCode);
 
   const caption = `N = ${overview.validatedProfiles?.toLocaleString() ?? "—"} validated profiles · ${geo.geoName} · 2025 snapshot`;
 
