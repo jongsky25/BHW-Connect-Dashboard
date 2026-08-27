@@ -75,9 +75,12 @@ it or not. Every figure on the section is therefore one count against one denomi
   `agg_uuc_phc_counts` with no new aggregate and no new relation. It is deliberately a sentence
   and not a map layer: the chip names *barangays* as its universe in words, which is the one thing
   a shared legend and colour ramp cannot do. See "Context on the BHW surfaces" below.
-- **Not built yet:** U12b, `agg_bhw_by_uuc_status` — held pending an owner decision, because UUC
-  status is defined partly on distance to a health facility and a BHW coverage gap between listed
-  and unlisted barangays is therefore partly definitional. See `docs/UUC_PHC_2025_PLAN.md` §9 U12b.
+- **The two datasets are compared, as a check and never as a discovery** (U12b).
+  `/uuc-phc/bhw-coverage` sets BHW coverage in an area's listed barangays against all its other
+  barangays. UUC status is defined partly on distance to a health facility, so the gap is partly
+  definitional — the caveat leads the page, and what it reports is the *exception*, an area where
+  the direction reverses. See "BHW coverage and the list" below.
+- **Nothing in §9 is now unbuilt.** U5–U12 have all landed.
 
 ## The indicators (U3)
 
@@ -328,6 +331,52 @@ dataset speaks on a page about another one.
   directly above, and the generic phrasing is one string for every level — the alternative needs a
   possessive, which "Philippines" and "Cebu Province" do not share.
 
+## BHW coverage and the list (U12b)
+
+`/uuc-phc/bhw-coverage` (and `/uuc-phc/bhw-coverage/<level>/<code>`) is where the dashboard's two
+datasets meet: households per BHW in an area's listed barangays, against all its other barangays.
+
+- **It is a check, not a discovery, and the page says so before it says anything else.** DOH AO No.
+  2020-0023's physical factor is distance to a health facility, so health-system access is part of
+  what puts a barangay on this list. A BHW coverage gap between the two groups is therefore partly
+  definitional, and circular to publish as a finding **in either direction**. The page asks the
+  narrower question instead — *is BHW coverage consistent with what the list already implies?* —
+  and the reportable case is the **exception**, an area where the direction reverses.
+- **The national answer is the opposite of the question the plan's title asks.** Listed barangays
+  carry **50.9 households per BHW** against **98.2** elsewhere. It holds in **76 of the 81
+  provinces** where both sides clear the threshold; **5** run the other way (CAVITE, CAGAYAN,
+  ROMBLON, LANAO DEL NORTE, CATANDUANES), and those five are what the page is for.
+- **Most of the gap is barangay size, and the page computes that rather than asserting it.** Listed
+  barangays hold **0.58×** the households of the others and carry **1.13×** the BHWs each.
+  Households per BHW is a ratio of those two, so it moves with barangay size alone. That block is
+  not a footnote to the headline — it is most of the headline, and it sits directly beneath it.
+- **The child table sorts exceptions first and badges them.** Every other table in this section
+  ranks by how affected an area is; this one ranks by how far it runs against the pattern, because
+  that is the only thing here the list's own criteria do not already account for.
+- **"Other" is every other barangay in the area, never "not listed".** The workbook's 9,395
+  assessed-but-unlisted barangays were never loaded (U1), so that group does not exist in this
+  database — and a reader who sees "not listed" hears "assessed and found adequate".
+- **The measure is StepZero's headcount, not the per-person census.** `agg_bhw_counts` has a
+  barangay row only where at least one BHW has been individually profiled, and listed barangays are
+  remote by construction, so a profiled split would confound BHW supply with profiling progress —
+  a second circularity on top of the definitional one. The profiled counts ship anyway, as
+  `*_n_profiled` against `*_registered_universe`, so the page can **state** that difference:
+  96.9% against 97.5%, i.e. small. Checked rather than assumed is the whole point of carrying it.
+- **Suppression is a presentation rule, not a disclosure control, and the migration says so.**
+  A side with fewer than five contributing barangays is nulled and no comparison is drawn.
+  `agg_bhw_stepzero_counts` is public at barangay grain, so nothing here is secret; what the rule
+  prevents is one, two or three barangays being rendered as a group statistic beside hundreds.
+  Only the small side is nulled — suppressing the other would destroy a real 198-barangay figure to
+  protect a number already published above it.
+- **Four states, kept apart.** Nothing listed (NCR), every barangay listed (MAYOYAO), one side
+  suppressed, and comparable. "None of this area's barangays are on the list" and "too few to show"
+  are opposite messages, so the zero case is tested first and the migration asserts that a zero
+  side is never marked suppressed.
+- **The residual is published, not absorbed.** `agg_bhw_stepzero_counts`' own area rows exceed the
+  sum of its barangay rows by **16 BHWs and 6,061 households**, in three regions — so no
+  barangay-grain split can reproduce the area total. `unallocated_*` carries the difference and an
+  assertion fails the migration unless listed + other + unallocated is the area row exactly.
+
 ## Data model
 
 - Table **`fact_uuc_phc_barangay`** — one row per listed barangay: resolved `geo_code`,
@@ -398,6 +447,26 @@ dataset speaks on a page about another one.
   where cue cards p37 differs from this dashboard. A table rather than a view because `doc_chunk` is
   service-role only. Rows that stop differing are deleted on re-run, so a corrected source empties
   the table rather than leaving a closed gap on the page.
+- Table **`agg_bhw_by_uuc_status`** (U12b) — public-read aggregate keyed `(dataset_id, geo_code,
+  geo_level)` at the same four levels, **1,788 rows**. Paired `listed_*` / `other_*` columns:
+  barangay counts, contributing-barangay counts, barangays with no BHW, the StepZero BHW total,
+  households, the profiling-eligible base and the profiled count — plus `unallocated_*` and the two
+  suppression flags. **Wide rather than two rows per geo**, because the read granularity is one
+  *comparison* and the invariant that matters most (listed + other + unallocated = the area's own
+  published total) is then a within-row check a reader can perform with the page open.
+  - **Every ratio is derived in the read layer** (`lib/db/uuc-phc-bhw-coverage.ts`), on
+    `agg_uuc_phc_counts`' precedent. Everything stored is a count.
+  - **Computed in SQL from `agg_bhw_stepzero_counts` + `agg_bhw_counts` + `fact_uuc_phc_barangay` +
+    `dim_geo`**, on the same precedent as the other three aggregates: re-running the migration
+    recomputes every row, and that *is* the refresh procedure. Suppression is a separate pass, so
+    the assertions run against complete values.
+  - Nine assertions abort the migration rather than publish a wrong comparison: row count against
+    `agg_uuc_phc_counts`; the partition agreeing with it barangay for barangay by a different path;
+    both sides summing to the area's `dim_geo` count; exact recombination against
+    `agg_bhw_stepzero_counts` including the residual, and a non-negative residual; exact
+    recombination of the profiled counts against `agg_bhw_counts`; no count outside its
+    denominator; every level rolling up to national on all eight measures; suppression firing
+    exactly on `0 < contributing < 5`; and an area with nothing listed never marked suppressed.
 - Column **`fact_uuc_phc_indicators.health_indicators`** (U7) — the source's criterion (d) score,
   0–7, loaded as supplied and *not* recomputable from the columns beside it. See "The qualifying
   routes" above.
@@ -467,10 +536,16 @@ edges in `kb_node` / `kb_edge`.
      --out supabase/migrations/<timestamp>_seed_fact_uuc_phc_barangay.sql
    ```
 3. Re-run the aggregate blocks of `20260826140000_agg_uuc_phc_counts.sql`,
-   `20260827100000_agg_uuc_phc_criteria.sql`, `20260827160000_agg_uuc_phc_indicator_dist.sql` and
-   `20260827170000_uuc_phc_data_quality.sql`, in that order. All four recompute from the fact
-   tables, so they need no regeneration — only re-execution, after the fact seed. Each reads the
-   one before it, which is what fixes the order.
+   `20260827100000_agg_uuc_phc_criteria.sql`, `20260827160000_agg_uuc_phc_indicator_dist.sql`,
+   `20260827170000_uuc_phc_data_quality.sql` and `20260827190000_agg_bhw_by_uuc_status.sql`, in
+   that order. All five recompute from the fact tables, so they need no regeneration — only
+   re-execution, after the fact seed. Each reads the one before it, which is what fixes the order.
+
+   `agg_bhw_by_uuc_status` is the one that also has to be re-run when a **BHW** dataset reloads,
+   not only when this one does: it sums `agg_bhw_stepzero_counts` and `agg_bhw_counts`, so a
+   StepZero refresh leaves it stale even though nothing about the list has changed. Its assertions
+   catch that — the recombination against `agg_bhw_stepzero_counts` fails — but they catch it on
+   the *next* run, which is why this sentence is here.
 
    The data-quality page needs no step of its own beyond that: its two views recompute on every
    read, and only `ref_uuc_phc_published_delta` is stored — re-running its migration re-parses cue
@@ -511,6 +586,9 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Present mode wiring | `components/present/` (`deck-logic.ts` `brandLabelOf`), both `app/uuc-phc` pages |
 | Correction entry point | `components/uuc-phc/list-correction.tsx` |
 | BHW-surface context chip | `components/uuc-phc/context-chip.tsx`, `uucContextSentence` / `uucPhcAreaHref` in `lib/db/uuc-phc.ts` (+ `.test.ts`) |
+| BHW coverage read layer | `lib/db/uuc-phc-bhw-coverage.ts` (+ `.test.ts`) |
+| BHW coverage page + components | `app/uuc-phc/bhw-coverage/`, `components/uuc-phc/bhw-coverage-section.tsx` |
+| BHW coverage aggregate | `supabase/migrations/20260827190000_agg_bhw_by_uuc_status.sql` |
 | Feedback dataset routing | `lib/feedback/dataset.ts` (+ `.test.ts`), `app/api/feedback/route.ts` |
 | Social cards | `app/uuc-phc/opengraph-image.tsx`, `app/uuc-phc/[geoLevel]/[geoCode]/opengraph-image.tsx` |
 | Registry seed + its guard | `supabase/migrations/20260826090100_seed_dataset_registry.sql`, `lib/db/dataset-registry-seed.test.ts` |
@@ -633,6 +711,22 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   `/explore` at CAR — and the chip is **not inside, and never visible over, any promoted slide**;
   both exit on Esc with **zero console errors**. Rendered and looked at in light and dark and at
   390px, where the arrow stays on the last line with "list" rather than wrapping alone.
+- BHW coverage (U12b): `agg_bhw_by_uuc_status` loads at **1,788 rows** with all **nine**
+  assertions passing. The partition agrees with `agg_uuc_phc_counts` barangay for barangay on every
+  row, and both sides sum to the area's `dim_geo` barangay count on every row. Recombination
+  against `agg_bhw_stepzero_counts` is exact on every row **with the residual included** — 16 BHWs
+  and 6,061 households nationally, in Bicol, Western Visayas and Zamboanga Peninsula and nowhere
+  else — and the profiled counts recombine against `agg_bhw_counts.n_total` with no residual at
+  all. **454** listed sides and **113** other sides are suppressed, all at city/municipality except
+  six provinces. National figures read **50.9 against 98.2** households per BHW with **0.58× /
+  1.13×** behind them, and **76 of 81** comparable provinces run that way against **5** that do
+  not. Rendered in Chromium at national, CAVITE (659.2 against 263.0), CALABARZON (its breakdown
+  badges CAVITE and reads "1 area against the pattern, first"), NCR, MAYOYAO and CITY OF CAVITE —
+  the six states — in light and dark, with **zero console errors**; the deck starts, advances and
+  exits under "UUC FOR PHC". Registered `approved`/`public` with **22** approved columns (21
+  queryable), and `ingestion/build_kb_lineage.py` regenerates the seed to **214 nodes / 379 edges**
+  — an additive diff of 5 and 11 — **printing nothing to stderr**, so the table has its `built-by`
+  edge. `get_advisors` reports nothing new.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,

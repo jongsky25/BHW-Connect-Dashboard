@@ -932,12 +932,32 @@ choropleth is to carry it, it is a **second, separately-legended layer** with it
 that is a design decision to take with the map, not a line in a `Record`.
 
 **U12b — `agg_bhw_by_uuc_status`: is BHW coverage consistent with what the list already implies?
-NOT STARTED. Question 3 below was put to the owner on 2026-08-27 and settled: build it, but as a
-check rather than as a discovery.** The definitional overlap leads the caption, and the reportable
-finding is the *exception* — a listed area with good BHW coverage, or an unlisted one with bad —
-rather than the average gap, which the list's own criteria partly manufacture. The title question
-below is kept as originally written because the rest of the scope still holds; the framing above
-governs. This is the reason both datasets sit in one dashboard, and it is answerable: `agg_bhw_counts` is
+— LANDED 2026-08-27.** Question 3 below was put to the owner and settled: build it, but as a check
+rather than as a discovery. `/uuc-phc/bhw-coverage` leads with the definitional overlap and reports
+the **exception** — an area where the direction reverses — rather than the average gap, which the
+list's own criteria partly manufacture. Recorded in `docs/DECISIONS.md`; four things worth naming
+here:
+
+- **The national answer is the opposite of the title question below.** Listed barangays carry
+  **50.9 households per BHW** against **98.2** elsewhere, and that direction holds in **76 of the
+  81 provinces** where both sides clear the threshold. BHWs are not thinner where communities are
+  unserved; they are, by this measure, thicker.
+- **And most of that is barangay size, which the page computes rather than asserts.** Listed
+  barangays hold **0.58×** the households of the others and carry **1.13×** the BHWs each.
+  Households per BHW is a ratio of those two, so the gap moves without anything about deployment
+  changing. Publishing "unserved barangays are better covered" without that beside it would be as
+  misleading as the headline question 3 feared, in the other direction.
+- **The measure is StepZero's headcount, not `agg_bhw_counts`.** The plan named the per-person
+  census, but it has a barangay row only where someone has been profiled, and listed barangays are
+  remote by construction — a profiled split would confound BHW supply with profiling progress.
+  The profiled counts ship anyway so the page can *state* that difference: live it is 96.9% against
+  97.5%, i.e. small, which is worth knowing rather than assuming.
+- **The split cannot reproduce the area total, and the difference is published.**
+  `agg_bhw_stepzero_counts`' own area rows exceed the sum of its barangay rows by **16 BHWs and
+  6,061 households**, in three regions. `unallocated_n_bhw` / `unallocated_households` carry it and
+  an assertion fails the migration unless listed + other + unallocated is the area row exactly.
+
+The scope below is kept as written; the framing above governs. This is the reason both datasets sit in one dashboard, and it is answerable: `agg_bhw_counts` is
 built at **all five levels including barangay** (`ingestion/build_aggregates.sql` §2), and
 `fact_uuc_phc_barangay` is barangay-grain, so the join key exists. Per geo and level, BHW
 indicators split listed vs. not-listed.
@@ -962,6 +982,21 @@ Three things to settle before building it, all of which change what the figure m
 counts sum to `dim_geo`'s total for every area; the split reproduces the unsplit `agg_bhw_counts`
 figure when recombined; suppressed cells render as suppressed, not as zero; the caption carries
 the definitional caveat; national, a region, a province and NCR (nothing listed) all render.
+
+*Verified as built:* all nine in-migration assertions pass over **1,788 rows**. The partition
+agrees with `agg_uuc_phc_counts` barangay for barangay on every row by a different path, and both
+sides sum to the area's `dim_geo` count on every row. Recombination is exact **including the
+residual** — the plan's line asked for equality against the unsplit figure, and that equality is
+false for StepZero without `unallocated_*` in it, which is why the residual is a stored column
+rather than an assertion that would have had to be weakened. The profiled counts do recombine
+exactly against `agg_bhw_counts.n_total`, with no residual. **454 listed sides and 113 other sides
+are suppressed**, all of them at city/municipality except six provinces; suppression fires exactly
+where `0 < contributing barangays < 5` and nowhere else, and an area with nothing listed is
+asserted never to be marked suppressed. Driven in Chromium: national, CAVITE (the largest of the
+five exception provinces, 659.2 against 263.0), CALABARZON (whose breakdown badges CAVITE and
+reads "1 area against the pattern, first"), NCR (nothing listed), MAYOYAO (all listed) and CITY OF
+CAVITE (suppressed) — six states, **zero console errors**, the deck starting, advancing and exiting
+under "UUC FOR PHC". `/uuc-phc/bhw-coverage/barangay/*` and an unknown geo 404.
 
 ### Considered and not planned
 
