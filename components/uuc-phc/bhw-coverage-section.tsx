@@ -23,8 +23,9 @@ import { PresentationSlide } from "@/components/present/presentation-slide";
 
 const DASH = "—";
 
-function ratioLabel(value: number | null, unit: string): string {
-  return value === null ? DASH : `${value.toLocaleString()} ${unit}`;
+/** A derived ratio, or the dash. The unit is the `<dt>` beside it, never part of the value. */
+function ratioLabel(value: number | null): string {
+  return value === null ? DASH : value.toLocaleString();
 }
 
 /** One side's figures. The headline ratio sits above the two per-barangay ones it must be read
@@ -64,11 +65,11 @@ function SideCard({
         </div>
         <div>
           <dt className="text-muted">BHWs per barangay</dt>
-          <dd className="tabular-nums font-medium">{ratioLabel(side.bhwPerBarangay, "")}</dd>
+          <dd className="tabular-nums font-medium">{ratioLabel(side.bhwPerBarangay)}</dd>
         </div>
         <div>
           <dt className="text-muted">Households per barangay</dt>
-          <dd className="tabular-nums font-medium">{ratioLabel(side.householdsPerBarangay, "")}</dd>
+          <dd className="tabular-nums font-medium">{ratioLabel(side.householdsPerBarangay)}</dd>
         </div>
         <div>
           <dt className="text-muted">With no BHW at all</dt>
