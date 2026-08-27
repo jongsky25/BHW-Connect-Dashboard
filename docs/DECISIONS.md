@@ -4635,3 +4635,144 @@ cleanly. Nor does it recover edge 502, which needs a provider key this environme
 **Standards.** No code changed in this entry — it is data and documentation. `npm run lint`,
 `npm run typecheck` and `npm test` clean, 548 tests, unchanged. `npx prettier --check .` fails on the
 same 149 files as untouched `main`.
+
+## 2026-08-27 — Internal AI assistant, Increment 4.1: ingest-time profiling, and the three quarters of it that need no model
+
+Phase 4's first increment, and the one §8 calls **the plan's success condition**: *"a genuinely new
+dataset becomes queryable through the assistant with no code change."* That condition is now met,
+on `fact_bhw_raw` — the project's 94 MB primary source table, which had **no registry row at all**
+and was therefore invisible to every tool the assistant has.
+
+### The decomposition that made it buildable without a provider key
+
+§3 lists four steps: profile every column, infer a meaning per column, propose joins, write at
+`auto`. Read as written it is a model pass with some SQL around it. It is very nearly the reverse:
+
+| step | needs a model? | what it actually needs |
+|---|---|---|
+| 1. profile every column | no | `pg_stats`, which the planner already maintains |
+| 3. propose joins | **no, and a model would be worse** | measured value overlap |
+| 4. write at `auto` | no | an insert |
+| 2. infer meanings | only sometimes | the approved dictionary first, a model for the residue |
+
+So `profile_dataset()` is a Postgres function and nothing in it calls a provider. That is not a
+workaround for this environment's missing key — it is the correct shape. **A profiling pass that
+cannot run without an API key would not run at ingest time, which is the one time it has to.**
+
+**Profiling reads the catalogue rather than the table.** Guardrail 4 forbids the assistant from
+table-scanning `fact_bhw_raw`; a profiler that scans it twice per column on every ingest is the
+same outage through a side door. `pg_stats` already holds null fraction, distinct estimate,
+most-common values and histogram bounds, from a sampling ANALYZE the database runs anyway. The
+function ANALYZEs the target first, then reads the catalogue: **one ANALYZE and a catalogue read
+instead of 26 sequential scans.** The cost is that the figures are estimates — which the schema
+already assumed, having called the registry column `row_estimate` since 1.1.
+
+The estimate is good. `bhw_id` came back at **270,917 distinct**, which is exactly the true row
+count §12.4 records in the contradiction against slide 26's 277,767.
+
+**Joins are measured, not guessed.** A name match only selects *which* target is worth testing;
+the proposal then stands or falls on a bounded sample of the column's distinct values resolving
+against that target, and the overlap is returned to the reviewer as the evidence. `geo_code` →
+`dim_geo.geo_code` came back at **1.0000** and became a join key; the threshold is 0.95 rather than
+1.0 because a real foreign key can carry codes retired between PSGC vintages — `dim_psgc_crosswalk`
+exists because that happens — and a near miss is reported rather than silently dropped.
+
+### Where `meaning` comes from, which is the part that could have gone wrong
+
+`dataset_column.meaning` is NOT NULL and **the registry is what the model is shown** (§3). So an
+invented meaning is the dangerous failure here — worse than a missing one, because it reads as
+documentation. Two sources, in order, and a refusal:
+
+1. **The approved dictionary.** A column of the same name and type already described anywhere in
+   the registry lends its description, unit and join target. `geo_code` is documented identically
+   in eight registry rows; the ninth does not need a model, it needs the eighth. This is the role
+   §8 1.2 assigns the hand-written rows — *"the reference example every later auto-profile is
+   measured against"* — finally doing work rather than being an aspiration.
+2. **A placeholder that admits what it is** (`(needs review) …`) for everything else.
+
+On `fact_bhw_raw` exactly **one** of 26 columns was answered by route 1 (`geo_code`) and 25 landed
+as placeholders — an honest result, since nothing in a registry of aggregates describes
+`tesda_nc2_year`. The 25 were then written by hand from `ingestion/ingest.py`'s own
+source-header mapping (`"tesda_nc2": d["TESDA BHS NC II"] == "YES"`), so they are transcribed from
+the repository rather than composed.
+
+**The bulk-approve control refuses while any placeholder remains.** A 26-column table reviewed one
+button at a time is 26 clicks and a queue that costs 26 clicks per table is one that gets skipped —
+but the shortcut must not become the way an undocumented column reaches the model, so
+`approveAllColumns` blocks and says how many are outstanding.
+
+### Two defects the first real run exposed, both in the same place
+
+The role vocabulary. Both were found by running it, not by reading it, which is the lesson the
+`--propose` entry recorded three entries ago.
+
+1. **`role = 'time'` did not exist.** `dataset_column`'s CHECK constraint allows
+   key/dimension/measure/meta, and the first draft returned `'time'` for dates and `_year` columns.
+   It would have failed at the first insert against a table with a date column. `fact_bhw_raw` has
+   no `date` column, so the *happy path passed* — the constraint caught it only because the
+   constraint was read.
+2. **`bhw_id` was typed a `measure`.** High-cardinality numeric, so the cardinality rule called it
+   a quantity. `role = 'measure'` is what tells the model a column may be summed and averaged, and
+   the mean of `bhw_id` is a number that would eventually be reported to someone. Fixed by
+   measurement rather than by a name convention: **a numeric column with about as many distinct
+   values as the table has rows is a row identity, not a quantity** (`distinct / rows >= 0.9`).
+   `bhw_id` is now `key`, and its written meaning says outright that it is a surrogate assigned at
+   ingest, not a registry number, and must never be reported or joined on.
+
+### What it refuses, tested as refusals
+
+Registry-driven means allowlist-driven (guardrail 3): the argument is resolved against
+`information_schema` and every identifier in every dynamic statement goes through `%I`. On top of
+that it refuses `admin_users`, `usage_events`, `feedback`, `ingestion_batches`, anything `ai_*`, and
+its own `dataset_*`/`kb_*`/`doc_*` tables — and refuses any table with an **approved** registry row
+unless called with `p_force`, so 1.2's hand-written dictionaries cannot be overwritten by a
+placeholder. Verified against the live database: `admin_users` has no registry row, and `dim_geo`
+still holds its 10 approved columns.
+
+`exposure` is written `internal` and this increment never grants `public` — on re-profiling, the
+one expression assigned to `exposure` preserves a tag someone else approved and otherwise falls
+back to internal. Guardrail 5 is unchanged.
+
+The refusals are asserted in `lib/db/dataset-review.test.ts` against the **committed migration
+text**, on `dataset-registry-seed.test.ts`'s precedent. That argument is stronger here than it was
+there: the thing being asserted is the set of cases where the function must *not* act, and a
+refusal is precisely what a happy-path run against a live database never exercises. Two of those
+tests were themselves wrong on first writing — a non-greedy regex truncated each `format()` string
+at the `count(*)` inside it and so asserted nothing, and a negative lookahead matched the very
+expression it was meant to exempt. Both now carry a comment saying so, because a test that passes
+while checking nothing is worse than an absent one.
+
+### Verification — the success condition, end to end
+
+`fact_bhw_raw` had no registry row. After one `profile_dataset()` call, 25 written meanings and an
+approval, with **no application code changed**:
+
+```sql
+select f.educational_attainment, count(*) as bhws,
+       count(*) filter (where f.accredited) as accredited
+from fact_bhw_raw f join dim_geo g on g.geo_code = f.geo_code   -- the join the profiler measured
+where g.region_code = '07' group by 1 order by bhws desc;
+→ High School Graduate 10,243 (65.5% accredited) … Elementary Level 473 (84.8%)
+```
+
+A cross-tab of educational attainment against accreditation that **no `agg_*` table holds** and the
+assistant could not previously reach at any depth. Registry state: 32 hand-written datasets
+approved, **1 profiled**, nothing profiled at `public`, nothing profiled left at `auto`.
+
+**Not done, and deliberately not.** `ingestion/ingest.py` does not yet call `profile_dataset()`
+after a load. The call is one line, but it cannot be run in this environment — no database
+credentials and no source extract — and the `--propose` entry is three entries old: *"typed and
+unrun is not a safety property"*. Adding an unexercised call to the ingest path would repeat
+exactly that. The pass is invoked as `select * from profile_dataset('<table>', …)` and wiring it
+into the pipeline belongs to whoever next runs an ingest.
+
+**What this does and does not establish.** It establishes that a table with no registry row becomes
+queryable through the registry with no code change, that the profile is cheap enough to run on the
+largest table in the project, and that a join can be proposed on measured evidence rather than on a
+model's guess. **It does not establish that the meanings scale**: 25 of 26 columns needed a human
+sentence, and route 1 will only earn its keep once several datasets share vocabulary. Nor has the
+pass been run on a genuinely *unfamiliar* table — `fact_bhw_raw` is one whose semantics the
+repository already documents, which is the easy case and was chosen because its Verify is checkable.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **567 tests, 19 more than
+before**. `npx prettier --check .` fails on the same 149 files as untouched `main`.

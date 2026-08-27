@@ -22,8 +22,10 @@ configured on Vercel, so the vector half of 2.2 is live in production rather tha
 `ingestion/extract_kb.py --propose` has since been run against a live provider, and **the review
 queue it filled is now empty** (2026-08-27): 7 nodes and 14 edges approved, 9 nodes and 21 edges
 rejected as duplicate identities. Extracted rows stand at 84 nodes / 114 edges approved.
-**Phase 4 is the only unbuilt phase.** Phases ship in order; each increment is an independently
-shippable PR-sized unit.
+**Increment 4.1 is built and the plan's success condition is met** — `profile_dataset()` took
+`fact_bhw_raw` from no registry row to queryable with no code change (2026-08-27). **4.2, the
+contradiction sweep, is the last unbuilt increment.** Phases ship in order; each increment is an
+independently shippable PR-sized unit.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -508,10 +510,29 @@ the superseded text, establishing that the edges — not the ranking — are wha
 
 ### Phase 4 — Auto-understanding
 
-**4.1 — Ingest-time profiling.** New dataset → column profile → inferred meanings → proposed joins
+**4.1 — Ingest-time profiling.** *(built — 2026-08-27; `profile_dataset()`, verified on
+`fact_bhw_raw`)*
+New dataset → column profile → inferred meanings → proposed joins
 → registry rows at `status = 'auto'`.
+
+Three of those four steps turned out to need no model, and the increment is shaped around that:
+the profile is read from `pg_stats` after an ANALYZE (one catalogue read, not 26 scans of a 94 MB
+table — guardrail 4 applies to the profiler too); joins are proposed only where a bounded sample of
+the column **measurably resolves** against an already-registered join key, with the overlap shown
+to the reviewer as the evidence; and only `meaning` needs judgment, which is borrowed from the
+approved dictionary where a column of that name is already described and otherwise left as a
+visible `(needs review)` placeholder. Nothing in the pass calls a provider — a profiling pass that
+cannot run without an API key would not run at ingest time, which is the one time it has to.
+
 *Verify:* a genuinely new dataset becomes queryable through the assistant with no code change.
-**This is the plan's success condition.**
+**This is the plan's success condition.** Met: `fact_bhw_raw` had no registry row, and after one
+`profile_dataset()` call and an approval it answers a cross-tab (educational attainment against
+accreditation, Region VII) that no `agg_*` table holds — over the `geo_code → dim_geo.geo_code`
+join the profiler measured at 1.0000. See `DECISIONS.md`.
+
+*Still open from this increment:* `ingestion/ingest.py` does not yet call the pass after a load —
+one line, deliberately not added unrun (see `DECISIONS.md`) — and 25 of `fact_bhw_raw`'s 26 column
+meanings had to be written by hand, so the borrow-from-the-dictionary route is unproven at scale.
 
 **4.2 — Contradiction sweep.** A batch job rather than a chat tool: walk node pairs that assert
 the same measure from different sources, and file each disagreement as a reviewable row carrying

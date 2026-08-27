@@ -10,6 +10,13 @@ import {
   reopenKbEdge,
   reopenKbNode,
 } from "@/lib/db/kb-review";
+import {
+  approveAllColumns,
+  editDatasetColumnMeaning,
+  isReviewStatus as isDatasetReviewStatus,
+  judgeDataset,
+  judgeDatasetColumn,
+} from "@/lib/db/dataset-review";
 
 /**
  * Server actions for the extraction review queue (Increment 3.2).
@@ -89,5 +96,68 @@ export async function reopenRow(formData: FormData) {
   else if (kind === "edge") await reopenKbEdge(rowId);
   else return;
 
+  revalidatePath("/admin/kb-review");
+}
+
+/**
+ * The profiled-dataset half of the queue (Increment 4.1).
+ *
+ * Same three rules as the graph actions above: admin re-checked per call, never trusting that the
+ * form was reached through the page; the row id validated as a positive integer; the status
+ * validated against the vocabulary rather than passed through. What differs is what approval
+ * grants — a queryable table rather than one traversable fact — which is why `exposure` appears in
+ * none of them.
+ */
+export async function judgeDatasetRow(formData: FormData) {
+  const admin = await getAdminUser();
+  if (!admin) return;
+
+  const registryId = id(formData, "registryId");
+  const status = formData.get("status");
+  if (registryId === null || !isDatasetReviewStatus(status)) return;
+
+  await judgeDataset(registryId, status);
+  revalidatePath("/admin/kb-review");
+}
+
+export async function judgeColumnRow(formData: FormData) {
+  const admin = await getAdminUser();
+  if (!admin) return;
+
+  const columnId = id(formData, "columnId");
+  const status = formData.get("status");
+  if (columnId === null || !isDatasetReviewStatus(status)) return;
+
+  await judgeDatasetColumn(columnId, status);
+  revalidatePath("/admin/kb-review");
+}
+
+/** Writing the meaning the profile could not supply — the edit this queue exists for. */
+export async function editColumnMeaning(formData: FormData) {
+  const admin = await getAdminUser();
+  if (!admin) return;
+
+  const columnId = id(formData, "columnId");
+  const meaning = String(formData.get("meaning") ?? "")
+    .trim()
+    .slice(0, 1000);
+  const unit = String(formData.get("unit") ?? "")
+    .trim()
+    .slice(0, 60);
+  if (columnId === null || !meaning) return;
+
+  await editDatasetColumnMeaning(columnId, meaning, unit || null);
+  revalidatePath("/admin/kb-review");
+}
+
+/** Refuses while any column still carries a placeholder meaning — see `approveAllColumns`. */
+export async function approveDatasetColumns(formData: FormData) {
+  const admin = await getAdminUser();
+  if (!admin) return;
+
+  const registryId = id(formData, "registryId");
+  if (registryId === null) return;
+
+  await approveAllColumns(registryId);
   revalidatePath("/admin/kb-review");
 }
