@@ -3581,3 +3581,26 @@ runs twice.
    `ai_ask_cache` rows at `status = 'approved'`) is still unbuilt. A runner over one case proves the
    runner, not the corpus — and §10's own words are that "three answers read by hand say nothing
    about the other forty".
+
+### `database.types.ts` regeneration — still not done, and the reason has changed again
+
+The Phase 2 entry deferred this because two branches were hand-editing the file concurrently. That
+reason expired when #83 merged. Two others have replaced it, and both are worth writing down so the
+next reader is not re-deriving them:
+
+1. **This branch is now the one hand-editing it.** Phase 3 added ten columns to `kb_node` and
+   `kb_edge` in the existing style. A regeneration landing in the same PR would reformat all 2,569
+   lines and bury those ten in a file-wide diff — the exact objection the Phase 2 entry made. It
+   belongs *after* this merges, which is also when the live schema and `main` finally agree.
+
+2. **The only way to do it in this environment is to transcribe the generator's output by hand**,
+   and that defeats the point of the file being generated. The Supabase MCP can *return* the types,
+   but nothing here can write 82 KB of them to disk without passing them through a person or an
+   assistant character by character — and a "mechanical reformat" that was actually retyped is not
+   mechanical. It is the same argument the lineage seed makes about hand-merging a generated file:
+   the fix is to run the generator, not to reproduce what it would have said.
+
+The right shape is `supabase gen types typescript --project-id … > lib/db/database.types.ts`, run
+by someone with the CLI and the project credentials, as its own commit with nothing else in it.
+`npm run typecheck` is clean on the hand-maintained file today, so nothing is broken while it
+waits — this is tidiness, not correctness.
