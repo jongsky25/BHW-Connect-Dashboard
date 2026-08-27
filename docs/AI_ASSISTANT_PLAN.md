@@ -601,7 +601,13 @@ unbuilt.
 - ~~**Document corpus.** Which documents go in first, and does the DOH hosting clearance gate
   apply?~~ **Both answered — see §12.** The 2027 Budget Cue Cards are the first corpus, and the
   owner has cleared loading them (§12.5). The admin-only exposure rule is unchanged.
-- ~~**Embedding model and dimensions.**~~ **Half answered.** The *model* is Gemini (§0 #7), read
+- ~~**Embedding model and dimensions.**~~ **Answered in full (2026-08-27).** The model is
+  `gemini-embedding-001` and the dimension is **3072, measured from a live response** and stored in
+  `doc_embedding_model` — never declared. 212 of 213 chunks are embedded (page 172 has no text
+  layer). See `DECISIONS.md`. The original half-answer is kept below because the *reason* the
+  dimension was left to be measured is the part worth remembering.
+
+  ~~**Half answered.**~~ The *model* is Gemini (§0 #7), read
   from `GEMINI_EMBEDDING_MODEL` with no default. The *dimension* is deliberately not answered in
   any document: 2.1 makes it a row in `doc_embedding_model`, measured from a live response by
   `ingestion/ingest_documents.py` and enforced by a check constraint, so it is confirmed against
