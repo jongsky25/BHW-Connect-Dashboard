@@ -1057,6 +1057,69 @@ export type Database = {
           },
         ];
       };
+      agg_uuc_phc_indicator_dist: {
+        Row: {
+          bin_capped: number[];
+          bin_counts: number[];
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          indicator: string;
+          n_comparable: number;
+          n_listed: number;
+          n_missing: number;
+          n_worse: number;
+          provincial_ref: number | null;
+          value_max: number;
+        };
+        Insert: {
+          bin_capped?: number[];
+          bin_counts?: number[];
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator: string;
+          n_comparable?: number;
+          n_listed?: number;
+          n_missing?: number;
+          n_worse?: number;
+          provincial_ref?: number | null;
+          value_max: number;
+        };
+        Update: {
+          bin_capped?: number[];
+          bin_counts?: number[];
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          indicator?: string;
+          n_comparable?: number;
+          n_listed?: number;
+          n_missing?: number;
+          n_worse?: number;
+          provincial_ref?: number | null;
+          value_max?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_uuc_phc_indicator_dist_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_uuc_phc_indicator_dist_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       ai_ask_cache: {
         Row: {
           answer_md: string;

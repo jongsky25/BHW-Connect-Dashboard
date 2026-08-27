@@ -2063,7 +2063,7 @@ cleaning.
   57 barangays sit in provinces that supplied no reference, and criterion (d) not being evaluable
   is not the same as passing it.
 - **A benchmark above an indicator's own maximum is refused.** FIC's provincial reference was left
-  uncapped in 2 provinces (Ilocos Sur 102.15, City of Butuan 101.00) while every barangay FIC was
+  uncapped in 2 provinces (Ilocos Sur 102.15, City of Butuan 100.96 — recorded here as 101.00, corrected in U9) while every barangay FIC was
   capped at 100 — so all **113** of their barangays would have read "worse than province" by
   construction, an artefact of the cleaning rather than a finding. `comparesWorse` returns null
   above the maximum and the UI shows the benchmark with no verdict. This turns
@@ -3810,3 +3810,132 @@ now"*, which is the correct `allCapped` path and was seen — and no live model 
 "should my barangay be on this list?" Everything below the provider boundary is covered above; the
 boundary itself is not. That is the same gap Increments 1.3, 1.4, 2.2 and 2.3 recorded, and the
 same one that closes with a key on the deployed preview.
+
+## 2026-08-27 — UUC for PHC 2025: U9, the indicators as distributions — and the rule that had two copies
+
+`docs/UUC_PHC_2025_PLAN.md` §9 U9. The 12 indicators become legible above barangay grain for the
+first time, and the increment's whole argument is that this does **not** relax U3's rule.
+
+### The rule was never "publish nothing"
+
+U3 refused indicator aggregates because 1,584 values were bounded during cleaning: 886 Water and
+456 FIC readings now sit at exactly 100 with only `capped_indicators` to separate them from genuine
+full coverage, and that marker travels with one rendered value but cannot survive a mean. The rule
+it wrote down was *mark the value, never average it*. Publishing nothing above barangay grain was
+one way to honour it — the strictest one — and it left the 12 indicators visible only inside a
+`<details>` on a city page, one barangay at a time.
+
+**A distribution averages nothing.** Every value stays at its own position; the bounded ones pile up
+in the top bin, where `bin_capped` counts them and the page draws them hatched with the count in
+words. What a mean does to those 886 Water readings — dissolve them into a figure asserting
+near-universal coverage — is exactly what a histogram refuses to do. So the pile-up becomes the
+visible artefact it is, which is the opposite of what averaging does to it.
+
+The page therefore carries the refusal in a line of its own ("There is no average on this page, and
+that is deliberate"), because shipping this silently would re-open the hole U3 closed: the next
+reader would see distributions published and infer the rule had been dropped.
+
+### `agg_uuc_phc_indicator_dist`: one row per chart
+
+`supabase/migrations/20260827160000_agg_uuc_phc_indicator_dist.sql`. Keyed
+`(dataset_id, geo_code, geo_level, indicator)` at national / region / province / citymun ×
+12 indicators = **21,456 rows**.
+
+- **The bins are a fixed-length `integer[10]`, not ten rows.** They are an ordered vector every
+  consumer wants whole, and the read granularity is exactly one row per chart on the page. The long
+  form would be 214,560 rows to answer the same question, and a check constraint on
+  `array_length(...) = 10` gives back the shape guarantee the row form would have had for free.
+- **Equal-width bins over the indicator's own domain** — 0–100 for the nine coverage percentages,
+  0–1,000 for the three rates. This is a refusal too. IMR, UFMR and ABR are strongly zero-inflated
+  (5,401 of 5,991 barangays record an IMR of exactly 0), and narrow bins near zero with wide ones
+  above would render that spike as a spread. Unequal bins misstate density by construction; the
+  honest picture of a spike is a spike, and the IMR chart is one bar and nine near-empty ones
+  because that is what the data is.
+- **The top bin closes inclusive**, which is what puts an exactly-capped value inside it. "The
+  capped values are all in the top bar" is then true by construction rather than by inspection, and
+  assertion 3 checks `bin_capped[1:9]` sums to zero rather than trusting it.
+- **`provincial_ref` is stored only where a single benchmark exists** — province and citymun rows of
+  the seven health indicators. A region or the nation spans 87 different benchmarks, and a stored
+  value above province level would be some arbitrary province's standing in for the rest.
+- **Whether that benchmark may be drawn is derived, not stored.** `provincial_ref` against
+  `value_max` reconstructs `comparesWorse`'s unreachable case; `n_comparable = 0` with a benchmark
+  present reconstructs U7's placeholder case. A stored "usable" flag would be a third copy of a rule
+  that already has two, and the copy most likely to drift.
+- **`n_worse` is a count and the dictionary says it must stay one.** Evaluable denominators differ
+  between areas for data-quality reasons, so a share of barangays-worse-than-province invites a
+  comparison across areas the data cannot carry.
+
+Eight assertions run after the load and abort the migration rather than publish a wrong histogram.
+The two that earn their place hardest: **bins + `n_missing` = `n_listed`** (a histogram whose bars
+do not account for every barangay in the area is a histogram of an unstated subset), and
+**`n_comparable` = `agg_uuc_phc_criteria.n_health_evaluable`** on the six health indicators FIC's
+extra exclusion does not touch — the two are computed from the same rule in two files, and this is
+what stops one being edited alone.
+
+### The finding: the placeholder rule had two copies, and one of them was wrong
+
+U7 established that for **226 barangays in 5 provinces** the provincial benchmarks cannot support
+criterion (d) at all — Agusan del Sur's every value exactly `1`, Cagayan's every value `0`, Nueva
+Vizcaya's and Zamboanga City's `#N/A`, and the Special Geographic Area's fractions — and excluded
+them from route (d)'s denominator.
+
+`toBarangayDetail` did not. `comparesWorse` catches a benchmark that is *impossible* for its
+indicator (`ref > max`); it cannot catch one that is merely *fake*, because a reference of 1
+compares perfectly well. So a city page in Agusan del Sur would print **"worse than province (1)"**
+for a barangay `/uuc-phc/criteria` had already excluded from the same comparison — two surfaces of
+one section disagreeing about one barangay, neither of them looking wrong on its own.
+
+Building U9 forced the question, because the distributions needed the same rule a third time.
+`benchmarksArePlaceholder` (`lib/db/uuc-phc-indicators.ts`) is now the one copy, and all three read
+it: the per-barangay disclosure (which renders "no usable provincial figure" and a sentence saying
+why), `agg_uuc_phc_criteria`, and `agg_uuc_phc_indicator_dist`. The test is "the largest of the
+seven benchmarks is missing, or is at most 1" — computed, never a list of province codes, so a
+corrected extract makes the rule stop firing rather than makes it wrong.
+
+**This changes what an existing page renders**, which is why it is recorded here rather than buried
+in the increment: 226 barangays that previously showed seven verdicts now show none, and that is
+the correct answer.
+
+### City of Butuan's FIC benchmark is 100.96, not 101.00
+
+`docs/UUC_PHC_2025_CLEANING_REPORT.md` §6 and `docs/UUC_PHC_2025_PLAN.md` §5/§8 all stated 101.00.
+`ref_uuc_phc_provincial` reads **100.96**. The 113-barangay figure the same sentences quote is right
+(107 in Ilocos Sur + 6 in City of Butuan). Corrected in both documents, in the U3 entry above and in
+`comparesWorse`'s comment; nothing in the build ever quoted it — the page prints the province's own
+stored value — so no rendered figure moves. Same shape of finding as U7's 238→226: a number typed
+into prose once and copied four times.
+
+### Verification
+
+`agg_uuc_phc_indicator_dist` loads at 21,456 rows with all eight assertions passing. Every one of
+the 12 national bin arrays reproduces an independent `floor(value / width)` count over
+`fact_uuc_phc_indicators` — **12 of 12 exact**. Capped totals per indicator are the cleaning
+report's (886 / 456 / 208 / 30 / 2 / 1 / 1), **all of them in the top bin and none anywhere else**.
+`n_missing` is 17 / 42 / 47 for `ip_pop` / `armed_conf` / `idp` and 0 for the other nine; bins plus
+`n_missing` equal 5,991 on all twelve. `n_comparable` is 5,765 on six health indicators and 5,652
+on FIC, matching `agg_uuc_phc_criteria.n_health_evaluable` row for row. `physical_factor`'s two
+lowest bins are empty, which is the AO's 25% floor showing up as a shape rather than as a caveat.
+
+Driven in Chromium against `next start` (not `next dev`) at national, NCR, Ilocos Sur, Agusan del
+Sur, City of Butuan as a province and as a city: **the FIC benchmark line is absent in both Ilocos
+Sur and City of Butuan** with the unreachable reason printed — the plan's Verify case — absent in
+Agusan del Sur as a placeholder set, and drawn at 71.3% for Ilocos Sur's Water and 88.1% for
+Butuan's. The hatched capped segment renders at the top of every affected top bar with its legend
+swatch and its count. NCR shows the empty state rather than twelve empty axes. **No mean, median or
+other summary statistic appears in the DOM on any of them**, and there are **zero console errors**.
+The deck starts, advances through Title / The physical factor / Socio-economic factors / Health
+indicators / Closing, and exits on Esc. `/uuc-phc/indicators/barangay/*` 404s.
+
+Registry and lineage: the sixth relation registers `approved`/`public` with 13 approved columns, and
+`ingestion/build_kb_lineage.py` regenerates the seed to 202 nodes / 341 edges — a purely additive
+diff of 4 nodes and 8 edges, **printing nothing to stderr**, so the new table has its `built-by`
+edge. `get_advisors` reports nothing new; the table is public-read to `anon` with its own policy.
+
+`npm run typecheck`, `npm run lint` and `npm test` (**45 files, 515 tests**) are clean, and
+`npm run build` prerenders `/uuc-phc/indicators` plus 136 region and province pages under it — the
+same set the coverage and criteria routes prerender, from the same helper.
+
+**Not verified:** nothing on this increment sits behind the provider boundary, so unlike U8 there is
+no live-model gap here. The one thing left open is upstream and unchanged: the encoding error behind
+the capping. If a corrected extract arrives, the top bins move and `bin_capped` empties — which is
+the point of computing both rather than typing either.

@@ -41,6 +41,12 @@ function SectionHeader() {
             Criteria
           </Link>
           <Link
+            href="/uuc-phc/indicators"
+            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+          >
+            Indicators
+          </Link>
+          <Link
             href="/uuc-phc/methodology"
             className="rounded-md px-3 py-2 font-medium hover:bg-surface"
           >

@@ -114,7 +114,11 @@ export default async function UucPhcLanding() {
           <Link href="/uuc-phc/criteria" className="underline hover:text-accent">
             why these barangays qualified
           </Link>{" "}
-          for the four routes onto the list, or the{" "}
+          for the four routes onto the list,{" "}
+          <Link href="/uuc-phc/indicators" className="underline hover:text-accent">
+            the indicators behind it
+          </Link>{" "}
+          for how the 12 measurements are distributed, or the{" "}
           <Link href="/uuc-phc/methodology" className="underline hover:text-accent">
             methodology
           </Link>{" "}

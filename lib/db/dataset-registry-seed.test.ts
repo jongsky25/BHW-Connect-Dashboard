@@ -174,12 +174,14 @@ describe("the committed dataset registry seed", () => {
 describe("the UUC for PHC entries (plan U5)", () => {
   const uuc = registry.filter((r) => r.datasetSlug === "uuc-phc-2025");
 
-  it("registers all five objects, approved and public", () => {
-    // Four from U5, plus agg_uuc_phc_criteria from U7. A new relation the registry does not know
-    // about is one queryDataset refuses outright, so this list is the thing that has to grow.
+  it("registers all six objects, approved and public", () => {
+    // Four from U5, plus agg_uuc_phc_criteria from U7 and agg_uuc_phc_indicator_dist from U9. A
+    // new relation the registry does not know about is one queryDataset refuses outright, so this
+    // list is the thing that has to grow.
     expect(uuc.map((r) => r.tableName).sort()).toEqual([
       "agg_uuc_phc_counts",
       "agg_uuc_phc_criteria",
+      "agg_uuc_phc_indicator_dist",
       "fact_uuc_phc_barangay",
       "fact_uuc_phc_indicators",
       "ref_uuc_phc_provincial",
@@ -254,6 +256,35 @@ describe("the UUC for PHC entries (plan U5)", () => {
     expect(health?.meaning).toMatch(/NEVER n_listed/);
   });
 
+  it("forbids deriving an average from the binned distributions, on the bins themselves", () => {
+    // U9's equivalent of the capped_indicators case. A histogram is publishable where a mean is
+    // not, but a bin midpoint weighted by bin_counts *is* a mean — the one way a model can walk
+    // straight back into what U3 refused while believing it is reporting a distribution. The
+    // warning has to be on the column a query returns, not only on the table.
+    const table = registry.find((r) => r.tableName === "agg_uuc_phc_indicator_dist");
+    expect(table?.notesMd).toMatch(/NO AVERAGE/);
+    const bins = columns.find(
+      (c) => c.tableName === "agg_uuc_phc_indicator_dist" && c.columnName === "bin_counts",
+    );
+    expect(bins).toBeDefined();
+    expect(bins?.isQueryable).toBe(true);
+    expect(bins?.meaning).toMatch(/DO NOT COMPUTE A MEAN/);
+    // And bin_capped has to say it is a subset, or the two get added together.
+    const capped = columns.find(
+      (c) => c.tableName === "agg_uuc_phc_indicator_dist" && c.columnName === "bin_capped",
+    );
+    expect(capped?.meaning).toMatch(/subset of bin_counts/i);
+  });
+
+  it("says on n_worse that it is a count and must stay one", () => {
+    // Evaluable denominators differ between areas for data-quality reasons, so a share of
+    // worse-than-province invites a comparison across areas that the data cannot carry.
+    const worse = columns.find(
+      (c) => c.tableName === "agg_uuc_phc_indicator_dist" && c.columnName === "n_worse",
+    );
+    expect(worse?.meaning).toMatch(/never as a share/i);
+  });
+
   it("describes health_indicators as a recorded score, not a derivable one", () => {
     // docs/UUC_PHC_2025_PLAN.md §10 asks for this column to be dropped or recomputed before
     // anything depends on it. U7 depends on it, so the dictionary carries why it is neither.
@@ -292,7 +323,8 @@ describe("the UUC for PHC entries (plan U5)", () => {
       expect(id.role, id.tableName).toBe("meta");
     }
     const counts = columns.filter(
-      (c) => c.tableName === "agg_uuc_phc_counts" && ["n_listed", "n_barangays"].includes(c.columnName),
+      (c) =>
+        c.tableName === "agg_uuc_phc_counts" && ["n_listed", "n_barangays"].includes(c.columnName),
     );
     expect(counts.map((c) => c.role)).toEqual(["measure", "measure"]);
   });

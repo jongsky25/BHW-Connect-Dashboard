@@ -59,10 +59,16 @@ export type IndicatorReading = {
   /** The province's figure for this indicator — what criterion (d) compares against. */
   provincialRef: number | null;
   /** Whether the barangay performs worse than its province here. Null when the comparison cannot
-   * be made — the honest answer, not "no worse than". Two cases: the province supplied no
-   * benchmark (57 barangays), or the benchmark is impossible for the indicator (see
-   * `benchmarkUnusable`). */
+   * be made — the honest answer, not "no worse than". Three cases: the province supplied no
+   * benchmark (57 barangays), the benchmark is impossible for the indicator (see
+   * `benchmarkUnusable`), or the province's whole benchmark set is a placeholder (see
+   * `benchmarkPlaceholder`). */
   worseThanProvince: boolean | null;
+  /** This barangay's province supplied a benchmark set that cannot support criterion (d) at all —
+   * every value a placeholder 1, a zero-fill, or a fraction where a percentage was wanted. 226
+   * barangays in 5 provinces. The figure beside it is a number, but it is not a benchmark, so no
+   * verdict is drawn from it. See `benchmarksArePlaceholder`. */
+  benchmarkPlaceholder: boolean;
   /** The province's benchmark exceeds the maximum this indicator can take — a coverage figure
    * above 100%. No barangay can reach it, so "worse than province" would be true by construction
    * and mean nothing. Affects FIC in two provinces (113 barangays): their benchmarks were left
@@ -96,6 +102,9 @@ export type UucPhcBarangayDetail = {
   health: IndicatorReading[];
   /** How many of this barangay's values were bounded during cleaning. */
   cappedCount: number;
+  /** True where this barangay's province cannot support criterion (d) at all, so none of the seven
+   * comparisons is drawn. `benchmarksArePlaceholder` is the rule. */
+  benchmarksPlaceholder: boolean;
 };
 
 export type Row = {
@@ -142,28 +151,63 @@ export function comparesWorse(
 ): boolean | null {
   if (value === null || ref === null) return null;
   // A benchmark the indicator cannot reach is not a comparison. FIC's provincial reference was
-  // left uncapped in two provinces (102.15 and 101.00) while every barangay FIC was capped at
+  // left uncapped in two provinces (102.15 and 100.96) while every barangay FIC was capped at
   // 100, so every barangay there would read as worse than its province on FIC — an artefact of
   // the cleaning, not a finding about those barangays.
   if (ref > max) return null;
   return higherIsWorse ? value > ref : value < ref;
 }
 
+/**
+ * Whether a barangay's whole set of provincial benchmarks is a placeholder rather than a
+ * measurement — the second way criterion (d) can be unevaluable, and the larger one.
+ *
+ * `comparesWorse` catches a benchmark that is *impossible* for its indicator. It cannot catch one
+ * that is merely *fake*: Agusan del Sur supplied every reference as exactly 1, Cagayan as 0, and
+ * BARMM's Special Geographic Area as fractions, all of which compare perfectly well and mean
+ * nothing. A barangay's seven benchmarks are three rates per 1,000 and four coverage percentages,
+ * so a real set has at least one value well above 1 — which makes "the largest of the seven is
+ * missing, or is at most 1" the test, and it selects exactly the 226 barangays in 5 provinces the
+ * cleaning report names, without hard-coding a province code that would go stale the first time a
+ * corrected extract arrives.
+ *
+ * **This is U7's rule, moved here so all three surfaces share one copy.** `agg_uuc_phc_criteria`
+ * excludes these barangays from route (d)'s denominator and `agg_uuc_phc_indicator_dist` from
+ * `n_comparable`; until U9 the per-barangay disclosure did not, so a table on the city page could
+ * print "worse than province (1)" for a barangay the criteria page had already excluded. One rule,
+ * three readers.
+ */
+export function benchmarksArePlaceholder(refs: (number | null)[]): boolean {
+  const present = refs.filter((ref): ref is number => ref !== null);
+  if (present.length === 0) return true;
+  return Math.max(...present) <= 1;
+}
+
 /** Pure row → readings mapping. Exported for unit tests. */
 export function toBarangayDetail(row: Row, geoName: string): UucPhcBarangayDetail {
   const capped = new Set(row.capped_indicators ?? []);
 
-  const health: IndicatorReading[] = HEALTH_INDICATORS.map((meta) => {
+  const refs = HEALTH_INDICATORS.map(
+    (meta) => row[`${meta.key}_prov_ref` as keyof Row] as number | null,
+  );
+  const benchmarksPlaceholder = benchmarksArePlaceholder(refs);
+
+  const health: IndicatorReading[] = HEALTH_INDICATORS.map((meta, i) => {
     const value = row[meta.key];
-    const provincialRef = row[`${meta.key}_prov_ref` as keyof Row] as number | null;
+    const provincialRef = refs[i];
     return {
       key: meta.key,
       label: meta.label,
       unit: meta.unit,
       value,
       provincialRef,
-      worseThanProvince: comparesWorse(value, provincialRef, meta.higherIsWorse, meta.max),
+      // A placeholder set is not a benchmark, so it yields no verdict — the same null
+      // `comparesWorse` returns for a missing one, and for the same reason.
+      worseThanProvince: benchmarksPlaceholder
+        ? null
+        : comparesWorse(value, provincialRef, meta.higherIsWorse, meta.max),
       benchmarkUnusable: provincialRef !== null && provincialRef > meta.max,
+      benchmarkPlaceholder: benchmarksPlaceholder,
       capped: capped.has(meta.key),
     };
   });
@@ -189,6 +233,7 @@ export function toBarangayDetail(row: Row, geoName: string): UucPhcBarangayDetai
     elcac: row.elcac_brgy,
     health,
     cappedCount: capped.size,
+    benchmarksPlaceholder,
   };
 }
 

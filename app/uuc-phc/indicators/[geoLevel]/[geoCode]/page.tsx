@@ -8,14 +8,10 @@ import {
   getUucPhcStaticParams,
   uucDeckCaption,
 } from "@/lib/db/uuc-phc";
-import {
-  getUucPhcCriteria,
-  getUucPhcCriteriaChildren,
-  type UucPhcCriteria,
-} from "@/lib/db/uuc-phc-criteria";
+import { getUucPhcIndicatorDist } from "@/lib/db/uuc-phc-indicator-dist";
 import { GEO_LEVELS, type GeoLevel } from "@/lib/filters/schema";
 import { formatCount } from "@/lib/format";
-import { CriteriaSection } from "@/components/uuc-phc/criteria-section";
+import { IndicatorsSection } from "@/components/uuc-phc/indicators-section";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentButton } from "@/components/present/present-button";
 import { AskTheList } from "@/components/uuc-phc/ask-the-list";
@@ -24,21 +20,11 @@ import { AskTheList } from "@/components/uuc-phc/ask-the-list";
 // demand. Same reasoning as the rest of the section.
 export const revalidate = 3_600;
 
-const CHILD_HEADING: Record<GeoLevel, string | null> = {
-  national: "Regions",
-  region: "Provinces",
-  province: "Cities / municipalities",
-  // The aggregate stops at citymun — below it every row would be one barangay's four yes/nos,
-  // which is what the coverage page's per-barangay disclosure already shows.
-  citymun: null,
-  barangay: null,
-};
-
 type Params = { geoLevel: string; geoCode: string };
 
-// The same region and province set the coverage route prerenders, from the same helper — the two
-// routes are one drill-down and should not differ in which areas are built ahead of time.
-// City/municipality pages are left to ISR, as there.
+// The same region and province set the coverage and criteria routes prerender, from the same
+// helper — the three routes are one drill-down and should not differ in which areas are built
+// ahead of time. City/municipality pages are left to ISR, as there.
 export async function generateStaticParams() {
   const params = await getUucPhcStaticParams();
   return params.map((p) => ({ geoLevel: p.geoLevel, geoCode: p.geoCode }));
@@ -55,48 +41,37 @@ async function loadGeo(params: Params) {
   return geo;
 }
 
-/** The lead sentence of the page description — the route that carried most of the area's list. */
-function leadingRoute(criteria: UucPhcCriteria): string | null {
-  const ranked = criteria.routes
-    .filter((route) => route.sharePct !== null)
-    .sort((a, b) => (b.sharePct ?? 0) - (a.sharePct ?? 0));
-  const top = ranked[0];
-  if (!top || top.count === 0) return null;
-  return `${formatCount(top.count)} of them on ${top.label.toLowerCase()} (${top.sharePct}%)`;
-}
-
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const geo = await loadGeo(await params);
   if (!geo) return { title: "Area not found" };
 
-  const criteria = await getUucPhcCriteria(geo.geoCode, geo.geoLevel);
-  if (!criteria || criteria.nListed === 0) {
+  const counts = await getUucPhcCounts(geo.geoCode, geo.geoLevel);
+  if (!counts || counts.nListed === 0) {
     return {
-      title: `Why these barangays qualified · ${geo.geoName}`,
-      description: `No barangay in ${geo.geoName} is on the 2025 UUC for PHC list.`,
+      title: `The indicators behind the list · ${geo.geoName}`,
+      description: `No barangay in ${geo.geoName} is on the 2025 UUC for PHC list, so there are no indicator values to distribute.`,
     };
   }
 
-  const lead = leadingRoute(criteria);
   return {
-    title: `Why these barangays qualified · ${geo.geoName}`,
+    title: `The indicators behind the list · ${geo.geoName}`,
     description: `How ${geo.geoName}'s ${formatCount(
-      criteria.nListed,
-    )} barangays on the 2025 UUC for PHC list qualified${lead ? `: ${lead}` : ""}. The four routes overlap.`,
+      counts.nListed,
+    )} barangays on the 2025 UUC for PHC list are distributed across the 12 indicators they were assessed on, with the values bounded during cleaning counted separately. No averages.`,
   };
 }
 
-export default async function UucPhcCriteriaAreaPage({ params }: { params: Promise<Params> }) {
+export default async function UucPhcIndicatorsAreaPage({ params }: { params: Promise<Params> }) {
   const geo = await loadGeo(await params);
   if (!geo) notFound();
 
-  // Barangay pages would be four yes/nos, which the coverage page's disclosure already renders.
+  // A barangay page would be 12 single values, which is exactly the disclosure the coverage page's
+  // city/municipality view already renders — and one value is not a distribution.
   if (geo.geoLevel === "barangay") notFound();
 
-  const [criteria, counts, children, ancestors] = await Promise.all([
-    getUucPhcCriteria(geo.geoCode, geo.geoLevel),
+  const [counts, dists, ancestors] = await Promise.all([
     getUucPhcCounts(geo.geoCode, geo.geoLevel),
-    getUucPhcCriteriaChildren(geo.geoCode, geo.geoLevel),
+    getUucPhcIndicatorDist(geo.geoCode, geo.geoLevel),
     getGeoAncestors(geo.geoCode, geo.geoLevel),
   ]);
 
@@ -105,7 +80,7 @@ export default async function UucPhcCriteriaAreaPage({ params }: { params: Promi
   );
 
   const deckMeta = {
-    pageLabel: "Qualifying criteria",
+    pageLabel: "Indicators",
     areaName: geo.geoName,
     filterChips: crumbAncestors.map((a) => a.geoName),
     captionLine: uucDeckCaption(counts, geo.geoName),
@@ -123,14 +98,14 @@ export default async function UucPhcCriteriaAreaPage({ params }: { params: Promi
             Overview
           </Link>
           <span aria-hidden="true">›</span>
-          <Link href="/uuc-phc/criteria" className="hover:text-accent hover:underline">
-            Qualifying criteria
+          <Link href="/uuc-phc/indicators" className="hover:text-accent hover:underline">
+            Indicators
           </Link>
           {crumbAncestors.map((a) => (
             <span key={a.geoCode} className="flex items-center gap-1">
               <span aria-hidden="true">›</span>
               <Link
-                href={`/uuc-phc/criteria/${a.geoLevel}/${a.geoCode}`}
+                href={`/uuc-phc/indicators/${a.geoLevel}/${a.geoCode}`}
                 className="hover:text-accent hover:underline"
               >
                 {a.geoName}
@@ -143,29 +118,28 @@ export default async function UucPhcCriteriaAreaPage({ params }: { params: Promi
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Why these barangays qualified
+            The indicators behind the list
             <span className="block text-base font-normal text-muted">{geo.geoName}</span>
           </h1>
           <PresentButton variant="secondary" />
         </div>
 
-        {criteria ? (
-          <CriteriaSection
-            criteria={criteria}
+        {counts && (dists.length > 0 || counts.nListed === 0) ? (
+          <IndicatorsSection
+            dists={dists}
             areaLabel={geo.geoName}
-            childHeading={CHILD_HEADING[geo.geoLevel]}
-            childAreas={children}
+            nListed={counts.nListed}
             coverageHref={`/uuc-phc/${geo.geoLevel}/${geo.geoCode}`}
-            indicatorsHref={`/uuc-phc/indicators/${geo.geoLevel}/${geo.geoCode}`}
+            criteriaHref={`/uuc-phc/criteria/${geo.geoLevel}/${geo.geoCode}`}
           />
         ) : (
           <div className="rounded-lg border border-border bg-surface p-5 text-sm text-muted sm:p-6">
-            <p>The qualifying-route breakdown for {geo.geoName} could not be loaded right now.</p>
+            <p>The indicator distributions for {geo.geoName} could not be loaded right now.</p>
             <Link
-              href="/uuc-phc/criteria"
+              href="/uuc-phc/indicators"
               className="mt-3 inline-block underline hover:text-accent"
             >
-              ← Back to qualifying criteria
+              ← Back to the indicators
             </Link>
           </div>
         )}

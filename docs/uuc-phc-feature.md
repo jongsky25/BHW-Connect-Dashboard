@@ -32,19 +32,21 @@ it or not. Every figure on the section is therefore one count against one denomi
   how many barangays they happen to have.
 - **The drill-down ends at city/municipality**, which names every one of its barangays and whether
   each is on the list. A barangay page would be a single yes/no, so `/uuc-phc/barangay/*` 404s.
-- **Indicators render at barangay grain only, never as averages** (U3). A capped value carries a †
-  marker; a marker cannot survive a mean. See "The indicators" below.
+- **Indicators are never averaged** (U3). A capped value carries a † marker, and a marker cannot
+  survive a mean. U3 honoured that by rendering them at barangay grain only; U9 added the other
+  rendering that keeps a bounded value visible — a distribution. See "The indicators" and "The
+  indicator distributions" below.
 - **A PNG one-pager per area** (U4), reusing the profiling-status export machinery. It carries the
   count, the two-state split and the child table — **but no indicator values**: a one-pager cannot
   carry the † marker's footnote, and reproducing bounded values without it is exactly the unmarked
   artefact U3 was built to avoid.
-- **All five relations are registered and queryable by the internal assistant** (U5, extended by
-  U7). The column dictionaries are the allowlist `queryDataset` enforces, not documentation:
+- **All six relations are registered and queryable by the internal assistant** (U5, extended by
+  U7 and U9). The column dictionaries are the allowlist `queryDataset` enforces, not documentation:
   `capped_indicators` and each of the seven boundable indicators carry the capping caveat in the
   column meaning itself, because that is what travels with a returned value. `agg_uuc_phc_criteria`
   carries the overlap warning the same way — on the table *and* on each of the four route columns,
   since adding them is the one thing a reader of those columns must not do.
-- **Present mode on both pages** (U6), with the section's own name in the slide chrome. The
+- **Present mode on every page of the section** (U6), with the section's own name in the slide chrome. The
   barangay list is one slide rather than one per barangay: its indicator disclosures stay closed
   on promotion, so a capped value cannot reach a projected screen without its † footnote.
 - **Corrections are routed, not just collected** (U6). `feedback.dataset_slug` is derived from the
@@ -58,11 +60,14 @@ it or not. Every figure on the section is therefore one count against one denomi
 - **Ask the data, scoped to this list** (U8). The chat and the AI insight slot both run on a
   grounding scope that carries this dataset's slug, prompt, tools and cache version together — the
   two caches previously keyed on the BHW census's version and would have served its answers here.
-  The chat reaches only this dataset's five relations plus `dim_geo`/`dim_dataset`, and it refuses
+  The chat reaches only this dataset's own relations plus `dim_geo`/`dim_dataset`, and it refuses
   the question this list attracts: *should my barangay be on it?* See "Asking the list" below.
-- **Not built yet:** an `/explore` overlay, and the sub-pages that would show the indicator
-  distributions and the data-quality caveats above barangay grain. Planned as U9–U12 in
-  `docs/UUC_PHC_2025_PLAN.md` §8–§9.
+- **The indicators are published above barangay grain as distributions, never as averages** (U9).
+  A mean absorbs the 1,584 bounded values into a figure the source does not support; a histogram
+  leaves each value where it is and counts the bounded ones in the top bin. See "The indicator
+  distributions" below.
+- **Not built yet:** an `/explore` overlay, and the data-quality page that would render the
+  cleaning report's §6 as a surface. Planned as U10–U12 in `docs/UUC_PHC_2025_PLAN.md` §8–§9.
 
 ## The indicators (U3)
 
@@ -80,11 +85,16 @@ comparison criterion (d) is built on.
 - **No indicator averages, deliberately.** A mark travels with one rendered value; it cannot
   survive a mean or a median. An average water figure would absorb 886 ceilings and report
   near-universal coverage the source does not support.
-- **Two cases render as "no verdict" rather than a result:**
+- **Three cases render as "no verdict" rather than a result:**
   - *No provincial figure* — 57 barangays whose province supplied none. Criterion (d) is not
     evaluable there, which is not the same as passing it.
+  - *A placeholder benchmark set* — 226 barangays in 5 provinces whose references are every value
+    1, or 0, or a fraction. These compare perfectly well and mean nothing, so `comparesWorse`
+    cannot catch them; `benchmarksArePlaceholder` does, and the disclosure reads "no usable
+    provincial figure". **Added in U9**, which is when this surface stopped disagreeing with the
+    criteria page about the same barangay.
   - *A benchmark above the indicator's own maximum* — FIC's provincial reference was left uncapped
-    in 2 provinces (Ilocos Sur 102.15, City of Butuan 101.00) while every barangay FIC was capped
+    in 2 provinces (Ilocos Sur 102.15, City of Butuan 100.96) while every barangay FIC was capped
     at 100. No barangay there can match it, so "worse than province" would be true by construction.
     **113 barangays**; `comparesWorse` returns null and the UI shows the benchmark with no verdict.
     This turns the cleaning report's §6 caveat into behaviour instead of a footnote.
@@ -124,6 +134,53 @@ the 25% floor never entered the list.
   a full set.
 - **Children with nothing listed are dropped from this breakdown**, unlike the coverage one, where
   "0 of 1,675" is the finding. Here the row would be four empty tracks restating one zero.
+
+## The indicator distributions (U9)
+
+`/uuc-phc/indicators` (and `/uuc-phc/indicators/<level>/<code>`) publishes all 12 indicators above
+barangay grain, at every level from national to city/municipality, as **ten equal-width bins each**
+rather than as any summary figure.
+
+- **A distribution is not a mean, and that is what makes this publishable.** U3 refused indicator
+  aggregates because a † marker travels with one rendered value and cannot survive an average. The
+  rule was *mark the value, never average it* — and a histogram averages nothing: every value stays
+  at its own position, and the bounded ones pile up in the top bin where `bin_capped` counts them
+  and the page draws them hatched. That pile-up is the most important thing this dataset says about
+  itself, and a mean is exactly the rendering that hides it. **The page states the refusal in a
+  line of its own**, because building this without saying why there is no average would re-open the
+  hole U3 closed.
+- **Equal-width bins, over the indicator's own domain** — 0–100 for the nine coverage percentages,
+  0–1,000 for the three rates. IMR, UFMR and ABR are strongly zero-inflated (5,401 of 5,991
+  barangays record an IMR of exactly 0), so narrow bins near zero and wide ones above would render
+  a spike as a spread. Unequal bins misstate density by construction; the honest picture of a spike
+  is a spike.
+- **The top bin closes inclusive**, which is what puts an exactly-capped value inside it — so "the
+  capped values are all in the top bar" holds by construction rather than by inspection, and the
+  migration asserts it.
+- **The provincial benchmark is drawn only where a single one exists** — province and
+  city/municipality rows of the seven health indicators. A region or the nation spans 87 different
+  benchmarks, which the page says once for the whole health group rather than under each of seven
+  charts. Where a benchmark exists and is still not drawn, the page says which of three reasons
+  applies, because they are different statements: **unreachable** (Ilocos Sur's FIC 102.15 and City
+  of Butuan's 100.96, against barangay values capped at 100), **placeholder** (Agusan del Sur's
+  every-value-1 set, Cagayan's zeroes, the Special Geographic Area's fractions), or **missing**
+  (Nueva Vizcaya, Zamboanga City).
+- **Worse-than-province is a count, never a share.** Evaluable denominators differ between areas
+  for data-quality reasons, so a percentage would invite comparisons across areas the data cannot
+  carry. The excluded count is stated beside it.
+- **The placeholder rule now has one copy, not two.** U7 excluded those 226 barangays from route
+  (d)'s denominator; `toBarangayDetail` did not, so a city page could print "worse than province
+  (1)" for a barangay the criteria page had already excluded. `benchmarksArePlaceholder`
+  (`lib/db/uuc-phc-indicators.ts`) is the rule, and the per-barangay disclosure, the criteria
+  aggregate and the distributions all read it. The disclosure now shows "no usable provincial
+  figure" and one sentence saying why.
+- **`n_missing` is real and small.** The source left `ip_pop` blank for 17 barangays, `armed_conf`
+  for 42 and `idp` for 47; the other nine indicators are complete. The bars plus `n_missing` equal
+  the area's listed count — asserted in the migration, because a histogram whose bars do not
+  account for every barangay is a histogram of an unstated subset.
+- **An area with nothing listed gets an empty state, not twelve empty axes.** NCR's 12 rows are
+  real zeroes, and the page reads `agg_uuc_phc_counts` alongside the distributions so a transient
+  read failure renders as "unavailable" rather than as "no unserved barangays here".
 
 ## Asking the list (U8)
 
@@ -210,6 +267,28 @@ and `AiInsight` sits on the area pages. Both are grounded in this dataset alone.
     tables, so this also checks that the two tables cover the same 5,991 barangays); every criteria
     row has a counts row; no route count exceeds its denominator; every level rolls up to the
     national totals.
+- Table **`agg_uuc_phc_indicator_dist`** (U9) — public-read aggregate keyed `(dataset_id, geo_code,
+  geo_level, indicator)` at the same four levels × 12 indicators, **21,456 rows**. Per row:
+  `value_max`, `n_listed`, `bin_counts` and `bin_capped` (fixed-length `integer[10]`, enforced by a
+  check constraint), `n_missing`, `provincial_ref`, `n_comparable` and `n_worse`.
+  - **The bins are an array, not ten rows.** They are a fixed-length ordered vector that every
+    consumer wants whole — the read granularity is exactly one row per chart on the page — and the
+    long form would be 214,560 rows to answer the same question.
+  - **Whether the benchmark may be drawn is derived, not stored.** `provincial_ref` against
+    `value_max` gives the unreachable case and `n_comparable = 0` with a benchmark present gives the
+    placeholder case, both from rules that already exist elsewhere. A stored "usable" flag would be
+    a third copy of a two-copy rule, and the one most likely to drift.
+  - **Computed in SQL from `fact_uuc_phc_indicators` + `agg_uuc_phc_counts` + `dim_geo`**, on the
+    same precedent as the other two aggregates: re-running the migration recomputes every row, and
+    that *is* the refresh procedure.
+  - Eight assertions run after the load: every geo carries all 12 indicators and agrees with
+    `agg_uuc_phc_counts.n_listed`; bins plus `n_missing` equal `n_listed`; capped counts sit inside
+    their bin and only in the top bin; the national capped totals match
+    `fact_uuc_phc_indicators.capped_indicators` per indicator; comparison counts nest inside their
+    denominators and are zero on the five indicators criterion (d) does not test; no benchmark
+    above province level; `n_comparable` agrees with `agg_uuc_phc_criteria.n_health_evaluable` on
+    the six health indicators FIC's extra exclusion does not touch; every level rolls up to the
+    national totals per indicator.
 - Column **`fact_uuc_phc_indicators.health_indicators`** (U7) — the source's criterion (d) score,
   0–7, loaded as supplied and *not* recomputable from the columns beside it. See "The qualifying
   routes" above.
@@ -217,9 +296,9 @@ and `AiInsight` sits on the area pages. Both are grounded in this dataset alone.
   one place, the same discipline as the profiling-status stage totals.
 - Dataset row in `dim_dataset` (`uuc-phc-2025`, `geo_join_level = 'barangay'`, status `published`).
 
-## Registry and lineage (U5, extended by U7)
+## Registry and lineage (U5, extended by U7 and U9)
 
-All five relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
+All six relations are described in `dataset_registry` / `dataset_column` and restated as nodes and
 edges in `kb_node` / `kb_edge`.
 
 - **The dictionary is the allowlist.** `queryDataset` (`lib/ai/query-dataset.ts`) refuses any
@@ -275,8 +354,11 @@ edges in `kb_node` / `kb_edge`.
    python ingestion/ingest_uuc_phc.py \
      --out supabase/migrations/<timestamp>_seed_fact_uuc_phc_barangay.sql
    ```
-3. Re-run the aggregate block of `20260826140000_agg_uuc_phc_counts.sql`. It recomputes from the
-   fact table, so it needs no regeneration — only re-execution, after the fact seed.
+3. Re-run the aggregate blocks of `20260826140000_agg_uuc_phc_counts.sql`,
+   `20260827100000_agg_uuc_phc_criteria.sql` and `20260827160000_agg_uuc_phc_indicator_dist.sql`,
+   in that order. All three recompute from the fact tables, so they need no regeneration — only
+   re-execution, after the fact seed. The distributions read `agg_uuc_phc_counts`, which is why
+   they go last.
 
 The loader refuses to emit on a failed check (row count, PSGC format, duplicates, `UUA`-only, the
 87-code Sulu count, all 17 regional counts): a silently short load is worse than a failed one when
@@ -288,6 +370,7 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | --- | --- |
 | Read layer + share helper | `lib/db/uuc-phc.ts` (+ `.test.ts`) |
 | Indicator read layer + comparison | `lib/db/uuc-phc-indicators.ts` (+ `.test.ts`) |
+| Distribution read layer + bins | `lib/db/uuc-phc-indicator-dist.ts` (+ `.test.ts`) |
 | Dataset slug | `lib/db/dataset.ts` (`DATASET_SLUGS.uucPhc`) |
 | Section landing + sub-pages | `app/uuc-phc/` (`page.tsx`, `[geoLevel]/[geoCode]/page.tsx`, `methodology/`, `layout.tsx`) |
 | Section components | `components/uuc-phc/` (coverage-hero, share-bar, child-breakdown, barangay-list, barangay-detail) |
@@ -299,6 +382,8 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
 | Ask-cache dataset column | `supabase/migrations/20260827150000_ai_ask_cache_dataset_slug.sql` |
 | Criteria read layer | `lib/db/uuc-phc-criteria.ts` (+ `.test.ts`) |
 | Criteria page + components | `app/uuc-phc/criteria/`, `components/uuc-phc/` (criteria-section, route-shares, route-not-evaluable, route-breakdown) |
+| Indicators page + components | `app/uuc-phc/indicators/`, `components/uuc-phc/` (indicators-section, indicator-histogram) |
+| Distribution aggregate | `supabase/migrations/20260827160000_agg_uuc_phc_indicator_dist.sql` |
 | PNG one-pager | `lib/exports/uuc-phc-figure.ts` (+ `.test.ts`) + `app/api/export/uuc-phc/route.ts` |
 | Fact loader | `ingestion/ingest_uuc_phc.py` |
 | Cleaning step | `ingestion/clean_uuc_phc_indicators.py` |
@@ -321,9 +406,12 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   `docs/UUC_PHC_2025_PLAN.md` §4 for why Sulu's placement decides this.
 - Share math unit-tested in `lib/db/uuc-phc.test.ts`, including the zero-denominator and
   "none listed" cases that must not collapse into each other. Indicator comparison logic in
-  `lib/db/uuc-phc-indicators.test.ts` (13 tests): per-indicator direction, the null-not-false
-  answer when a benchmark is missing, the impossible-benchmark rule, and criterion (b)'s summed
-  conflict/displacement.
+  `lib/db/uuc-phc-indicators.test.ts` (19 tests): per-indicator direction, the null-not-false
+  answer when a benchmark is missing, the impossible-benchmark rule, the placeholder-benchmark rule
+  and its three real shapes, and criterion (b)'s summed conflict/displacement. Bin and
+  benchmark-state logic in `lib/db/uuc-phc-indicator-dist.test.ts` (16 tests), including that the
+  bars scale to the tallest bin rather than to the area's list and that the five reasons a
+  benchmark is not drawn stay distinct.
 - Indicators: 5,991 rows; 1,397 barangays carry a capped flag totalling 1,584 values, matching the
   cleaning report per indicator; `physical_factor` never below the AO's floor of 25; no coverage
   value above 100 and no rate above 1,000; every listed barangay has an indicator row. All 5,991
@@ -376,6 +464,26 @@ The loader refuses to emit on a failed check (row count, PSGC format, duplicates
   `/explore` are unchanged; the deck still reads "UUC FOR PHC" over five slides and `/bhw`'s eight
   still read "BHW CONNECT"; **zero console errors**. A live model answering a real question is
   **not** verified — the surfaces degrade to "Live AI is at capacity right now", which was seen.
+- Indicator distributions (U9): `agg_uuc_phc_indicator_dist` is **21,456 rows** (1,788 geos × 12
+  indicators); all **eight** in-migration assertions pass. The national row's bins reproduce a
+  direct `floor(value / width)` count over `fact_uuc_phc_indicators` for every indicator, and the
+  capped totals per indicator are exactly the cleaning report's (Water 886, FIC 456, Pre-natal 208,
+  SBA 30, ABR 2, IMR 1, UFMR 1) — **all in the top bin, none anywhere else**. `n_missing` is 17 /
+  42 / 47 for `ip_pop` / `armed_conf` / `idp` and 0 for the other nine; bins plus `n_missing` equal
+  5,991 on all twelve. `n_comparable` is 5,765 on six health indicators and 5,652 on FIC (the extra
+  113), matching `agg_uuc_phc_criteria.n_health_evaluable` row for row. `physical_factor`'s two
+  lowest bins are empty, which is the AO's 25% floor showing up as a shape. In Chromium at
+  national, Ilocos Sur, Agusan del Sur, City of Butuan (province and citymun) and NCR: **the FIC
+  benchmark line is absent in both Ilocos Sur and City of Butuan** with the reason printed, absent
+  in Agusan del Sur as a placeholder set, drawn at 71.3% for Ilocos Sur's Water and 88.1% for
+  Butuan's; the hatched capped segment renders at the top of every affected top bar with its
+  legend and count; NCR shows the empty state rather than twelve empty axes; the deck starts,
+  advances through Title / The physical factor / Socio-economic factors / Health indicators /
+  Closing and exits on Esc; `/uuc-phc/indicators/barangay/*` 404s. **No mean, median or other
+  summary statistic appears in the DOM** on any of them, and there are **zero console errors** on
+  the production build. Driven against `next start`, not `next dev`, so the root layout's
+  dev-only theme-attribute hydration warning — which reproduces identically on `/uuc-phc` and
+  `/uuc-phc/criteria` — is out of the picture.
 - PNG export rendered and **visually inspected** at every level: national (18 regions, CAR first at
   52%), region, province, MAYOYAO and BANGUI (barangays named), NCR (0 of 1,675 with its note and
   an empty bar), and CEBU — 50 cities, where the 42-row cap prints "+ 8 more with a lower share,

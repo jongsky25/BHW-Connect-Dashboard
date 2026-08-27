@@ -75,7 +75,7 @@ a provincial proportion cannot exceed 100% any more than a barangay one can. Tha
 being Oriental Mindoro's water reference of 365.5.
 
 `ABR` is left as supplied — Samar's 277 is a rate per 1,000 and legitimate. **`FIC` is also left
-as supplied**, so Ilocos Sur (102.15) and City of Butuan (101.00) stay above 100 while barangay
+as supplied**, so Ilocos Sur (102.15) and City of Butuan (100.96) stay above 100 while barangay
 FIC is capped at 100. See §6.
 
 ## 4. What happened
@@ -129,10 +129,13 @@ denominator error, a count entered where a percentage was wanted, or a units mis
 contains the symptom. If a corrected extract ever arrives, regenerate rather than patch.
 
 **FIC's benchmark is now inconsistent with its data.** Barangay FIC is capped at 100, but the FIC
-provincial reference is not, so Ilocos Sur (102.15) and City of Butuan (101.00) sit above a ceiling
+provincial reference is not, so Ilocos Sur (102.15) and City of Butuan (100.96) sit above a ceiling
 their own barangays cannot reach. Every barangay in those two provinces therefore reads as worse
-than province on FIC. Confined to 2 provinces with an excess under 3%, but unresolved — capping
-FIC's reference to 100 would close it, and was outside the instruction given.
+than province on FIC. Confined to 2 provinces (107 + 6 = 113 barangays) with an excess under 3%,
+but unresolved — capping FIC's reference to 100 would close it, and was outside the instruction
+given. *(City of Butuan corrected in U9 from 101.00: `ref_uuc_phc_provincial` reads 100.96. The
+build never quotes either figure — `/uuc-phc/indicators` prints the province's own stored value —
+so the correction is to this document alone.)*
 
 **Five provinces have references that cannot support criterion (d) at all** — 226 barangays, 4% of
 the list: Agusan del Sur (156, every reference exactly `1`), Nueva Vizcaya (50, `#N/A`), Cagayan

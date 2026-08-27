@@ -127,7 +127,7 @@ correction, 26 provincial values were impossible as proportions:
 |---|---:|---|---|
 | Water | 16 | Oriental Mindoro 365.5 | **Capped at 100** |
 | Pre-natal | 8 | Tarlac 166.0, Pangasinan 143.9 | **Capped at 100** |
-| FIC | 2 | Ilocos Sur 102.15, City of Butuan 101.00 | **Left as supplied** |
+| FIC | 2 | Ilocos Sur 102.15, City of Butuan 100.96 | **Left as supplied** |
 | ABR | 1 | Samar 277 | Left — a rate per 1,000, legitimately above 100 |
 
 24 values across 22 provinces were capped (Aurora and Bulacan had both).
@@ -139,7 +139,7 @@ barangay in the province read as worse than its province on water**, pushing the
 Indicators` count toward the ≥ 4 threshold. Qualification was therefore easier in the affected
 provinces than in the rest. Capping removes that skew for Water and Pre-natal.
 
-**FIC is deliberately not capped here**, so Ilocos Sur (102.15) and City of Butuan (101.00) remain
+**FIC is deliberately not capped here**, so Ilocos Sur (102.15) and City of Butuan (100.96) remain
 above 100 while barangay FIC values are capped at 100. In those two provinces no barangay can
 exceed its benchmark, so all of them read as worse than province on FIC. The effect is confined
 to 2 provinces and the excess is under 3%, but it is a live inconsistency rather than a resolved
@@ -436,7 +436,7 @@ ceilings and report near-universal coverage the source does not support.
 Two things the build found that the plan had not:
 
 - **A benchmark can be impossible.** FIC's provincial reference was left uncapped in 2 provinces
-  (Ilocos Sur 102.15, City of Butuan 101.00) while every barangay FIC was capped at 100 — so all
+  (Ilocos Sur 102.15, City of Butuan 100.96) while every barangay FIC was capped at 100 — so all
   **113** of their barangays would have read "worse than province" by construction. `comparesWorse`
   now returns null for a benchmark above the indicator's own maximum and the UI shows the figure
   with no verdict. The cleaning report's §6 caveat is now behaviour rather than a footnote.
@@ -784,7 +784,22 @@ chat degrades to "Live AI is at capacity right now" (the correct `allCapped` pat
 seen). That is the same gap Increments 1.3, 1.4, 2.2 and 2.3 record, and it closes with a key on
 the deployed preview.
 
-### U9 — `/uuc-phc/indicators`: the indicators above barangay grain, without averaging
+### U9 — `/uuc-phc/indicators`: the indicators above barangay grain, without averaging — **LANDED 2026-08-27**
+
+`agg_uuc_phc_indicator_dist` publishes ten equal-width bins per indicator per geo, with the bounded
+values counted separately in `bin_capped` and provincial benchmarks stored only where a single one
+exists. `/uuc-phc/indicators` renders all 12 at every level with no summary statistic anywhere. Two
+things came out of it that the scope below did not anticipate, both recorded in `docs/DECISIONS.md`:
+
+- **The placeholder-benchmark rule was in two places and only one of them was right.** U7 excluded
+  the 226 barangays whose provincial benchmarks are placeholders from route (d)'s denominator;
+  `toBarangayDetail` did not, so a city page could print "worse than province (1)" for a barangay
+  the criteria page had already excluded. `benchmarksArePlaceholder` is now the one rule, read by
+  the per-barangay disclosure, the criteria aggregate and the distributions alike.
+- **City of Butuan's FIC benchmark is 100.96, not the 101.00 this plan and the cleaning report both
+  stated.** Corrected in both; the build prints the stored value and never quoted either.
+
+The scope below is kept as written.
 
 U3 established a rule — *mark the value, never average it* — and honoured it by publishing no
 aggregates, which leaves the 12 indicators visible only one barangay at a time. That is stricter
@@ -932,7 +947,8 @@ for the source office (BLHSD) rather than for the build:
 - **Criterion (b) is implemented as a sum, not the order's "or"** — matches all 5,991 rows, but
   disagrees with an either-alone reading on 15 (§1a).
 - **Five provinces / 226 barangays cannot support criterion (d) at all.** U7 and U9 exclude them
-  and say so; the references themselves still need fixing at source.
+  and say so — as of U9 the per-barangay disclosure does too, on the same rule
+  (`benchmarksArePlaceholder`); the references themselves still need fixing at source.
 - **The 5,991 vs 5,987 vintage reading is inference, not a statement either source makes** (§3).
   U10 renders it as such. Worth confirming.
 - **`Health Indicators` (0–7) is retained but not recomputable** from the published columns —
