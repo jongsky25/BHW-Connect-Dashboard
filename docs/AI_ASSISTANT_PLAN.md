@@ -477,7 +477,8 @@ routing both through it would bury the rows that need judgment among rows that d
 *Verify:* only approved rows are citable; auto rows are visibly marked; a 1.5 lineage edge is
 distinguishable from an extracted one by column, not by convention (§9.9).
 
-**3.3 — Cross-source traversal.** Extend 1.6's primitive so one traversal can cross a registry
+**3.3 — Cross-source traversal.** *(built — 2026-08-27)*
+Extend 1.6's primitive so one traversal can cross a registry
 join edge into a document-extracted edge and back. The recursion, the bounds, and the
 path-provenance contract are unchanged from 1.6; what changes is the edge population it runs over.
 *Verify:* a multi-hop question that no single tool can answer returns a correct, cited answer, and

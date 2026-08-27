@@ -3107,3 +3107,111 @@ Every approval and every rejection is reversible from the page by whoever the ow
 changing it has not arrived: the concurrent UUC work is still unmerged on `main` and applied two
 more migrations to the live project while this increment was being written. A regeneration remains
 worth doing as its own change once that branch lands.
+
+## 2026-08-27 — Internal AI assistant, Increment 3.3: cross-source traversal
+
+One traversal that starts at an aggregate table this project builds and ends at a programme
+described in the 2027 Budget Cue Cards, naming the file or slide behind every step.
+
+**The path, run live:**
+
+```
+table:agg_uuc_phc_counts
+  —derived-from→ dataset:uuc-phc-2025      [supabase/migrations/20260826090100_seed_dataset_registry.sql]
+  —defined-by→  issuance:DC 2025-0549      [supabase/migrations/20260826121100_seed_dim_dataset_uuc_phc.sql]
+  ←defined-by—  program:Unserved and Underserved Communities for Primary Health Care (UUC for PHC)
+                                           [blhsd-2027-budget-cue-cards#p138]
+```
+
+A registry join edge, then an asserted crossing edge, then an extracted one — walked backwards.
+No single tool answers this: `queryDataset` knows the table, `searchDocuments` knows the slide, and
+neither knows they are about the same circular.
+
+**§8 says "the recursion, the bounds and the path-provenance contract are unchanged; what changes
+is the edge population". Three of those four held. The fourth is the interesting part.**
+
+- **The edge population alone is not enough, because edges have a direction.** The two crossing
+  edges meet *nose to nose* at the issuance: a dataset points at DC 2025-0549 and a programme
+  points at DC 2025-0549. A walk that only goes `out` reaches the circular from either side and
+  stops; a walk that only goes `in` never leaves. So `traverse_kb` gains `direction = 'both'`.
+  This is a change to the recursion, recorded rather than glossed.
+
+- **And an undirected walk makes the path ambiguous, which 1.6's contract does not allow.** With
+  one direction, a relation name in `relation_path` is unambiguous. With `both`,
+  "defined-by → issuance:AO 2020-0023" could be a table declaring its basis *or* a circular being
+  cited by one — opposite claims. The function now returns `direction_path`, one entry per hop,
+  and `renderVia` prints a backwards hop as `←defined-by—`. The contract is not relaxed to fit the
+  new mode; it is made precise enough to carry it.
+
+- **`both` gets a *lower* depth cap than the directed modes — 4 against 6.** An undirected walk
+  fans out faster, and §11's open question on traversal depth says to set a low cap and raise it
+  against real questions rather than guessing upward. A request past the cap is refused, not served
+  shallower, exactly as in 1.6.
+
+**The crossing edges are derived from committed migrations, not written by hand and not extracted.**
+`build_kb_lineage.py` gains a scan for canonical issuance codes in two places the database itself
+carries the text: a `comment on table` and a `dim_dataset` row's own source field. Four edges:
+`table:fact_uuc_phc_barangay` and `dataset:uuc-phc-2025`, each `defined-by` `AO 2020-0023` and
+`DC 2025-0549`. Each is checkable by opening the migration it names.
+
+**The scan reads STRIPPED SQL, and the near-miss is measured rather than argued.** U5 justified the
+`docs/*.md` scan reading *raw* text on the grounds that "a `docs/*.md` path… prose cannot produce by
+accident". An issuance code is not like that: prose produces one constantly. Applying the docs/ rule
+here — scan the whole file, attribute what you find to the tables it touches — **would have added 8
+false edges**, all from `20260826160000_doc_corpus.sql`, whose header cites "DC No. 2025-0549" and
+"JMC 2023-001" purely as *examples* of what trigram search is good at. It would have asserted
+`table:doc_chunk defined-by issuance:DC 2025-0549`. That is the fourth instance of the one failure
+mode this script keeps hitting — a parser reading prose as data — and the first one caught before
+it was written rather than after. The generator's comment says so in place.
+
+- **The edge is asserted; the node it points at is extracted.** `issuance:DC 2025-0549` was
+  proposed by a model from slide 138 and approved through the 3.2 queue; the edge to it comes from
+  a migration. The generator deliberately does **not** emit issuance nodes — its seed upserts
+  `origin = 'asserted', status = 'approved'` on conflict, so emitting one would silently promote an
+  extracted node to asserted, which is §9.9 inverted. It emits only the edge, and the seed's join
+  resolves the node.
+
+- **A crossing edge whose issuance nobody extracted is a finding, not a silent drop.** The seed's
+  `join kb_node d on d.key = e.dst_key` drops such an edge quietly and correctly. The generator now
+  reads the committed extraction transcripts and prints to stderr any issuance a migration names
+  that no extraction proposes. Today that list is empty.
+
+- **`defined-by` carries both a programme's legal basis and a dataset's.** The extractor's endpoint
+  signature (program → issuance) is a constraint on *model output*, deliberately tighter than the
+  relation itself; the asserted scan produces table → issuance and dataset → issuance. Splitting
+  the relation to keep the kinds apart would have made one traversal two, for a distinction the
+  `kind` column already carries.
+
+**Verify (live against the project, and in tests).**
+
+- The path above, returned by `traverse_kb('table:agg_uuc_phc_counts', 'both', null, 4, 400)`, with
+  every hop's source and direction. Also found at depth 3: `program:Indigenous Peoples' Health`,
+  reached through `AO 2020-0023` — correct and not planted, since slide 129 lists the same GIDA
+  criteria circular under IP Health.
+- **The bounds hold.** `both` at depth 5 is refused — *"traverse_kb max_depth 5 exceeds the limit of
+  4 for direction both"* — while `out` at depth 5 is served, so the refusal is about the mode and
+  not the number.
+- **It terminates, and the guard is checked rather than assumed.** An undirected walk from the
+  densest node in the graph returns its 500-row cap in **69 ms**, and **0 of those paths contain a
+  repeated node** — which is what stops `both` from walking every edge forwards and immediately
+  backwards forever.
+- A `relations: ['defined-by']` filter from `dataset:uuc-phc-2025` returns 34 rows, the policy chain
+  with the build lineage dropped.
+- The lineage generator was re-run and `20260826120100_seed_kb_lineage.sql` regenerated **in
+  place**, per the established convention. It emits **192 nodes / 317 edges**; stderr is empty.
+- **The live delta was applied after diffing, not by re-applying the seed.** Live carries the
+  concurrent UUC-criteria work (4 nodes / 10 edges) that this branch cannot see, so the generator's
+  output and the live rows were compared bucket by bucket and the difference resolved to exactly 3
+  new nodes and 10 new edges. Applying them took live to **196 asserted nodes / 327 asserted
+  edges**, which is the generated 192 / 317 plus the live-only 4 / 10 — the arithmetic the diff
+  predicted. Total graph: **275 nodes / 417 edges**.
+- 5 new tests (404 total), and one existing assertion updated for the new arrow rendering. They
+  cover the crossed chain rendering `—defined-by→` and `←defined-by—` in one string, the lower
+  `both` depth cap being about the mode rather than the number, the widened relation enum, and a
+  path with no directions falling back to a forward arrow rather than a broken chain.
+- `npm run lint`, `npm run typecheck`, `npm test` clean.
+
+**Not verified.** Whether a live model *selects* `both` for a crossing question. Rule 9 now names
+it explicitly and says why a one-way walk stops at the circular, which is the most that can be done
+without a provider key. The property that does not depend on the model — that the path exists, is
+bounded, and names its sources — is verified above.

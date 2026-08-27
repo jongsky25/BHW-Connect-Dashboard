@@ -16,6 +16,7 @@ vi.mock("@/lib/db/service-client", () => ({
 const {
   GEO_MAX_DEPTH,
   LINEAGE_MAX_DEPTH,
+  LINEAGE_BOTH_MAX_DEPTH,
   DEFAULT_DEPTH,
   DEFAULT_TRAVERSAL_ROWS,
   executeTraverseGraph,
@@ -115,6 +116,63 @@ describe("planTraversal — lineage", () => {
       "out (what this was built",
     );
   });
+
+  /**
+   * Increment 3.3. `both` exists because the crossing edges meet nose to nose at an issuance — a
+   * dataset declares its basis and a programme declares the same one — so neither `out` nor `in`
+   * alone gets from a table to the policy behind it.
+   */
+  it("plans an undirected walk when the chain changes direction", () => {
+    expect(
+      planTraversal({ source: "lineage", start: "dataset:uuc-phc-2025", direction: "both" }),
+    ).toEqual({
+      plan: {
+        source: "lineage",
+        fn: "traverse_kb",
+        params: {
+          start_key: "dataset:uuc-phc-2025",
+          direction: "both",
+          relations: null,
+          max_depth: DEFAULT_DEPTH,
+          row_cap: DEFAULT_TRAVERSAL_ROWS,
+        },
+      },
+    });
+  });
+
+  it("holds an undirected walk to a lower depth than a directed one, and names which limit", () => {
+    // Not the same cap: an undirected walk fans out faster, and §11 says to raise a depth cap
+    // against real questions rather than guess upward.
+    const refusal = errorOf({
+      source: "lineage",
+      start: "table:x",
+      direction: "both",
+      maxDepth: LINEAGE_BOTH_MAX_DEPTH + 1,
+    });
+    expect(refusal).toContain(`both lineage traversal limit of ${LINEAGE_BOTH_MAX_DEPTH}`);
+    // The same depth is fine in a directed walk, so the refusal is about the mode, not the number.
+    expect(
+      planTraversal({
+        source: "lineage",
+        start: "table:x",
+        direction: "out",
+        maxDepth: LINEAGE_BOTH_MAX_DEPTH + 1,
+      }),
+    ).toHaveProperty("plan");
+  });
+
+  it("accepts the relations extraction added, so a policy chain can be isolated", () => {
+    const planned = planTraversal({
+      source: "lineage",
+      start: "dataset:uuc-phc-2025",
+      direction: "both",
+      relations: ["defined-by", "issued-by", "part-of"],
+    });
+    expect(planned).toHaveProperty("plan");
+    expect(
+      (planned as { plan: { params: { relations: string[] } } }).plan.params.relations,
+    ).toEqual(["defined-by", "issued-by", "part-of"]);
+  });
 });
 
 describe("executeTraverseGraph", () => {
@@ -164,6 +222,7 @@ describe("executeTraverseGraph", () => {
           path: ["table:agg_honorarium", "table:fact_honorarium"],
           relation_path: ["derived-from"],
           source_path: ["ingestion/build_aggregates.sql"],
+          direction_path: ["out"],
         },
       ],
       error: null,
@@ -174,9 +233,80 @@ describe("executeTraverseGraph", () => {
     expect(result).toMatchObject({ source: "lineage", count: 1 });
     const [first] = (result as { results: { via: string; sources: string[] }[] }).results;
     expect(first.via).toBe(
-      "table:agg_honorarium derived-from → table:fact_honorarium [ingestion/build_aggregates.sql]",
+      "table:agg_honorarium —derived-from→ table:fact_honorarium [ingestion/build_aggregates.sql]",
     );
     expect(first.sources).toEqual(["ingestion/build_aggregates.sql"]);
+  });
+
+  /**
+   * Increment 3.3. A `both` walk mixes hops taken along an edge with hops taken against it, and
+   * the chain has to say which was which: "—defined-by→ issuance:DC 2025-0549" (a dataset
+   * declaring its basis) and "←defined-by— program:UUC for PHC" (a programme declaring the same
+   * one) are opposite claims. Rendering them identically would give a reader a chain they cannot
+   * check, which 1.6 treats as worse than no chain at all.
+   */
+  it("renders a backwards hop backwards, so a crossed chain stays readable", async () => {
+    response = {
+      data: [
+        {
+          key: "program:Unserved and Underserved Communities for Primary Health Care (UUC for PHC)",
+          kind: "program",
+          label: "UUC for PHC",
+          depth: 2,
+          path: [
+            "dataset:uuc-phc-2025",
+            "issuance:DC 2025-0549",
+            "program:Unserved and Underserved Communities for Primary Health Care (UUC for PHC)",
+          ],
+          relation_path: ["defined-by", "defined-by"],
+          source_path: [
+            "supabase/migrations/20260826121100_seed_dim_dataset_uuc_phc.sql",
+            "blhsd-2027-budget-cue-cards#p138",
+          ],
+          direction_path: ["out", "in"],
+        },
+      ],
+      error: null,
+    };
+
+    const result = await executeTraverseGraph({
+      source: "lineage",
+      start: "dataset:uuc-phc-2025",
+      direction: "both",
+      maxDepth: 2,
+    });
+
+    const [first] = (result as { results: { via: string; directions: string[] }[] }).results;
+    expect(first.directions).toEqual(["out", "in"]);
+    expect(first.via).toBe(
+      "dataset:uuc-phc-2025 " +
+        "—defined-by→ issuance:DC 2025-0549 [supabase/migrations/20260826121100_seed_dim_dataset_uuc_phc.sql] ; " +
+        "←defined-by— program:Unserved and Underserved Communities for Primary Health Care (UUC for PHC) " +
+        "[blhsd-2027-budget-cue-cards#p138]",
+    );
+  });
+
+  it("falls back to a forward arrow when the database returned no directions", async () => {
+    // Defensive rather than hypothetical: the column is new in 3.3 and a stale cached plan or an
+    // older function would omit it. A missing direction must not render as a broken chain.
+    response = {
+      data: [
+        {
+          key: "table:fact_honorarium",
+          kind: "table",
+          label: "fact_honorarium",
+          depth: 1,
+          path: ["table:agg_honorarium", "table:fact_honorarium"],
+          relation_path: ["derived-from"],
+          source_path: ["ingestion/build_aggregates.sql"],
+        },
+      ],
+      error: null,
+    };
+    const result = await executeTraverseGraph({ source: "lineage", start: "table:agg_honorarium" });
+    const [first] = (result as { results: { via: string; directions: string[] }[] }).results;
+    expect(first.directions).toEqual([]);
+    expect(first.via).toContain("—derived-from→");
   });
 
   it("flags truncation when the row cap was reached", async () => {
