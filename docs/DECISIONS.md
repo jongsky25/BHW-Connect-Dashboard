@@ -7011,12 +7011,16 @@ exists for environments with no database connection, which is exactly what the p
 prints the statements to run and records in the QA report that profiling did not happen — rather than
 emitting a call whose correctness would depend on the operator applying the batch files in order.
 
-**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **816 tests, the same as
-`main`**, confirmed by running `main` at `f889404` rather than taken from the previous entry; this
-branch changes no TypeScript. `ingestion/`'s own convention is a `--selftest` flag, and `ingest.py`
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **822 tests, the same as
+`main`**, confirmed by running `main` rather than taken from the previous entry; this branch changes
+no TypeScript. That baseline was measured twice: 816 on `main` at `f889404`, and 822 after #111
+merged underneath this branch and was merged back into it — the six new tests are #111's, not this
+branch's. `ingestion/`'s own convention is a `--selftest` flag, and `ingest.py`
 had none: it has one now, and all six pass (`build_poverty`, `build_psgc_crosswalk`, `extract_kb`,
 `ingest_documents`, `ingest_population`, `ingest`). No migration: this branch adds none and applies
-none, so there is nothing for `pglast` to parse. `npx prettier --check .` fails on the same **148**
+none, so there is nothing of its own for `pglast` to parse — the one migration in the tree that was
+not here before arrived with #111 through the merge below, and parses as three statements under
+`pglast` 8.4. `npx prettier --check .` fails on the same **148**
 files as untouched `main` — measured on both trees and compared file by file rather than by count,
 confirming #110's correction of the older 149 — and prettier does not format Python, so the one file
 this branch touches is not among them.
