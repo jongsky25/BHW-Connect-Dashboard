@@ -206,7 +206,7 @@ Ten sheets. Two carry the payload; the rest are working copies that disagree wit
 LIST* — the list whose regional distribution cue cards p37 publishes — and it carries **5,987**.
 The dashboard now publishes that figure. `ref_uuc_phc_published_delta` is empty as a result, and
 the methodology page states the reconciliation as settled rather than open. The change is
-`supabase/migrations/20260828120000_uuc_phc_final_list_alignment.sql`.
+`supabase/migrations/20260828180000_uuc_phc_final_list_alignment.sql`.
 
 ### What the gap was
 

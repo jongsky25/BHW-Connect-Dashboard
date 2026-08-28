@@ -5531,14 +5531,416 @@ two performance defects and the two pairing rules were fixed, which is the shape
 can be checked: `md5(prosrc)` of every function in the database matches the same slice of the
 committed file.
 
+## 2026-08-28 — §10's expected payload, and route 1: ten cases whose answers were already on screen
+
+Not an increment in §8's list — §8 is finished. §10 has recorded the same gap since Increment 2.4,
+and the runner entry restated it in its own "what this still does not do": *"a `queryDataset` case
+is scored on whether the call still runs, not on whether it returns the same figure, because
+`ai_regression_case` has nowhere to record an expected payload."* Three things were waiting on that
+column. This builds it and spends it on the one of the three that can be exercised today.
+
+`ai_regression_case.expectations` now holds **29 pinned figures across 10 seeded cases**, and the
+runner scores each one separately.
+
+### The shape is the design: a list of assertions, not a payload and not a figure
+
+Two obvious designs are wrong in opposite directions, and saying which is the whole decision.
+
+A **stored payload compared for equality** fails on things that are not the answer: row order, an
+added column, a `warnings` array that gains an entry, a `truncated` flag that flips when a limit
+moves. Every one reports a regression that is not one, and this runner has already learned what
+that costs — `textUnchanged: null` exists because the first version would have cried wolf on the
+only case in the list.
+
+A **single named figure** is checkable but too narrow. The figure a page renders is usually several
+numbers — `/place/region/07` says "12,605 of 18,891 validated profiles are accredited (66.72%)" —
+and a case pinning one of the three passes while the other two drift.
+
+So a case carries a list, each element naming the call it reads (`call`, an index into
+`tool_calls`), the tool that index must be (`tool`), the row it selects (`where`, absent for the
+payload root), the field and the expected value. Each is scored on its own, which gives the
+property the brief asked for: **the comparison says which part matched.** `queryDataset[0]
+geo_code=PH: pct_accredited was 71.57, now 72.4` is a finding. "The payload differs" is not.
+
+Three statuses, not two. `met` and `unmet` are obvious; **`unresolved` earns its place** because a
+renamed column, a republication that doubles every geography's rows, and a genuinely changed figure
+are three different findings that a pass/fail would report identically — and they want three
+different fixes.
+
+### The rules that stop a case passing for the wrong reason
+
+- **Ambiguity fails.** A selector matching more than one row is `unresolved`, never resolved by
+  taking the first. This is not hypothetical: every table these seeds read holds exactly one
+  `dataset_id` *today*, so `{geo_code: "PH"}` names one row; a republication adds a second and the
+  selector matches two. Taking the first would silently score one vintage or the other at random —
+  and a republication is precisely the change §10 exists to surface, not to paper over.
+- **A missing selector key is reported as such.** "no row matched geo_code=PH — no row carries
+  geo_code" means the *projection* dropped the key; "no row matched geo_code=PH (1 rows returned)"
+  means the row is gone. A broken case and a real finding, told apart.
+- **A refusal is not an absent figure.** Every tool in this set returns refusals as data (§1), so
+  an `{error: …}` payload scores `unresolved`, not `unmet`.
+- **`tool` cross-checks `call`.** An index alone would let an edited `tool_calls` shift an assertion
+  onto a different call and score it there. The payload list is also kept index-aligned with the
+  recorded calls *including the ones that failed* — skipping a failed call would shift every later
+  assertion by one, silently.
+- **A malformed expectation is reported, never skipped.** Skipping is the dangerous option: the
+  case goes green having checked less than it claims. The database refuses to store one (below) and
+  the reader reports one it cannot parse. Neither makes the other redundant — the constraint covers
+  future writes, the reader covers a row written before it.
+
+### Two things deliberately not built, both because nothing exercises them
+
+**No tolerance.** An absolute tolerance for a drifting estimate was considered and dropped. Nothing
+route 1 can seed drifts — these are fixed aggregates over a fixed dataset version — so it would be
+a knob with no case behind it whose only effect is to loosen a check, and a sloppy tolerance is
+exactly how a case passes for the wrong reason.
+
+**No type coercion, and that was measured rather than assumed.** The worry was that PostgREST might
+return `numeric` as a string, forcing `"270917"` to be compared against `270917`. So the live REST
+API was read with the anon key across six tables and every column these seeds touch: **every
+numeric arrives as a JSON number**, `600.00` and `52.0` included (which parse to 600 and 52). There
+is no case in front of us, so no rule is written. Instead the runner **names the type on a
+mismatch** — `n_total was 270,917, now 270,917 (number → string)` — so if one ever appears, the
+finding is the evidence for adding a coercion rule rather than the rule having been guessed.
+
+### `conversation` and `answer_given` become nullable — and a fabrication is cleared
+
+Not for the sweep's sake, for route 1's. §10.1 is explicit that a seeded case's expected answer is
+*"not authored — it is on screen"*: there is a figure and a page, and no assistant turn, because no
+assistant was asked. **The one seeded case already in the table had invented both to satisfy NOT
+NULL** — an assistant message nobody received — and it carried `provider = 'gemini'`, a claim that a
+model produced text no model produced. The 2.4 header says why that column exists: so that *"it
+regressed"* and *"it was answered by Groq this time"* stay distinguishable. A fabricated value on a
+seeded row destroys that distinction for the one query the column is for. It is cleared, and the
+ten new seeds carry none of the three.
+
+Two constraints replace the NOT NULLs and say more than they did: a captured answer is
+all-or-nothing (`(conversation is null) = (answer_given is null)`), and `provider` cannot outlive
+one. `answer_given` on case 1 is left as it was — it is an *authored expected answer*, which the
+`note` corroborates, and nulling it would lose the §12.4 rule 3 phrasing it records. The new seeds
+do not repeat that shape.
+
+### Why the swept path is still not built
+
+§8 4.2 says the sweep "feeds the §10 regression list", and this column is what it was waiting for:
+a confirmed contradiction has no question and no answer, but it does have two figures that must not
+move — which is an assertion list exactly. It is still not built, and the reason is unchanged from
+the 4.2 entry: **all 12 `kb_contradiction` rows are at `status = 'auto'`** (checked, not assumed)
+and owner decision 5 says a person judges, so there is nothing confirmed to file. A `source` value
+nothing writes is the `--propose` mistake again — typed and unrun is not a safety property. `source`
+still admits only `'reported'` and `'seeded'`, and `ai-regression-case.test.ts` asserts that
+against the migration text, so the absence is a recorded decision rather than an oversight. Adding
+it is one line, in the migration that files the first judged row.
+
+Worth recording for whoever writes that line: **`answer_given` nullable is what a swept case
+needed**, and it is now true for a reason that has nothing to do with sweeping. The remaining work
+is the `source` value and deciding what a swept case's `question` says.
+
+### The shape guard lives in the database, and its first draft was wrong
+
+`ai_regression_expectation_well_formed(jsonb)` is an immutable SQL function behind a check
+constraint. **The first draft used `<>` and would have accepted an element with no `call` at all**:
+`jsonb_typeof(e -> 'call')` is NULL when the key is absent, `NULL <> 'number'` is NULL, and a
+`where` reads NULL as no-match — so the element with the missing key sails through the exists()
+that was written to catch it. `is distinct from` fixes it. Found by running the guard against
+eighteen hand-built shapes rather than by reading it, which is now the fourth increment running
+that this convention has caught something.
+
+The guard's behaviour, run against the live database: **12 refused, 6 accepted**, over missing
+`call` / `tool` / `field` / `value`, JSON null as a value, object and array values, `call` as a
+string, `where` as a string and as null, an element that is not an object, a top level that is not
+an array, and a list where one of two elements is bad. `value` is restricted to number, string or
+boolean — JSON null is refused, because nothing rendered on a page is a null and "expected to be
+null" would ship unexercised.
+
+### Verify
+
+**The ten seeds, scored against live data through the real evaluator.** The replay itself could not
+be run here — the runner reads `dataset_registry`, which is RLS-enabled with no policies and so
+service-role only, and there is no service-role key in these environments. What *was* run is
+everything except that lookup: the seeds parsed out of the committed migration, each recorded
+`queryDataset` call translated into the PostgREST request it issues and sent with the anon key, and
+the resulting payloads scored by `evaluateExpectation` itself. **29 of 29 expectations met, across
+all 10 cases.** Held out of the repository deliberately: it hits the network and pins live figures,
+which is exactly what a CI suite must not do.
+
+**Three negative controls on the same live payloads**, because a suite that cannot fail proves
+nothing:
+
+```
+figure moved by one   unmet      — geo_code=PH: n_total was 270,918, now 270,917
+renamed field         unresolved — no field n_records (the row has: geo_code, geo_level, n_total, n_accredited, pct_accredited)
+republication         unresolved — 2 rows matched geo_code=PH — a selector must name one
+```
+
+**Two structural checks the registry can answer without a service key**, both run against the live
+database and both returning zero rows: every table and column any seed names — projections,
+filters, order-bys, selector keys and asserted fields — is `approved` and `is_queryable` in
+`dataset_registry`/`dataset_column`; and every selector key and asserted field appears in its own
+call's `columns` projection. The second is the failure that would otherwise look like a build
+problem: a field left out of the projection comes back `unresolved` at replay time and reads as a
+regression rather than as a typo in the seed. It is asserted as a test too, so it stays true.
+
+**The four refusals, exercised against the live table** (an attempted insert each, all rejected):
+a conversation with no answer, a provider with no answer, `source = 'swept'`, and a malformed
+expectation.
+
+**Database and committed file are in sync**, and were not at first: the function reached the
+database through `apply_migration` as a comment-stripped copy, so `md5(prosrc)` disagreed with the
+committed slice. Re-applied verbatim; both are now `241999716384b2c1f6bb49477153a19c`, 1292 bytes.
+Worth noting because 4.2 introduced that check and this is the first time it has caught a real
+divergence.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — **727 tests, 34 more than
+`main`'s 693**. `npx prettier --check .` fails on the same **149** files as untouched `main`, and
+every file this branch touches is clean.
+
+### What this does and does not establish
+
+It establishes that a `queryDataset` case can be scored on its **figure** rather than on whether
+its call still executes, that the scoring says which figure moved, and that the three ways an
+assertion can fail to hold — moved, renamed, ambiguous — are reported as three different things
+against real payloads. It establishes route 1: ten questions whose expected answers were read off
+the live data behind pages that render them, with the screen named on every row so the "on screen,
+not authored" claim is checkable rather than asserted.
+
+**It does not establish that the replay runs end to end.** The registry lookup is service-role only
+and no key exists here, so `replayCase` itself has been exercised against mocked tools and real
+payloads, never against both at once. The first person with a service-role key should open
+`/admin/regressions` and press replay; if it is green, that is the missing half.
+
+**It does not establish that these ten are the right ten.** They were chosen to cover the
+selector's branches — payload root, one-key, two-key, non-geographic key, integer, decimal, boolean
+— which is a property of the *mechanism*, not evidence that they are the questions a briefing asks.
+§10's own standard is "three answers read by hand say nothing about the other forty", and eleven
+cases is not forty.
+
+**And it does not make any of these cases sensitive to prose.** Every caveat on the runner still
+stands: the answer text is not regenerated, and a case can pass here while reading badly. The
+caveat string was widened to say "tool calls, cited passages and pinned figures" rather than
+quietly growing a third check behind a two-check disclaimer.
+
+## 2026-08-28 — §10.1 route 3: the answer bank harvested, and the replay finally run end to end
+
+§10 names three ways the regression list grows. Route 2 shipped at Increment 2.4, route 1 shipped
+this morning with the expectations column, and route 3 — *"`ai_ask_cache` rows at `status =
+'approved'` are human-verified question/answer pairs, an unused regression set already accumulating
+in production"* — was the last one left. It is built, and the list is now **18 open cases carrying
+66 pinned figures**, up from 11 and 29.
+
+The larger result is the one that was not the feature. **The end-to-end replay has now run**, which
+the expected-payload entry called out as its own biggest gap: *"`replayCase` itself has been
+exercised against mocked tools and real payloads, never against both at once."*
+
+### The question that decided the whole increment: can a harvested case be replayed at all?
+
+A case needs the tool calls with their arguments. `ai_ask_cache` does **not** store them — it holds
+`question_norm`, `question_display`, `geo_code`, `answer_md`, `provider`, `data_version`,
+`dataset_slug`, `status`, and nothing else. Checked first, because if the answer were no, a harvested
+case could only ever be scored on citations it does not have, and a row that cannot be replayed makes
+the list look bigger without making it stronger.
+
+`ai_ask_log` does store them. Its `tool_trace` is `[{name, args}]` in call order — the same shape
+`ai_regression_case.tool_calls` already uses. So the recovery is a join, and it is exact rather than
+approximate: the log row must agree with the cache row on `question_norm`, `data_version`,
+`dataset_slug` and `geo_code`, must be `served_from = 'live'` (a cache hit records no trace, because
+no tools ran), and must carry a **byte-identical `answer_md`**. That last condition is what makes it
+a derivation: the trace taken is the one that produced this exact text.
+
+Measured before anything was written: **all seven approved rows join to exactly one such log row**,
+every one `turn_index = 0` and `outcome = 'answered'`. The single-turn shape is why a harvested
+case's `conversation` can be built rather than invented — it is the question and the answer, and
+nothing else happened.
+
+**Where more than one log row qualifies, nothing is harvested.** Not the first, not the newest. Same
+rule the expectation selector enforces one level down, for the same reason: a case built from one of
+several candidate traces has stopped being evidence about anything in particular. It is reported as
+skipped, with the count.
+
+### Whether the harvest can pin a figure — measured twice, and the first answer was wrong
+
+Every number in an approved answer passed `auditNarrative`, so it came from a tool payload. The pins
+are therefore derivable in principle. `lib/ai/harvest-pins.ts` is the derivation: re-issue the
+recorded calls, enumerate every field the expectation language can address, and match by exact
+equality against the numerals `extractNumbers` finds — the audit's own tokeniser, reused so that a
+number the audit admits and a number this pins are the same set. No model reads the answer, and
+nothing needs a provider key.
+
+**Equality is exact here and rounded in the audit, deliberately.** `isTraceable` lets "65.72%" be
+reported as "about 66%" because it decides whether a *sentence* may be shown. A pin is compared on a
+later build, so a rounded match would write an expected value that was never in a payload and fail
+on its first replay.
+
+The first measurement, restricted to the payload root and `rows` as the column shipped this morning:
+**27 of 41 distinct numbers pinned uniquely, 5 more reachable, 1 ambiguous, 8 absent.** Good enough
+to ship — and wrong to. Six of the eight absences were real payload figures the *language* could not
+reach, because `getIndicatorByGeo` returns its counts on the root and its breakdown in an array named
+after the indicator: `demographics`, `training`, `honorarium`. Among the six were "30,600 BHWs
+identify as Indigenous People" and "2,782 BHWs (53.9%)" in Palawan — which are the **subjects of two
+of the seven questions**. A case pinning the two totals every such answer mentions in passing while
+missing the figure the question asked for is pinning the boilerplate.
+
+So `Expectation` gains an optional **`from`** naming the list to select from; absent means `rows`, so
+route 1's ten seeds are untouched (asserted). Naming a list with no `where` is refused by the
+constraint and by the reader — the root read is `where` absent, and it takes no list.
+
+The second measurement is where the interesting failure was. Widening naively made things **worse**:
+unique matches fell 27 → 17 and ambiguities rose 1 → 17. The cause is that
+`getIndicatorByGeo(honorarium_amount).honorarium` *is* the array `getHonorariumStats().rows` returns,
+so every honorarium figure suddenly had two addresses and a strict uniqueness rule rejected all of
+them.
+
+That forced the rule that is actually right, and it is a distinction worth stating: **two addresses
+naming the same row and the same field are one quantity read two ways** — pin the earliest call.
+**Two addresses naming different rows or different fields are different quantities that happen to be
+equal today** — pin nothing, because a later divergence would report a regression in a figure the
+sentence was never about. Under that rule: **37 of 41 pinned.**
+
+The four that are not are each a statement rather than an omission. 5,161 in the Palawan answer is
+`searchGeo`'s `nTotal` for the province *and* the indicator call's `validatedProfiles`. 270,917 in
+the training answer is `validatedProfiles` on the root *and* `nTotal` on all thirty training rows.
+"near 100%" and "below 12%" are prose — no payload carries either, and the audit admits them only
+through the rounding rule a pin does not have.
+
+**A selector is never keyed on a measure.** `deriveSelector` uses string keys only, smallest first,
+one then two. A selector keyed on the figure being checked would put the assertion inside the thing
+that selects the row to assert it in.
+
+### Idempotence and drift, following 4.2 rather than reinventing it
+
+`harvest_key` holds the source `cache_key` under a partial unique index, so a second harvest cannot
+duplicate a case **by construction** rather than by a query remembering to check.
+
+`harvest_fingerprint` is md5 over the answer and the trace — the two things a case is built from.
+When it changes, the case is rebuilt and **`expectations` is reset to empty**: pins derived from the
+previous answer are not evidence about a new one, and a case left green against figures nobody
+verified is the exact "passes for the wrong reason" failure the expectations column is arranged
+against. This is 4.2's rule for a re-swept row (*"a judgement is kept only while the two numbers it
+was judged on are unchanged"*) applied to pins.
+
+`harvest_last_seen_at` is 4.2's `last_swept_at`. One timestamp per run stamps every case the run
+reproduced; a case carrying an older one was not reproduced — unapproved, blocked, edited away — and
+is **reported stale rather than deleted**. Deleting would silently shrink the list, and a question
+verified once is still worth re-running. `/admin/regressions` renders the distinction, deriving "the
+latest run" from the newest stamp in the list, which is exact because the function stamps them alike.
+
+### `source` gains `'harvested'`, and still not `'swept'`
+
+A harvested case is neither reported-as-wrong nor seeded-from-a-screen: it is an answer a person
+looked at and approved, and `note` means a third thing on it — provenance, not a correction and not a
+screen. The admin page now labels all three rather than two.
+
+The difference from `'swept'` is not taste. **This increment writes `'harvested'`.** A `source` value
+nothing writes is the `--propose` mistake — typed and unrun is not a safety property. `kb_contradiction`
+was re-checked, not assumed: **all 12 rows are still at `status = 'auto'`**, owner decision 5 says a
+person judges, so there is still nothing confirmed to file. `ai-regression-harvest.test.ts` asserts
+that no statement in this migration introduces the word.
+
+### Verify
+
+**The harvest, run for real.** Seven approved rows → **7 harvested**, 1–3 tool calls each. Run again
+immediately: **7 unchanged, 0 duplicated, 0 stale.**
+
+**Both drift paths, exercised against the live table inside a transaction that was rolled back** —
+which is how they could be run at all without damaging production data:
+
+```
+edited an approved answer      refreshed  — pins cleared (6 → 0), stamp advanced
+unapproved a source row        stale      — pins kept, stamp not advanced, case not deleted
+a second live log row, different calls
+                               skipped    — "2 live log rows record different tool calls for this
+                                             answer — a harvested case must name one"
+                               stale      — and the already-harvested case is *also* flagged, so an
+                                             ambiguity cannot leave a case standing as confirmed
+```
+
+**The end-to-end replay, run for the first time.** A harvested case's calls are all public tools —
+`searchGeo`, `getIndicatorByGeo`, `getTrainingCoverage`, `getHonorariumStats`,
+`getDataCompleteness` — which read the `agg_*`/`dim_*` layer through the anon key. `queryDataset` and
+`traverseGraph` are what need the service role, and no harvested case uses them. So `replaySuite`
+itself ran: real tools, real payloads, the real reader, the real scorer. **7 cases, 7 ok, 0 degraded,
+0 broken, 37 of 37 expectations met.**
+
+**Seven negative controls through the same path**, because a suite that cannot fail proves nothing:
+
+```
+figure moved by one              broken / unmet       demographics category=YES: n was 30,601, now 30,600
+renamed field in a named list    broken / unresolved  no field count (the row has: dimension, category, n, pct, …)
+the named list is gone           broken / unresolved  the payload has no demographic array to select from
+selector matches nothing         broken / unresolved  no row matched category=MAYBE (32 rows returned)
+a `from` with no `where`         broken / malformed   reported as unreadable, not skipped
+tool cross-check fails           broken / unresolved  call 0 is getIndicatorByGeo, but this expectation is about getTrainingCoverage
+a tool this build lacks          broken               getVibes is not a tool in this build
+```
+
+**Nine database refusals, each an attempted insert against the live table**, all rejected, with a
+tenth valid shape accepted as the control (and deleted afterwards): `source = 'swept'`; harvested
+with no `harvest_key`; a `harvest_key` on a seeded row; a key with no fingerprint; a second case on
+an existing `harvest_key`; and `from` with no `where`, `from` as a number, as an empty string, and as
+JSON null.
+
+**Database and committed file in sync.** Both functions checked by `md5(prosrc)` against the same
+slice of the committed file: `ai_regression_expectation_well_formed` at
+`d300b78fbbb9bafcbf53cbc63f17b081` (1721 bytes) and `harvest_ask_cache_cases` at
+`639a54e8cc88367a53feb3f0453840df` (6329 bytes). Applied verbatim with comments, which is what the
+last increment learned to do the hard way.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — **768 tests, 41 more than the
+branch's 727 and 75 more than `main`'s 693**. `npx prettier --check .` fails on the same **149** files
+as untouched `main`, and every file this branch touches is clean.
+
+**A defect the run found.** The harvest's own report said "1 tool calls recorded". Cosmetic, but it is
+a string a person reads to decide whether a case is worth looking at, and it was fixed and re-applied
+(which is why that function has two applied migrations). Smaller than the last four increments'
+finds; recorded anyway, because the convention is that running the thing is what surfaces them.
+
+**A near-miss in the test itself, worth recording.** The assertion that the harvest never deletes a
+case was first written as `expect(harvestBody).not.toContain("delete")` — which failed, because the
+stale message *says* "Kept, not deleted". A scan for the word would have had to be deleted or the
+promise reworded; it is now matched on `delete from` as a statement. This is the third time in this
+repository a naive string scan in a migration test has been the wrong instrument, and the first time
+it failed loudly rather than silently asserting nothing.
+
+### What this does and does not establish
+
+It establishes route 3: seven cases whose questions were asked by real users, whose answers a person
+approved, whose tool calls were recovered from the log by a byte-identical match rather than a guess,
+and whose 37 figures were derived by a program rather than authored. It establishes that the harvest
+is idempotent, that an edited source clears its pins, and that an unapproved source leaves a case
+stale rather than gone — each run, not reasoned about.
+
+**It establishes that the replay works end to end**, which nothing did before. Against public tools
+only, against real production data, with the negative controls to show it can fail.
+
+**It does not establish that a `queryDataset` case replays.** Route 1's ten still need the registry,
+which is service-role only, and no key exists in these environments. The half now proven is the half
+that shares every line of `replayCase` except the tools it calls — which is most of the risk, but not
+the registry lookup itself.
+
+**It does not establish that seven is enough.** §10's standard is "three answers read by hand say
+nothing about the other forty", and eighteen is not forty. Worse, these seven are not independent:
+five of the seven are national BHW questions, two of them the *same question* asked at two geographies,
+and all seven come from one dataset (`bhw-2025`) at one `data_version`. The list has grown; its
+*coverage* has grown less than the count suggests.
+
+**It does not make the harvest self-maintaining.** The function files new cases and marks stale ones,
+but nothing in the running product derives pins for a case it files: that needs the tools *and* a
+service-role write, and the write half cannot be exercised here. A newly harvested case therefore
+arrives with zero pins and is scored on its tool calls alone until someone runs the deriver. Stated
+rather than papered over, and deliberately not shipped as a button nobody could test — the one thing
+this repository shipped unexercised turned out never to have worked.
+
+**And it still does not make any case sensitive to prose.** The answer text is not regenerated. Every
+caveat on the runner stands.
+
 
 ## 2026-08-28 — UUC for PHC 2025: aligned to the source office's final list, and the vintage inference was backwards
 
 The source office supplied its final national list, *2025 UUC FOR PHC LIST*, carrying **5,987**
 barangays. This dashboard published **5,991**, from the reconciled submission workbook it was built
 from, and footnoted the 2027 Budget Cue Cards p37's 5,987 as an older snapshot. **The dataset now
-publishes 5,987.** Migration `20260828120000_uuc_phc_final_list_alignment.sql`; registry delta
-`20260828120100_seed_registry_final_list_alignment.sql`; full reasoning in
+publishes 5,987.** Migration `20260828180000_uuc_phc_final_list_alignment.sql`; registry delta
+`20260828180100_seed_registry_final_list_alignment.sql`; full reasoning in
 `docs/UUC_PHC_2025_PLAN.md` §3, which is rewritten.
 
 ### The gap was six barangays, and nothing else

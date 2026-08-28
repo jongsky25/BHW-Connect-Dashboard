@@ -24,20 +24,34 @@ export default async function AdminRegressionsPage({
   const cases = await loadReplayableCases();
   const suite = run === "1" ? await replaySuite(cases) : null;
 
+  // The newest harvest stamp in the list *is* the last harvest run, because every case that run
+  // reproduced was stamped with the same timestamp. A harvested case carrying an older one was not
+  // reproduced — its ask-cache row was edited, blocked or unapproved — and it is kept rather than
+  // deleted, so the page has to say so or the case reads as still vouched for.
+  const lastHarvest = cases.reduce<string | null>(
+    (newest, stored) =>
+      stored.harvestLastSeenAt && (!newest || stored.harvestLastSeenAt > newest)
+        ? stored.harvestLastSeenAt
+        : newest,
+    null,
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="text-lg font-semibold">Regression cases</h2>
         <p className="mt-1 text-xs text-muted">
-          Every case here was filed from a real answer someone marked wrong. Replaying re-issues the
-          tool calls it recorded and re-resolves the passages it cited, against this build.
+          Cases are filed from answers someone marked wrong, seeded from figures already rendered on
+          public pages, and harvested from answers approved in the answer bank. Replaying re-issues
+          the tool calls a case recorded, re-resolves the passages it cited, and checks that the
+          figures it pinned still come back unchanged — against this build.
         </p>
       </div>
 
       {cases.length === 0 ? (
         <p className="text-sm text-muted">
           No open cases. Marking an assistant answer wrong files one, with the question, the tool
-          calls and the citations behind it.
+          calls, the citations and the figures behind it.
         </p>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
@@ -72,11 +86,32 @@ export default async function AdminRegressionsPage({
                 <span className="font-mono text-[11px] text-muted">#{stored.caseId}</span>
               </div>
               {stored.note && (
-                <p className="mt-1 text-xs text-muted">Should have said: {stored.note}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {/* A reported case's note is the answer that should have been given; a seeded
+                      case's is the screen its figure is rendered on; a harvested case's is where
+                      in the answer bank it came from. Same column, three different claims, and one
+                      label for all of them would misdescribe most of the list. */}
+                  {NOTE_LABEL[stored.source] ?? "Should have said: "}
+                  {stored.note}
+                </p>
+              )}
+              {stored.harvestLastSeenAt && (
+                <p className="mt-1 text-xs text-muted">
+                  {stored.harvestLastSeenAt === lastHarvest ? (
+                    <>Confirmed against the answer bank on {day(stored.harvestLastSeenAt)}.</>
+                  ) : (
+                    <span className="text-warning">
+                      Stale: the last harvest did not reproduce this case. Its answer-bank row was
+                      last confirmed on {day(stored.harvestLastSeenAt)} and may since have been
+                      edited, blocked or unapproved. Kept, not deleted.
+                    </span>
+                  )}
+                </p>
               )}
               <p className="mt-1 font-mono text-[11px] text-muted">
                 {stored.toolCalls.length} tool {stored.toolCalls.length === 1 ? "call" : "calls"} ·{" "}
-                {stored.citations.length} cited
+                {stored.citations.length} cited · {stored.expectations.length}{" "}
+                {stored.expectations.length === 1 ? "figure" : "figures"} pinned
               </p>
               {replay && <ReplayDetail replay={replay} />}
             </li>
@@ -85,6 +120,18 @@ export default async function AdminRegressionsPage({
       </ul>
     </div>
   );
+}
+
+/** What a `note` is claiming, which differs by where the case came from. */
+const NOTE_LABEL: Record<string, string> = {
+  seeded: "On screen at: ",
+  harvested: "Provenance: ",
+  reported: "Should have said: ",
+};
+
+/** A stamp reads as a date here; the exact minute is a detail the case row does not turn on. */
+function day(stamp: string): string {
+  return stamp.slice(0, 10);
 }
 
 function Verdict({ verdict }: { verdict: CaseReplay["verdict"] }) {
@@ -110,6 +157,12 @@ function ReplayDetail({ replay }: { replay: CaseReplay }) {
         </ul>
       )}
       <ul className="flex flex-col gap-1 font-mono text-[11px]">
+        {replay.expectations.map((scored, i) => (
+          <li key={`e${i}`} className={scored.status === "met" ? "text-muted" : "text-danger"}>
+            {scored.tool}[{scored.call}]{scored.where ? ` ${describeSelector(scored.where)}` : ""} ·{" "}
+            {scored.field} = {formatExpected(scored.value)} → {scored.status}
+          </li>
+        ))}
         {replay.toolCalls.map((call, i) => (
           <li key={i} className={call.status === "ok" ? "text-muted" : "text-danger"}>
             {call.name}({JSON.stringify(call.args)}) → {call.status}
@@ -144,4 +197,21 @@ function ReplayDetail({ replay }: { replay: CaseReplay }) {
       </ul>
     </div>
   );
+}
+
+/**
+ * The selector and the expected value, phrased the way the runner's findings phrase them.
+ *
+ * Deliberately not the *actual* value: the finding line above already carries "was X, now Y" for
+ * anything that moved, and printing whole payload values into an admin page is how internal rows
+ * end up in a rendered surface (§12.5). This line says what the case pins and whether it held.
+ */
+function describeSelector(where: Record<string, string | number | boolean>) {
+  return Object.entries(where)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(", ");
+}
+
+function formatExpected(value: string | number | boolean) {
+  return typeof value === "number" ? new Intl.NumberFormat("en-US").format(value) : String(value);
 }

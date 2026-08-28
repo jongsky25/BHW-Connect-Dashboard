@@ -14,7 +14,7 @@ it or not. Every figure on the section is therefore one count against one denomi
 > which had stood at +4. The reasoning, the six barangays, and every figure it moved are in
 > `docs/UUC_PHC_2025_PLAN.md` §3. **The verification records further down this document were run
 > against the 5,991-row load** and are left as they were run; the alignment migration
-> (`20260828120000_uuc_phc_final_list_alignment.sql`) re-asserts each of those checks. One of them
+> (`20260828180000_uuc_phc_final_list_alignment.sql`) re-asserts each of those checks. One of them
 > reads differently now: CAVITE's listed side falls to three barangays and is suppressed, so it
 > leaves the BHW comparison and CALABARZON no longer badges an area against the pattern.
 

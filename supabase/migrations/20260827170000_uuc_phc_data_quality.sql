@@ -91,7 +91,7 @@ select
   -- source recorded none there is nothing for the recomputation to disagree with, and counting it
   -- as a disagreement would inflate a figure the page presents as a measured gap. One barangay is
   -- in that position: SUMISIP CENTRAL, which the final-list alignment added from a sheet that
-  -- carries no criterion (d) score (20260828120000_uuc_phc_final_list_alignment.sql).
+  -- carries no criterion (d) score (20260828180000_uuc_phc_final_list_alignment.sql).
   count(*) filter (where health_indicators is not null
                      and recomputed is distinct from health_indicators)::int
                                                              as n_score_disagreement,
@@ -197,7 +197,7 @@ comment on view ref_uuc_phc_benchmark_gaps is
 -- with its as-of date. U10 renders that footnote as a surface, with the two regions the difference
 -- sits in. **That reconciliation has since closed** — the source office's final list carries
 -- 5,987, so the dashboard publishes it and this table is empty. See
--- 20260828120000_uuc_phc_final_list_alignment.sql.
+-- 20260828180000_uuc_phc_final_list_alignment.sql.
 --
 -- **The figures are parsed from the corpus chunk, never typed into this file.** p37 is loaded in
 -- `doc_chunk` (Increment 2.1), so the source is on hand and the comparison is computed rather than

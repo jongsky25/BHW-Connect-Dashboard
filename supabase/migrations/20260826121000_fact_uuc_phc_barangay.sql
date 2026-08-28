@@ -18,7 +18,7 @@
 -- Policy basis: DOH AO No. 2020-0023 defines the criteria; DC No. 2025-0549 issues the 2025
 -- list. Published total is 5,987 — the source office's final list, which is also what cue cards
 -- p37 reports. The workbook this table was first built from said 5,991; the six-barangay
--- difference is reconciled in 20260828120000_uuc_phc_final_list_alignment.sql
+-- difference is reconciled in 20260828180000_uuc_phc_final_list_alignment.sql
 -- (docs/UUC_PHC_2025_PLAN.md §3).
 create table fact_uuc_phc_barangay (
   id bigint generated always as identity primary key,

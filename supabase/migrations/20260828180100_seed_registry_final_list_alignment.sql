@@ -6,7 +6,7 @@
 -- pattern as U5's, U7's, U9's, U10's and U12b's registry applies. `lib/db/dataset-registry-seed
 -- .test.ts` guards the canonical file, so the two cannot drift without a test failing.
 --
--- What changed, and why: 20260828120000_uuc_phc_final_list_alignment.sql moved the dataset from
+-- What changed, and why: 20260828180000_uuc_phc_final_list_alignment.sql moved the dataset from
 -- the reconciled workbook's 5,991 barangays to the source office's final 5,987. That changes three
 -- row estimates, the national figures four column dictionaries quote, and — most consequentially
 -- for anything reading the registry — what ref_uuc_phc_published_delta means. It used to hold the
