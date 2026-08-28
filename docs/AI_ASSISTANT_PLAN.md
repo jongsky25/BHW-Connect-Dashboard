@@ -23,7 +23,8 @@ configured on Vercel, so the vector half of 2.2 is live in production rather tha
 queue it filled is now empty** (2026-08-27): 7 nodes and 14 edges approved, 9 nodes and 21 edges
 rejected as duplicate identities. Extracted rows stand at 84 nodes / 114 edges approved.
 **Increment 4.1 is built and the plan's success condition is met** — `profile_dataset()` took
-`fact_bhw_raw` from no registry row to queryable with no code change (2026-08-27). **4.2 is built
+`fact_bhw_raw` from no registry row to queryable with no code change (2026-08-27), and since
+2026-08-28 `ingestion/ingest.py` calls the pass after a load, run end to end on the full extract. **4.2 is built
 too (2026-08-28): every increment in this plan now exists.** The contradiction sweep computes
 disagreements between the corpus and the registry rather than noticing them, and rediscovered both
 of §8's known cases without either being seeded. What remains is not an increment but the list in
@@ -513,7 +514,7 @@ the superseded text, establishing that the edges — not the ranking — are wha
 ### Phase 4 — Auto-understanding
 
 **4.1 — Ingest-time profiling.** *(built — 2026-08-27; `profile_dataset()`, verified on
-`fact_bhw_raw`)*
+`fact_bhw_raw`. Wired into `ingestion/ingest.py` and run end to end 2026-08-28)*
 New dataset → column profile → inferred meanings → proposed joins
 → registry rows at `status = 'auto'`.
 
@@ -532,9 +533,23 @@ cannot run without an API key would not run at ingest time, which is the one tim
 accreditation, Region VII) that no `agg_*` table holds — over the `geo_code → dim_geo.geo_code`
 join the profiler measured at 1.0000. See `DECISIONS.md`.
 
-*Still open from this increment:* `ingestion/ingest.py` does not yet call the pass after a load —
-one line, deliberately not added unrun (see `DECISIONS.md`) — and 25 of `fact_bhw_raw`'s 26 column
-meanings had to be written by hand, so the borrow-from-the-dictionary route is unproven at scale.
+*The ingest hook is now wired and run (2026-08-28).* `ingest.py` profiles the tables it just loaded,
+after the load has committed and on its own connection: a profiling failure is recorded in
+`ingestion_batches.qa_report` and warned about, but never fails the load or the exit status. It
+never passes `p_force`, because forcing returns an approved dictionary to `auto` and
+`lib/db/dataset-registry.ts` reads only `approved` — so a forcing hook would make a reviewed dataset
+vanish from the assistant on the next re-load. Proven on a full 270,917-row load against a local
+Postgres; no write reached the live database.
+
+*Still open from this increment,* and the run narrowed rather than closed it: the
+borrow-from-the-dictionary route supplied **1 of 26** meanings on `fact_bhw_raw` (reproducing the
+hand-count) and **1 of 8** on `fact_honorarium` — one hub key and one surrogate across 34 columns,
+no domain column. Two defects the run exposed are also open, both in `profile_dataset()` rather than
+in the hook: `fact_honorarium.bhw_id` profiles as `role = 'measure'` because 4.1's identity rule
+(`distinct / rows >= 0.9`) does not fire on the child side of a one-to-many join, and no join is
+proposed between `fact_honorarium` and `fact_bhw_raw` because the pass can only propose joins toward
+join targets an approved row already names — it extends the join graph from existing hubs and cannot
+create one. See `DECISIONS.md`.
 
 **4.2 — Contradiction sweep.** *(built — 2026-08-28; `sweep_contradictions()`. Re-run 2026-08-28:
 **22 rows**, all still at `auto`)*
