@@ -58,13 +58,24 @@ export type RegressionCase = {
  *
  * `call` is an index into the case's `tool_calls`; `tool` is the name that index must have, so an
  * edited `tool_calls` cannot silently shift an assertion onto a different call. `where` selects one
- * row of the payload's `rows` array and must match exactly one — see `evaluateExpectation`, where
- * ambiguity is a failure rather than a first-row pick. Absent, the field is read off the payload
- * root, which is how a `mode: "count"` case reaches `matchingRows`.
+ * row of the payload's `rows` array — or of the array `from` names — and must match exactly one;
+ * see `evaluateExpectation`, where ambiguity is a failure rather than a first-row pick. Absent, the
+ * field is read off the payload root, which is how a `mode: "count"` case reaches `matchingRows`.
  */
 export type Expectation = {
   call: number;
   tool: string;
+  /**
+   * The array in the payload whose rows `where` selects from, or null for `rows`.
+   *
+   * Added by §10.1 route 3. `rows` alone reaches everything `queryDataset` returns, which is all
+   * route 1 needed, but the public indicator tool puts its figures in an array named after the
+   * indicator — `demographics`, `training`, `honorarium`. Six of the seven harvested answers are
+   * *about* a figure in one of those arrays ("30,600 BHWs identify as Indigenous People"), so
+   * without this a harvested case would pin the two counts every such answer mentions in passing
+   * and miss the number the question asked for.
+   */
+  from: string | null;
   where: Record<string, ExpectedValue> | null;
   field: string;
   value: ExpectedValue;
@@ -87,8 +98,21 @@ export type ReplayableCase = {
   note: string | null;
   toolCalls: { name: string; args: Record<string, unknown> }[];
   citations: { chunkId: number; page: number; text: string }[];
-  /** 'reported' or 'seeded' — what a `note` means differs between them, so the page needs it. */
+  /**
+   * 'reported', 'seeded' or 'harvested' — what a `note` means differs across all three, so the
+   * page needs it.
+   */
   source: string;
+  /**
+   * When the last harvest confirmed this case against the `ai_ask_cache` row it came from. Null on
+   * every case that was not harvested.
+   *
+   * Read so the page can say when a harvested case was last vouched for. A stamp older than the
+   * newest one in the list means the latest harvest did not reproduce this case — the source row
+   * was edited, blocked or unapproved — and the case is stale rather than deleted, which is 4.2's
+   * rule for a row a re-sweep did not reproduce.
+   */
+  harvestLastSeenAt: string | null;
   expectations: Expectation[];
   /**
    * Stored expectations this reader could not parse, rendered back as JSON.
@@ -110,11 +134,17 @@ function isExpectedValue(value: unknown): value is ExpectedValue {
 function parseExpectation(raw: unknown): Expectation | { malformed: string } {
   const malformed = { malformed: JSON.stringify(raw) ?? String(raw) };
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return malformed;
-  const { call, tool, where, field, value } = raw as Record<string, unknown>;
+  const { call, tool, from, where, field, value } = raw as Record<string, unknown>;
   if (!Number.isInteger(call) || (call as number) < 0) return malformed;
   if (typeof tool !== "string" || tool === "") return malformed;
   if (typeof field !== "string" || field === "") return malformed;
   if (!isExpectedValue(value)) return malformed;
+
+  let list: string | null = null;
+  if (from !== undefined && from !== null) {
+    if (typeof from !== "string" || from === "") return malformed;
+    list = from;
+  }
 
   let selector: Record<string, ExpectedValue> | null = null;
   if (where !== undefined && where !== null) {
@@ -128,8 +158,11 @@ function parseExpectation(raw: unknown): Expectation | { malformed: string } {
     // accident that looks like a deliberate root read. `where` is omitted for that.
     if (Object.keys(selector).length === 0) return malformed;
   }
+  // Naming an array to select from and then selecting nothing is not a root read, it is a
+  // half-written assertion. The root read is `where` absent, and it takes no `from`.
+  if (list !== null && selector === null) return malformed;
 
-  return { call: call as number, tool, where: selector, field, value };
+  return { call: call as number, tool, from: list, where: selector, field, value };
 }
 
 /** Splits stored expectations into the ones a replay can score and the ones it must report. */
@@ -152,7 +185,9 @@ export async function loadReplayableCases(limit = 20): Promise<ReplayableCase[]>
     const supabase = createSupabaseServiceClient();
     const { data, error } = await supabase
       .from("ai_regression_case")
-      .select("case_id, question, note, source, tool_calls, citations, expectations")
+      .select(
+        "case_id, question, note, source, harvest_last_seen_at, tool_calls, citations, expectations",
+      )
       .eq("status", "open")
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -165,6 +200,7 @@ export async function loadReplayableCases(limit = 20): Promise<ReplayableCase[]>
         question: row.question,
         note: row.note,
         source: row.source,
+        harvestLastSeenAt: row.harvest_last_seen_at,
         toolCalls: (Array.isArray(row.tool_calls) ? row.tool_calls : [])
           .map((call) => {
             if (!call || typeof call !== "object") return null;

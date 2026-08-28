@@ -5710,3 +5710,216 @@ cases is not forty.
 stands: the answer text is not regenerated, and a case can pass here while reading badly. The
 caveat string was widened to say "tool calls, cited passages and pinned figures" rather than
 quietly growing a third check behind a two-check disclaimer.
+
+## 2026-08-28 — §10.1 route 3: the answer bank harvested, and the replay finally run end to end
+
+§10 names three ways the regression list grows. Route 2 shipped at Increment 2.4, route 1 shipped
+this morning with the expectations column, and route 3 — *"`ai_ask_cache` rows at `status =
+'approved'` are human-verified question/answer pairs, an unused regression set already accumulating
+in production"* — was the last one left. It is built, and the list is now **18 open cases carrying
+66 pinned figures**, up from 11 and 29.
+
+The larger result is the one that was not the feature. **The end-to-end replay has now run**, which
+the expected-payload entry called out as its own biggest gap: *"`replayCase` itself has been
+exercised against mocked tools and real payloads, never against both at once."*
+
+### The question that decided the whole increment: can a harvested case be replayed at all?
+
+A case needs the tool calls with their arguments. `ai_ask_cache` does **not** store them — it holds
+`question_norm`, `question_display`, `geo_code`, `answer_md`, `provider`, `data_version`,
+`dataset_slug`, `status`, and nothing else. Checked first, because if the answer were no, a harvested
+case could only ever be scored on citations it does not have, and a row that cannot be replayed makes
+the list look bigger without making it stronger.
+
+`ai_ask_log` does store them. Its `tool_trace` is `[{name, args}]` in call order — the same shape
+`ai_regression_case.tool_calls` already uses. So the recovery is a join, and it is exact rather than
+approximate: the log row must agree with the cache row on `question_norm`, `data_version`,
+`dataset_slug` and `geo_code`, must be `served_from = 'live'` (a cache hit records no trace, because
+no tools ran), and must carry a **byte-identical `answer_md`**. That last condition is what makes it
+a derivation: the trace taken is the one that produced this exact text.
+
+Measured before anything was written: **all seven approved rows join to exactly one such log row**,
+every one `turn_index = 0` and `outcome = 'answered'`. The single-turn shape is why a harvested
+case's `conversation` can be built rather than invented — it is the question and the answer, and
+nothing else happened.
+
+**Where more than one log row qualifies, nothing is harvested.** Not the first, not the newest. Same
+rule the expectation selector enforces one level down, for the same reason: a case built from one of
+several candidate traces has stopped being evidence about anything in particular. It is reported as
+skipped, with the count.
+
+### Whether the harvest can pin a figure — measured twice, and the first answer was wrong
+
+Every number in an approved answer passed `auditNarrative`, so it came from a tool payload. The pins
+are therefore derivable in principle. `lib/ai/harvest-pins.ts` is the derivation: re-issue the
+recorded calls, enumerate every field the expectation language can address, and match by exact
+equality against the numerals `extractNumbers` finds — the audit's own tokeniser, reused so that a
+number the audit admits and a number this pins are the same set. No model reads the answer, and
+nothing needs a provider key.
+
+**Equality is exact here and rounded in the audit, deliberately.** `isTraceable` lets "65.72%" be
+reported as "about 66%" because it decides whether a *sentence* may be shown. A pin is compared on a
+later build, so a rounded match would write an expected value that was never in a payload and fail
+on its first replay.
+
+The first measurement, restricted to the payload root and `rows` as the column shipped this morning:
+**27 of 41 distinct numbers pinned uniquely, 5 more reachable, 1 ambiguous, 8 absent.** Good enough
+to ship — and wrong to. Six of the eight absences were real payload figures the *language* could not
+reach, because `getIndicatorByGeo` returns its counts on the root and its breakdown in an array named
+after the indicator: `demographics`, `training`, `honorarium`. Among the six were "30,600 BHWs
+identify as Indigenous People" and "2,782 BHWs (53.9%)" in Palawan — which are the **subjects of two
+of the seven questions**. A case pinning the two totals every such answer mentions in passing while
+missing the figure the question asked for is pinning the boilerplate.
+
+So `Expectation` gains an optional **`from`** naming the list to select from; absent means `rows`, so
+route 1's ten seeds are untouched (asserted). Naming a list with no `where` is refused by the
+constraint and by the reader — the root read is `where` absent, and it takes no list.
+
+The second measurement is where the interesting failure was. Widening naively made things **worse**:
+unique matches fell 27 → 17 and ambiguities rose 1 → 17. The cause is that
+`getIndicatorByGeo(honorarium_amount).honorarium` *is* the array `getHonorariumStats().rows` returns,
+so every honorarium figure suddenly had two addresses and a strict uniqueness rule rejected all of
+them.
+
+That forced the rule that is actually right, and it is a distinction worth stating: **two addresses
+naming the same row and the same field are one quantity read two ways** — pin the earliest call.
+**Two addresses naming different rows or different fields are different quantities that happen to be
+equal today** — pin nothing, because a later divergence would report a regression in a figure the
+sentence was never about. Under that rule: **37 of 41 pinned.**
+
+The four that are not are each a statement rather than an omission. 5,161 in the Palawan answer is
+`searchGeo`'s `nTotal` for the province *and* the indicator call's `validatedProfiles`. 270,917 in
+the training answer is `validatedProfiles` on the root *and* `nTotal` on all thirty training rows.
+"near 100%" and "below 12%" are prose — no payload carries either, and the audit admits them only
+through the rounding rule a pin does not have.
+
+**A selector is never keyed on a measure.** `deriveSelector` uses string keys only, smallest first,
+one then two. A selector keyed on the figure being checked would put the assertion inside the thing
+that selects the row to assert it in.
+
+### Idempotence and drift, following 4.2 rather than reinventing it
+
+`harvest_key` holds the source `cache_key` under a partial unique index, so a second harvest cannot
+duplicate a case **by construction** rather than by a query remembering to check.
+
+`harvest_fingerprint` is md5 over the answer and the trace — the two things a case is built from.
+When it changes, the case is rebuilt and **`expectations` is reset to empty**: pins derived from the
+previous answer are not evidence about a new one, and a case left green against figures nobody
+verified is the exact "passes for the wrong reason" failure the expectations column is arranged
+against. This is 4.2's rule for a re-swept row (*"a judgement is kept only while the two numbers it
+was judged on are unchanged"*) applied to pins.
+
+`harvest_last_seen_at` is 4.2's `last_swept_at`. One timestamp per run stamps every case the run
+reproduced; a case carrying an older one was not reproduced — unapproved, blocked, edited away — and
+is **reported stale rather than deleted**. Deleting would silently shrink the list, and a question
+verified once is still worth re-running. `/admin/regressions` renders the distinction, deriving "the
+latest run" from the newest stamp in the list, which is exact because the function stamps them alike.
+
+### `source` gains `'harvested'`, and still not `'swept'`
+
+A harvested case is neither reported-as-wrong nor seeded-from-a-screen: it is an answer a person
+looked at and approved, and `note` means a third thing on it — provenance, not a correction and not a
+screen. The admin page now labels all three rather than two.
+
+The difference from `'swept'` is not taste. **This increment writes `'harvested'`.** A `source` value
+nothing writes is the `--propose` mistake — typed and unrun is not a safety property. `kb_contradiction`
+was re-checked, not assumed: **all 12 rows are still at `status = 'auto'`**, owner decision 5 says a
+person judges, so there is still nothing confirmed to file. `ai-regression-harvest.test.ts` asserts
+that no statement in this migration introduces the word.
+
+### Verify
+
+**The harvest, run for real.** Seven approved rows → **7 harvested**, 1–3 tool calls each. Run again
+immediately: **7 unchanged, 0 duplicated, 0 stale.**
+
+**Both drift paths, exercised against the live table inside a transaction that was rolled back** —
+which is how they could be run at all without damaging production data:
+
+```
+edited an approved answer      refreshed  — pins cleared (6 → 0), stamp advanced
+unapproved a source row        stale      — pins kept, stamp not advanced, case not deleted
+a second live log row, different calls
+                               skipped    — "2 live log rows record different tool calls for this
+                                             answer — a harvested case must name one"
+                               stale      — and the already-harvested case is *also* flagged, so an
+                                             ambiguity cannot leave a case standing as confirmed
+```
+
+**The end-to-end replay, run for the first time.** A harvested case's calls are all public tools —
+`searchGeo`, `getIndicatorByGeo`, `getTrainingCoverage`, `getHonorariumStats`,
+`getDataCompleteness` — which read the `agg_*`/`dim_*` layer through the anon key. `queryDataset` and
+`traverseGraph` are what need the service role, and no harvested case uses them. So `replaySuite`
+itself ran: real tools, real payloads, the real reader, the real scorer. **7 cases, 7 ok, 0 degraded,
+0 broken, 37 of 37 expectations met.**
+
+**Seven negative controls through the same path**, because a suite that cannot fail proves nothing:
+
+```
+figure moved by one              broken / unmet       demographics category=YES: n was 30,601, now 30,600
+renamed field in a named list    broken / unresolved  no field count (the row has: dimension, category, n, pct, …)
+the named list is gone           broken / unresolved  the payload has no demographic array to select from
+selector matches nothing         broken / unresolved  no row matched category=MAYBE (32 rows returned)
+a `from` with no `where`         broken / malformed   reported as unreadable, not skipped
+tool cross-check fails           broken / unresolved  call 0 is getIndicatorByGeo, but this expectation is about getTrainingCoverage
+a tool this build lacks          broken               getVibes is not a tool in this build
+```
+
+**Nine database refusals, each an attempted insert against the live table**, all rejected, with a
+tenth valid shape accepted as the control (and deleted afterwards): `source = 'swept'`; harvested
+with no `harvest_key`; a `harvest_key` on a seeded row; a key with no fingerprint; a second case on
+an existing `harvest_key`; and `from` with no `where`, `from` as a number, as an empty string, and as
+JSON null.
+
+**Database and committed file in sync.** Both functions checked by `md5(prosrc)` against the same
+slice of the committed file: `ai_regression_expectation_well_formed` at
+`d300b78fbbb9bafcbf53cbc63f17b081` (1721 bytes) and `harvest_ask_cache_cases` at
+`639a54e8cc88367a53feb3f0453840df` (6329 bytes). Applied verbatim with comments, which is what the
+last increment learned to do the hard way.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — **768 tests, 41 more than the
+branch's 727 and 75 more than `main`'s 693**. `npx prettier --check .` fails on the same **149** files
+as untouched `main`, and every file this branch touches is clean.
+
+**A defect the run found.** The harvest's own report said "1 tool calls recorded". Cosmetic, but it is
+a string a person reads to decide whether a case is worth looking at, and it was fixed and re-applied
+(which is why that function has two applied migrations). Smaller than the last four increments'
+finds; recorded anyway, because the convention is that running the thing is what surfaces them.
+
+**A near-miss in the test itself, worth recording.** The assertion that the harvest never deletes a
+case was first written as `expect(harvestBody).not.toContain("delete")` — which failed, because the
+stale message *says* "Kept, not deleted". A scan for the word would have had to be deleted or the
+promise reworded; it is now matched on `delete from` as a statement. This is the third time in this
+repository a naive string scan in a migration test has been the wrong instrument, and the first time
+it failed loudly rather than silently asserting nothing.
+
+### What this does and does not establish
+
+It establishes route 3: seven cases whose questions were asked by real users, whose answers a person
+approved, whose tool calls were recovered from the log by a byte-identical match rather than a guess,
+and whose 37 figures were derived by a program rather than authored. It establishes that the harvest
+is idempotent, that an edited source clears its pins, and that an unapproved source leaves a case
+stale rather than gone — each run, not reasoned about.
+
+**It establishes that the replay works end to end**, which nothing did before. Against public tools
+only, against real production data, with the negative controls to show it can fail.
+
+**It does not establish that a `queryDataset` case replays.** Route 1's ten still need the registry,
+which is service-role only, and no key exists in these environments. The half now proven is the half
+that shares every line of `replayCase` except the tools it calls — which is most of the risk, but not
+the registry lookup itself.
+
+**It does not establish that seven is enough.** §10's standard is "three answers read by hand say
+nothing about the other forty", and eighteen is not forty. Worse, these seven are not independent:
+five of the seven are national BHW questions, two of them the *same question* asked at two geographies,
+and all seven come from one dataset (`bhw-2025`) at one `data_version`. The list has grown; its
+*coverage* has grown less than the count suggests.
+
+**It does not make the harvest self-maintaining.** The function files new cases and marks stale ones,
+but nothing in the running product derives pins for a case it files: that needs the tools *and* a
+service-role write, and the write half cannot be exercised here. A newly harvested case therefore
+arrives with zero pins and is scored on its tool calls alone until someone runs the deriver. Stated
+rather than papered over, and deliberately not shipped as a button nobody could test — the one thing
+this repository shipped unexercised turned out never to have worked.
+
+**And it still does not make any case sensitive to prose.** The answer text is not regenerated. Every
+caveat on the runner stands.

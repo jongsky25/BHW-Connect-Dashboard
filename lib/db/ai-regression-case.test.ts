@@ -202,6 +202,14 @@ describe("route 1's seeded cases", () => {
     }
   });
 
+  it("carries no `from`, so the list-naming §10.1 route 3 added did not change these", () => {
+    // `queryDataset` puts everything in `rows`, which is what an absent `from` means. A seed that
+    // silently gained one would be reading a different part of the payload than it was verified on.
+    for (const seed of seeds) {
+      for (const pinned of seed.expectations) expect(pinned.from).toBeNull();
+    }
+  });
+
   it("says, on every case, which screen renders the figure it pins", () => {
     // Route 1's claim is that its expected answers are "not authored — they are on screen". That
     // is only checkable if the screen is written down; a seed with no page named is an authored

@@ -1380,6 +1380,9 @@ export type Database = {
           conversation: Json | null;
           created_at: string;
           expectations: Json;
+          harvest_fingerprint: string | null;
+          harvest_key: string | null;
+          harvest_last_seen_at: string | null;
           note: string | null;
           provider: string | null;
           question: string;
@@ -1396,6 +1399,9 @@ export type Database = {
           conversation?: Json | null;
           created_at?: string;
           expectations?: Json;
+          harvest_fingerprint?: string | null;
+          harvest_key?: string | null;
+          harvest_last_seen_at?: string | null;
           note?: string | null;
           provider?: string | null;
           question: string;
@@ -1412,6 +1418,9 @@ export type Database = {
           conversation?: Json | null;
           created_at?: string;
           expectations?: Json;
+          harvest_fingerprint?: string | null;
+          harvest_key?: string | null;
+          harvest_last_seen_at?: string | null;
           note?: string | null;
           provider?: string | null;
           question?: string;
