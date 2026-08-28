@@ -15,13 +15,23 @@ import {
   type PendingDataset,
 } from "@/lib/db/dataset-review";
 import {
+  describeSides,
+  getContradictionCounts,
+  listPendingContradictions,
+  listRecentlyJudgedContradictions,
+  type JudgedContradiction,
+  type PendingContradiction,
+} from "@/lib/db/contradiction-review";
+import {
   approveDatasetColumns,
   editColumnMeaning,
   editNode,
   judgeColumnRow,
+  judgeContradictionRow,
   judgeDatasetRow,
   judgeEdge,
   judgeNode,
+  reopenContradictionRow,
   reopenRow,
 } from "./actions";
 
@@ -47,13 +57,26 @@ import {
  * absence reads as a decision rather than an omission.
  */
 export default async function AdminKbReviewPage() {
-  const [nodes, edges, counts, judged, datasets, datasetCounts] = await Promise.all([
+  const [
+    nodes,
+    edges,
+    counts,
+    judged,
+    datasets,
+    datasetCounts,
+    contradictions,
+    contradictionCounts,
+    judgedContradictions,
+  ] = await Promise.all([
     listPendingNodes(),
     listPendingEdges(),
     getReviewCounts(),
     listRecentlyJudged(),
     listPendingDatasets(),
     getDatasetReviewCounts(),
+    listPendingContradictions(),
+    getContradictionCounts(),
+    listRecentlyJudgedContradictions(),
   ]);
 
   return (
@@ -150,6 +173,61 @@ export default async function AdminKbReviewPage() {
           <ul className="flex flex-col gap-4">
             {datasets.map((dataset) => (
               <DatasetCard key={dataset.registryId} dataset={dataset} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Contradictions</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat
+            label="Awaiting review"
+            value={contradictionCounts.pending}
+            hint="computed, not judged"
+          />
+          <Stat
+            label="Confirmed"
+            value={contradictionCounts.approved}
+            hint="same measure — surface both"
+          />
+          <Stat
+            label="Dismissed"
+            value={contradictionCounts.rejected}
+            hint="different quantities"
+          />
+          <Stat
+            label="No longer reproduced"
+            value={contradictionCounts.stale}
+            hint={
+              contradictionCounts.lastSweptAt
+                ? `last sweep ${contradictionCounts.lastSweptAt.slice(0, 10)}`
+                : "never swept"
+            }
+          />
+        </div>
+        <p className="text-xs text-muted">
+          <span className="font-medium">sweep_contradictions()</span> computed these by comparing
+          every figure in the approved corpus against the registered datasets — no model read
+          anything. The question on each card is only{" "}
+          <span className="font-medium">&ldquo;are these two numbers the same measure?&rdquo;</span>{" "}
+          Confirming one does not decide which figure is right: per plan §12.4 rule 3 a confirmed
+          pair is a distinction the assistant must surface with both as-of dates, not an error to
+          resolve.
+        </p>
+        {contradictions.length === 0 ? (
+          <p className="text-sm text-muted">Nothing awaiting review.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {contradictions.map((row) => (
+              <ContradictionCard key={row.contradictionId} row={row} />
+            ))}
+          </ul>
+        )}
+        {judgedContradictions.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {judgedContradictions.map((row) => (
+              <JudgedContradictionCard key={row.contradictionId} row={row} />
             ))}
           </ul>
         )}
@@ -500,6 +578,124 @@ function ColumnRow({ column }: { column: PendingColumn }) {
           </button>
         </form>
       </div>
+    </li>
+  );
+}
+
+/**
+ * One computed disagreement.
+ *
+ * Three things are on the card rather than behind a link, and each is here for the same reason the
+ * quoted span is on a node card: the reviewer is being asked to judge a *pairing*, and a pairing
+ * cannot be judged from its conclusion.
+ *
+ *   - Both figures, each with the date it speaks as of. §12.4 rule 3's required form.
+ *   - The line the number was read from, verbatim.
+ *   - What the sweep measured — how many cells agreed, or which words the two sides share — and
+ *     the other candidates that fitted exactly as well. A tie resolved alphabetically is still a
+ *     tie, and a reviewer who is not shown the alternatives is reviewing an arbitrary pick.
+ */
+function ContradictionCard({ row }: { row: PendingContradiction }) {
+  const sides = describeSides(row);
+  return (
+    <li className="rounded-lg border border-border p-4">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">{row.method}</span>
+        <span className="text-xs text-muted">slide {row.pageFrom}</span>
+        {row.geoName && <span className="font-mono text-xs">{row.geoName}</span>}
+        <span className="text-xs text-muted">{(row.relDifference * 100).toFixed(2)}% apart</span>
+        {row.isStale && (
+          <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-danger">
+            not reproduced by the latest sweep
+          </span>
+        )}
+      </div>
+
+      <p className="mt-2 text-sm">{sides.document}</p>
+      <p className="text-sm">{sides.dataset}</p>
+
+      <Evidence
+        quote={row.evidenceQuote}
+        chunkId={row.chunkId}
+        sourceRef={`${row.measureLabel} · ${row.dataStat}`}
+      />
+
+      <p className="mt-2 text-xs text-muted">
+        {row.evidence.cells !== undefined && (
+          <>
+            Fit: {row.evidence.agreed ?? 0} of {row.evidence.cells} cells agree
+            {row.evidence.covered !== undefined && <> · {row.evidence.covered} covered</>}
+          </>
+        )}
+        {row.evidence.sharedTerms.length > 0 && (
+          <>Shared terms: {row.evidence.sharedTerms.join(", ")}</>
+        )}
+        {row.evidence.tiedCandidates.length > 0 && (
+          <> · fitted equally well: {row.evidence.tiedCandidates.join(", ")}</>
+        )}
+      </p>
+
+      <form action={judgeContradictionRow} className="mt-2 flex flex-wrap items-center gap-2">
+        <input type="hidden" name="contradictionId" value={row.contradictionId} />
+        <input
+          type="text"
+          name="note"
+          maxLength={500}
+          placeholder="What distinction do these two numbers actually record?"
+          className="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs"
+        />
+        <button
+          type="submit"
+          name="status"
+          value="approved"
+          className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:opacity-90"
+        >
+          Same measure
+        </button>
+        <button
+          type="submit"
+          name="status"
+          value="rejected"
+          className="rounded-md border border-border px-3 py-1.5 text-xs text-danger hover:bg-surface"
+        >
+          Not the same measure
+        </button>
+      </form>
+    </li>
+  );
+}
+
+function JudgedContradictionCard({ row }: { row: JudgedContradiction }) {
+  return (
+    <li className="flex flex-wrap items-center gap-2 rounded-lg border border-border px-3 py-2">
+      <span
+        className={
+          row.status === "approved"
+            ? "rounded-full bg-accent-subtle px-2 py-0.5 text-xs text-accent"
+            : "rounded-full bg-surface px-2 py-0.5 text-xs text-danger"
+        }
+      >
+        {row.status === "approved" ? "same measure" : "dismissed"}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-mono text-xs">
+        slide {row.pageFrom}: {row.docValue.toLocaleString()} vs{" "}
+        {row.dataColumn ? `${row.dataTable}.${row.dataColumn}` : row.dataTable}{" "}
+        {row.dataValue.toLocaleString()}
+      </span>
+      <span className="text-xs text-muted">
+        {row.reviewedBy ?? "unrecorded"}
+        {row.reviewedAt ? ` · ${row.reviewedAt.slice(0, 10)}` : ""}
+        {row.reviewNote ? ` · ${row.reviewNote}` : ""}
+      </span>
+      <form action={reopenContradictionRow}>
+        <input type="hidden" name="contradictionId" value={row.contradictionId} />
+        <button
+          type="submit"
+          className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface"
+        >
+          Return to review
+        </button>
+      </form>
     </li>
   );
 }

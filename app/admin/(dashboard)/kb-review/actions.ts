@@ -17,6 +17,11 @@ import {
   judgeDataset,
   judgeDatasetColumn,
 } from "@/lib/db/dataset-review";
+import {
+  isReviewStatus as isContradictionReviewStatus,
+  judgeContradiction,
+  reopenContradiction,
+} from "@/lib/db/contradiction-review";
 
 /**
  * Server actions for the extraction review queue (Increment 3.2).
@@ -159,5 +164,37 @@ export async function approveDatasetColumns(formData: FormData) {
   if (registryId === null) return;
 
   await approveAllColumns(registryId);
+  revalidatePath("/admin/kb-review");
+}
+
+/**
+ * The contradiction half of the queue (Increment 4.2).
+ *
+ * The same three rules again, and one difference worth stating: neither judgement here says which
+ * number is right. `approved` means the two figures are about the same measure and an answer must
+ * surface both with their dates (§12.4 rule 3); `rejected` means the sweep paired two different
+ * quantities. There is deliberately no "correct value" field for a reviewer to fill in — see the
+ * header of `lib/db/contradiction-review.ts`.
+ */
+export async function judgeContradictionRow(formData: FormData) {
+  const admin = await getAdminUser();
+  if (!admin) return;
+
+  const contradictionId = id(formData, "contradictionId");
+  const status = formData.get("status");
+  if (contradictionId === null || !isContradictionReviewStatus(status)) return;
+
+  await judgeContradiction(contradictionId, status, admin.email ?? admin.id, note(formData));
+  revalidatePath("/admin/kb-review");
+}
+
+export async function reopenContradictionRow(formData: FormData) {
+  const admin = await getAdminUser();
+  if (!admin) return;
+
+  const contradictionId = id(formData, "contradictionId");
+  if (contradictionId === null) return;
+
+  await reopenContradiction(contradictionId);
   revalidatePath("/admin/kb-review");
 }

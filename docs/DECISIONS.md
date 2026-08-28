@@ -5316,3 +5316,208 @@ repository already documents, which is the easy case and was chosen because its 
 
 **Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **567 tests, 19 more than
 before**. `npx prettier --check .` fails on the same 149 files as untouched `main`.
+
+## 2026-08-28 — Internal AI assistant, Increment 4.2: the contradiction sweep, and the four things running it found
+
+Phase 4's second increment and the plan's last unbuilt one. §12.4 rule 3 says that where a document
+number and a SQL number disagree the assistant must surface **both** with their as-of dates; §8 4.2
+says why that rule needed a batch job rather than prompt copy — *"a rule that only fires when
+someone happens to ask the right question is not enforced. Sweeping for them makes it enforced."*
+
+`sweep_contradictions()` is that sweep. It runs in **3.0 seconds** over the 213-slide corpus and 33
+registered datasets, and files **12 rows** at `status = 'auto'`. Nothing in it calls a provider.
+
+### The sweep computes contradictions; it does not notice them
+
+This was the whole design constraint, and it is 4.1's again. A pass that asks a model to read the
+corpus and report what looks inconsistent has three problems: it needs a key, so in these
+environments it would not run; it is unrepeatable, so a disagreement found on Tuesday may be absent
+on Wednesday; and its output is a claim rather than a measurement, so a reviewer has nothing to
+check but the model's word. Everything below is arithmetic over rows the database already holds.
+
+The hard half is **pairing** — a number on a slide carries no column name. Two passes answer it
+differently, and their evidence is of deliberately different strength:
+
+| pass | how it knows what the number is about | strength |
+|---|---|---|
+| `geo_distribution` | the label beside each number **is a row in `dim_geo`** — all 17 of p37's region names match `geo_name` verbatim | exact |
+| `scalar_magnitude` | the words near the number share a non-generic term with the registry entry's **name**, *and* the two values are within 10% | inferred |
+
+The asymmetry is recorded on every row rather than smoothed over: `method` says which pass found it
+and `evidence` carries what that pass measured, so a reviewer looking at a `scalar_magnitude` row
+knows to be more sceptical than at a `geo_distribution` one.
+
+**The structured counterpart is chosen by measured fit, not by name.** For a slide that lists
+geographies against numbers, every approved (table, measure column) pair that holds one value per
+geography at that level is probed, and the winner is the one agreeing with the slide on the most
+cells. A pair agreeing on *every* cell is corroboration and is not filed — only a pair that agrees
+on most and differs on a few is a contradiction, and the cells that differ are the rows.
+
+### Verify — both known cases, rediscovered without either being seeded
+
+§8 4.2's Verify, run against the live database:
+
+```
+found_by           slide  scope                        document  dataset_ref                              dataset
+scalar_magnitude      26  —                             277,767  fact_bhw_raw.bhw_id                      270,917
+geo_distribution      37  BARMM                             400  agg_bhw_by_uuc_status.n_barangays_listed     399
+geo_distribution      37  REGION IV-A (CALABARZON)          195  agg_bhw_by_uuc_status.n_barangays_listed     200
+geo_distribution      37  (total over all regions)        5,987  agg_bhw_by_uuc_status.n_barangays_listed   5,991
+```
+
+1. **§12.4's case.** Slide 26's *"277,767 (Registered and Accreditted BHWs) — as of Dec 2025"*
+   against the 270,917 behind SQL. Nothing named slide 26, and nothing named 277,767: the pass
+   found every number ≥ 1,000 in the corpus, discarded bare years, and paired this one because the
+   words around it share `bhw` with `fact_bhw_raw`'s name and the two values are 2.47% apart. The
+   row carries `doc_as_of_text = "as of Dec 2025"` — the slide's own phrase, which is later and more
+   specific than the deck's 2025-09-18 — and the SQL side carries no date, because `fact_bhw_raw`
+   names no dataset and inventing one would be worse than admitting it.
+
+   It also found the **same claim on slides 8 and 151**, which nobody had recorded, and a second
+   figure on slide 8: *"70% of barangays (29,409…)"* against 28,497 distinct `geo_code` values in
+   the BHW master list. That one is a finding this project did not have.
+
+2. **§12.2's case.** p37's regional distribution against the `uuc-phc-2025` dataset. Two regions
+   disagree and the totals differ by four — the reconciliation `ref_uuc_phc_published_delta` already
+   records, arrived at here from the opposite direction. The `evidence` names the three other
+   columns that fitted identically (`agg_uuc_phc_counts.n_listed`, `agg_uuc_phc_criteria.n_listed`,
+   `agg_bhw_by_uuc_status.n_listed_with_data`), because a tie broken alphabetically is still a tie
+   and a reviewer shown only the winner is reviewing an arbitrary pick.
+
+   And it found **the same table again on slide 141**, where the deck repeats it. Two slides making
+   one claim is two rows, not one: a citation has to point at the slide the reader was given.
+
+Neither case was seeded in any sense — no table name, no page number, no figure and no keyword
+appears anywhere in the migration.
+
+### Four defects, all found by running it, none by reading it
+
+That convention has now caught real bugs three increments running.
+
+**1. A cursor plan turned one second into fifty-four.** The first working version took 54 s for two
+slides and timed out the client. The probes were not the problem — 68 of them measured 376 ms
+together. The driving query was: a plpgsql `FOR … IN <query>` runs as a **cursor**, planned for a
+fast first row (`cursor_tuple_fraction`), and that flipped a hash join over 268 label rows into a
+nested loop that re-derived the label view once per row of `dim_geo`. Same rows, same answer, 54
+seconds. `as materialized` on the label CTE takes the choice away. This is not a tuning nicety: the
+identical query under `EXPLAIN ANALYZE` reported 825 ms, so profiling the statement outside the
+function would have said the function was fine.
+
+**2. The label view was quadratic.** "The next non-blank line" written as a lateral subquery
+re-derives the corpus once per line — 825 ms on 213 slides, and growing with the square of the
+second document. It is a `lead()` window now. Both forms return the same 268 rows, checked by
+`EXCEPT` in both directions before the swap.
+
+**3. A statute number was contradicted against a table's row count, on four slides.** The first
+version's structured side included `dataset_registry.row_estimate`, and its pairing vocabulary
+included each entry's `summary` and `grain`. So *"Universal Health Care Act (RA 11223)"* paired with
+`agg_peer_ranks`'s 10,668 rows — 4.9% apart, sharing the word **"for"**. Three more like it. Two
+rules came out of that, and both are better than the noise they remove:
+
+- **A count of things is a count of distinct keys, not a count of rows.** `row_estimate` counts the
+  rows of a table whose grain may be a grid (geography × indicator × year); that number is an
+  artifact of the grid and nobody publishes it. `dataset_column.distinct_count` on a `key` column
+  counts the things the key identifies. This is **4.1's role vocabulary doing load-bearing work** —
+  and the reason 4.1 retyped `bhw_id` from `measure` to `key` is exactly the reason 277,767 has a
+  counterpart to be compared against at all.
+- **The pairing vocabulary is an entry's name, not its prose.** A summary is a sentence, and a
+  sentence shares words with everything.
+
+Together they took the scalar pass from 11 rows to 4 and removed every row that was wrong.
+
+The honest cost is stated on the migration rather than buried: **the scalar pass can only
+contradict a table that has been profiled**, because `distinct_count` is null until a profiling pass
+writes it. Today that is `fact_bhw_raw` and nothing else. This pass's reach grows with 4.1's.
+
+**4. A dropped column alias.** Removing the `row_estimate` branch removed the `union all` whose
+first arm had supplied the name `data_column`; the survivor selected `dc.column_name` bare. It
+failed on the next run. Trivial, and exactly the class of thing that ships when a function is
+written, typed and not run.
+
+### One false positive, kept rather than tuned away
+
+Slide 161 — JMC 2023-001 reinstatements by region, 0 / 0 / 4 — pairs with
+`agg_bhw_by_uuc_status.n_listed_no_bhw` on a fit of 2 of 3 cells. It is not the same measure. Three
+cells is a thin basis and the row says so (`cells: 3, agreed: 2`), which is what makes it reviewable
+rather than misleading. Raising `p_min_cells` to 4 would remove it and would also remove any real
+disagreement on a three-region table; a queue whose precision is bought by narrowing what it looks
+at is not obviously better. 2 rows of 12 wrong, both from one slide, all visible as such.
+
+### What the guardrails cost, and what they bought
+
+- **Guardrail 3.** Every identifier goes through `format('%I')`; every value, the row cap included,
+  goes through `USING`. That last part was a change made so the assertion could be flat — no `%s`
+  anywhere in any dynamic statement — because *"%s is fine when the value happens to be an integer"*
+  is not a rule a reviewer can check at a glance. The registry is the allowlist: only tables with an
+  **approved** `dataset_registry` row are read, through columns with an **approved**
+  `dataset_column` row, and only documents whose `doc_source` row is approved are parsed.
+- **Guardrail 4.** Every probe is capped and restricted to the geographies the slide names, and the
+  function sets its own `statement_timeout`. One candidate filter does most of the work and is a
+  *necessary condition rather than a heuristic*: **a table holding at most one value per geography
+  cannot have more rows than there are geographies**, so `row_estimate > count(dim_geo)` drops only
+  candidates the uniqueness guard would reject anyway. It is what keeps the sweep off
+  `agg_demographics`, whose 530,465 rows cost **3.4 s for a single probe** — measured, not guessed —
+  without a blacklist of table names anywhere in the function.
+- **Guardrail 5.** The word `exposure` does not appear in the migration. The sweep reads internal
+  tables and quotes internal budget material (§12.5); it must not be able to move either onto a
+  public surface. `kb_contradiction` and both views are service-role only, RLS enabled in the same
+  statement block as the CREATE.
+- **Owner decision 5.** Rows land at `auto`. `status` is absent from both insert column lists, so
+  every row takes the column default — asserted in the tests, because "we remembered not to set it"
+  is not a property.
+
+The naming is load-bearing too: `kb_contradiction`, `kb_doc_line` and `kb_doc_label_number` all
+match the `kb\_%` prefix `profile_dataset_refusal()` already refuses, so the sweep's own tables can
+never acquire a registry dictionary and be offered to the model as queryable datasets.
+
+### Approving a row does not resolve it
+
+The queue's two judgements are **"same measure"** and **"not the same measure"**. Neither says which
+number is right, and there is deliberately no control that does. §12.4 rule 3 is explicit that these
+two numbers "are not a contradiction to resolve, they are different measures at different dates, and
+an assistant that picks one is hiding the distinction a budget discussion actually turns on" — a
+queue offering a "correct value" field would invite exactly that. `describeSides()` is exported so
+the page and any later answer path phrase the pair the same way rather than each inventing wording.
+
+A re-sweep keeps a judged row judged **only while the two numbers it was judged on are unchanged**;
+a changed value returns it to the queue with the old note cleared rather than left standing behind a
+different pair. And a row the latest sweep did not reproduce is shown as stale rather than deleted —
+deleting it would erase somebody's judgement.
+
+### What was deliberately not built
+
+§8 4.2 says the output "feeds the §10 regression list". It does not yet, and filing anything now
+would be a fabrication in two ways. Nothing here is confirmed — all 12 rows are at `auto` and owner
+decision 5 says a person judges — so there is nothing to file. And `ai_regression_case` cannot
+express a swept case without inventing a `conversation` and an `answer_given` it never had, and
+without the **expected-payload column §10 has been recording as missing since 2.4**. That column is
+the real prerequisite, for route 1 as much as for this, and it is the next thing to build. Wiring it
+unexercised would repeat the mistake `--propose` recorded: typed and unrun is not a safety property.
+
+The first run's 19 rows were deleted before the final verification run, so the 12 rows now in the
+table are the output of the sweep as committed and not a mixture of versions.
+
+### What this does and does not establish
+
+It establishes that a contradiction between a document and a dataset can be **computed** rather than
+noticed — that a slide's regional table resolves against `dim_geo` exactly, that the right
+structured counterpart can be selected by measured fit against ~68 candidates, and that a standalone
+figure can be paired on vocabulary and magnitude tightly enough to find 277,767 without anyone
+naming it. It establishes that the rule §12.4 wrote is now enforced by a job rather than by hoping
+someone asks the right question.
+
+**It does not establish that the scalar pass generalises.** Its structured side is one profiled
+table, and its identification rests on two weak signals whose conjunction happened to be selective
+here; a corpus with more numbers in the same magnitude band would test it properly and this one does
+not. **Nor does it establish that the fit threshold is right** — 0.5 was chosen before any data and
+never moved, and the one distribution that exercised its lower end produced the false positive
+above. **And no row here is a finding yet**: twelve pairings await the judgement that decides which
+are real, which is the only thing in this increment a person has to supply.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **693 tests, 26 more than
+`main`'s 667**. `npx prettier --check .` fails on the same 149 files as untouched `main`. The
+committed migration is one file; it reached the database as five `apply_migration` calls while the
+two performance defects and the two pairing rules were fixed, which is the shape 4.1 left
+(`profile_dataset` + `profile_dataset_role_identifier_rule`). The two are byte-identical where it
+can be checked: `md5(prosrc)` of every function in the database matches the same slice of the
+committed file.

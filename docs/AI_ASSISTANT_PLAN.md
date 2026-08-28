@@ -23,9 +23,11 @@ configured on Vercel, so the vector half of 2.2 is live in production rather tha
 queue it filled is now empty** (2026-08-27): 7 nodes and 14 edges approved, 9 nodes and 21 edges
 rejected as duplicate identities. Extracted rows stand at 84 nodes / 114 edges approved.
 **Increment 4.1 is built and the plan's success condition is met** — `profile_dataset()` took
-`fact_bhw_raw` from no registry row to queryable with no code change (2026-08-27). **4.2, the
-contradiction sweep, is the last unbuilt increment.** Phases ship in order; each increment is an
-independently shippable PR-sized unit.
+`fact_bhw_raw` from no registry row to queryable with no code change (2026-08-27). **4.2 is built
+too (2026-08-28): every increment in this plan now exists.** The contradiction sweep computes
+disagreements between the corpus and the registry rather than noticing them, and rediscovered both
+of §8's known cases without either being seeded. What remains is not an increment but the list in
+§10 and the two open questions in §11.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -534,7 +536,8 @@ join the profiler measured at 1.0000. See `DECISIONS.md`.
 one line, deliberately not added unrun (see `DECISIONS.md`) — and 25 of `fact_bhw_raw`'s 26 column
 meanings had to be written by hand, so the borrow-from-the-dictionary route is unproven at scale.
 
-**4.2 — Contradiction sweep.** A batch job rather than a chat tool: walk node pairs that assert
+**4.2 — Contradiction sweep.** *(built — 2026-08-28; `sweep_contradictions()`, 12 rows filed)*
+A batch job rather than a chat tool: walk node pairs that assert
 the same measure from different sources, and file each disagreement as a reviewable row carrying
 both values with their as-of dates.
 
@@ -545,7 +548,20 @@ someone noticed.
 
 *Verify:* the sweep independently rediscovers both known cases — slide 26's 277,767 against SQL's
 270,917 (§12.4), and cue cards p37 against the `uuc-phc-2025` dataset (§12.2) — without either
-being seeded.
+being seeded. **Met**, and it found three things nobody had recorded: the same 277,767 claim on
+slides 8 and 151, slide 8's "70% of barangays (29,409)" against 28,497 distinct `geo_code` values in
+the BHW master list, and the p37 table repeated at slide 141.
+
+Pairing is the hard half and is done two ways, of deliberately different strength: a slide's
+geography labels resolve against `dim_geo.geo_name` *exactly*, and the structured counterpart is
+then chosen by measured fit across every registered measure column; a standalone figure in prose has
+no dimension row to match, so it is paired on shared non-generic vocabulary plus magnitude, and the
+row records which pass found it so a reviewer knows how much to trust it. Nothing calls a provider.
+
+*Still open from this increment:* the output does not yet feed the §10 list. Nothing is confirmed
+(all 12 rows await judgement) and `ai_regression_case` cannot express a swept case without the
+expected-payload column §10 records as missing — which is the prerequisite for route 1 as well. See
+`DECISIONS.md`.
 
 ---
 
@@ -743,6 +759,13 @@ inverse case, and the plan has no rule for it.
 Rule 3 matters more than it looks: these two numbers are not a contradiction to resolve, they are
 different measures at different dates, and an assistant that picks one is hiding the distinction a
 budget discussion actually turns on.
+
+**Rule 3 is enforced by a job rather than by hope, since Increment 4.2 (2026-08-28).**
+`sweep_contradictions()` walks the corpus against the registry and files every disagreement it can
+compute — including this one, which it rediscovered from slide 26 with nothing naming the slide or
+the figure. The queue at `/admin/kb-review` asks only "are these two numbers the same measure?" and
+offers no control for saying which is right, because such a control is exactly the silent preference
+this rule forbids.
 
 ### 12.5 Sensitivity
 

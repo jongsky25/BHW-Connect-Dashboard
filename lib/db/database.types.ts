@@ -2313,6 +2313,114 @@ export type Database = {
         };
         Relationships: [];
       };
+      kb_contradiction: {
+        Row: {
+          abs_difference: number;
+          chunk_id: number;
+          contradiction_id: number;
+          data_as_of: string | null;
+          data_column: string | null;
+          data_column_key: string | null;
+          data_stat: string;
+          data_table: string;
+          data_value: number;
+          doc_as_of: string | null;
+          doc_as_of_text: string | null;
+          doc_id: number;
+          doc_value: number;
+          evidence: Json;
+          evidence_quote: string;
+          first_seen_at: string;
+          geo_code: string | null;
+          geo_level: string | null;
+          last_swept_at: string;
+          measure_label: string;
+          method: string;
+          page_from: number;
+          rel_difference: number;
+          review_note: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          scope_key: string | null;
+          status: string;
+        };
+        Insert: {
+          abs_difference: number;
+          chunk_id: number;
+          contradiction_id?: never;
+          data_as_of?: string | null;
+          data_column?: string | null;
+          data_column_key?: never;
+          data_stat: string;
+          data_table: string;
+          data_value: number;
+          doc_as_of?: string | null;
+          doc_as_of_text?: string | null;
+          doc_id: number;
+          doc_value: number;
+          evidence?: Json;
+          evidence_quote: string;
+          first_seen_at?: string;
+          geo_code?: string | null;
+          geo_level?: string | null;
+          last_swept_at?: string;
+          measure_label: string;
+          method: string;
+          page_from: number;
+          rel_difference: number;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          scope_key?: never;
+          status?: string;
+        };
+        Update: {
+          abs_difference?: number;
+          chunk_id?: number;
+          contradiction_id?: never;
+          data_as_of?: string | null;
+          data_column?: string | null;
+          data_column_key?: never;
+          data_stat?: string;
+          data_table?: string;
+          data_value?: number;
+          doc_as_of?: string | null;
+          doc_as_of_text?: string | null;
+          doc_id?: number;
+          doc_value?: number;
+          evidence?: Json;
+          evidence_quote?: string;
+          first_seen_at?: string;
+          geo_code?: string | null;
+          geo_level?: string | null;
+          last_swept_at?: string;
+          measure_label?: string;
+          method?: string;
+          page_from?: number;
+          rel_difference?: number;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          scope_key?: never;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "kb_contradiction_chunk_id_fkey";
+            columns: ["chunk_id"];
+            isOneToOne: false;
+            referencedRelation: "doc_chunk";
+            referencedColumns: ["chunk_id"];
+          },
+          {
+            foreignKeyName: "kb_contradiction_doc_id_fkey";
+            columns: ["doc_id"];
+            isOneToOne: false;
+            referencedRelation: "doc_source";
+            referencedColumns: ["doc_id"];
+          },
+        ];
+      };
       kb_edge: {
         Row: {
           created_at: string;
