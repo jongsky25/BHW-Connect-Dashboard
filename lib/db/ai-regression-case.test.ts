@@ -29,6 +29,14 @@ const MIGRATION = fileURLToPath(
 );
 const sql = readFileSync(MIGRATION, "utf8");
 
+const RESEED = fileURLToPath(
+  new URL(
+    "../../supabase/migrations/20260828190000_reseed_uuc_pins_final_list.sql",
+    import.meta.url,
+  ),
+);
+const reseedSql = readFileSync(RESEED, "utf8");
+
 const ORIGINAL = fileURLToPath(
   new URL("../../supabase/migrations/20260826160200_ai_regression_case.sql", import.meta.url),
 );
@@ -271,3 +279,97 @@ describe("readExpectations", () => {
     expect(expectations[2].value).toBe(false);
   });
 });
+
+/**
+ * The re-seed that followed the source office's final 5,987 list.
+ *
+ * Four of route 1's ten cases pin figures from the UUC dataset, and eight of their eleven pins
+ * stopped matching when `20260828180000_uuc_phc_final_list_alignment.sql` landed. That is the first
+ * regression this list has caught since it gained an expected payload, and what it caught was a
+ * deliberate correction — so the pins are re-derived, never relaxed.
+ *
+ * These assertions exist because the tempting shortcuts are all silent. Keying the update on
+ * `case_id` would work here and break on a fresh database. Leaving a note quoting 5,991 would keep
+ * the pins right while making their provenance a lie. And dropping a pin rather than re-deriving it
+ * would turn a caught regression into a smaller suite.
+ */
+describe("the UUC re-seed", () => {
+  const questions = [
+    "How many barangays are on the 2025 UUC for PHC list, and out of how many?",
+    "How many barangays are on the UUC for PHC list in total?",
+    "Which routes carried barangays onto the 2025 UUC for PHC list?",
+    "How many BHWs serve the barangays on the UUC for PHC list?",
+  ];
+
+  it("updates exactly the four seeded cases that read a UUC table", () => {
+    expect(reseedSql.match(/^update ai_regression_case set$/gm)).toHaveLength(4);
+    for (const question of questions) expect(reseedSql).toContain(question);
+    // Every seed naming a UUC table must be one of the four; a fifth would have been missed.
+    const uucSeeds = seeds.filter((seed) =>
+      seed.toolCalls.some((call) => String(call.args.table ?? "").includes("uuc")),
+    );
+    expect(uucSeeds.map((seed) => seed.question).sort()).toEqual([...questions].sort());
+  });
+
+  it("keys on the question, not on a case id an identity sequence happened to assign", () => {
+    // The seeds' ids skipped four values while the original migration's refusals were exercised,
+    // so they are an artifact of how that migration was run rather than a property of the data.
+    expect(reseedSql).toContain("where source = 'seeded'");
+    expect(reseedSql).not.toMatch(/where\s+case_id/);
+  });
+
+  it("re-derives every pin rather than dropping any", () => {
+    // Pin counts per case are unchanged: 2, 1, 5, 3 — the same eleven the originals carried.
+    const arrays = reseedSql.match(/'\[\{"call"[\s\S]*?\]'::jsonb/g) ?? [];
+    expect(arrays).toHaveLength(4);
+    const counts = arrays.map((a) => JSON.parse(a.slice(1, -8)).length);
+    expect(counts).toEqual([2, 1, 5, 3]);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(uucPinCount());
+  });
+
+  it("leaves no pin on 5,991, and no note claiming the page still renders it", () => {
+    // Asserted on the *parsed pins*, not on a scan of the file. A raw scan fails on the case-8
+    // note, which mentions 5,991 legitimately — as the figure the final list replaced. That is
+    // provenance worth keeping, and a test that forced it out would be the instrument being wrong
+    // rather than the migration. This repository has now made the naive-string-scan mistake in a
+    // migration test four times; the parsed value is what the assertion is actually about.
+    const values = reseedPins().map((pin) => pin.value);
+    expect(values).not.toContain(5991);
+    expect(values).toContain(5987);
+    // The notes must name 5,987 as what is on screen. Route 1's claim is that a seeded case's
+    // expected answer is on a page; a note quoting the superseded figure makes that uncheckable.
+    for (const note of reseedNotes()) {
+      if (note.includes("5,991")) expect(note).toContain("5,987");
+    }
+    expect(reseedNotes().filter((note) => note.includes("5,987")).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps the three UUC pins that did not move", () => {
+    // n_barangays counts every barangay in the country, not the list; the other two genuinely did
+    // not change. Re-deriving a figure that did not move would still be correct, but asserting it
+    // here is what catches a re-seed that quietly rewrote something it had not measured.
+    expect(reseedSql).toContain('"field":"n_barangays","value":41958');
+    expect(reseedSql).toContain('"field":"n_route_four_ps","value":726');
+    expect(reseedSql).toContain('"field":"n_listed_no_bhw","value":100');
+  });
+});
+
+/** Every pin the re-seed writes, across all four cases. */
+function reseedPins(): Expectation[] {
+  const arrays = reseedSql.match(/'\[\{"call"[\s\S]*?\]'::jsonb/g) ?? [];
+  return arrays.flatMap((a) => readExpectations(JSON.parse(a.slice(1, -8))).expectations);
+}
+
+/** The `note` each update writes — the literal following its expectations array. */
+function reseedNotes(): string[] {
+  return sqlLiterals(reseedSql)
+    .filter((lit) => lit.text.trimStart().startsWith("/") || lit.text.includes("5,987"))
+    .map((lit) => lit.text);
+}
+
+/** The eleven pins the original four UUC seeds carried, read from the seeding migration. */
+function uucPinCount() {
+  return seeds
+    .filter((seed) => seed.toolCalls.some((call) => String(call.args.table ?? "").includes("uuc")))
+    .reduce((total, seed) => total + seed.expectations.length, 0);
+}
