@@ -680,6 +680,10 @@ begin
   end if;
 end $$;
 
+-- The column comment that quoted the old national comparability figures.
+comment on column agg_uuc_phc_indicator_dist.n_comparable is
+  'Listed barangays here whose criterion (d) comparison can be made for this indicator: a value is recorded, the province supplied a benchmark, the benchmark does not exceed value_max, and the province''s benchmark set is not a placeholder. Nationally 5,761 of 5,987 for six health indicators and 5,648 for FIC.';
+
 -- =============================================================================================
 -- 6. Rebuild agg_bhw_by_uuc_status — BHW coverage split by list membership.
 --

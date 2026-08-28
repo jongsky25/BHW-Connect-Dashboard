@@ -5625,7 +5625,7 @@ rather than a wrong number, which is the case they are written for.
 | Route (a) Indigenous Peoples | 3,677 | **3,678** |
 | Route (b) conflict / displacement | 2,302 | **2,303** |
 | Route (c) 4Ps | 726 | 726 |
-| Route (d) health | 2,001 | **1,996** |
+| Route (d) health | 2,000 | **1,995** |
 | Criterion (d) evaluable | 5,765 | **5,761** |
 | Criterion (d) *not* evaluable | 226 | 226 |
 | Comparable, six health indicators | 5,765 | **5,761** |
@@ -5663,7 +5663,24 @@ so the six-row diff afterwards is the whole of what changed.
 contradiction. It stops being one once this is applied; `sweep_contradictions` recomputes, so the
 row resolves on the next run rather than needing a hand edit here.
 
-**Not done, and deliberately.** The migrations are written and checked but **not applied** — the
-live project still holds 5,991 — because applying them reverses a figure the owner confirmed, and
-the final list contradicts itself on the five Cavite barangays. Both want a word with the source
-office first.
+**Applied on the owner's instruction**, to `bhw-connect` (`ejcuwrnxngdwvecxwrhy`), in the seven
+`apply_migration` calls the sections divide into plus the registry delta — the shape 4.1 left. Every
+assertion in every rebuilt block passed on the way through, including the one that forced the
+`ref_uuc_phc_quality` change. Verified live afterwards against the figures predicted here: both fact
+tables and `ref_uuc_phc_list` at 5,987, BARMM 400, CALABARZON 195,
+`ref_uuc_phc_published_delta` **empty**, routes 3,678 / 2,303 / 726 / 1,995, evaluable 5,761,
+comparable 5,761 and 5,648, capping unmoved at 1,584 / 1,397, score columns 664 / 664, Cavite's
+listed side suppressed at 3 barangays, Basilan at 37, and 80 comparable provinces.
+
+**One figure in this entry was wrong before it was checked against the database, and is corrected
+above.** Route (d) was predicted at 2,001 → 1,996 from a Python reproduction of the rule that
+counted `health_indicators >= 4` alone. `agg_uuc_phc_criteria` counts `>= 4` **and** evaluable, and
+one barangay scoring 4 or more sits in a province whose benchmarks cannot support the comparison —
+so the real pair is 2,000 → 1,995. The delta is the same −5. The distinction was already recorded
+in `docs/uuc-phc-feature.md`, which quotes exactly that 2,001-against-2,000 gap, and the
+reproduction should have been checked against it rather than against the aggregate's name.
+
+**Still open, and not for us to close.** Applying this reverses a figure the owner confirmed, and
+the final list contradicts itself on the five Cavite barangays — its summary tab and 17 regional
+sheets against its own national sheet. Both want confirming with the source office; the dashboard
+now publishes the 3-to-1 majority reading in the meantime.

@@ -291,7 +291,7 @@ it on the strength of an absent score rather than a failed test.
 | Route (a) Indigenous Peoples | 3,677 | **3,678** |
 | Route (b) conflict / displacement | 2,302 | **2,303** |
 | Route (c) 4Ps | 726 | 726 |
-| Route (d) health | 2,001 | **1,996** |
+| Route (d) health | 2,000 | **1,995** |
 | Criterion (d) evaluable | 5,765 | **5,761** |
 | Criterion (d) *not* evaluable | 226 | 226 |
 | Comparable, six health indicators | 5,765 | **5,761** |
@@ -299,6 +299,11 @@ it on the strength of an absent score rather than a failed test.
 | Bounded values / barangays | 1,584 / 1,397 | 1,584 / 1,397 |
 | Households per BHW, listed vs other | 50.9 vs 98.2 | **50.3 vs 98.3** |
 | Provinces where listed is thinner | 76 of 81 | **76 of 80** |
+
+Route (d) counts `health_indicators >= 4` **and** evaluable, which is why it reads 1,995 rather
+than the 1,996 barangays scoring 4 or more: one of them is in a province whose benchmarks cannot
+support the comparison. That distinction predates this change — `docs/uuc-phc-feature.md` records
+the same 2,001-against-2,000 pair before it.
 
 The capping totals are untouched: none of the six barangays carries a bounded value. The
 not-evaluable count is untouched too — the five removed rows all carried real Cavite benchmarks
