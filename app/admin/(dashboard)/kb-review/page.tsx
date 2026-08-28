@@ -15,11 +15,13 @@ import {
   type PendingDataset,
 } from "@/lib/db/dataset-review";
 import {
+  describeMethod,
   describeSides,
   getContradictionCounts,
   listPendingContradictions,
   listRecentlyJudgedContradictions,
   type JudgedContradiction,
+  type MethodDescription,
   type PendingContradiction,
 } from "@/lib/db/contradiction-review";
 import {
@@ -214,6 +216,16 @@ export default async function AdminKbReviewPage() {
           Confirming one does not decide which figure is right: per plan §12.4 rule 3 a confirmed
           pair is a distinction the assistant must surface with both as-of dates, not an error to
           resolve.
+        </p>
+        <p className="text-xs text-muted">
+          Read the chip first. A{" "}
+          <span className="font-medium">geography table &middot; exact pairing</span> was identified
+          by slide labels that resolve against <span className="font-mono">dim_geo</span> by name,
+          so only the numbers are in question. A{" "}
+          <span className="font-medium">standalone figure &middot; inferred pairing</span> was
+          identified by shared wording and closeness of magnitude, so the subject itself is part of
+          what is being reviewed. The two are deliberately of different strength and are not equally
+          worth believing.
         </p>
         {contradictions.length === 0 ? (
           <p className="text-sm text-muted">Nothing awaiting review.</p>
@@ -589,6 +601,11 @@ function ColumnRow({ column }: { column: PendingColumn }) {
  * quoted span is on a node card: the reviewer is being asked to judge a *pairing*, and a pairing
  * cannot be judged from its conclusion.
  *
+ *   - **Which pass found the row, and how strong that pairing is** — read before the numbers,
+ *     because it decides how much of the rest to believe. §8 4.2's two passes are "of deliberately
+ *     different strength", and a bare `method` slug carried that distinction without stating it:
+ *     `geo_distribution` and `scalar_magnitude` look equally authoritative to anyone who has not
+ *     read the migration. `describeMethod` names the strength instead of implying it.
  *   - Both figures, each with the date it speaks as of. §12.4 rule 3's required form.
  *   - The line the number was read from, verbatim.
  *   - What the sweep measured — how many cells agreed, or which words the two sides share — and
@@ -597,10 +614,11 @@ function ColumnRow({ column }: { column: PendingColumn }) {
  */
 function ContradictionCard({ row }: { row: PendingContradiction }) {
   const sides = describeSides(row);
+  const pairing = describeMethod(row.method);
   return (
     <li className="rounded-lg border border-border p-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">{row.method}</span>
+        <PairingChip pairing={pairing} />
         <span className="text-xs text-muted">slide {row.pageFrom}</span>
         {row.geoName && <span className="font-mono text-xs">{row.geoName}</span>}
         <span className="text-xs text-muted">{(row.relDifference * 100).toFixed(2)}% apart</span>
@@ -610,6 +628,8 @@ function ContradictionCard({ row }: { row: PendingContradiction }) {
           </span>
         )}
       </div>
+
+      <p className="mt-1 text-xs text-muted">{pairing.basis}</p>
 
       <p className="mt-2 text-sm">{sides.document}</p>
       <p className="text-sm">{sides.dataset}</p>
@@ -623,8 +643,16 @@ function ContradictionCard({ row }: { row: PendingContradiction }) {
       <p className="mt-2 text-xs text-muted">
         {row.evidence.cells !== undefined && (
           <>
-            Fit: {row.evidence.agreed ?? 0} of {row.evidence.cells} cells agree
-            {row.evidence.covered !== undefined && <> · {row.evidence.covered} covered</>}
+            Fit: {row.evidence.agreed ?? 0} of {row.evidence.covered ?? row.evidence.cells} compared
+            cells agree, {(row.evidence.covered ?? row.evidence.cells) - (row.evidence.agreed ?? 0)}{" "}
+            differ
+            {row.evidence.covered !== undefined && row.evidence.covered < row.evidence.cells && (
+              <>
+                {" "}
+                · {row.evidence.cells - row.evidence.covered} of the slide&rsquo;s{" "}
+                {row.evidence.cells} rows had no counterpart
+              </>
+            )}
           </>
         )}
         {row.evidence.sharedTerms.length > 0 && (
@@ -665,6 +693,28 @@ function ContradictionCard({ row }: { row: PendingContradiction }) {
   );
 }
 
+/**
+ * Which pass found the row, and what that is worth.
+ *
+ * The strength word is the point, not the pass name: "exact" and "inferred" are the two claims
+ * §8 4.2 makes about its own pairings, and the reviewer's scepticism is meant to differ between
+ * them. An unrecognised pass is styled as the warning it is rather than as a third normal case —
+ * a row this build cannot explain must not look like one it can.
+ */
+function PairingChip({ pairing }: { pairing: MethodDescription }) {
+  const tone =
+    pairing.strength === "exact"
+      ? "bg-accent-subtle text-accent"
+      : pairing.strength === "inferred"
+        ? "bg-surface text-warning"
+        : "bg-surface text-danger";
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs ${tone}`}>
+      {pairing.name} · {pairing.strength} pairing
+    </span>
+  );
+}
+
 function JudgedContradictionCard({ row }: { row: JudgedContradiction }) {
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-lg border border-border px-3 py-2">
@@ -677,6 +727,7 @@ function JudgedContradictionCard({ row }: { row: JudgedContradiction }) {
       >
         {row.status === "approved" ? "same measure" : "dismissed"}
       </span>
+      <span className="text-xs text-muted">{describeMethod(row.method).strength}</span>
       <span className="min-w-0 flex-1 truncate font-mono text-xs">
         slide {row.pageFrom}: {row.docValue.toLocaleString()} vs{" "}
         {row.dataColumn ? `${row.dataTable}.${row.dataColumn}` : row.dataTable}{" "}

@@ -536,7 +536,8 @@ join the profiler measured at 1.0000. See `DECISIONS.md`.
 one line, deliberately not added unrun (see `DECISIONS.md`) — and 25 of `fact_bhw_raw`'s 26 column
 meanings had to be written by hand, so the borrow-from-the-dictionary route is unproven at scale.
 
-**4.2 — Contradiction sweep.** *(built — 2026-08-28; `sweep_contradictions()`, 12 rows filed)*
+**4.2 — Contradiction sweep.** *(built — 2026-08-28; `sweep_contradictions()`. Re-run 2026-08-28:
+**22 rows**, all still at `auto`)*
 A batch job rather than a chat tool: walk node pairs that assert
 the same measure from different sources, and file each disagreement as a reviewable row carrying
 both values with their as-of dates.
@@ -558,8 +559,21 @@ then chosen by measured fit across every registered measure column; a standalone
 no dimension row to match, so it is paired on shared non-generic vocabulary plus magnitude, and the
 row records which pass found it so a reviewer knows how much to trust it. Nothing calls a provider.
 
+*Re-run against live data (2026-08-28).* The first recomputation since the increment shipped, and it
+found a defect in the pass that only a data change could expose. The UUC final-list alignment made
+`agg_bhw_by_uuc_status.n_barangays_listed` agree with p37 on all 17 regions, so the three p37 rows
+resolved exactly as that entry predicted — and the slide then fell through to
+`agg_uuc_phc_criteria.n_health_evaluable` at a fit of 0.7647, which is a **subset** of the listed
+count rather than a competing measure of it. Ten new rows on two slides, replacing six.
+
+**A perfect fit suppresses the candidate, not the slide**, so a slide whose true counterpart agrees
+everywhere is handed to its best *disagreeing* column — which is necessarily a different measure. The
+sweep's precision therefore falls as the data improves. Deliberately not fixed by that re-run: what
+to do about it is a judgement about this queue's precision, and §7 and owner decision 5 put that with
+the owner. See `DECISIONS.md`.
+
 *Still open from this increment:* the output does not yet feed the §10 list. Nothing is confirmed
-(all 12 rows await judgement) and `ai_regression_case` cannot express a swept case without the
+(all 22 rows await judgement) and `ai_regression_case` cannot express a swept case without the
 expected-payload column §10 records as missing — which is the prerequisite for route 1 as well. See
 `DECISIONS.md`.
 
@@ -688,8 +702,8 @@ provider: putting the replay on a schedule makes that property load-bearing rath
 since a daily job gated on a free-tier quota would be absent exactly on the days the quota is spent.
 
 **Still missing: the swept path.** The 4.2 sweep does not feed this list — the column it was waiting
-for is here, but all 12 `kb_contradiction` rows sit at `status = 'auto'`, so there is nothing
-confirmed to file and `source` still does not admit `'swept'`.
+for is here, but all 22 `kb_contradiction` rows sit at `status = 'auto'` after the 2026-08-28 re-run,
+so there is nothing confirmed to file and `source` still does not admit `'swept'`.
 
 ## 11. Open questions
 

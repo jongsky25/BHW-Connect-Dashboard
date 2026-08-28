@@ -155,6 +155,69 @@ export function readEvidence(value: unknown): SweepEvidence {
 }
 
 /**
+ * How much a pairing can be trusted before its numbers are read.
+ *
+ * `exact` and `inferred` are the two passes; `unrecognised` is a `method` this build has no
+ * description for. That third case is not defensive padding — it is the only honest reading of a
+ * row written by a sweep newer than the page rendering it, and the alternative (falling back to
+ * the slug and letting it read as a normal chip) would present an unjudgeable pairing as a
+ * judgeable one.
+ */
+export type PairingStrength = "exact" | "inferred" | "unrecognised";
+
+export type MethodDescription = {
+  /** What to call the pass on screen. */
+  name: string;
+  strength: PairingStrength;
+  /** What the pass matched on — the thing that decides how far to trust it. */
+  basis: string;
+};
+
+/**
+ * What the reviewer needs before the numbers: **which pass found this row**.
+ *
+ * §8 4.2 pairs two ways "of deliberately different strength", and the asymmetry is the whole
+ * reason `method` is a column rather than an implementation detail. A `geo_distribution` row was
+ * identified by a slide label that **is** a row in `dim_geo` — the subject is not in doubt, only
+ * the number. A `scalar_magnitude` row was identified by two weak signals used together, and its
+ * subject is a guess that happened to be selective. Those are not the same claim and must not read
+ * as one, so the strength is named on the row rather than left for a reviewer to infer from the
+ * slug.
+ *
+ * Exported for the reason `describeSides` is: one wording, used wherever these rows are met.
+ */
+export function describeMethod(method: string): MethodDescription {
+  if (method === "geo_distribution") {
+    return {
+      name: "geography table",
+      strength: "exact",
+      basis:
+        "Every label beside a number on the slide resolves to a row in dim_geo by name, so what " +
+        "each figure is about is certain. The structured counterpart was then chosen by measured " +
+        "fit across every registered measure column — that choice is what to check.",
+    };
+  }
+  if (method === "scalar_magnitude") {
+    return {
+      name: "standalone figure",
+      strength: "inferred",
+      basis:
+        "A figure in prose with no dimension row to match, paired on two weak signals used " +
+        "together: the words around it share a non-generic term with the registry entry's name, " +
+        "and the two values are close enough to be two measurements of one quantity. Treat the " +
+        "subject itself as the claim under review.",
+    };
+  }
+  return {
+    name: method,
+    strength: "unrecognised",
+    basis:
+      "This build has no description for that pass, so how the two sides were paired is unknown " +
+      "and the pairing cannot be judged from this card.",
+  };
+}
+
+/**
  * The two numbers a row carries, each with the date it speaks as of — the form §12.4 rule 3
  * requires an answer to take. Exported so the page and any later answer path phrase it the same
  * way rather than each inventing wording.

@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { describeSides, isReviewStatus, readEvidence } from "./contradiction-review";
+import {
+  describeMethod,
+  describeSides,
+  isReviewStatus,
+  readEvidence,
+} from "./contradiction-review";
 
 /**
  * Increment 4.2's invariants, checked two ways — the pattern `dataset-review.test.ts` and
@@ -123,6 +128,60 @@ describe("readEvidence", () => {
     for (const value of [null, undefined, 42, "text", [1, 2, 3]]) {
       expect(readEvidence(value).tiedCandidates).toEqual([]);
       expect(readEvidence(value).sharedTerms).toEqual([]);
+    }
+  });
+});
+
+describe("describeMethod", () => {
+  /**
+   * §8 4.2's two passes are "of deliberately different strength", and the queue's job is to make
+   * that legible before the numbers are read. These assert the property that matters — that the
+   * two descriptions are not interchangeable — rather than the wording, which is meant to be
+   * editable without breaking a test.
+   */
+
+  it("calls the geographic pass exact, because its labels resolve against dim_geo by name", () => {
+    const pairing = describeMethod("geo_distribution");
+    expect(pairing.strength).toBe("exact");
+    expect(pairing.basis).toContain("dim_geo");
+  });
+
+  it("calls the scalar pass inferred, and says the subject is part of what is under review", () => {
+    // The scalar pass identifies its subject from two weak signals used together. A reviewer who
+    // reads that row as though the subject were settled is reviewing the wrong question.
+    const pairing = describeMethod("scalar_magnitude");
+    expect(pairing.strength).toBe("inferred");
+  });
+
+  it("never gives the two passes the same strength", () => {
+    // The whole reason `method` is rendered at all. If these ever collapse the chip is decoration.
+    expect(describeMethod("geo_distribution").strength).not.toBe(
+      describeMethod("scalar_magnitude").strength,
+    );
+  });
+
+  it("refuses to describe a pass it does not know, rather than guessing at its strength", () => {
+    // The `check (method in (...))` constraint means only two values exist today. A third would
+    // arrive with a migration, and until this function is taught about it the honest answer is
+    // that the pairing cannot be judged — not a plausible-looking default that reads as though it
+    // could. Same rule the migration's own `--propose` lesson records: unwritten is not safe.
+    const pairing = describeMethod("semantic_guess");
+    expect(pairing.strength).toBe("unrecognised");
+    expect(pairing.name).toBe("semantic_guess");
+    expect(pairing.basis).toContain("cannot be judged");
+  });
+
+  it("describes exactly the methods the migration's check constraint admits", () => {
+    // Parsed from the constraint rather than scanned for: the migration mentions both method names
+    // in its header prose too, and a raw scan would pass on the comments alone. This repository has
+    // made that mistake five times; the rule it settled on is to parse the thing being asserted
+    // about.
+    const constraint = /check\s*\(\s*method\s+in\s*\(([^)]*)\)\s*\)/.exec(sql);
+    expect(constraint).not.toBeNull();
+    const admitted = [...(constraint?.[1] ?? "").matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    expect(admitted).toEqual(["geo_distribution", "scalar_magnitude"]);
+    for (const method of admitted) {
+      expect(describeMethod(method).strength).not.toBe("unrecognised");
     }
   });
 });
