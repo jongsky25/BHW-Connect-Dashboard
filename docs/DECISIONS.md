@@ -6446,3 +6446,141 @@ one of two datasets. A daily run over a narrow list is a daily run over a narrow
 
 **And it still does not make any case sensitive to prose.** No provider was called, deliberately, and
 every caveat on the runner stands.
+
+## 2026-08-28 — The contradiction sweep, re-run: p37 resolved, and resolving it made the slide worse
+
+Increment 4.2 filed twelve `kb_contradiction` rows on 2026-08-28 at 01:14 UTC and none had been
+recomputed since. The UUC final-list alignment landed between then and now and predicted, in as many
+words, that *"`sweep_contradictions` recomputes, so the row resolves on the next run rather than
+needing a hand edit"*. Nothing had tested that. This ran it.
+
+**The prediction held for the rows it named, and the slide it named came back worse.** The queue went
+from **12 rows to 22**.
+
+### What the run changed
+
+Run at 14:01 UTC against `bhw-connect` (`ejcuwrnxngdwvecxwrhy`); 16 findings returned. Against the
+twelve rows as they stood before it:
+
+| | rows | what they are |
+|---|---|---|
+| **unchanged** | 6 | slide 161's two, and the four `scalar_magnitude` rows on slides 8, 26 and 151 |
+| **no longer reproduced** | 6 | p37 and p141 against `agg_bhw_by_uuc_status.n_barangays_listed` |
+| **new** | 10 | p37 and p141 against `agg_uuc_phc_criteria.n_health_evaluable` |
+
+The six unchanged rows are unchanged in the strict sense: value, difference, `evidence` and quote all
+md5-identical to the pre-run snapshot, with only `last_swept_at` moved. The six that stopped
+reproducing keep their older stamp and are shown stale rather than deleted, which is the shape 4.2
+settled on — **they are still at `status = 'auto'`, so the reviewer meets 22 cards, six of them
+marked as no longer reproduced.**
+
+A second run returns the same 16 findings and inserts nothing (`max(contradiction_id)` unmoved at
+128), so this is a fixed point and not a state mid-churn.
+
+### The prediction, tested
+
+**It was right about the three rows it named.** BARMM 400-against-399, CALABARZON 195-against-200 and
+the 5,987-against-5,991 total no longer reproduce, and neither do their three twins on slide 141. The
+alignment moved `agg_bhw_by_uuc_status.n_barangays_listed` to 400 / 195 / 5,987, the column now agrees
+with p37 on all 17 regions, and a perfect fit is corroboration and is not filed. No hand edit was
+needed, exactly as written.
+
+**It was wrong about the slide.** p37 carried three rows before this run and carries five after it.
+So did slide 141. The entry's claim that p37 "no longer contradicts `agg_bhw_by_uuc_status` anywhere"
+is true and was the wrong thing to check.
+
+### Why fixing the data made the queue worse
+
+The geographic pass discards a perfect fit **per candidate column, not per slide**. When the slide's
+true counterpart is found and agrees everywhere, the pass does not conclude *this slide is
+corroborated*; it concludes *this column is not interesting* and keeps looking. The next-best column
+is then, by construction, the best-fitting column that **disagrees** — and for a slide whose true
+counterpart agrees on every cell, a column that disagrees is a column measuring something else.
+
+Before the alignment, four columns tied at 15 of 17 and `n_barangays_listed` won. All four now agree
+17 of 17 and all four are discarded together. That leaves the field to
+`agg_uuc_phc_criteria.n_health_evaluable` at **13 of 17, a fit of 0.7647**, comfortably above the 0.5
+floor, with no tie. It is not a near-miss on the same quantity. It is a **subset**:
+
+```
+region                          n_listed   n_health_evaluable   difference
+REGION II (CAGAYAN VALLEY)           227                  165          -62
+REGION IX (ZAMBOANGA PENINSULA)      523                  516           -7
+REGION XIII (CARAGA)                 268                  112         -156
+BARMM                                400                  399           -1
+the other 13 regions                                                     0
+                                                            total     -226
+```
+
+The four cells the sweep now files as disagreements are exactly the four regions holding the 226
+barangays whose provincial benchmarks cannot support criterion (d). The registry's own `meaning` for
+that column says so outright — *"n_listed minus this is the excluded count"* — and the pass cannot
+read it, because §12.4's own rule from the first run is that **the pairing vocabulary is an entry's
+name, not its prose**. The rule that removed the statute-number false positives is the same rule that
+hides this one.
+
+So the shape of the defect is: **the sweep's precision falls as the data improves.** A slide whose
+counterpart is wrong produces one true row; a slide whose counterpart is right produces several false
+ones. That is backwards, and it is not a threshold that wants nudging — 4.2 already asked whether 0.5
+is right and left it open, but raising the floor to 0.8 would keep all ten of these rows and lose
+slide 161's genuine three-cell case. The floor is not what is wrong.
+
+**Nothing is changed about the sweep here, and that is deliberate.** Which of these twenty-two
+pairings are real is the owner's judgement per owner decision 5 and §7, and a sweep retuned in the
+same session that discovered the problem would be a queue tuned to its own author's reading of twelve
+rows. What the fix should be — suppress a slide once any candidate corroborates it, rather than
+suppress only that candidate — is recorded here to be decided rather than applied.
+
+### The queue now says which pass found each row
+
+§8 4.2 pairs two ways "of deliberately different strength" and `method` is a column for that reason,
+but the card rendered it as a bare slug: `geo_distribution` and `scalar_magnitude` look equally
+authoritative to anyone who has not read the migration. `describeMethod()` names the strength instead
+of implying it — *geography table · exact pairing* against *standalone figure · inferred pairing* —
+with one sentence saying what each pass actually matched on, so a reviewer knows how far to trust the
+pairing before reading the numbers. Exported for the reason `describeSides()` is: one wording,
+wherever these rows are met.
+
+An unrecognised `method` returns strength `unrecognised` and says the pairing cannot be judged from
+the card, rather than falling back to the slug and reading as a third normal case. The `check`
+constraint admits two values today; a third would arrive with a migration, and until this function is
+taught about it the honest answer is that the row is unjudgeable.
+
+The fit line also states how many cells **differ**, not only how many agree. On these ten rows that
+is the whole tell: "13 of 17 agree, 4 differ" against a column whose four disagreements are all in
+the same direction is a subset showing itself, and a reviewer should not have to do the subtraction.
+
+This extends the queue at `/admin/kb-review` rather than adding a second surface. There was already
+one, and a second place to meet these rows would be worse than an imperfect first.
+
+### What this does and does not establish
+
+It establishes that the alignment's prediction was correct as written — a recomputation resolved the
+three p37 rows with no hand edit — and that the stale-not-deleted rule behaves as designed under a
+real data change. It establishes that the sweep is idempotent across consecutive runs. It establishes
+that the corroboration rule is per-column, and that this is not a tuning question but a structural one
+with a worked example: ten rows filed against a subset count because the true counterpart agreed too
+well to be reported.
+
+**It does not establish that any of the twenty-two rows is a real finding.** All twenty-two are still
+at `auto`; nothing here confirms or rejects one, and the sweep still does not feed the §10 list —
+`source` does not admit `'swept'`, which stays a value nothing writes.
+
+**It does not establish that ten new rows is the whole cost of the corroboration rule.** Two slides
+were re-paired here because the alignment happened to perfect their counterpart. How many other slides
+in the corpus are one data correction away from the same fall-through is not known, and this run
+cannot say — it only shows what happens when one is.
+
+**And it does not establish that `n_health_evaluable` is the worst available pairing**, only that it
+is the best-fitting disagreeing one today. A future column fitting 12 of 17 would take p37 next.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **816 tests, 5 more than
+`main`'s 811**, confirmed by running `main` rather than taken from the previous entry. No migration:
+this branch adds none and applies none, and the only database writes are the two
+`sweep_contradictions()` calls the increment is about.
+
+**One recorded number was wrong and is corrected.** `npx prettier --check .` fails on **148** files on
+untouched `main`, not the 149 the last three entries record. Measured twice, on `main` at #109 and on
+the pre-#109 tree, both 148 — so #109 did not change it and the drift is `"prettier": "^3"` floating
+to 3.9.5. This branch fails on the same 148, compared file by file rather than by count, and every
+file it touches is clean.
