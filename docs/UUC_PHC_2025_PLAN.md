@@ -4,7 +4,7 @@ A dedicated dashboard card and section for the **2025 list of Unserved and Under
 Communities for Primary Health Care**, built from `ingestion/data/Submissions_UUA_2025_filled_1.xlsx`.
 
 **Status:** **the dataset is shipped; the section is not yet at parity.** U1 through U4 landed
-2026-08-26 (PR #75): the 5,991 rows are loaded, rolled up to every geo level, rendered at `/uuc-phc`
+2026-08-26 (PR #75): the rows are loaded, rolled up to every geo level, rendered at `/uuc-phc`
 from national down to city/municipality with each listed barangay showing the factors it qualified
 on and its health indicators (capped values marked), and every area has a downloadable PNG
 one-pager. Feature write-up: `docs/uuc-phc-feature.md`.
@@ -90,7 +90,7 @@ and households with access to improved water supply.
 - **The `* Prov Ref` columns are the AO's provincial comparators.** They are not barangay
   measurements and must never be cleaned as if they were — §2 of the cleaning report holds.
 - **`Health Indicators` (0–7) is the AO's count under (d)**, and `HI` passes at ≥ 4. Verified: the
-  score equals the number of `High or Low*` columns reading `Pass` in all 5,991 rows.
+  score equals the number of `High or Low*` columns reading `Pass` in every row the source scored.
 - **`Physical Factor` has a floor of 25 and every row passes**, because the file is the
   *post-selection* list — barangays below 25% never entered it.
 - **The units the owner set match the AO's own definitions.** IMR, UFMR and ABR are rates; FIC,
@@ -105,7 +105,7 @@ Four-of-seven is a stricter test than four-of-eight. It does not affect this lis
 selected, but it matters for the next profiling round and should be settled with BLHSD before then.
 
 **Criterion (b) is implemented as a sum, not an either/or.** The file marks `AC/ IDP` as Pass when
-`ARMED CONF + IDP ≥ 10`, matching all 5,991 rows; reading the AO's "or" as either-alone disagrees
+`ARMED CONF + IDP ≥ 10`, matching every row the source scored; reading the AO's "or" as either-alone disagrees
 on 15. Summing double-counts anyone both conflict-affected and displaced. Minor, but it is an
 implementation choice rather than the text of the order.
 
@@ -113,7 +113,7 @@ implementation choice rather than the text of the order.
 
 Criterion (d) is a *comparison*, so it needs a benchmark per province. Those benchmarks arrived
 embedded in the reconciled workbook as the seven `* Prov Ref` columns, repeated identically down
-all 5,991 rows. Extracted to one row per province as
+every row. Extracted to one row per province as
 `ingestion/data/uuc_phc_2025_provincial_reference.csv` (**88 provinces/HUCs**) and as the
 *Provincial reference* sheet of the cleaned workbook.
 
@@ -182,7 +182,7 @@ Ten sheets. Two carry the payload; the rest are working copies that disagree wit
 | Sheet | Rows | Content |
 |---|---|---|
 | `NEW` | 15,386 | Region / province / citymun / barangay + `DECISION`. **UUA 5,991, NOT UUA 9,395.** The classification of record. |
-| `2025 LIST` | 6,024 body rows (5,991 with a PSGC) | The 5,991 UUC-for-PHC barangays with 13 indicator columns. |
+| `2025 LIST` | 6,024 body rows (**5,992 distinct PSGCs**) | The listed barangays with 13 indicator columns. One more than `NEW` classifies `UUA`: it carries `SUMISIP CENTRAL`, which the final list restores (§3). |
 
 **Ignore these, and why:**
 
@@ -200,10 +200,19 @@ Ten sheets. Two carry the payload; the rest are working copies that disagree wit
 
 ---
 
-## 3. Reconciliation against the cue cards
+## 3. Reconciliation against the cue cards — **closed, and it closed the other way**
+
+**Settled 2026-08-28.** The source office supplied its final national list, *2025 UUC FOR PHC
+LIST* — the list whose regional distribution cue cards p37 publishes — and it carries **5,987**.
+The dashboard now publishes that figure. `ref_uuc_phc_published_delta` is empty as a result, and
+the methodology page states the reconciliation as settled rather than open. The change is
+`supabase/migrations/20260828120000_uuc_phc_final_list_alignment.sql`.
+
+### What the gap was
 
 Cue cards p37 publishes *Distribution of UUC for PHC Barangays by Region (as of 2025 per DC No.
-2025-0549)*. The workbook reproduces it almost exactly — **15 of 17 regions match to the unit**:
+2025-0549)*. The reconciled workbook this dataset was first built from reproduced it almost
+exactly — **15 of 17 regions matched to the unit**:
 
 | Region | Cue cards p37 | Workbook `NEW` | Δ |
 |---|---:|---:|---:|
@@ -214,22 +223,87 @@ Cue cards p37 publishes *Distribution of UUC for PHC Barangays by Region (as of 
 
 Two localized discrepancies, no systemic drift.
 
-**The workbook is internally consistent; the deck is the outlier.** Three independent places in
-the workbook agree on both contested figures — the `NEW` classification sheet, the row count of
-`2025 LIST`, and the `TOTAL` subtotal rows embedded in `2025 LIST` (§4) — all give CALABARZON 200
-and BARMM 399. There is no counting artifact on the workbook side to find.
+### What it turned out to be — six barangays, and no vintage story
 
-That makes the likeliest reading a **vintage difference**: p37 is a published snapshot "as of 2025
-per DC No. 2025-0549", and the file is named `Submissions_UUA_2025_filled_1`, which reads as a
-later revision. This is inference from the file name and the internal agreement, not something
-either file states — confirm it rather than assuming it.
+The final list resolves the gap exactly, by disagreeing with the workbook on six barangays and on
+nothing else. The other 5,986 match name for name across all 17 regions.
 
-**Decision — confirmed by the owner:** publish the workbook's **5,991** as the card's figure, and
-footnote p37's 5,987 with its circular reference and as-of date. The
-deck is what has been briefed to budget audiences, so the footnote is not optional — but a
-dashboard should render its own source, and that source corroborates itself three times. Record
-the decision and the two affected regions in `DECISIONS.md`, following
-`POPULATION_RECONCILIATION.md` and `BOUNDARY_RECONCILIATION.md`.
+| | Province / City-municipality / Barangay | PSGC |
+|---|---|---|
+| **Removed (5)** | CAVITE / CITY OF BACOOR / MOLINO IV | `0402103047` |
+| | CAVITE / CITY OF BACOOR / SAN NICOLAS II | `0402103064` |
+| | CAVITE / CITY OF BACOOR / TALABA 2 | `0402103066` |
+| | CAVITE / CITY OF BACOOR / TALABA 3 | `0402103091` |
+| | CAVITE / CITY OF CAVITE / BARANGAY 38 | `0402105032` |
+| **Added (1)** | BASILAN / SUMISIP / SUMISIP CENTRAL | `1900705019` |
+
+399 + 1 = 400 and 200 − 5 = 195, which is p37 exactly.
+
+### The earlier reading was backwards, and that is worth recording
+
+This section used to argue that the workbook was the *later* revision — it corroborates 5,991 in
+three independent places (the `NEW` classification sheet, the row count of `2025 LIST`, and the
+`TOTAL` subtotal rows embedded in `2025 LIST`), and its file name,
+`Submissions_UUA_2025_filled_1`, reads as a revision of something. p37, by contrast, is a snapshot
+"as of 2025 per DC No. 2025-0549". The owner's decision followed: publish 5,991, footnote 5,987.
+
+The inference was explicitly flagged as inference, and it was wrong. The final list is dated later
+than both and lands on p37's figures by making precisely the two corrections p37 implies. So 5,991
+is the *pre-correction submission* and 5,987 is the list as issued. Internal corroboration counted
+for less than it appeared to: all three of the workbook's agreeing places are the same submission,
+counted three ways.
+
+**The final list is itself internally inconsistent, and the majority reading is what was taken.**
+Its summary tab and its 17 per-region sheets both give 5,987 (BARMM 400, CALABARZON 195). Its
+national list sheet still carries the five Cavite barangays, so it holds 5,992 rows, and its own
+printed grand total there reads 5,991 — stale on both counts, since it also does not count the
+added Basilan row (whose `TOTAL` subtotal likewise still reads 399). Three sources agree on 5,987
+— the summary tab, the regional sheets and p37 — against one stale sheet. **Worth confirming with
+the source office rather than treating as closed on our side.**
+
+### What the added barangay costs, and it is not nothing
+
+`SUMISIP CENTRAL` is absent from the reconciled workbook entirely: `NEW` scores it `NOT UUA`. Its
+values are recovered from the same workbook's `2025 LIST` sheet, which does carry it under PSGC
+`1900705019` — so it is recovered rather than invented, but from a **pre-reconciliation extract**.
+`2025 LIST` and the reconciled sheet disagree somewhere on 473 of the 5,989 barangays they share
+(ABR most often, 275 rows), so this one row is of a different vintage to the other 5,986.
+
+Two of its columns have no counterpart in `2025 LIST` and are left NULL rather than guessed:
+
+- **`elcac_brgy`** — the conflict-area designation. Criterion (b) for this row rests on
+  `armed_conf + idp` alone (30 + 11 = 41), which passes without it.
+- **`health_indicators`** — the source office's own criterion (d) score, which this pipeline loads
+  and never recomputes (§10). Route (d) therefore does not count this barangay. Its listing does
+  not depend on that: `ip_pop` is 100, so criterion (a) carries it alone.
+
+Its seven provincial benchmarks are Basilan's own, copied from its 36 fellow Basilan rows —
+they are province constants, and copying them is what keeps `ref_uuc_phc_provincial`'s
+one-value-per-province assertion true. One consequence to know: the row therefore counts as
+*health-evaluable* while having no score, so `ref_uuc_phc_list` exports `route_health = false` for
+it on the strength of an absent score rather than a failed test.
+
+### Figures this moved
+
+| | Before | After |
+|---|---:|---:|
+| Listed barangays | 5,991 | **5,987** |
+| Route (a) Indigenous Peoples | 3,677 | **3,678** |
+| Route (b) conflict / displacement | 2,302 | **2,303** |
+| Route (c) 4Ps | 726 | 726 |
+| Route (d) health | 2,001 | **1,996** |
+| Criterion (d) evaluable | 5,765 | **5,761** |
+| Criterion (d) *not* evaluable | 226 | 226 |
+| Comparable, six health indicators | 5,765 | **5,761** |
+| Comparable, FIC | 5,652 | **5,648** |
+| Bounded values / barangays | 1,584 / 1,397 | 1,584 / 1,397 |
+| Households per BHW, listed vs other | 50.9 vs 98.2 | **50.3 vs 98.3** |
+| Provinces where listed is thinner | 76 of 81 | **76 of 80** |
+
+The capping totals are untouched: none of the six barangays carries a bounded value. The
+not-evaluable count is untouched too — the five removed rows all carried real Cavite benchmarks
+and the added row carries Basilan's. Cavite leaves the BHW comparison entirely: three listed
+barangays is below the `0 < n < 5` suppression threshold.
 
 ---
 
@@ -238,7 +312,7 @@ the decision and the two affected regions in `DECISIONS.md`, following
 The good news: `dim_geo` holds **41,958 barangays keyed on 10-digit codes**, and `2025 LIST.PSGC`
 is already 10-digit. No crosswalk work is needed for the bulk of the file.
 
-*Verified:* a random sample of 150 of the 5,991 codes joined **148/150** against
+*Verified at U1, against the then-5,991-row extract:* a random sample of 150 codes joined **148/150** against
 `dim_geo` at `geo_level='barangay'`. Both misses were Sulu.
 
 **The Sulu exception.** 87 codes carry the prefix `09066` — Sulu under **Region IX**, following
@@ -254,7 +328,7 @@ rows are Zamboanga Peninsula alone, and Sulu's 87 sit inside BARMM's 399.
 
 **This decides which side the rollups take, and the answer is the reassuring one.** Resolving
 `09066… → 19066…` through the crosswalk puts Sulu under BARMM in `dim_geo`, which is what the
-workbook's own region column says. Verified live after the U1 load: grouping the 5,991 rows by
+workbook's own region column says. Verified live after the U1 load: grouping the then-5,991 rows by
 `dim_geo.region_code` reproduces the workbook's regional table at **all 17 regions**, BARMM 399 and
 Region IX 523 included, with no adjustment. Honouring the *code's* region instead would give Region
 IX 610 / BARMM 312 and break the §3 reconciliation.
@@ -281,7 +355,7 @@ counts, and §3 uses them as a third independent check.
 **One row is a genuine missing code:** `SORSOGON / PILAR / SAN ANTONIO`. It cannot be resolved
 automatically — PSGC has **two** barangays named SAN ANTONIO in Pilar, Sorsogon (`0506213047` and
 `0506213048`), neither already present in the list, and the workbook carries no field that
-distinguishes them. This one needs the source office. It is 1 barangay in 5,991.
+distinguishes them. This one needs the source office, and the final list did not resolve it — it is still there, still codeless. It is 1 barangay in 5,987.
 
 ---
 
@@ -305,7 +379,7 @@ distinguishes them. This one needs the source office. It is 1 barangay in 5,991.
 | SBA | **−1** – 300 | out of range, negative |
 | Water | **−1** – **9,594** | out of range, negative |
 
-**This is not a scatter of typos.** Counting how many of the 5,991 barangays exceed 100 in each
+**This is not a scatter of typos.** Counting how many of the barangays exceed 100 in each
 column shows the problem is structural:
 
 | Column | > 100 | share | < 0 | Maximum |
@@ -344,7 +418,7 @@ Mirrors `bhw-profiling-status-2026`. Each is independently shippable and must pa
 
 **U1 — Classification, national. Shipped 2026-08-26.**
 
-**Scope narrowed by the owner: only the 5,991 listed barangays load.** The workbook's 9,395
+**Scope narrowed by the owner: only the listed barangays load.** The workbook's 9,395
 `NOT UUA` rows are not ingested, so `fact_uuc_phc_barangay` carries no `decision` column —
 membership is presence, and it would read `UUA` on every row. Anything needing "share of barangays
 in this area" takes its denominator from `dim_geo`'s complete 41,958, not from the workbook's
@@ -359,7 +433,7 @@ Shipped as:
 | `20260826121000_fact_uuc_phc_barangay.sql` | Table: `geo_code`, `source_geo_code`, `source_region/province/citymun/barangay`; RLS public-read |
 | `20260826121100_seed_dim_dataset_uuc_phc.sql` | `dim_dataset` row, slug `uuc-phc-2025`, `geo_join_level = 'barangay'` |
 | `20260826121200_crosswalk_sulu_region_ix.sql` | Sulu vintage map, derived FROM `dim_geo` — all 430 Sulu geos, not just the 87 needed |
-| `20260826121300_seed_fact_uuc_phc_barangay.sql` | 5,991 rows, generated |
+| `20260826121300_seed_fact_uuc_phc_barangay.sql` | 5,987 rows, generated |
 | `ingestion/ingest_uuc_phc.py` | Loader; reads the cleaned CSV, checks it, emits the seed |
 | `ingestion/data/uuc_phc_2025_cleaned.csv` | Committed machine-readable extract the loader reads |
 
@@ -372,6 +446,10 @@ resolved (`0506213048`), so nothing is held back.
 
 *Verify — all green, run live against the loaded table:*
 
+> **These tables record the U1–U3 loads, when the list stood at 5,991.** §3's final-list
+> alignment moved it to 5,987; the checks themselves are unchanged and the alignment migration
+> re-asserts every one of them.
+
 | Check | Result |
 |---|---|
 | Rows loaded | **5,991** (= 5,991 distinct `geo_code`) |
@@ -383,7 +461,7 @@ resolved (`0506213048`), so nothing is held back.
 
 The loader re-checks the extract before emitting: row count, PSGC format, duplicates, `UUA`-only,
 the 87-code Sulu count, and all 17 regional counts — each a hard failure, since a silently short
-load is worse than a failed one when 5,991 is a headline figure.
+load is worse than a failed one when 5,987 is a headline figure.
 
 **U2 — Aggregates and the section. Shipped 2026-08-26.**
 
@@ -406,6 +484,10 @@ Three choices worth recording:
   status. `/uuc-phc/barangay/*` therefore 404s.
 
 *Verify — all green:*
+
+> **These tables record the U1–U3 loads, when the list stood at 5,991.** §3's final-list
+> alignment moved it to 5,987; the checks themselves are unchanged and the alignment migration
+> re-asserts every one of them.
 
 | Check | Result |
 |---|---|
@@ -449,6 +531,10 @@ Two things the build found that the plan had not:
 
 *Verify — all green:*
 
+> **These tables record the U1–U3 loads, when the list stood at 5,991.** §3's final-list
+> alignment moved it to 5,987; the checks themselves are unchanged and the alignment migration
+> re-asserts every one of them.
+
 | Check | Result |
 |---|---|
 | Indicator rows | **5,991**, one per listed barangay, none missing |
@@ -486,7 +572,7 @@ over-long line runs off the page with no error.
 drill-down, since this is a targeting dataset rather than a BHW measure. It is also a natural
 overlay/filter on `/explore` — worth doing, but after U2, not inside it.
 
-**Storage.** 5,991 fact rows and ~1,800 aggregate rows is well under 1 MB. This dataset is not a
+**Storage.** 5,987 fact rows and ~1,800 aggregate rows is well under 1 MB. This dataset is not a
 scaling concern; the §5 opt-in aggregate discipline of the AI plan still applies to it, and the
 596 MB-against-500 MB Free-plan position is unchanged by it either way.
 
@@ -506,12 +592,12 @@ scaling concern; the §5 opt-in aggregate discipline of the AI plan still applie
   100; IMR, UFMR and ABR are rates per 1,000 capped at 1,000. Applied and reported in
   `UUC_PHC_2025_CLEANING_REPORT.md`. The negatives question is moot — the reconciled file had
   already removed them.
-- **`SORSOGON / PILAR / SAN ANTONIO`** — resolved to `0506213048`. **All 5,991 barangays now carry
+- **`SORSOGON / PILAR / SAN ANTONIO`** — resolved to `0506213048`. **All 5,987 barangays now carry
   a PSGC code**, so §4's last geography gap is closed and nothing is held back from U1.
 - **FP CU** — confirmed dropped. The dataset carries 12 indicators, not 13.
 - **Pass/Fail columns** — not to be used. All 15 are dropped from the cleaned dataset.
 - **`#N/A` reference values** — left blank.
-- **The published total** — **5,991**, with cue cards p37's 5,987 as a footnote citing DC No.
+- **The published total** — **5,987**, the source office's final list, which is also cue cards p37's figure citing DC No.
   2025-0549 (§3).
 
 **No questions remain open** *for U1–U4* — both were unblocked and both shipped. Questions that
@@ -645,7 +731,7 @@ Bring the two existing pages up to the chrome the BHW pages carry.
 - **Present mode** on `/uuc-phc` and `/uuc-phc/[geoLevel]/[geoCode]`. Wrap each page in
   `PresentationProvider`, mark the hero, the share bar, the child breakdown and (at citymun) the
   barangay list as `PresentationSlide`s, and add `PresentButton` to the section header.
-  `DeckMeta.captionLine` reads `N = 5,991 listed barangays · <area> · 2025 list (DC No.
+  `DeckMeta.captionLine` reads `N = 5,987 listed barangays · <area> · 2025 list (DC No.
   2025-0549)`, matching the Person/Place/Time discipline the rest of the site uses.
 - **De-brand the slide chrome** (§8 defect 1): add `brandLabel` to `DeckMeta`, default it to
   `"BHW Connect"` so every existing caller is unchanged, and pass `"UUC for PHC"` here. This is
@@ -862,7 +948,7 @@ dataset. Render, from the data rather than transcribed:
 - **Where the comparison cannot be made**: the 5 provinces / 226 barangays whose references are
   placeholders, zeroes, `#N/A` or fractions, and the 113 barangays in 2 provinces with an
   impossible FIC benchmark.
-- **The published-total reconciliation**: 5,991 vs the cue cards' 5,987, the two affected regions,
+- **The published-total reconciliation**: now closed at 5,987 on both sides, with no affected regions,
   and the vintage reading — with §3's caveat that it is inference from the file name and internal
   agreement, *not* something either source states.
 - **What is known to be unresolved**: the underlying encoding error that capping only contains,
@@ -911,7 +997,7 @@ carrying the source, the DC number, the retrieval date and the capping caveat, e
 `/api/export/csv` already does. This is not a relaxation of U4's rule; it is the same rule
 reaching a format that can satisfy it.
 
-*Verify:* the national CSV has 5,991 data rows and round-trips against the committed extract with
+*Verify:* the national CSV has 5,987 data rows and round-trips against the committed extract with
 zero mismatches; a citymun export matches that page's barangay list exactly; the capped column is
 non-empty for exactly 1,397 barangays; the header block carries the source, licence, DC number and
 caveat; XLSX opens in Excel and Sheets with the caveat visible without scrolling; a zero area
@@ -957,8 +1043,8 @@ list's own criteria partly manufacture. Recorded in `docs/DECISIONS.md`; four th
 here:
 
 - **The national answer is the opposite of the title question below.** Listed barangays carry
-  **50.9 households per BHW** against **98.2** elsewhere, and that direction holds in **76 of the
-  81 provinces** where both sides clear the threshold. BHWs are not thinner where communities are
+  **50.3 households per BHW** against **98.3** elsewhere, and that direction holds in **76 of the
+  80 provinces** where both sides clear the threshold. BHWs are not thinner where communities are
   unserved; they are, by this measure, thicker.
 - **And most of that is barangay size, which the page computes rather than asserts.** Listed
   barangays hold **0.58×** the households of the others and carry **1.13×** the BHWs each.
@@ -982,7 +1068,7 @@ indicators split listed vs. not-listed.
 
 Three things to settle before building it, all of which change what the figure means:
 
-1. **What "not listed" is.** U1 loaded only the 5,991; the workbook's 9,395 assessed-but-not-listed
+1. **What "not listed" is.** U1 loaded only the listed barangays; the workbook's 9,395 assessed-but-not-listed
    rows were scoped out. So the comparison group is *every other barangay in the area*, not
    *assessed and not listed*. That is the right denominator on this section's existing reasoning
    — but the label has to say "all other barangays", because a reader will otherwise hear
@@ -1041,12 +1127,12 @@ for the source office (BLHSD) rather than for the build:
 - **FIC's provincial benchmark is uncapped while barangay FIC is capped**, so 113 barangays in 2
   provinces read as worse-than-province by construction. U3 made this render as "no verdict";
   capping the reference to 100 would close it properly, and was outside the instruction given.
-- **Criterion (b) is implemented as a sum, not the order's "or"** — matches all 5,991 rows, but
+- **Criterion (b) is implemented as a sum, not the order's "or"** — matches every row the source scored, but
   disagrees with an either-alone reading on 15 (§1a).
 - **Five provinces / 226 barangays cannot support criterion (d) at all.** U7 and U9 exclude them
   and say so — as of U9 the per-barangay disclosure does too, on the same rule
   (`benchmarksArePlaceholder`); the references themselves still need fixing at source.
-- **The 5,991 vs 5,987 vintage reading is inference, not a statement either source makes** (§3).
+- **The 5,991 vs 5,987 gap is closed, and the vintage inference that once explained it was backwards** (§3).
   U10 renders it as such. Worth confirming.
 - **`Health Indicators` (0–7) is retained but not recomputable** from the published columns —
   drop or recompute before anything depends on it.

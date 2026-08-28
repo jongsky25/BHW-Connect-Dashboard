@@ -22,7 +22,7 @@ export const revalidate = 3_600;
 export const metadata: Metadata = {
   title: { absolute: "Data quality · UUC for PHC 2025" },
   description:
-    "What is known to be wrong with the 2025 UUC for PHC indicator data: the values bounded during cleaning, the provincial benchmarks that cannot carry the health comparison, the gap against the published total, and what remains unresolved.",
+    "What is known to be wrong with the 2025 UUC for PHC indicator data: the values bounded during cleaning, the provincial benchmarks that cannot carry the health comparison, how the list reconciles against the published total, and what remains unresolved.",
 };
 
 export default async function UucPhcDataQualityPage() {

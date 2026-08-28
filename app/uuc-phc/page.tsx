@@ -25,7 +25,7 @@ export const revalidate = 3_600;
 export const metadata: Metadata = {
   title: { absolute: "UUC for PHC 2025 · Overview" },
   description:
-    "The 2025 list of Unserved and Underserved Communities for Primary Health Care: 5,991 barangays across the Philippines, with the share of each region's barangays on the list.",
+    "The 2025 list of Unserved and Underserved Communities for Primary Health Care: 5,987 barangays across the Philippines, with the share of each region's barangays on the list.",
 };
 
 export default async function UucPhcLanding() {

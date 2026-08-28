@@ -4,7 +4,7 @@
 -- which ingestion/clean_uuc_phc_indicators.py writes from the source office's reconciled
 -- workbook. Do not hand-edit: regenerate both.
 --
--- 5,991 rows, one per listed barangay. geo_code is resolved through
+-- 5,987 rows, one per listed barangay. geo_code is resolved through
 -- map_psgc_to_dim_geo() rather than written literally, so Sulu's 87 '09066…' codes
 -- resolve via dim_psgc_crosswalk and a missing crosswalk row fails this insert on
 -- geo_code's NOT NULL instead of dropping barangays. Idempotent: re-running updates the
@@ -43,6 +43,7 @@ src (source_geo_code, region_name, province_name, citymun_name, barangay_name) a
     ('1900705002', 'BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)', 'BASILAN', 'SUMISIP', 'BENEMBENGAN LOWER'),
     ('1900705039', 'BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)', 'BASILAN', 'SUMISIP', 'ETTUB-ETTUB'),
     ('1900705032', 'BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)', 'BASILAN', 'SUMISIP', 'MAHATALANG'),
+    ('1900705019', 'BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)', 'BASILAN', 'SUMISIP', 'SUMISIP CENTRAL'),
     ('1900705025', 'BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)', 'BASILAN', 'SUMISIP', 'TONGSENGAL'),
     ('1900706018', 'BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)', 'BASILAN', 'TIPO-TIPO', 'BANAH'),
     ('1900707034', 'BANGSAMORO AUTONOMOUS REGION IN MUSLIM MINDANAO (BARMM)', 'BASILAN', 'TUBURAN', 'CALUT'),
@@ -2270,11 +2271,6 @@ src (source_geo_code, region_name, province_name, citymun_name, barangay_name) a
     ('0401033011', 'REGION IV-A (CALABARZON)', 'BATANGAS', 'TINGLOY', 'SAN ISIDRO'),
     ('0401033014', 'REGION IV-A (CALABARZON)', 'BATANGAS', 'TINGLOY', 'SAN PEDRO'),
     ('0401033016', 'REGION IV-A (CALABARZON)', 'BATANGAS', 'TINGLOY', 'TALAHIB'),
-    ('0402103047', 'REGION IV-A (CALABARZON)', 'CAVITE', 'CITY OF BACOOR', 'MOLINO IV'),
-    ('0402103064', 'REGION IV-A (CALABARZON)', 'CAVITE', 'CITY OF BACOOR', 'SAN NICOLAS II'),
-    ('0402103066', 'REGION IV-A (CALABARZON)', 'CAVITE', 'CITY OF BACOOR', 'TALABA 2'),
-    ('0402103091', 'REGION IV-A (CALABARZON)', 'CAVITE', 'CITY OF BACOOR', 'TALABA 3'),
-    ('0402105032', 'REGION IV-A (CALABARZON)', 'CAVITE', 'CITY OF CAVITE', 'BARANGAY 38'),
     ('0402113015', 'REGION IV-A (CALABARZON)', 'CAVITE', 'MARAGONDON', 'PATUNGAN'),
     ('0402120026', 'REGION IV-A (CALABARZON)', 'CAVITE', 'TANZA', 'TRES CRUSES'),
     ('0402121008', 'REGION IV-A (CALABARZON)', 'CAVITE', 'TERNATE', 'SAPANG I'),

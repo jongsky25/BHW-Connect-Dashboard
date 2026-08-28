@@ -123,7 +123,7 @@ export const UUC_PHC_EXPORT_COLUMNS: readonly UucPhcExportColumn[] = [
     key: "route_conflict",
     kind: "boolean",
     meaning:
-      "Criterion (b): armed conflict and displacement together reach 10% of the population, or the barangay is ELCAC-designated. The two percentages are summed rather than read as the order's 'or' — that is what reproduces the source's own Pass/Fail on all 5,991 rows.",
+      "Criterion (b): armed conflict and displacement together reach 10% of the population, or the barangay is ELCAC-designated. The two percentages are summed rather than read as the order's 'or' — that is what reproduces the source's own Pass/Fail on every row it scored.",
   },
   {
     key: "route_four_ps",

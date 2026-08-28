@@ -12,7 +12,7 @@
 -- build that needs both on one line, together with the geography resolved, so the join is named
 -- once here rather than assembled in the read layer.
 --
--- **Why a relation at all, rather than two reads joined in TypeScript.** A national export is 5,991
+-- **Why a relation at all, rather than two reads joined in TypeScript.** A national export is 5,987
 -- barangays, and neither fact table carries an ancestor code — scoping either one to a region means
 -- naming its barangays, which at national grain is 41,958 identifiers in a URL. `dim_geo`'s
 -- denormalized `region_code` / `province_code` / `citymun_code` are what make "every listed
@@ -61,11 +61,11 @@ select
   -- from the other. So they are asserted to roll up to it exactly, on every one of its 1,788 geo
   -- rows and all five measures, and a disagreement aborts the migration.
   --
-  -- The physical factor is not a route: it holds in all 5,991 rows by construction, since a
+  -- The physical factor is not a route: it holds in every row by construction, since a
   -- barangay below the AO's 25% floor never entered the list. Its measured value is a column below.
   (coalesce(i.ip_pop, 0) >= 10) as route_ip,
   -- Criterion (b) is the summed conflict/displacement test OR the ELCAC designation. Summed, not
-  -- the order's "or": that is what reproduces the source's own Pass/Fail on all 5,991 rows, and
+  -- the order's "or": that is what reproduces the source's own Pass/Fail on every row it scored, and
   -- an either-alone reading disagrees on 15. See docs/UUC_PHC_2025_PLAN.md §1a.
   ((coalesce(i.armed_conf, 0) + coalesce(i.idp, 0) >= 10)
      or coalesce(i.elcac_brgy, false)) as route_conflict,
@@ -146,9 +146,9 @@ declare
   n_bad integer;
   n_capped integer;
 begin
-  -- 1. The view is the list, whole and once. Anything other than 5,991 distinct barangays means
+  -- 1. The view is the list, whole and once. Anything other than 5,987 distinct barangays means
   --    the join dropped or duplicated rows, and a short export is worse than a failed one when
-  --    5,991 is the headline figure.
+  --    5,987 is the headline figure.
   select count(*), count(distinct geo_code) into n_rows, n_bad from ref_uuc_phc_list;
   if n_rows <> (select count(*) from fact_uuc_phc_barangay) then
     raise exception 'ref_uuc_phc_list has % rows against fact_uuc_phc_barangay''s %',

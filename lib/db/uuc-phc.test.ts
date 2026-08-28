@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { toUucPhcCounts, uucContextSentence, uucPhcAreaHref, type Row } from "./uuc-phc";
 
-/** National: 5,991 of the country's 41,958 barangays are on the 2025 list. */
+/** National: 5,987 of the country's 41,958 barangays are on the 2025 list. */
 const national: Row = {
   geo_code: "PH",
   geo_level: "national",
-  n_listed: 5991,
+  n_listed: 5987,
   n_barangays: 41958,
 };
 
@@ -28,11 +28,11 @@ const noneListed: Row = {
 describe("toUucPhcCounts", () => {
   it("derives the share from the dim_geo barangay denominator", () => {
     const c = toUucPhcCounts(national);
-    expect(c.nListed).toBe(5991);
+    expect(c.nListed).toBe(5987);
     expect(c.nBarangays).toBe(41958);
-    // 5,991 / 41,958 = 14.28% → 14
+    // 5,987 / 41,958 = 14.27% → 14
     expect(c.sharePct).toBe(14);
-    expect(c.fraction).toBeCloseTo(0.1428, 4);
+    expect(c.fraction).toBeCloseTo(0.1427, 4);
   });
 
   it("reads a fully-listed area as 100%, filling the bar exactly once", () => {
@@ -89,7 +89,7 @@ describe("toUucPhcCounts", () => {
 describe("uucContextSentence", () => {
   it("states the count, the denominator and the universe in one sentence", () => {
     expect(uucContextSentence(toUucPhcCounts(national))).toBe(
-      "5,991 of this area's 41,958 barangays are on the 2025 UUC for PHC list",
+      "5,987 of this area's 41,958 barangays are on the 2025 UUC for PHC list",
     );
   });
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Methodology",
   description:
-    "How the 2025 UUC for PHC list is defined — the physical and socio-economic criteria of DOH AO No. 2020-0023, the denominator, and how the 5,991 barangays were counted.",
+    "How the 2025 UUC for PHC list is defined — the physical and socio-economic criteria of DOH AO No. 2020-0023, the denominator, and how the 5,987 barangays were counted.",
 };
 
 export default function UucPhcMethodology() {
@@ -80,12 +80,18 @@ export default function UucPhcMethodology() {
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">The published total</h2>
         <p className="text-muted">
-          This dashboard publishes <strong>5,991</strong> barangays, the figure the source workbook
-          carries. The 2027 Budget Cue Cards give <strong>5,987</strong> for the same list as of DC
-          No. 2025-0549; the difference is 5 barangays in CALABARZON and 1 in BARMM. The workbook
-          states 5,991 in three independent places — its classification sheet, its list of
-          barangays, and its own regional subtotals — so that is the figure rendered here, with the
-          published 5,987 noted rather than silently reconciled.
+          This dashboard publishes <strong>5,987</strong> barangays — the source office&rsquo;s
+          final list, which is also the figure the 2027 Budget Cue Cards give for the same list as
+          of DC No. 2025-0549. The two agree at every one of the 17 regions.
+        </p>
+        <p className="text-muted">
+          It has not always said so. Until the final list arrived, this dashboard published{" "}
+          <strong>5,991</strong>, the count in the reconciled submission workbook it was first built
+          from, and footnoted the cue cards&rsquo; 5,987. The two differed on six barangays and
+          nothing else: five in Cavite that the final list does not carry, and one in Basilan
+          (Sumisip) that it carries and the workbook had classified as not qualifying. The final
+          list resolves both, so the figures now match and the footnote is gone rather than silently
+          reconciled.
         </p>
       </section>
 

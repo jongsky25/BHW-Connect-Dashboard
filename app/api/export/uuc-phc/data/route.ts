@@ -13,7 +13,7 @@ import {
 } from "@/lib/exports/uuc-phc-data";
 
 export const runtime = "nodejs";
-// The national export is 5,991 rows read a page of 1,000 at a time — PostgREST's own cap — so it
+// The national export is 5,987 rows read a page of 1,000 at a time — PostgREST's own cap — so it
 // costs six sequential round trips plus serialisation, and it measured **8.5s (CSV) / 9.0s (XLSX)
 // on a real Vercel preview deployment**. That is inside the platform's default ceiling but not
 // comfortably: one slow cold start or one slow Supabase response and the largest file on the
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
   }
 
   // **Refuse to emit a short file.** The fact loader already refuses to emit on a failed row-count
-  // check, on the reasoning that a silently short load is worse than a failed one when 5,991 is a
+  // check, on the reasoning that a silently short load is worse than a failed one when 5,987 is a
   // headline figure — and a spreadsheet is the case where that matters most, because it leaves the
   // building and nothing downstream will ever notice a province went missing. `n_listed` is
   // computed from a different fact table than these rows are, so the two agreeing is a real check.

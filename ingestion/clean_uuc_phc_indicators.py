@@ -17,9 +17,13 @@ Also applied:
   - The provincial reference columns are collapsed to one row per province and written
     to a CSV. Water and Pre-natal references are capped at 100 (a provincial proportion
     cannot exceed 100% either); IMR, UFMR, ABR and FIC references are left as supplied.
+  - Membership is aligned to the source office's final 2025 UUC for PHC list: five Cavite
+    barangays it omits are dropped, and BASILAN / SUMISIP / SUMISIP CENTRAL, which it
+    carries and the reconciled sheet does not, is recovered from the "2025 LIST" sheet.
+    See FINAL_LIST_REMOVED / FINAL_LIST_ADDED below for what that costs.
 
-No value is removed and no barangay is dropped: all 5,991 rows survive with every
-indicator populated.
+No value is altered by the alignment and no indicator is dropped: the extract carries
+5,987 rows, every one with its indicators populated.
 
 Usage:
     python ingestion/clean_uuc_phc_indicators.py
@@ -64,6 +68,106 @@ CSV_RENAME = {
 }
 
 NEG_ACTION = 'Negative set to 0'
+
+# ---------------------------------------------------------------- final-list alignment
+#
+# The reconciled workbook is the source for every *measurement* here, but it is not the source
+# for who is ON the list. Its `NEW` sheet classifies 5,991 barangays UUA; the source office's
+# final national list — "2025 UUC FOR PHC LIST", the one whose regional distribution the 2027
+# Budget Cue Cards p37 publishes — carries 5,987, and the two differ on six barangays and
+# nowhere else. This step reconciles the membership without touching a single value.
+#
+# Five barangays the reconciled workbook lists and the final list does not. All five are urban
+# Cavite; all five read `UUA` in `NEW`. Dropped here, so they never reach the extract.
+FINAL_LIST_REMOVED = {
+    ('CAVITE', 'CITY OF BACOOR', 'MOLINO IV'),
+    ('CAVITE', 'CITY OF BACOOR', 'SAN NICOLAS II'),
+    ('CAVITE', 'CITY OF BACOOR', 'TALABA 2'),
+    ('CAVITE', 'CITY OF BACOOR', 'TALABA 3'),
+    ('CAVITE', 'CITY OF CAVITE', 'BARANGAY 38'),
+}
+
+# One barangay the final list carries and the reconciled workbook does not. `NEW` scores it
+# `NOT UUA`, which is why it never entered this pipeline — but the same workbook's `2025 LIST`
+# sheet holds a complete set of indicator values for it under PSGC 1900705019, and dim_geo
+# already knows the code. So the row is recoverable rather than a hole, and it is recovered from
+# there rather than invented.
+#
+# **Its values come from `2025 LIST`, not from the reconciled sheet, and that is a real
+# difference in vintage.** The two disagree somewhere on 473 of the 5,989 barangays they share
+# (ABR most often, 275 rows), so this one row is pre-reconciliation where the other 5,986 are
+# post-. It is the only source that has it; the alternative is a listed barangay with no
+# evidence at all. Recorded here, in the loader's docstring and in the migration that carries
+# the change, so a reader of the row knows which extract it came from.
+#
+# Two of the workbook's columns have no counterpart in `2025 LIST` and are left empty rather
+# than guessed:
+#
+#   ELCAC BRGY        — the conflict-area designation. Absent, so criterion (b) for this row
+#                       rests on ARMED CONF + IDP alone (30 + 11 = 41, which passes anyway).
+#   Health Indicators — the source office's own criterion (d) score, 0-7. It is a recorded
+#                       classification that this pipeline never recomputes (see the column note
+#                       in supabase/migrations/20260826150000_fact_uuc_phc_indicators.sql), and
+#                       recomputing it here for one row is exactly what that note forbids. Left
+#                       NULL, so route (d) does not count this barangay. Its listing does not
+#                       depend on that: IP POP is 100, so criterion (a) carries it on its own.
+#
+# The seven provincial benchmarks are NOT taken from `2025 LIST`, which has none. They are
+# province constants, so they are copied from the barangay's own province in this same extract —
+# which is what keeps ref_uuc_phc_provincial's "no province carries two different reference
+# values" assertion true for Basilan.
+FINAL_LIST_ADDED = ('BASILAN', 'SUMISIP', 'SUMISIP CENTRAL')
+FINAL_LIST_ADDED_PSGC = '1900705019'
+
+# `2025 LIST` column index -> reconciled-sheet column index, for the values that carry over.
+# FP CU (index 13 there) is deliberately absent: the reconciled extract drops it, so importing
+# it would add a column the rest of the pipeline does not have.
+ADDED_VALUE_COLS = {4: 4, 5: 6, 6: 8, 7: 9, 8: 13, 9: 15, 10: 18,
+                    11: 21, 12: 24, 14: 27, 15: 30, 16: 33}
+
+
+def align_to_final_list(rows, psgc_src):
+    """Drop the five barangays the final list omits; add the one it adds. Mutates `rows`."""
+    removed = [i for i, r in enumerate(rows)
+               if (norm(r[1]), norm(r[2]), norm(r[3])) in FINAL_LIST_REMOVED]
+    if len(removed) != len(FINAL_LIST_REMOVED):
+        raise SystemExit(f'final list: expected {len(FINAL_LIST_REMOVED)} rows to remove, '
+                         f'matched {len(removed)}')
+    for i in reversed(removed):
+        del rows[i]
+
+    prov, citymun, brgy = FINAL_LIST_ADDED
+    if any((norm(r[1]), norm(r[2]), norm(r[3])) == (prov, citymun, brgy) for r in rows):
+        raise SystemExit(f'final list: {brgy} is already in the reconciled sheet')
+
+    ws = openpyxl.load_workbook(psgc_src, read_only=True, data_only=True)['2025 LIST']
+    src = next((r for r in ws.iter_rows(min_row=2, values_only=True)
+                if r[3] and str(r[3]).strip().zfill(10) == FINAL_LIST_ADDED_PSGC), None)
+    if src is None:
+        raise SystemExit(f'final list: {brgy} not found in the 2025 LIST sheet')
+
+    sibling = next((r for r in rows if norm(r[1]) == prov), None)
+    if sibling is None:
+        raise SystemExit(f'final list: no {prov} row to copy provincial benchmarks from')
+
+    new = [None] * len(sibling)
+    new[0], new[1], new[2], new[3] = sibling[0], sibling[1], citymun, brgy
+    for src_i, dst_i in ADDED_VALUE_COLS.items():
+        new[dst_i] = src[src_i]
+    for ci in PROV_REF:                       # province constants, copied not invented
+        new[ci] = sibling[ci]
+    new[41] = 'UUA'                           # DECISION — the final list is what says so
+
+    # Keep the extract's own ordering: rows arrive grouped by municipality and sorted by
+    # barangay within it, and every downstream diff reads better if that survives.
+    group = [i for i, r in enumerate(rows)
+             if (norm(r[1]), norm(r[2])) == (prov, citymun)]
+    if not group:
+        raise SystemExit(f'final list: no {prov} / {citymun} group to insert into')
+    at = next((i for i in group if norm(rows[i][3]) > brgy), group[-1] + 1)
+    rows.insert(at, new)
+    return len(removed), 1
+
 
 
 def norm(x):
@@ -171,6 +275,8 @@ def build(src, psgc_src, out_path, ref_csv=None, data_csv=None):
     HDR = list(allr[0])
     rows = [list(r) for r in allr[1:] if any(c is not None for c in r)]
 
+    n_dropped, n_added = align_to_final_list(rows, psgc_src)
+
     by3, by2 = load_psgc(psgc_src)
     psgc_list, psgc_missing = [], 0
     for r in rows:
@@ -192,7 +298,8 @@ def build(src, psgc_src, out_path, ref_csv=None, data_csv=None):
     n_neg = sum(1 for a in actions if a[4] == NEG_ACTION)
     touched = len({a[0] for a in actions})
     keep_idx = [i for i in range(len(HDR)) if i not in DROP_COLS]
-    print(f'rows={len(rows)} psgc_missing={psgc_missing} cap100={n_cap100} cap1000={n_cap1000} '
+    print(f'rows={len(rows)} final_list_dropped={n_dropped} final_list_added={n_added} '
+          f'psgc_missing={psgc_missing} cap100={n_cap100} cap1000={n_cap1000} '
           f'neg={n_neg} na_blanked={n_na} cols_dropped={len(DROP_COLS)} touched={touched} '
           f'provinces={len(prov_recs)} prov_ref_capped={n_prov_capped}')
 
@@ -208,6 +315,7 @@ def build(src, psgc_src, out_path, ref_csv=None, data_csv=None):
         ('Source', 'h'),
         ('GIDA reconciled data.xlsx, sheet "Reconciled" — 5,991 UUA barangays.', 'p'),
         ('PSGC codes joined from Submissions_UUA_2025_filled_1.xlsx, sheet "2025 LIST".', 'p'),
+        ('Membership aligned to the final 2025 UUC for PHC list: 5,987 barangays.', 'p'),
         ('', None),
         ('Rules applied', 'h'),
         ('The bound depends on what the indicator measures.', 'p'),
@@ -219,15 +327,16 @@ def build(src, psgc_src, out_path, ref_csv=None, data_csv=None):
         ('                               women, so they may exceed 100, but not 1,000.', 'p'),
         ('  Any value below 0            set to 0.', 'p'),
         ('', None),
-        ('Nothing is removed and no barangay is dropped. All 5,991 rows are present with every', 'p'),
-        ('indicator populated.', 'p'),
+        ('No value is removed. All 5,987 rows are present with every indicator populated.', 'p'),
         ('', None),
         ('Also applied', 'h'),
         ('  - The 15 Pass/Fail and High/Low assessment columns are DROPPED. They were computed by', 'p'),
         ('    the source office against the uncapped values, and are not to be used.', 'p'),
         ('  - "#N/A" reference values are now blank.', 'p'),
-        ('  - SORSOGON / PILAR / SAN ANTONIO resolved to PSGC 0506213048. All 5,991 barangays now', 'p'),
+        ('  - SORSOGON / PILAR / SAN ANTONIO resolved to PSGC 0506213048. All 5,987 barangays now', 'p'),
         ('    carry a PSGC code.', 'p'),
+        ('  - Aligned to the final list: 5 Cavite barangays dropped, SUMISIP CENTRAL added from', 'p'),
+        ('    the "2025 LIST" sheet (its ELCAC and Health Indicators columns are blank there).', 'p'),
         ('  - The FP CU column is absent — it was dropped from the reconciled file at source.', 'p'),
         ('    This dataset carries 12 indicators, not the original 13.', 'p'),
         ('', None),
@@ -408,7 +517,7 @@ def build(src, psgc_src, out_path, ref_csv=None, data_csv=None):
     c.font, c.number_format, c.border = BOLD, '#,##0', BOX
     for t, off in (('Water, Pre-natal, SBA and FIC are coverage percentages, capped at 100.', 2),
                    ('IMR, UFMR and ABR are rates per 1,000, capped at 1,000 — they may exceed 100.', 3),
-                   ('No value was removed; all 5,991 barangays keep every indicator.', 4),
+                   ('No value was removed; all 5,987 barangays keep every indicator.', 4),
                    ('Pass/Fail columns dropped — see the "Dropped columns" sheet.', 5)):
         s4.cell(row=tot + off, column=1, value=t).font = ITAL
     for col, w in zip('ABC', (30, 12, 16)):

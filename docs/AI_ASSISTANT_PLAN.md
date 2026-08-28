@@ -694,7 +694,9 @@ It is bounded, current, authoritative, and it **overlaps the existing structured
 exercise cross-source questions on day one** — which is what Phase 2 needs to be tested at all:
 
 - **p37** — UUC for PHC barangays by region, total 5,987, per DC No. 2025-0549. Cross-checks the
-  new `uuc-phc-2025` dataset.
+  new `uuc-phc-2025` dataset, which since the final-list alignment publishes the same 5,987 and
+  agrees with p37 at all 17 regions (`UUC_PHC_2025_PLAN.md` §3). `ref_uuc_phc_published_delta`
+  stores only disagreements, so it is now empty — which is the answer, not a missing read.
 - **p27** — DOH honorarium allocation by income class: 3rd 35,645 / 4th 27,058 / 5th 7,541 BHWs
   = 70,244 at ₱3,000/mo = ₱2.53 B/yr. Cross-checks `agg_honorarium` and the E3.7 income-class work.
 - **p160–168** — JMC 2023-001 BHW retention status by region, as of 18 Sept 2025. No structured

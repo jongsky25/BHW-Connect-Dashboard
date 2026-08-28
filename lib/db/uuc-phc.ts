@@ -58,7 +58,7 @@ export const UUC_PHC_BRAND_LABEL = "UUC for PHC";
 /**
  * The deck's caption line, in the Person/Place/Time form the rest of the site uses.
  *
- * The N is the *area's* listed count, not the national 5,991: a deck presented on Mayoyao is about
+ * The N is the *area's* listed count, not the national 5,987: a deck presented on Mayoyao is about
  * Mayoyao's 27 barangays, and quoting the national figure over a city's slides would state a
  * number none of the figures on screen support. At national the two coincide, which is the case
  * the plan's example shows.

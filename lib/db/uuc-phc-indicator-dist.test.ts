@@ -26,12 +26,12 @@ function row(over: Partial<Row> = {}): Row {
     geo_level: "national",
     indicator: "water",
     value_max: 100,
-    n_listed: 5991,
+    n_listed: 5987,
     bin_counts: [710, 115, 121, 142, 187, 202, 315, 374, 574, 3251],
     bin_capped: [0, 0, 0, 0, 0, 0, 0, 0, 0, 886],
     n_missing: 0,
     provincial_ref: null,
-    n_comparable: 5765,
+    n_comparable: 5761,
     n_worse: 2915,
     ...over,
   };
@@ -128,8 +128,8 @@ describe("toIndicatorDist", () => {
 
   it("derives the not-comparable count rather than trusting a stored one", () => {
     const dist = toIndicatorDist(row())!;
-    expect(dist.nComparable).toBe(5765);
-    expect(dist.nNotComparable).toBe(5991 - 5765);
+    expect(dist.nComparable).toBe(5761);
+    expect(dist.nNotComparable).toBe(5987 - 5761);
   });
 
   it("drops an indicator this build does not know", () => {
@@ -156,7 +156,7 @@ describe("benchmarkStateOf", () => {
     // Both render as "no line", and they are entirely different statements: a region spans 87
     // benchmarks by construction, while Nueva Vizcaya supplied none. Collapsing them would hide a
     // data-quality finding behind a geometric fact.
-    expect(benchmarkStateOf(water, "national", null, 5991, 5765)).toBe("aggregate");
+    expect(benchmarkStateOf(water, "national", null, 5987, 5761)).toBe("aggregate");
     expect(benchmarkStateOf(water, "region", null, 399, 380)).toBe("aggregate");
     expect(benchmarkStateOf(water, "province", null, 50, 0)).toBe("missing");
   });

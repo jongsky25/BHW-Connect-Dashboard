@@ -229,7 +229,35 @@ export function BenchmarkSection({ gaps }: { gaps: UucPhcBenchmarkGap[] }) {
 
 /* ------------------------------------------------- the published-total reconciliation */
 
-export function ReconciliationSection({ deltas }: { deltas: UucPhcPublishedDelta[] }) {
+export function ReconciliationSection({ deltas }: { deltas: UucPhcPublishedDelta[] | null }) {
+  // `null` is a failed read, `[]` is a checked agreement, and the two must not render alike — a
+  // data-quality page that prints "they agree" when it could not check is worse than one that
+  // prints nothing. See getUucPhcPublishedDeltas.
+  if (deltas === null) return null;
+
+  // The standing state since the final-list alignment: the table stores discrepancies only, so no
+  // rows means every geography matches. Rendered as a positive statement rather than as an absent
+  // section, because a reader who saw the old gap here needs to be told it closed.
+  if (deltas.length === 0) {
+    return (
+      <section className="rounded-lg border border-border bg-background p-5 sm:p-6">
+        <h2 className="text-lg font-semibold tracking-tight">Against the published total</h2>
+        <p className="mt-2 max-w-2xl text-sm text-muted">
+          The 2027 Budget Cue Cards publish their own distribution of UUC for PHC barangays by
+          region (p37, citing DC No. 2025-0549). This dashboard renders the source office&rsquo;s
+          final list, and the two agree — the national total and all 17 regions match to the unit,
+          checked against the cue cards&rsquo; own table rather than asserted.
+        </p>
+        <p className="mt-4 border-t border-border pt-4 text-xs text-muted">
+          <strong className="font-medium text-foreground">This gap was open until recently.</strong>{" "}
+          The dashboard was first built from the reconciled submission workbook, which listed 5,991
+          barangays against the cue cards&rsquo; 5,987 — five in Cavite the final list does not
+          carry, and one in Basilan it does. The final list settles both.
+        </p>
+      </section>
+    );
+  }
+
   const national = deltas.find((delta) => delta.geoLevel === "national");
   const regions = deltas.filter((delta) => delta.geoLevel !== "national");
   if (!national) return null;
@@ -240,7 +268,7 @@ export function ReconciliationSection({ deltas }: { deltas: UucPhcPublishedDelta
       <p className="mt-2 max-w-2xl text-sm text-muted">
         The 2027 Budget Cue Cards publish their own distribution of UUC for PHC barangays by region
         (p{national.sourcePage}, as of {national.sourceAsOf ?? "2025"}, citing DC No. 2025-0549).
-        This dashboard renders the reconciled workbook instead, and the two do not quite agree.
+        This dashboard renders its own source instead, and the two do not quite agree.
       </p>
 
       <p className="mt-5 rounded-md bg-surface px-4 py-3 text-sm">

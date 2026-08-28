@@ -3,8 +3,8 @@
 --
 -- Grain: one row per barangay ON the 2025 list. Membership is presence: a barangay in this
 -- table is UUC for PHC, one absent from it is not. The source workbook's `NEW` sheet also
--- carries the 9,395 barangays it assessed and did NOT list ('NOT UUA'), and those are
--- deliberately not loaded — the owner scoped this dataset to the 5,991 listed barangays. So
+-- carries the barangays it assessed and did NOT list ('NOT UUA'), and those are deliberately not
+-- loaded — the owner scoped this dataset to the listed barangays. So
 -- there is no `decision` column: it would read 'UUA' on every row. Anything needing "share of
 -- barangays in this area" takes its denominator from dim_geo, which is the complete universe
 -- (41,958 barangays), not from the workbook's partial assessed set.
@@ -16,8 +16,10 @@
 -- values read as exactly 100% (docs/UUC_PHC_2025_CLEANING_REPORT.md §6).
 --
 -- Policy basis: DOH AO No. 2020-0023 defines the criteria; DC No. 2025-0549 issues the 2025
--- list. Published total is the workbook's 5,991 (cue cards p37's 5,987 is footnoted, not
--- used — docs/UUC_PHC_2025_PLAN.md §3).
+-- list. Published total is 5,987 — the source office's final list, which is also what cue cards
+-- p37 reports. The workbook this table was first built from said 5,991; the six-barangay
+-- difference is reconciled in 20260828120000_uuc_phc_final_list_alignment.sql
+-- (docs/UUC_PHC_2025_PLAN.md §3).
 create table fact_uuc_phc_barangay (
   id bigint generated always as identity primary key,
   dataset_id bigint not null references dim_dataset (dataset_id),
@@ -44,7 +46,7 @@ create index fact_uuc_phc_barangay_geo_idx on fact_uuc_phc_barangay (geo_code);
 create index fact_uuc_phc_barangay_dataset_idx on fact_uuc_phc_barangay (dataset_id);
 
 comment on table fact_uuc_phc_barangay is
-  'The 5,991 barangays on the 2025 Unserved and Underserved Communities for Primary Health Care list (DC No. 2025-0549; criteria per DOH AO No. 2020-0023). Presence = listed. See docs/UUC_PHC_2025_PLAN.md.';
+  'The 5,987 barangays on the 2025 Unserved and Underserved Communities for Primary Health Care list (DC No. 2025-0549; criteria per DOH AO No. 2020-0023). Presence = listed. See docs/UUC_PHC_2025_PLAN.md.';
 
 alter table fact_uuc_phc_barangay enable row level security;
 

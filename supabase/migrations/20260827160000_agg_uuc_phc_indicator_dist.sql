@@ -18,8 +18,8 @@
 -- value_max/10, and the top bin closes inclusive so an exactly-capped value lands in it — which is
 -- what makes "the top bin holds the capped values" true by construction rather than by inspection.
 --
--- Equal width is a deliberate refusal too. IMR, UFMR and ABR are strongly zero-inflated (5,401 of
--- 5,991 barangays record an IMR of exactly 0), and narrow bins near zero with wide ones above would
+-- Equal width is a deliberate refusal too. IMR, UFMR and ABR are strongly zero-inflated (5,400 of
+-- 5,987 barangays record an IMR of exactly 0), and narrow bins near zero with wide ones above would
 -- read as a spread-out distribution while it is in fact a spike. Unequal bins misstate density by
 -- construction, and the honest picture of a spike is a spike.
 --
@@ -126,7 +126,7 @@ comment on column agg_uuc_phc_indicator_dist.provincial_ref is
   'The provincial benchmark criterion (d) tests this indicator against. Populated ONLY on province and citymun rows of the seven health indicators — a region or the nation spans 87 different benchmarks and has no single one. NULL for the five socio-economic indicators, which criterion (d) does not test. Do not treat it as usable without checking it against value_max (an FIC benchmark above 100 cannot be reached by a capped barangay value) and against n_comparable (a benchmark present with n_comparable 0 is a placeholder set).';
 
 comment on column agg_uuc_phc_indicator_dist.n_comparable is
-  'Listed barangays here whose criterion (d) comparison can be made for this indicator: a value is recorded, the province supplied a benchmark, the benchmark does not exceed value_max, and the province''s benchmark set is not a placeholder. Nationally 5,765 of 5,991 for six health indicators and 5,652 for FIC.';
+  'Listed barangays here whose criterion (d) comparison can be made for this indicator: a value is recorded, the province supplied a benchmark, the benchmark does not exceed value_max, and the province''s benchmark set is not a placeholder. Nationally 5,761 of 5,987 for six health indicators and 5,648 for FIC.';
 
 comment on column agg_uuc_phc_indicator_dist.n_worse is
   'Of n_comparable, how many perform worse than their province on this indicator — higher for the three rates, lower for the four coverage percentages. A COUNT, deliberately never a share: evaluable denominators differ between areas for data-quality reasons, so a percentage would invite comparisons the data cannot carry.';

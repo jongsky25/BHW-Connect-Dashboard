@@ -9,7 +9,7 @@ export const contentType = "image/png";
  * Social card for the section landing page, mirroring app/bhw/opengraph-image.tsx (plan U6).
  *
  * **The count is the headline**, because it is the whole finding: this is a membership list, and
- * "5,991 of 41,958 barangays" is the entire figure the page exists to state. A link preview is
+ * "5,987 of 41,958 barangays" is the entire figure the page exists to state. A link preview is
  * where most people will first meet this list — it is circulated in exactly the settings where one
  * matters — so the preview carries the number rather than a title alone.
  *
@@ -24,7 +24,7 @@ export const contentType = "image/png";
 export default async function Image() {
   const counts = await getUucPhcCounts(NATIONAL_GEO_CODE, "national");
 
-  const listed = (counts?.nListed ?? 5991).toLocaleString();
+  const listed = (counts?.nListed ?? 5987).toLocaleString();
   const total = (counts?.nBarangays ?? 41958).toLocaleString();
   const share = counts?.sharePct === null || counts === undefined ? "" : ` · ${counts?.sharePct}%`;
 

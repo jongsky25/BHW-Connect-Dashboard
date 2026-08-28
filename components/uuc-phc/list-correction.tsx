@@ -34,9 +34,8 @@ export function ListCorrection() {
           barangay, its city or municipality, and what looks wrong.
         </p>
         <p className="text-sm text-muted">
-          Two things are already known and do not need reporting: the published total is{" "}
-          <strong>5,991</strong>, four higher than the figure quoted in the 2027 budget cue cards,
-          and one source row could not be resolved to a single barangay. Both are written up in the{" "}
+          One thing is already known and does not need reporting: one source row could not be
+          resolved to a single barangay. It is written up in the{" "}
           <Link href="/uuc-phc/methodology" className="underline hover:text-accent">
             methodology
           </Link>

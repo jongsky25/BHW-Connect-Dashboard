@@ -220,7 +220,7 @@ export function toUucBhwCoverage(row: Row): UucBhwCoverage {
  *
  * `"thinner"` means the listed barangays carry **more** households per BHW than the rest of the
  * area — worse coverage where the list says the community is unserved. Nationally the answer is
- * the other way round, and in 76 of the 81 comparable provinces too, which is why `"thinner"` is
+ * the other way round, and in 76 of the 80 comparable provinces too, which is why `"thinner"` is
  * the reportable case: it is the one the definitional overlap does *not* already explain.
  *
  * `"even"` is a real answer, not a rounding artefact — the two sides carry the same load to within

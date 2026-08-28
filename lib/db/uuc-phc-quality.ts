@@ -32,7 +32,7 @@ import type { GeoLevel } from "@/lib/filters/schema";
  *
  * **No share is derived here, unlike every other read module in this section.** The page prints
  * several — one per bounded indicator plus the overall one — and they have to round alike and floor
- * alike: two bounded ABR values in 5,991 is 0.03%, which must read "<0.1%" rather than "0%" or the
+ * alike: two bounded ABR values in 5,987 is 0.03%, which must read "<0.1%" rather than "0%" or the
  * table says none were bounded. One formatter (`components/uuc-phc/quality-format.ts`) does that
  * for all of them; a share precomputed here at a different precision would be the odd one out on
  * its own page, which is the drift deriving-in-one-place exists to prevent.
@@ -195,14 +195,17 @@ export const getUucPhcBenchmarkGaps = cache(async (): Promise<UucPhcBenchmarkGap
 /**
  * The geographies where the cue cards and this dashboard disagree, national row first.
  *
- * **An empty result is ambiguous and the page must not resolve it itself.** No rows means either
- * the two sources now agree everywhere — a real and good outcome, since the table stores only
- * discrepancies — or the read failed. The page distinguishes them by whether the national row is
- * present alongside the rest of its data, and says "unavailable" rather than "reconciled".
+ * **`null` and `[]` mean opposite things here, and the distinction is the whole return type.**
+ * `ref_uuc_phc_published_delta` stores only discrepancies, so no rows is a real and good outcome —
+ * the two sources agree everywhere — and since the final-list alignment that is the standing state.
+ * A failed read produces no rows too. Collapsing both to `[]` would let the page print "reconciled"
+ * when it had in fact failed to check, which is the one thing a data-quality page must never do. So
+ * a failure returns `null` and agreement returns an empty array, and the caller renders them
+ * differently.
  */
-export const getUucPhcPublishedDeltas = cache(async (): Promise<UucPhcPublishedDelta[]> => {
+export const getUucPhcPublishedDeltas = cache(async (): Promise<UucPhcPublishedDelta[] | null> => {
   const datasetId = await getDatasetIdBySlug(DATASET_SLUGS.uucPhc);
-  if (datasetId === null) return [];
+  if (datasetId === null) return null;
 
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
@@ -212,7 +215,8 @@ export const getUucPhcPublishedDeltas = cache(async (): Promise<UucPhcPublishedD
     )
     .eq("dataset_id", datasetId);
 
-  if (error || !data || data.length === 0) return [];
+  if (error || !data) return null;
+  if (data.length === 0) return [];
 
   const codes = [...new Set(data.map((row) => row.geo_code))];
   const { data: geos } = await supabase

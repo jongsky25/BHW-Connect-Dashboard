@@ -15,7 +15,7 @@ export const revalidate = 3_600;
 export const metadata: Metadata = {
   title: { absolute: "The indicators behind the list · UUC for PHC 2025" },
   description:
-    "How the 5,991 barangays on the 2025 UUC for PHC list are distributed across the 12 indicators they were assessed on, with the values bounded during cleaning counted separately. No averages: a mean would hide them.",
+    "How the 5,987 barangays on the 2025 UUC for PHC list are distributed across the 12 indicators they were assessed on, with the values bounded during cleaning counted separately. No averages: a mean would hide them.",
 };
 
 export default async function UucPhcIndicatorsLanding() {

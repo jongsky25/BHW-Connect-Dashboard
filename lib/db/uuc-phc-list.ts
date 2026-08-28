@@ -70,7 +70,7 @@ export type UucPhcListRow = {
 const SELECT_COLS =
   "geo_code, geo_name, citymun_code, citymun_name, province_code, province_name, region_code, region_name, source_geo_code, source_region, source_province, source_citymun, source_barangay, route_ip, route_conflict, route_four_ps, route_health, health_evaluable, health_indicators, physical_factor, ip_pop, armed_conf, idp, four_ps, elcac_brgy, capped_indicators, imr, ufmr, abr, fic, pre_natal, sba, water, imr_prov_ref, ufmr_prov_ref, abr_prov_ref, fic_prov_ref, pre_natal_prov_ref, sba_prov_ref, water_prov_ref" as const;
 
-/** PostgREST caps a response at 1,000 rows, and a national export is 5,991 — so this path pages
+/** PostgREST caps a response at 1,000 rows, and a national export is 5,987 — so this path pages
  * where every other read in the section does not. The page size is the server's cap rather than a
  * smaller one: fewer round trips, and a partial page is how the loop knows it has reached the end. */
 const PAGE_SIZE = 1000;
@@ -97,7 +97,7 @@ export function isExportableLevel(geoLevel: GeoLevel): boolean {
  *
  * Returns **null on any read failure**, never a short array. The caller compares the length against
  * `agg_uuc_phc_counts.n_listed` and refuses to emit when they disagree, on the fact loader's own
- * discipline: a silently short file is worse than a failed one when 5,991 is the headline figure,
+ * discipline: a silently short file is worse than a failed one when 5,987 is the headline figure,
  * and unlike a page, a spreadsheet leaves the building with no way to notice later that it was
  * missing a province. An area with nothing listed returns `[]`, which is a real answer.
  */
@@ -126,7 +126,7 @@ export const getUucPhcListRows = cache(
 
       rows.push(...(data as UucPhcListRow[]));
       // A short page is the last page. Reading one more empty page to learn the same thing costs a
-      // round trip on every export, including the 5,991-row one.
+      // round trip on every export, including the 5,987-row one.
       if (data.length < PAGE_SIZE) break;
     }
 
