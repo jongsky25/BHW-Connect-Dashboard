@@ -6198,3 +6198,251 @@ replay on a schedule, so the list still only speaks when someone opens `/admin/r
 are correct against the final list as merged; the next republication moves them again, which is the
 point rather than a defect. What this increment adds is the first worked example of what to do when
 that happens.
+
+## 2026-08-28 — The regression list on a schedule, and route 1's twenty-nine pins through the real runner at last
+
+Two gaps, closed together because closing either one alone was the awkward half.
+
+The first is the one the previous entry named as its own limit: *"It does not establish that the
+list would have caught a change nobody announced. Nothing runs the replay on a schedule, so the
+list still only speaks when someone opens `/admin/regressions`."* The UUC final-list alignment moved
+eight pinned figures and the suite named all eight correctly — within hours, because a person knew
+to go looking.
+
+The second is Gap B from the route 3 entry: *"It does not establish that a `queryDataset` case
+replays. Route 1's ten still need the registry, which is service-role only."* Seven harvested cases
+had replayed end to end; ten seeded ones had not, and they carry twenty-nine of the list's
+sixty-six pins.
+
+They are one increment because a cron runs server-side, where the service-role key already lives. A
+scheduled replay covering seven of eighteen cases would not have been worth having, and the schedule
+is what finally forced route 1's calls through `executeQueryDataset` for real.
+
+### The free-tier ceiling was re-read rather than remembered, and it had moved
+
+`app/api/cron/precompute/route.ts` said, in its header, *"One invocation, not two, per Vercel Hobby's
+cron-job-count limit (pitfall P6)"*, and `BUILD_PLAN.md` P6 said *"few jobs, daily granularity"*.
+Checked against Vercel's cron usage page on the day rather than from memory: **Hobby allows 100 cron
+jobs per project**, and has since 2026-01-20, when the per-team caps (Hobby 2, Pro 40) were removed
+and the per-project cap was raised from 20 to 100 on every plan.
+
+What Hobby still caps is **frequency**: minimum interval once per day, and scheduling precision to
+the hour — *"a cron job configured as `0 1 * * *` will trigger anywhere between 1:00 am and 1:59 am"*,
+and an expression that would run more than once a day **fails at deploy time**. So a second daily job
+fits the plan's free-tier commitment as it stands, and the constraint that would have forced folding
+the replay into the precompute route does not exist any more. P6 is corrected in place rather than
+quietly worked around, and the precompute header now says why its own chaining is still right for
+*its* two steps and no longer forced.
+
+Given that it fits, separate beats chained here for reasons that are about these two jobs rather
+than about the limit. Precompute is already time-boxed at 50s and reports running out of it; adding
+a replay would spend that budget on a different job and silently reduce narrative coverage. A replay
+that finds something must not read as a precompute failure. And the two want different clocks:
+20:00 UTC and 22:00 UTC, two hours apart, which is the first spacing that Hobby's hour of slack on
+each cannot make overlap.
+
+**That constraint is now a test rather than a memory.** `ai-regression-run.test.ts` parses every
+schedule in `vercel.json` into its five fields and asserts that each names exactly one minute and
+one hour — which is precisely the condition for at-most-once-a-day — and that the hours are at least
+two apart. The alternative was a comment, and a comment is what P6 was.
+
+### What a scheduled run does with a failure
+
+The brief was explicit that this must not be write-and-forget and must not spam, and those pull in
+opposite directions. Four decisions, in the code header and here:
+
+**It writes a row every time, including when it finds nothing.** The clean rows are what make "the
+last run was clean, at 06:11" a checkable statement. Without them, silence and health are
+indistinguishable — and silence is exactly how a cron fails.
+
+**`/admin/regressions` renders the newest runs as stored, replaying nothing.** One cheap read above
+the case list. A scheduled check whose output lives only in a function log has the same gap the
+schedule was built to close, one step later: nobody opens the function log either.
+
+**The page says when the last run is more than 36 hours old.** This is the check that catches the
+new failure mode this increment introduces. A daily job with an hour of scheduling slack that has
+not run in 36 hours has missed a day, and "no news" would otherwise read as good news at exactly the
+moment it means the opposite.
+
+**The digest is the anti-spam mechanism, and it suppresses nothing.** `findings_digest` is md5 over
+the run's findings, keyed on case id and finding text together and sorted, so a run that found what
+yesterday's run found is recognisable as a repeat. The row is written either way; the page says
+"unchanged across the last N recorded runs" instead of presenting the same eight figures as a fresh
+alarm. The skipped-case count is inside the digest, so a run that stopped early can never be
+mistaken for the complete run before it.
+
+### `unmet` and `unresolved` are not treated the same, and the run row is where they would have been lost
+
+The obvious shape for a run summary is one failure count, and that would have thrown away the thing
+the previous entry spent a section on: *"Every one came back `unmet`, not `unresolved` — and that
+distinction is the reassuring part."*
+
+So the row carries `pins_met`, `pins_unmet` and `pins_unresolved` as three columns and no total, and
+a run's `outcome` ranks what a reader has to do next:
+
+- **`moved`** — the suite checked everything it claims to check and something it checks changed: a
+  pinned figure is `unmet`, or a cited passage moved page, changed text, or dropped out of its own
+  search. Re-derive the pins, which is what the 2026-08-28 alignment entry did for eight of them.
+- **`structural`** — the suite *could not* check something: a pin `unresolved`, an expectation that
+  could not be read, a call that failed or is not in this build, a cited chunk that is gone, or a
+  case the run never reached before its time budget. Fix the case or the code.
+- **`clean`** — everything reached, everything met.
+
+**`structural` outranks `moved`,** because an unscored assertion is a case that has quietly stopped
+checking what it claims to — the failure the expectations column exists to prevent — whereas a moved
+figure is the suite working. And a run that did not reach every open case is `structural` for the
+same reason: it has established nothing about the cases it never opened, and a summary counting only
+what it looked at would call the list green while a third of it went unread.
+
+The check constraint admits exactly those three, and the test asserts the list is exactly those
+three: a fourth value nothing writes is the `--propose` mistake this repository has recorded before.
+
+### The HTTP status says whether the run happened, never what it found
+
+200 with `outcome: "moved"` is a successful invocation that found eight moved figures. That is the
+job working, and returning 500 for it would make a data correction indistinguishable from a broken
+cron in Vercel's own view of the schedule — the same flattening as collapsing `unmet` into
+`unresolved`, one level up. 500 is reserved for the run not being recorded, because an unrecorded run
+is one nobody will ever see.
+
+### The runner gained a deadline, and gives up between cases rather than inside one
+
+`replaySuite` takes an optional `deadlineAt` and returns `skipped`. It is checked between cases and
+never inside one — a half-replayed case would be scored on whichever calls happened to finish — and
+the first case always runs, because a suite that yields before doing anything reports nothing and the
+caller cannot tell that from an empty list. Omitted, nothing yields and `/admin/regressions` behaves
+exactly as before.
+
+`CaseReplay` also gained `malformedExpectations` as a count. The summariser needs to know whether a
+case checked what it claims to, and the alternative was matching on the finding sentence — the naive
+string scan that has been the wrong instrument in this repository four times now.
+
+### Verify
+
+**Route 1's ten seeded cases, through the real runner, against live production data: 29 of 29 pins
+met.** Ten cases, ten `queryDataset` calls, ten `ok` verdicts, 0 unmet, 0 unresolved. This is the
+thing that had never happened.
+
+**The whole list: 17 cases, 66 of 66 pins met, `clean`.** Run through the real cron handler with the
+real `CRON_SECRET` gate, the real `runScheduledReplay`, the real `loadReplayableCases` reader and the
+real `replaySuite`. The eighteenth case is the one seeded case whose tool is `searchDocuments`; see
+the harness note below for why it could not run here and what it did instead.
+
+**The cases replayed are the live rows, not a transcription of them.** md5 over all 18 cases'
+`tool_calls`, computed in Postgres over `jsonb::text` and again in JS over a re-implementation of
+jsonb's key ordering: **`bf234545c98a6fb9d67f2a12fdf15c77`** both sides. md5 over all 66 pins in a
+canonical form: **`4f8f81ba8d3b2e892796f0dfd96a6f5d`** both sides.
+
+**Eight negative controls, each perturbing exactly one case and run through the whole scheduled
+path**, because a suite that cannot fail proves nothing:
+
+```
+figure moved by one          unmet        #8  n_listed was 5,988, now 5,987
+count-mode figure moved      unmet        #9  matchingRows was 5,986, now 5,987
+renamed field                unresolved   #6  no field n_totals (the row has: geo_code, geo_level,
+                                              n_total, n_accredited, pct_accredited)
+selector matches nothing     unresolved   #7  no row matched geo_code=99 (1 rows returned)
+selector matches three rows  unresolved   #13 3 rows matched geo_code=PH - a selector must name one
+`from` with no `where`       unreadable   #12 an expectation could not be read and was not checked
+tool cross-check fails       unresolved   #15 call 0 is queryDataset, but this expectation is about
+                                              getTrainingCoverage
+a tool this build lacks      unknown-tool #14 getVibes is not a tool in this build
+```
+
+**The three outcomes, demonstrated at run level** (with the document case set aside so the outcome
+turns on the perturbation rather than on the harness):
+
+```
+clean        17/17 cases, 66 met,  0 unmet, 0 unresolved   digest 631f815e
+clean again  identical                                     digest 631f815e   <- the repeat is a repeat
+moved        16 ok / 1 broken, 65 met, 1 unmet, 0 unres.    digest 3e26dfe3
+moved again  identical                                      digest 3e26dfe3
+structural   16 ok / 1 broken, 65 met, 0 unmet, 1 unres.    digest e59ca0b2
+```
+
+**The gate.** An unauthenticated GET returns 401 with `{"error":"Unauthorized"}` and
+`runScheduledReplay` is never called — asserted against the live handler in the harness and in four
+unit tests covering a missing header, a wrong secret, the secret sent without `Bearer`, and
+`CRON_SECRET` unset (which refuses rather than opening).
+
+**Timing, measured rather than assumed.** 17 cases through the scheduled path took **16.3-18.5s**
+across five runs, and the full 18 took 26.0s on its first (cold) run. Every one of those numbers is
+an upper bound: the harness routes each request through a local proxy and this container reaches
+Supabase through an outbound proxy of its own. Against a 45s replay budget inside a 60s function
+that is real headroom but not vast, and the run row is what will make it visible if the list outgrows
+it — `cases_replayed < cases_open` is a `structural` outcome and the page says how many were never
+opened. When that day comes the fix is the read order, not a bigger budget: cases come back newest
+first, so it is always the same tail that would be skipped.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — **811 tests, 38 more than
+`main`'s 773**. `npx prettier --check .` fails on the same **149** files as untouched `main`,
+compared file by file rather than by count, and every file this branch touches is clean.
+`20260828200000_ai_regression_run.sql` parses under `pglast` 8.4 as three statements
+(`CreateStmt`, `IndexStmt`, `AlterTableStmt`) and is idempotent — `create table if not exists`,
+`create index if not exists`.
+
+**A defect the run found, in the test again — the fifth time, and the same instrument.** The
+migration test parses the `create table` body and splits it on top-level commas, tracking quotes so a
+`check (... in ('a','b'))` stays one item. It reported nine columns instead of eighteen, because the
+header comments *above* the columns are prose and prose has apostrophes in it, and every `'` in
+"the run's" flipped the quote state. Comments are now stripped before anything counts quotes. Same
+lesson as the four before it, arriving from the other direction: it is not enough to parse instead of
+scanning if the parser is fed the comments too.
+
+### The harness, stated plainly, because it is the weakest part of this evidence
+
+**There is no service-role key in any environment available here**, and `dataset_registry`,
+`dataset_column` and `ai_regression_case` all have RLS on with no policies, so the anon key reads
+nothing from them. The replay above ran against a local PostgREST stand-in that forwards every
+request to the real project with the anon key and answers only those three tables from a fixture.
+
+What that does and does not weaken:
+
+- **Every pinned figure came from the real database over real PostgREST.** All nine tables route 1's
+  seeds read — including `fact_uuc_phc_barangay` — carry a public-read policy, and were fetched
+  live. The same is true of every table the harvested cases' public tools read.
+- **The two `ai_regression_case` columns a replay consumes are byte-identical to the live rows**, by
+  the md5s above, and the real `loadReplayableCases` parsed them.
+- **A wrong registry stand-in can only produce false failures, never false passes.** The registry is
+  an allowlist: anything it gets wrong makes `queryDataset` refuse. It carries the live registry's
+  structural fields — table name, exposure, status, and every column's name, type, role, unit,
+  `is_queryable`, ordinal and `allowed_values` — and elides only the prose (`summary`, `meaning`,
+  `notes_md`), which nothing in the replay path reads.
+- **The one case that could not run here is case 1**, whose `searchDocuments` call resolves against
+  `doc_chunk` — service-role only. Under the anon key its cited chunk does not resolve, and the run
+  reported `structural` with "chunk 26 (slide 26) is no longer in the corpus". That is a true
+  statement about this harness and a false one about production. It is also, incidentally, the
+  `structural` category doing exactly its job: it said *could not check*, not *the figure moved*.
+
+### What this does and does not establish
+
+It establishes that route 1's ten cases replay: twenty-nine figures pinned from screens, scored
+through `executeQueryDataset`, the registry lookup, the column allowlist and `evaluateExpectation`,
+against live production data, all met. It establishes that the whole list of eighteen runs as one
+suite in about twenty seconds, that a perturbed figure fails as `moved` and a perturbed structure as
+`structural`, and that the two are kept apart at the pin, the case, the run row and the page. It
+establishes that the cron route refuses an unauthenticated call.
+
+**It does not establish that a run has ever been recorded.** `ai_regression_run` does not exist on
+the live database — the deliverable is a PR and this session has no instruction to apply migrations —
+so `recordRegressionRun` is the one link in the chain that was stubbed. The insert's shape is checked
+only by the generated types and by the migration parsing; the first real run will be the first test
+of it, and if it fails it fails loudly, as a 500 rather than a green invocation, which is the reason
+the status code was defined that way.
+
+**It does not establish that the registry read works under the service role.** It works under a
+stand-in built from the live registry's own structural rows. That is most of the risk — every line of
+`executeQueryDataset` downstream of the lookup ran for real — but the lookup itself did not.
+
+**It does not establish that the schedule fires.** Nothing here has run on Vercel. The cron entry is
+in `vercel.json` and the once-per-day property is asserted against Hobby's documented limit, but the
+first proof that a job fires at 22:00 UTC is the first row in the table.
+
+**It still does not establish that the list would catch a change nobody announced** — only that it
+would now *look*, daily, without being asked. The difference between looking and catching is the
+list's coverage, and the previous entry's assessment of that has not changed: eighteen cases are not
+forty, five of the seven harvested ones are national BHW questions, and every case in the list reads
+one of two datasets. A daily run over a narrow list is a daily run over a narrow list.
+
+**And it still does not make any case sensitive to prose.** No provider was called, deliberately, and
+every caveat on the runner stands.

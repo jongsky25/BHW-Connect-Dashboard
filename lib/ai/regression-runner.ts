@@ -91,6 +91,13 @@ export type CaseReplay = {
   toolCalls: ToolReplay[];
   citations: CitationReplay[];
   expectations: ExpectationReplay[];
+  /**
+   * Stored expectations this build could not read, counted rather than inferred from the finding
+   * text. A caller deciding whether a run *checked* what it claims to needs this apart from the
+   * findings list, and matching on a sentence is the string-scan mistake this repository has now
+   * made four times (see `DECISIONS.md`, 2026-08-28).
+   */
+  malformedExpectations: number;
 };
 
 /** Stated once, in the result, so nobody reads a green run as more than it is. */
@@ -367,11 +374,21 @@ export async function replayCase(stored: ReplayableCase): Promise<CaseReplay> {
     toolCalls,
     citations,
     expectations,
+    malformedExpectations: stored.malformedExpectations.length,
   };
 }
 
 export type SuiteReplay = {
   ran: number;
+  /**
+   * Cases handed to the suite that it did not reach before its deadline.
+   *
+   * Reported, never silently dropped, for the reason `malformedExpectations` is: a run that
+   * replayed twelve of eighteen cases has not established anything about the other six, and a
+   * summary that counted only what it looked at would say the list is green when a third of it
+   * was never opened. Always 0 when no deadline was given.
+   */
+  skipped: number;
   ok: number;
   degraded: number;
   broken: number;
@@ -381,12 +398,26 @@ export type SuiteReplay = {
 
 /** Sequential on purpose: a replay is a diagnostic, not a page render, and firing twenty
  * concurrent tool loops at the database to save a few seconds is how a diagnostic becomes an
- * outage (guardrail 4's reasoning). */
-export async function replaySuite(cases: ReplayableCase[]): Promise<SuiteReplay> {
+ * outage (guardrail 4's reasoning).
+ *
+ * `deadlineAt` is an epoch-millisecond wall clock, checked between cases and never inside one — a
+ * half-replayed case would be scored on the calls that happened to finish, which is worse than not
+ * replaying it. The first case always runs: a suite that yields before doing anything reports
+ * nothing at all, and the caller cannot tell that from an empty list. Omitted, nothing yields, and
+ * `/admin/regressions` behaves exactly as it did. */
+export async function replaySuite(
+  cases: ReplayableCase[],
+  options: { deadlineAt?: number } = {},
+): Promise<SuiteReplay> {
   const replays: CaseReplay[] = [];
-  for (const stored of cases) replays.push(await replayCase(stored));
+  for (const stored of cases) {
+    if (replays.length > 0 && options.deadlineAt !== undefined && Date.now() > options.deadlineAt)
+      break;
+    replays.push(await replayCase(stored));
+  }
   return {
     ran: replays.length,
+    skipped: cases.length - replays.length,
     ok: replays.filter((r) => r.verdict === "ok").length,
     degraded: replays.filter((r) => r.verdict === "degraded").length,
     broken: replays.filter((r) => r.verdict === "broken").length,

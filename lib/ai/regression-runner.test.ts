@@ -189,6 +189,29 @@ describe("replaySuite", () => {
     // the one thing that would make this list misleading is someone forgetting that.
     expect(suite.caveat).toBe(REPLAY_CAVEAT);
     expect(suite.caveat).toContain("was not regenerated");
+    // No deadline was given, so nothing was skipped — and the field is there either way, because a
+    // caller has to be able to tell "nothing was skipped" from "the suite does not say".
+    expect(suite.skipped).toBe(0);
+  });
+
+  it("stops at its deadline and reports the cases it never opened", async () => {
+    mocks.createInternalTools.mockReturnValue(toolsReturning([26]));
+    const suite = await replaySuite(
+      [storedCase(), storedCase({ caseId: 2 }), storedCase({ caseId: 3 })],
+      { deadlineAt: Date.now() - 1 },
+    );
+    // The first case always runs: a suite that yields before doing anything reports nothing at all,
+    // and the caller cannot tell that from an empty list.
+    expect(suite).toMatchObject({ ran: 1, skipped: 2 });
+    expect(suite.cases.map((c) => c.caseId)).toEqual([1]);
+  });
+
+  it("replays every case when the deadline is not reached", async () => {
+    mocks.createInternalTools.mockReturnValue(toolsReturning([26]));
+    const suite = await replaySuite([storedCase(), storedCase({ caseId: 2 })], {
+      deadlineAt: Date.now() + 60_000,
+    });
+    expect(suite).toMatchObject({ ran: 2, skipped: 0 });
   });
 });
 

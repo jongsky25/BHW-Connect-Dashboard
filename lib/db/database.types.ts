@@ -1432,6 +1432,63 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_regression_run: {
+        Row: {
+          broken: number;
+          cases: Json;
+          cases_open: number;
+          cases_replayed: number;
+          degraded: number;
+          duration_ms: number;
+          findings_digest: string;
+          finished_at: string;
+          ok: number;
+          outcome: string;
+          pins: number;
+          pins_met: number;
+          pins_unmet: number;
+          pins_unresolved: number;
+          run_id: number;
+          started_at: string;
+        };
+        Insert: {
+          broken: number;
+          cases?: Json;
+          cases_open: number;
+          cases_replayed: number;
+          degraded: number;
+          duration_ms: number;
+          findings_digest: string;
+          finished_at: string;
+          ok: number;
+          outcome: string;
+          pins: number;
+          pins_met: number;
+          pins_unmet: number;
+          pins_unresolved: number;
+          run_id?: never;
+          started_at: string;
+        };
+        Update: {
+          broken?: number;
+          cases?: Json;
+          cases_open?: number;
+          cases_replayed?: number;
+          degraded?: number;
+          duration_ms?: number;
+          findings_digest?: string;
+          finished_at?: string;
+          ok?: number;
+          outcome?: string;
+          pins?: number;
+          pins_met?: number;
+          pins_unmet?: number;
+          pins_unresolved?: number;
+          run_id?: never;
+          started_at?: string;
+        };
+        Relationships: [];
+      };
       changelog_entries: {
         Row: {
           body_md: string;

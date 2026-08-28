@@ -27,9 +27,16 @@ type Target = { geoCode: string; geoLevel: GeoLevel; geoName: string };
 /**
  * Daily precompute (BUILD_PLAN.md §8 2.3): national + every region + every province + the most-
  * visited other places, so most visitors hit a cached AI insight instead of triggering a live
- * generation. One invocation, not two, per Vercel Hobby's cron-job-count limit (pitfall P6) — the
- * narrative lookups already read `dim_dataset` on every call, which doubles as the Supabase
- * keep-alive ping (pitfall P5), so no separate ping step is needed.
+ * generation. The ask-cache refresh is chained into this one invocation rather than given a cron of
+ * its own — the narrative lookups already read `dim_dataset` on every call, which doubles as the
+ * Supabase keep-alive ping (pitfall P5), so no separate ping step is needed either.
+ *
+ * That chaining was originally written as forced by "Vercel Hobby's cron-job-count limit (pitfall
+ * P6)". That reason expired: Hobby allows 100 cron jobs per project since 2026-01-20, and P6 has
+ * been corrected. The chaining is kept because it is still right for *these* two steps — both are
+ * cache warming against the same tables, and the refresh is near-free on a day with no version bump
+ * — not because a second job is unavailable. `/api/cron/regression-replay` is a second job, added on
+ * 2026-08-28, and its header says why it is separate rather than chained here.
  *
  * Free-tier request/minute caps (2.1) mean a single run can't realistically regenerate all ~137
  * targets from cold — `ranOutOfTime`/`remainingAfterTimeout` in the response make that explicit

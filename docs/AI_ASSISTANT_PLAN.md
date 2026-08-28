@@ -663,6 +663,30 @@ cases replayed against live data through the real runner, 37 of 37 figures met, 
 controls failing as they should. Route 1's ten still have not, because `queryDataset` reads the
 registry.
 
+**The replay runs on a schedule now, and route 1 has finally replayed** *(2026-08-28)*.
+`/api/cron/regression-replay` replays every open case daily at 22:00 UTC and writes an
+`ai_regression_run` row; `/admin/regressions` renders the newest ones without replaying anything.
+This is what the runner was missing: until now the list *"only speaks when someone opens
+/admin/regressions"*, and the one real change it has caught was caught because a person went
+looking within hours of a merge they knew about.
+
+A run is scored three ways rather than pass/fail, because the `unmet` / `unresolved` distinction is
+the thing that made the suite useful and a summary is where it would quietly be lost. `moved` means
+the suite checked everything and a figure or a citation changed — re-derive the pins. `structural`
+means the suite *could not* check something it claims to: a pin unresolved, an expectation
+unreadable, a call that did not run, a cited chunk gone, or a case the run never reached before its
+time budget. `structural` outranks `moved`. A `findings_digest` makes a repeat of yesterday's
+finding recognisable as one, so a standing finding does not read as a fresh alarm; and the page says
+so when the last run is more than 36 hours old, because a cron that stops looks exactly like a cron
+that keeps finding nothing.
+
+The schedule is also what forced **route 1's ten seeded cases through the real runner for the first
+time** — their calls go through `queryDataset`, which reads the registry, which is service-role
+only, and a cron runs where that key already lives. Measured: **29 of 29 pinned figures met**, and
+across the whole list **66 of 66**, with eight negative controls failing as they should. Still no
+provider: putting the replay on a schedule makes that property load-bearing rather than incidental,
+since a daily job gated on a free-tier quota would be absent exactly on the days the quota is spent.
+
 **Still missing: the swept path.** The 4.2 sweep does not feed this list — the column it was waiting
 for is here, but all 12 `kb_contradiction` rows sit at `status = 'auto'`, so there is nothing
 confirmed to file and `source` still does not admit `'swept'`.
