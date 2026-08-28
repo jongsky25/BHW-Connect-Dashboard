@@ -9,7 +9,7 @@
 --
 --   * two **views**, not tables, for anything derivable from `fact_uuc_phc_indicators`. A view
 --     cannot go stale against the fact table it reads, which is the whole property this page needs.
---     Both are cheap — 5,991 rows, no index required — and both run `security_invoker = true` on
+--     Both are cheap — 5,987 rows, no index required — and both run `security_invoker = true` on
 --     `ref_uuc_phc_provincial`'s precedent (plan U5): the fact table's own public-read policy
 --     decides access, and the view adds no privilege of its own.
 --   * one small **table** for the published-total reconciliation, because its other side is not in
@@ -87,9 +87,16 @@ select
   count(*) filter (where n_capped > 0)::int                  as n_barangays_capped,
   coalesce(sum(n_capped), 0)::int                            as n_values_capped,
   count(*) filter (where n_capped > 1)::int                  as n_barangays_multi_capped,
-  count(*) filter (where recomputed is distinct from health_indicators)::int
+  -- Both score columns are counted only over barangays that HAVE a recorded score. Where the
+  -- source recorded none there is nothing for the recomputation to disagree with, and counting it
+  -- as a disagreement would inflate a figure the page presents as a measured gap. One barangay is
+  -- in that position: SUMISIP CENTRAL, which the final-list alignment added from a sheet that
+  -- carries no criterion (d) score (20260828180000_uuc_phc_final_list_alignment.sql).
+  count(*) filter (where health_indicators is not null
+                     and recomputed is distinct from health_indicators)::int
                                                              as n_score_disagreement,
-  count(*) filter (where recomputed < health_indicators)::int as n_score_understated,
+  count(*) filter (where health_indicators is not null
+                     and recomputed < health_indicators)::int as n_score_understated,
   -- Listed barangays that would qualify on no route at all if criterion (d) were recomputed —
   -- which DOH AO No. 2020-0023 makes impossible, and which is why the source's own score is the
   -- one that decided this list.
@@ -99,7 +106,7 @@ select
 from scored;
 
 comment on view ref_uuc_phc_quality is
-  'One row: the national data-quality facts behind /uuc-phc/data-quality that no per-indicator aggregate can express. n_barangays_capped counts BARANGAYS (1,397), not values (1,584) — 167 barangays carry more than one bounded value, so the two must never be swapped. The score columns recompute criterion (d) from the published columns solely to measure how far that derivation lands from the source''s own recorded score; they are a measurement of the gap, never a score to report. See docs/UUC_PHC_2025_PLAN.md §9 U10.';
+  'One row: the national data-quality facts behind /uuc-phc/data-quality that no per-indicator aggregate can express. n_barangays_capped counts BARANGAYS (1,397), not values (1,584) — 167 barangays carry more than one bounded value, so the two must never be swapped. The score columns recompute criterion (d) from the published columns solely to measure how far that derivation lands from the source''s own recorded score; they are a measurement of the gap, never a score to report, and they count only the barangays that have a recorded score to compare against. See docs/UUC_PHC_2025_PLAN.md §9 U10.';
 
 -- ---------------------------------------------------------------------------------------------
 -- 2. Why each province's benchmarks cannot carry criterion (d) — four different findings, kept
@@ -186,8 +193,11 @@ comment on view ref_uuc_phc_benchmark_gaps is
 --
 -- The 2027 Budget Cue Cards p37 publishes *Distribution of UUC for PHC Barangays by Region (as of
 -- 2025 per DC No. 2025-0549)*, totalling 5,987 against the workbook's 5,991. Plan §3 records the
--- owner's decision: publish 5,991 and footnote p37's 5,987 with its as-of date. U10 renders that
--- footnote as a surface, with the two regions the difference sits in.
+-- owner's decision as it stood when this file was written: publish 5,991 and footnote p37's 5,987
+-- with its as-of date. U10 renders that footnote as a surface, with the two regions the difference
+-- sits in. **That reconciliation has since closed** — the source office's final list carries
+-- 5,987, so the dashboard publishes it and this table is empty. See
+-- 20260828180000_uuc_phc_final_list_alignment.sql.
 --
 -- **The figures are parsed from the corpus chunk, never typed into this file.** p37 is loaded in
 -- `doc_chunk` (Increment 2.1), so the source is on hand and the comparison is computed rather than
@@ -230,7 +240,7 @@ create table if not exists ref_uuc_phc_published_delta (
 );
 
 comment on table ref_uuc_phc_published_delta is
-  'The 2025 UUC for PHC published-total reconciliation: every geography where the 2027 Budget Cue Cards p37 figure differs from this dashboard''s. Three rows — the national total (5,991 vs 5,987, +4) and the two regions the difference sits in. Parsed from the doc_chunk copy of p37 rather than transcribed, so a discrepancy here is a real one. The 15 regions that match to the unit are checked by the migration and deliberately not stored: the cue cards are an internal-exposure document and a matching row carries no reconciliation. THE VINTAGE READING IS INFERENCE: p37 is a snapshot "as of 2025 per DC No. 2025-0549" and the workbook file name reads as a later revision, but neither source states this. See docs/UUC_PHC_2025_PLAN.md §3.';
+  'The 2025 UUC for PHC published-total reconciliation: every geography where the 2027 Budget Cue Cards p37 figure differs from this dashboard''s. Empty since the final-list alignment: the dashboard publishes the source office''s 5,987, which is p37''s figure, so every geography agrees. Parsed from the doc_chunk copy of p37 rather than transcribed, so a discrepancy here is a real one. The 15 regions that match to the unit are checked by the migration and deliberately not stored: the cue cards are an internal-exposure document and a matching row carries no reconciliation. THE VINTAGE READING IS INFERENCE: p37 is a snapshot "as of 2025 per DC No. 2025-0549" and the workbook file name reads as a later revision, but neither source states this. See docs/UUC_PHC_2025_PLAN.md §3.';
 
 comment on column ref_uuc_phc_published_delta.delta is
   'n_listed - n_published. Positive where this dashboard lists more barangays than the cue cards do. Never zero — matching geographies are not stored.';

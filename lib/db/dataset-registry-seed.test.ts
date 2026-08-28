@@ -444,12 +444,13 @@ describe("the UUC for PHC entries (plan U5)", () => {
     expect(table?.notesMd).toMatch(/MUST NOT BE ADDED TOGETHER/);
   });
 
-  it("marks the published-total gap as unexplained, and its absence as agreement", () => {
-    // Two ways to misread this table: inferring the vintage cause neither document states, and
-    // reading a missing geography as missing data rather than as the two sources agreeing.
+  it("marks the published-total gap as closed, and its absence as agreement", () => {
+    // Two ways to misread this table now that the final-list alignment has emptied it: reading no
+    // rows as no data rather than as the two sources agreeing, and reporting the reconciliation as
+    // still open. It held the 5,991-vs-5,987 gap until the source office's final list closed it.
     const table = registry.find((r) => r.tableName === "ref_uuc_phc_published_delta");
-    expect(table?.notesMd).toMatch(/INFERENCE, NOT A STATEMENT EITHER SOURCE MAKES/);
-    expect(table?.notesMd).toMatch(/absence from a geography means the two sources AGREE/);
+    expect(table?.notesMd).toMatch(/EMPTY, AND EMPTY IS THE ANSWER/);
+    expect(table?.notesMd).toMatch(/ABSENCE FROM A GEOGRAPHY MEANS THE TWO SOURCES AGREE/);
     const delta = columns.find(
       (c) => c.tableName === "ref_uuc_phc_published_delta" && c.columnName === "delta",
     );

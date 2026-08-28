@@ -269,7 +269,7 @@ export async function buildUucPhcFigure(
   );
   y += 14;
   parts.push(
-    `<text x="${MARGIN}" y="${y}" font-size="10" fill="${MUTED}">Denominator is every barangay in the area. National total 5,991; the 2027 Budget Cue Cards give 5,987 for the same list.</text>`,
+    `<text x="${MARGIN}" y="${y}" font-size="10" fill="${MUTED}">Denominator is every barangay in the area. National total 5,987, which is also what the 2027 Budget Cue Cards give for this list.</text>`,
   );
   y += 20;
 

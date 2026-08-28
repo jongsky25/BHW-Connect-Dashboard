@@ -7,24 +7,24 @@ import {
 } from "./uuc-phc-bhw-coverage";
 
 /**
- * The national row as `agg_bhw_by_uuc_status` holds it: 5,991 listed barangays against 35,967
- * others, 48,485 BHWs and 2,469,569 households on the listed side and 258,334 / 25,370,467 on the
+ * The national row as `agg_bhw_by_uuc_status` holds it: 5,987 listed barangays against 35,971
+ * others, 48,480 BHWs and 2,438,331 households on the listed side and 258,339 / 25,401,705 on the
  * other, with 16 BHWs and 6,061 households in neither because StepZero carries them above
  * barangay grain only.
  */
 const national: Row = {
   geo_code: "PH",
   geo_level: "national",
-  n_barangays_listed: 5991,
-  n_barangays_other: 35967,
-  n_listed_with_data: 5991,
-  n_other_with_data: 35967,
+  n_barangays_listed: 5987,
+  n_barangays_other: 35971,
+  n_listed_with_data: 5987,
+  n_other_with_data: 35971,
   n_listed_no_bhw: 100,
   n_other_no_bhw: 945,
-  listed_n_bhw: 48485,
-  other_n_bhw: 258334,
-  listed_households: 2469569,
-  other_households: 25370467,
+  listed_n_bhw: 48480,
+  other_n_bhw: 258339,
+  listed_households: 2438331,
+  other_households: 25401705,
   listed_registered_universe: 40000,
   other_registered_universe: 220000,
   listed_n_profiled: 30000,
@@ -44,8 +44,8 @@ describe("toUucBhwCoverage", () => {
     const c = toUucBhwCoverage(national);
     expect(c.comparison.kind).toBe("comparable");
     if (c.comparison.kind !== "comparable") return;
-    expect(c.comparison.listed.householdsPerBhw).toBe(50.9);
-    expect(c.comparison.other.householdsPerBhw).toBe(98.2);
+    expect(c.comparison.listed.householdsPerBhw).toBe(50.3);
+    expect(c.comparison.other.householdsPerBhw).toBe(98.3);
   });
 
   it("carries the unallocated residual through instead of absorbing it", () => {
@@ -59,10 +59,10 @@ describe("toUucBhwCoverage", () => {
   it("derives the per-barangay figures the headline needs to be read against", () => {
     const c = toUucBhwCoverage(national);
     if (c.comparison.kind !== "comparable") throw new Error("expected comparable");
-    // 2,469,569 / 5,991 vs 25,370,467 / 35,967 — listed barangays are the smaller ones, which is
+    // 2,438,331 / 5,987 vs 25,401,705 / 35,971 — listed barangays are the smaller ones, which is
     // most of why their households-per-BHW is lower.
-    expect(c.comparison.listed.householdsPerBarangay).toBe(412.2);
-    expect(c.comparison.other.householdsPerBarangay).toBe(705.4);
+    expect(c.comparison.listed.householdsPerBarangay).toBe(407.3);
+    expect(c.comparison.other.householdsPerBarangay).toBe(706.2);
     expect(c.comparison.listed.bhwPerBarangay).toBe(8.1);
     expect(c.comparison.other.bhwPerBarangay).toBe(7.2);
   });

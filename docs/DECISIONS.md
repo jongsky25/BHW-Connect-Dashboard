@@ -1946,7 +1946,9 @@ dataset: `fact_uuc_phc_barangay`, slug `uuc-phc-2025`, `geo_join_level = 'barang
   Lanao del Sur). Loading them would have meant either publishing a knowingly incomplete
   denominator or doing fuzzy geographic matching on the strength of names alone.
 - **The published total is 5,991**, per the plan §3 decision, with the 2027 Budget Cue Cards p37's
-  5,987 as a footnote citing DC No. 2025-0549. The workbook corroborates 5,991 three independent
+  5,987 as a footnote citing DC No. 2025-0549. **Superseded 2026-08-28 — see the final-list
+  alignment entry at the end of this log. The published total is now 5,987 and the footnote is
+  gone; the vintage reading below turned out to be backwards.** The workbook corroborates 5,991 three independent
   ways (the `NEW` classification, the `2025 LIST` row count, and the embedded `TOTAL` subtotals);
   the two contested regions are BARMM (399 vs p37's 400) and CALABARZON (200 vs p37's 195).
 - **Sulu resolves through `dim_psgc_crosswalk`, not a `dim_geo` edit.** 87 of the 5,991 carry
@@ -4144,7 +4146,8 @@ the page print "7 of 8" rather than implying the whole province.
 ### The reconciliation is parsed out of the corpus, not transcribed
 
 Cue cards p37 publishes its own distribution by region, totalling 5,987 against the workbook's
-5,991. It is loaded in `doc_chunk` (Increment 2.1), so the migration **reads the figures out of the
+5,991. (**Superseded 2026-08-28**: the dashboard now publishes 5,987 too and this table is empty.
+The parsing machinery below is unchanged and is what proved the agreement.) It is loaded in `doc_chunk` (Increment 2.1), so the migration **reads the figures out of the
 chunk**: 17 region rows, each resolving to a `dim_geo` region by its printed name, summing to the
 page's own printed TOTAL. All three are asserted, so a mis-parse aborts the migration.
 
@@ -5365,6 +5368,12 @@ geo_distribution      37  REGION IV-A (CALABARZON)          195  agg_bhw_by_uuc_
 geo_distribution      37  (total over all regions)        5,987  agg_bhw_by_uuc_status.n_barangays_listed   5,991
 ```
 
+> **Superseded 2026-08-28 for these three rows.** The final-list alignment moved the dashboard to
+> BARMM 400, CALABARZON 195 and 5,987, so `geo_distribution` p37 no longer contradicts
+> `agg_bhw_by_uuc_status` anywhere — the next `sweep_contradictions` run resolves all three. The
+> other pairings are unaffected.
+
+
 1. **§12.4's case.** Slide 26's *"277,767 (Registered and Accreditted BHWs) — as of Dec 2025"*
    against the 270,917 behind SQL. Nothing named slide 26, and nothing named 277,767: the pass
    found every number ≥ 1,000 in the corpus, discarded bare years, and paired this one because the
@@ -5923,3 +5932,157 @@ this repository shipped unexercised turned out never to have worked.
 
 **And it still does not make any case sensitive to prose.** The answer text is not regenerated. Every
 caveat on the runner stands.
+
+
+## 2026-08-28 — UUC for PHC 2025: aligned to the source office's final list, and the vintage inference was backwards
+
+The source office supplied its final national list, *2025 UUC FOR PHC LIST*, carrying **5,987**
+barangays. This dashboard published **5,991**, from the reconciled submission workbook it was built
+from, and footnoted the 2027 Budget Cue Cards p37's 5,987 as an older snapshot. **The dataset now
+publishes 5,987.** Migration `20260828180000_uuc_phc_final_list_alignment.sql`; registry delta
+`20260828180100_seed_registry_final_list_alignment.sql`; full reasoning in
+`docs/UUC_PHC_2025_PLAN.md` §3, which is rewritten.
+
+### The gap was six barangays, and nothing else
+
+The final list and the workbook agree on 5,986 barangays name for name across all 17 regions. They
+differ on six:
+
+| | Province / City-municipality / Barangay | PSGC |
+|---|---|---|
+| **Removed (5)** | CAVITE / CITY OF BACOOR / MOLINO IV | `0402103047` |
+| | CAVITE / CITY OF BACOOR / SAN NICOLAS II | `0402103064` |
+| | CAVITE / CITY OF BACOOR / TALABA 2 | `0402103066` |
+| | CAVITE / CITY OF BACOOR / TALABA 3 | `0402103091` |
+| | CAVITE / CITY OF CAVITE / BARANGAY 38 | `0402105032` |
+| **Added (1)** | BASILAN / SUMISIP / SUMISIP CENTRAL | `1900705019` |
+
+399 + 1 = 400 and 200 − 5 = 195 — which is p37's BARMM and CALABARZON exactly. So the +4 national
+delta `ref_uuc_phc_published_delta` had been reporting since U10 closes to zero, and that table is
+now empty.
+
+### The inference this reverses, and why it was wrong
+
+Plan §3 argued the workbook was the *later* revision: it corroborates 5,991 in three independent
+places, and its file name, `Submissions_UUA_2025_filled_1`, reads as a revision of something, while
+p37 is a snapshot "as of 2025". The owner's decision followed from that reading. §3 flagged it as
+inference and asked for it to be confirmed rather than assumed, which is the only reason this is a
+correction rather than an embarrassment.
+
+It was wrong, and the reason is worth keeping: **the workbook's three corroborating places are all
+the same submission, counted three ways** — the `NEW` classification sheet, the `2025 LIST` row
+count, and the `TOTAL` subtotals embedded in `2025 LIST`. Internal agreement measured consistency,
+not currency, and it was read as evidence of currency.
+
+### The final list is itself internally inconsistent, and this is not fully closed
+
+Its summary tab and its 17 per-region sheets both give 5,987 (BARMM 400, CALABARZON 195). Its
+national list sheet still carries the five Cavite barangays, so it holds 5,992 rows, and its printed
+grand total there reads 5,991 — stale on both counts, since it also fails to count the added Basilan
+row (whose `TOTAL` subtotal still reads 399). **Three sources agree on 5,987** — the summary tab,
+the regional sheets, and p37 — **against one stale sheet**, so 5,987 is taken. **This should be
+confirmed with the source office rather than treated as settled on our side.**
+
+### What the added barangay costs
+
+`SUMISIP CENTRAL` is not in the reconciled workbook at all: `NEW` scores it `NOT UUA`. Its values
+come from the same workbook's `2025 LIST` sheet, which carries it under PSGC `1900705019` — so the
+row is recovered rather than invented, but from a **pre-reconciliation extract**. The two sheets
+disagree somewhere on 473 of the 5,989 barangays they share (ABR most often, 275 rows), so this one
+row is of a different vintage to the other 5,986. That is stated in the migration header, the
+loader, the plan and the cleaning report rather than smoothed over; the alternative was a listed
+barangay with no evidence at all.
+
+Two columns have no counterpart in `2025 LIST` and are left NULL rather than guessed. `elcac_brgy`
+— criterion (b) rests on `armed_conf + idp` alone here (30 + 11 = 41), which passes without it. And
+`health_indicators`, the source's own criterion (d) score, which this pipeline **loads and never
+recomputes**; recomputing it for one row is exactly what that rule forbids. Route (d) therefore does
+not count this barangay, and its listing does not depend on that — `ip_pop` is 100, so criterion (a)
+carries it alone.
+
+Its seven provincial benchmarks are Basilan's own, copied from its 36 fellow Basilan rows. They are
+province constants, and copying them is what keeps `ref_uuc_phc_provincial`'s one-value-per-province
+assertion true. **One consequence, recorded because it is a small honest loss:** the row counts as
+health-evaluable while having no score, so `ref_uuc_phc_list` exports `route_health = false` for it
+on the strength of an absent score rather than a failed test. Leaving its benchmarks NULL instead
+would have read truer per-row but would have posted a benchmark-gap finding against a province that
+did supply benchmarks, which is a worse misstatement.
+
+### One assertion had to change, and it was the assertion working
+
+`ref_uuc_phc_quality` counts `n_score_disagreement` as `recomputed is distinct from
+health_indicators` and `n_score_understated` as `recomputed < health_indicators`. A NULL score is
+distinct from every integer but compares to none, so `SUMISIP CENTRAL` entered the first and not the
+second, and `20260827170000`'s assertion 7 — which requires them equal, the substance of the claim
+"the recomputation is always worse, never better" — would have aborted the migration. That claim is
+about rows where both numbers exist, so both counts are now restricted to rows with a recorded
+score. Both read 664 again, unchanged by the alignment. The assertion caught a real definitional gap
+rather than a wrong number, which is the case they are written for.
+
+### Figures this moved
+
+| | Before | After |
+|---|---:|---:|
+| Listed barangays | 5,991 | **5,987** |
+| Route (a) Indigenous Peoples | 3,677 | **3,678** |
+| Route (b) conflict / displacement | 2,302 | **2,303** |
+| Route (c) 4Ps | 726 | 726 |
+| Route (d) health | 2,000 | **1,995** |
+| Criterion (d) evaluable | 5,765 | **5,761** |
+| Criterion (d) *not* evaluable | 226 | 226 |
+| Comparable, six health indicators | 5,765 | **5,761** |
+| Comparable, FIC | 5,652 | **5,648** |
+| Bounded values / barangays | 1,584 / 1,397 | 1,584 / 1,397 |
+| Score disagreement / understated | 664 / 664 | 664 / 664 |
+| Households per BHW, listed vs other | 50.9 vs 98.2 | **50.3 vs 98.3** |
+| Provinces where listed is thinner | 76 of 81 | **76 of 80** |
+
+The capping totals are untouched — none of the six barangays carries a bounded value — and so is the
+226, since the five removed rows carried real Cavite benchmarks and the added one carries Basilan's.
+**Cavite leaves the BHW comparison entirely:** three listed barangays is below the `0 < n < 5`
+suppression threshold, so CALABARZON no longer badges an area against the pattern.
+
+### How it is applied, and why it is a delta rather than a re-seed
+
+The extract is regenerated at the source — `clean_uuc_phc_indicators.py` now carries the alignment
+as an explicit, named step, and the diff against the committed CSV is exactly those six rows — and
+both seed migrations are regenerated from it, each a six-line diff. That makes a fresh replay land
+on 5,987 on its own. The alignment migration then carries the same change to a database already
+seeded at 5,991: it deletes five rows, upserts one, and re-runs the populate blocks of all four
+aggregate migrations plus the published-delta rebuild, verbatim, which is the refresh procedure each
+of those files documents. Idempotent from either state; every assertion in every copied block still
+runs.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **693 tests**, the same
+count as before, with fixtures moved to the new figures rather than added to.
+`npx prettier --check .` fails on the same files as untouched `main`. Every touched migration parses
+under the PostgreSQL grammar (`pglast`). The pipeline was verified reproducible before the change:
+re-running the cleaner against the committed workbooks reproduced both committed CSVs byte for byte,
+so the six-row diff afterwards is the whole of what changed.
+
+**One downstream effect, not handled here.** Increment 4.2's contradiction sweep recorded
+`geo_distribution` p37 (5,987) against `agg_bhw_by_uuc_status.n_barangays_listed` (5,991) as a real
+contradiction. It stops being one once this is applied; `sweep_contradictions` recomputes, so the
+row resolves on the next run rather than needing a hand edit here.
+
+**Applied on the owner's instruction**, to `bhw-connect` (`ejcuwrnxngdwvecxwrhy`), in the seven
+`apply_migration` calls the sections divide into plus the registry delta — the shape 4.1 left. Every
+assertion in every rebuilt block passed on the way through, including the one that forced the
+`ref_uuc_phc_quality` change. Verified live afterwards against the figures predicted here: both fact
+tables and `ref_uuc_phc_list` at 5,987, BARMM 400, CALABARZON 195,
+`ref_uuc_phc_published_delta` **empty**, routes 3,678 / 2,303 / 726 / 1,995, evaluable 5,761,
+comparable 5,761 and 5,648, capping unmoved at 1,584 / 1,397, score columns 664 / 664, Cavite's
+listed side suppressed at 3 barangays, Basilan at 37, and 80 comparable provinces.
+
+**One figure in this entry was wrong before it was checked against the database, and is corrected
+above.** Route (d) was predicted at 2,001 → 1,996 from a Python reproduction of the rule that
+counted `health_indicators >= 4` alone. `agg_uuc_phc_criteria` counts `>= 4` **and** evaluable, and
+one barangay scoring 4 or more sits in a province whose benchmarks cannot support the comparison —
+so the real pair is 2,000 → 1,995. The delta is the same −5. The distinction was already recorded
+in `docs/uuc-phc-feature.md`, which quotes exactly that 2,001-against-2,000 gap, and the
+reproduction should have been checked against it rather than against the aggregate's name.
+
+**Still open, and not for us to close.** Applying this reverses a figure the owner confirmed, and
+the final list contradicts itself on the five Cavite barangays — its summary tab and 17 regional
+sheets against its own national sheet. Both want confirming with the source office; the dashboard
+now publishes the 3-to-1 majority reading in the meantime.

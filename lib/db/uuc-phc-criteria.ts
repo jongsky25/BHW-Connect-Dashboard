@@ -11,7 +11,7 @@ import type { GeoLevel } from "@/lib/filters/schema";
  *
  * DOH AO No. 2020-0023 §VI.A lists a barangay only when a physical factor **and** a socio-economic
  * factor are both present. The physical factor is not a figure worth counting: it holds in all
- * 5,991 rows by construction, because a barangay below the 25% floor never entered the list. What
+ * every row by construction, because a barangay below the 25% floor never entered the list. What
  * varies is the socio-economic route, and until this module that was legible only one barangay at
  * a time, inside a `<details>` on a city page.
  *
@@ -48,7 +48,7 @@ export const QUALIFYING_ROUTES = [
     criterion: "b",
     label: "Conflict-affected or displaced",
     // The two components are summed rather than read as the order's "or": that is what reproduces
-    // the source's own Pass/Fail on all 5,991 rows (docs/UUC_PHC_2025_PLAN.md §1a). The ELCAC
+    // the source's own Pass/Fail on every row it scored (docs/UUC_PHC_2025_PLAN.md §1a). The ELCAC
     // designation is a genuine "or" — a separate way in, not part of the sum.
     test: "Armed conflict and displacement together reach 10%, or the barangay is ELCAC-designated",
   },

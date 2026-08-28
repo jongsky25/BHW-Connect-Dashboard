@@ -17,7 +17,7 @@
 -- Three decisions this table makes, all of which change what the figure means:
 --
 --   1. **"Not listed" is every other barangay in the area, not "assessed and found adequate".**
---      U1 loaded only the 5,991 listed barangays; the workbook's 9,395 assessed-but-not-listed
+--      U1 loaded only the listed barangays; the workbook's 9,395 assessed-but-not-listed
 --      rows were scoped out and are not in this database at all. So the comparison group is the
 --      area's remaining barangays, full stop. Every column below is named `*_other`, never
 --      `*_not_listed`, because a reader who sees "not listed" hears "assessed and passed".

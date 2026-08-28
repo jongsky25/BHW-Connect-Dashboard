@@ -44,8 +44,9 @@ This split is not a local convention — it follows the definitions in **DOH AO 
 §VI.A.2(d), which names these as rates and proportions respectively. See
 `UUC_PHC_2025_PLAN.md` §1a.
 
-**Nothing is removed and no barangay is dropped.** All 5,991 rows are present with every
-indicator populated.
+**No value is removed and no indicator is dropped.** All 5,987 rows are present with every
+indicator populated. The row count differs from the input's 5,991 for one reason only, and it is
+not a cleaning rule — see the final-list alignment in §3.
 
 ## 3. Also applied
 
@@ -57,14 +58,24 @@ revision of this report rather than leaving it as a caveat.
 **`#N/A` reference values are now blank** — 399 cells across the seven retained `Prov Ref` columns
 (57 barangays × 7). A further 399 sat in the dropped assessment columns and went with them.
 
-**`SORSOGON / PILAR / SAN ANTONIO` resolves to PSGC `0506213048`.** All 5,991 barangays now carry
+**`SORSOGON / PILAR / SAN ANTONIO` resolves to PSGC `0506213048`.** All 5,987 barangays now carry
 a 10-digit PSGC code; the last open geography item from `UUC_PHC_2025_PLAN.md` §4 is closed.
 
-**The 5,991 total is confirmed for publication**, with cue cards p37's 5,987 as a footnote citing
+**Membership is aligned to the source office's final list — the one figure here that is not a
+cleaning rule.** The reconciled sheet is the source for every *measurement*, but not for who is on
+the list. Five Cavite barangays it carries and the final list does not are dropped
+(`MOLINO IV`, `SAN NICOLAS II`, `TALABA 2`, `TALABA 3` in City of Bacoor; `BARANGAY 38` in Cavite
+City), and `BASILAN / SUMISIP / SUMISIP CENTRAL` — which the final list carries and the reconciled
+sheet does not — is recovered from the workbook's `2025 LIST` sheet under PSGC `1900705019`. That
+sheet is a pre-reconciliation extract and has no ELCAC or criterion (d) score column, so those two
+fields are left blank on that row rather than guessed. **5,991 in, 5,987 out.** Full reasoning:
+`UUC_PHC_2025_PLAN.md` §3.
+
+**The 5,987 total is confirmed for publication**, which is also cue cards p37's figure citing
 DC No. 2025-0549 — see `UUC_PHC_2025_PLAN.md` §3.
 
 **The provincial reference table is extracted and partly corrected.** The seven `* Prov Ref`
-columns were denormalised across all 5,991 rows; they are now one row per province in
+columns were denormalised across every row; they are now one row per province in
 `ingestion/data/uuc_phc_2025_provincial_reference.csv` and on the *Provincial reference* sheet —
 **88 provinces/HUCs, zero contradictions**.
 
@@ -93,7 +104,7 @@ FIC is capped at 100. See §6.
 
 Physical Factor, IP POP, ARMED CONF, IDP and 4PS were already within 0–100 and needed no action.
 
-- **1,584** values capped, across **1,397** of 5,991 barangays (23.3%).
+- **1,584** values capped, across **1,397** of 5,987 barangays (23.3%).
 - **0** values removed, **0** negatives found, **0** barangays dropped.
 - The 1,000 cap barely binds — only **4 values** exceed it. The 240 rate values between 100 and
   1,000 are retained as encoded, which is the point of the separate bound.
@@ -102,13 +113,14 @@ Physical Factor, IP POP, ARMED CONF, IDP and 4PS were already within 0–100 and
 
 Checked by re-reading the output against the source, cell by cell:
 
-- 5,991 rows in, 5,991 rows out; 29 columns retained, 15 dropped, none left blank in error.
+- 5,991 rows in, 5,987 rows out — the difference is §3's final-list alignment, not a cleaning
+  rule; 29 columns retained, 15 dropped, none left blank in error.
 - Every capped column now maxes at exactly its cap; every value at or below its cap is
   byte-identical to the source. **Zero rule violations.**
 - No cell outside the indicator columns differs from the source, apart from the intended `#N/A`
   blanking.
 - The actions log holds exactly 1,584 rows, matching the transformations applied.
-- **5,991 of 5,991 barangays carry a 10-digit PSGC**, and Pilar's San Antonio resolves to
+- **5,987 of 5,987 barangays carry a 10-digit PSGC**, and Pilar's San Antonio resolves to
   `0506213048` as instructed.
 
 ## 6. What this does not fix
@@ -160,7 +172,7 @@ it was not part of the instruction.
 ## 7. Effect on the build
 
 `UUC_PHC_2025_PLAN.md` **U1 is unaffected and fully unblocked** — it ships the classification,
-unchanged at 5,991 UUA barangays, and every one now has a PSGC.
+at 5,987 UUA barangays after §3's final-list alignment, and every one now has a PSGC.
 
 **U3 is unblocked.** All 12 indicators are now bounded and renderable. The remaining constraint is
 presentational, not blocking: capped values need a display rule so a rendered 100% is not read as

@@ -25,22 +25,22 @@ function gap(over: Partial<UucPhcBenchmarkGap> = {}): UucPhcBenchmarkGap {
 
 describe("share", () => {
   it("floors a tiny non-zero share at <0.1% rather than rounding it to nothing", () => {
-    // Two bounded ABR values in 5,991 barangays is 0.03%. "0%" would say the cap never binds on
+    // Two bounded ABR values in 5,987 barangays is 0.03%. "0%" would say the cap never binds on
     // that indicator, which is the opposite of the row's reason for existing.
-    expect(share(2, 5991)).toBe("<0.1%");
-    expect(share(1, 5991)).toBe("<0.1%");
+    expect(share(2, 5987)).toBe("<0.1%");
+    expect(share(1, 5987)).toBe("<0.1%");
   });
 
   it("still prints a real zero as zero", () => {
     // The distinction the floor exists to protect: none bounded and almost none bounded are
     // different findings.
-    expect(share(0, 5991)).toBe("0%");
+    expect(share(0, 5987)).toBe("0%");
   });
 
   it("reproduces the cleaning report's own shares to one decimal", () => {
-    expect(share(886, 5991)).toBe("14.8%");
-    expect(share(456, 5991)).toBe("7.6%");
-    expect(share(1397, 5991)).toBe("23.3%");
+    expect(share(886, 5987)).toBe("14.8%");
+    expect(share(456, 5987)).toBe("7.6%");
+    expect(share(1397, 5987)).toBe("23.3%");
   });
 
   it("returns a dash rather than dividing by zero", () => {

@@ -3,7 +3,7 @@
 -- Why this exists: the UUC for PHC 2025 workbook files Sulu's barangays under Region IX with
 -- '09066…' codes, following Sulu's 2024 removal from BARMM. dim_geo is fixed on the '2023
 -- series (>=2024 release, includes NIR)' vintage, which still holds Sulu as '19066…' under
--- region 19. 87 of the list's 5,991 barangays carry the '09066' prefix and resolve against
+-- region 19. 87 of the list's 5,987 barangays carry the '09066' prefix and resolve against
 -- dim_geo through nothing else.
 --
 -- Note the direction: for every other crosswalk row seeded so far the source vintage is OLDER

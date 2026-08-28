@@ -75,7 +75,7 @@ create table if not exists fact_uuc_phc_indicators (
   -- **Loaded, not recomputed, and the distinction is the whole point.** The seven indicator and
   -- benchmark columns above are all published here, so it is tempting to derive this score from
   -- them with the same comparesWorse rule the barangay disclosures use (lib/db/uuc-phc-indicators
-  -- .ts). Doing so gives a different answer on 664 of the 5,991 rows, always lower, because the
+  -- .ts). Doing so gives a different answer on 664 of the rows the source scored, always lower, because the
   -- source scored criterion (d) against the values *before* cleaning bounded them, using the
   -- Pass/Fail columns the reconciled extract drops.
   --

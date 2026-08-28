@@ -1,12 +1,22 @@
 # UUC for PHC 2025
 
 A public view of the **2025 list of Unserved and Underserved Communities for Primary Health
-Care** — the barangays a primary-health-care programme is meant to reach first. **5,991 barangays**
+Care** — the barangays a primary-health-care programme is meant to reach first. **5,987 barangays**
 of the country's 41,958, issued under **DC No. 2025-0549** with criteria set by **DOH AO No.
 2020-0023**.
 
 Unlike the BHW datasets, this is a *membership list*, not a measurement: a barangay is either on
 it or not. Every figure on the section is therefore one count against one denominator.
+
+> **The list moved from 5,991 to 5,987 on 2026-08-28**, when the source office supplied its final
+> national list. Six barangays differ and nothing else: five in Cavite dropped, one in Basilan
+> (`SUMISIP CENTRAL`) added. That closes the reconciliation against the 2027 Budget Cue Cards p37,
+> which had stood at +4. The reasoning, the six barangays, and every figure it moved are in
+> `docs/UUC_PHC_2025_PLAN.md` §3. **The verification records further down this document were run
+> against the 5,991-row load** and are left as they were run; the alignment migration
+> (`20260828180000_uuc_phc_final_list_alignment.sql`) re-asserts each of those checks. One of them
+> reads differently now: CAVITE's listed side falls to three barangays and is suppressed, so it
+> leaves the BHW comparison and CALABARZON no longer badges an area against the pattern.
 
 ## Decisions
 
@@ -122,7 +132,7 @@ comparison criterion (d) is built on.
 
 `/uuc-phc/criteria` (and `/uuc-phc/criteria/<level>/<code>`) answers *why* the barangays in an area
 are on the list: how many came in on each of the four socio-economic routes of AO §VI.A. The
-physical factor is not counted — it holds in all 5,991 rows by construction, since a barangay below
+physical factor is not counted — it holds in every row by construction, since a barangay below
 the 25% floor never entered the list.
 
 - **The four routes overlap and do not partition the list.** A barangay can qualify on three at
@@ -169,7 +179,7 @@ rather than as any summary figure.
   line of its own**, because building this without saying why there is no average would re-open the
   hole U3 closed.
 - **Equal-width bins, over the indicator's own domain** — 0–100 for the nine coverage percentages,
-  0–1,000 for the three rates. IMR, UFMR and ABR are strongly zero-inflated (5,401 of 5,991
+  0–1,000 for the three rates. IMR, UFMR and ABR are strongly zero-inflated (5,400 of 5,987
   barangays record an IMR of exactly 0), so narrow bins near zero and wide ones above would render
   a spike as a spread. Unequal bins misstate density by construction; the honest picture of a spike
   is a spike.
@@ -247,7 +257,7 @@ published total, and what remains unresolved.
   the gap sits — and says in as many words that why they differ is not recorded.
 - **The criterion (d) recomputation is performed on purpose, to measure itself.** This is the one
   place the derivation `fact_uuc_phc_indicators.health_indicators` warns against is actually run.
-  It disagrees on 664 of 5,991 barangays, always lower, and would leave 98 listed barangays
+  It disagrees on 664 of the barangays the source scored, always lower, and would leave 98 listed barangays
   qualifying on no route at all — which the AO makes impossible. That pair is the evidence for
   loading the score rather than deriving it, and showing it beats asserting it.
 - **An empty page must never read as a clean bill of health.** A failed read renders an explicit
@@ -282,9 +292,9 @@ links (`components/uuc-phc/download-links.tsx`); the PNG one-pager is unchanged 
 - **The route refuses to emit a short file.** `rows.length` is compared against
   `agg_uuc_phc_counts.n_listed` — computed from a *different* fact table — and a disagreement is a
   500 rather than a file. That is the fact loader's own discipline ("a silently short load is worse
-  than a failed one when 5,991 is a headline figure"), and it matters more here than anywhere: a
+  than a failed one when 5,987 is a headline figure"), and it matters more here than anywhere: a
   page that renders one province short can be noticed later, a spreadsheet cannot.
-- **`maxDuration = 60`, because the deployment measured it.** A national export is 5,991 rows read
+- **`maxDuration = 60`, because the deployment measured it.** A national export is 5,987 rows read
   a page of 1,000 at a time — PostgREST's own cap — so it costs six sequential round trips, and on
   a real Vercel preview it took **8.5s (CSV) / 9.0s (XLSX)**. That is inside the platform's default
   ceiling but not comfortably, and the file it would drop is the largest one on the section. Raised
@@ -405,7 +415,7 @@ datasets meet: households per BHW in an area's listed barangays, against all its
   narrower question instead — *is BHW coverage consistent with what the list already implies?* —
   and the reportable case is the **exception**, an area where the direction reverses.
 - **The national answer is the opposite of the question the plan's title asks.** Listed barangays
-  carry **50.9 households per BHW** against **98.2** elsewhere. It holds in **76 of the 81
+  carry **50.3 households per BHW** against **98.3** elsewhere. It holds in **76 of the 80
   provinces** where both sides clear the threshold; **5** run the other way (CAVITE, CAGAYAN,
   ROMBLON, LANAO DEL NORTE, CATANDUANES), and those five are what the page is for.
 - **Most of the gap is barangay size, and the page computes that rather than asserting it.** Listed
@@ -470,7 +480,7 @@ datasets meet: households per BHW in an area's listed barangays, against all its
     precedent: re-running the migration recomputes every row, and that *is* the refresh procedure.
   - Four assertions run after the load and abort the migration rather than publish a wrong share:
     `n_listed` agrees with `agg_uuc_phc_counts` on every row (they are computed from different fact
-    tables, so this also checks that the two tables cover the same 5,991 barangays); every criteria
+    tables, so this also checks that the two tables cover the same barangays); every criteria
     row has a counts row; no route count exceeds its denominator; every level rolls up to the
     national totals.
 - Table **`agg_uuc_phc_indicator_dist`** (U9) — public-read aggregate keyed `(dataset_id, geo_code,
@@ -509,7 +519,7 @@ datasets meet: households per BHW in an area's listed barangays, against all its
   where cue cards p37 differs from this dashboard. A table rather than a view because `doc_chunk` is
   service-role only. Rows that stop differing are deleted on re-run, so a corrected source empties
   the table rather than leaving a closed gap on the page.
-- View **`ref_uuc_phc_list`** (U11) — the list as rows: **5,991**, one per listed barangay, joining
+- View **`ref_uuc_phc_list`** (U11) — the list as rows: **5,987**, one per listed barangay, joining
   `fact_uuc_phc_barangay` (the record) to `fact_uuc_phc_indicators` (the evidence) and resolving the
   geography against `dim_geo`. 41 columns: the barangay's PSGC and PSA name plus its city, province
   and region codes and names; the workbook's own code and four names; the four route flags and
@@ -602,7 +612,7 @@ edges in `kb_node` / `kb_edge`.
   no `PresentButton` — so there is no label there to correct today. Adopting `brandLabel` is one
   line *of* whatever increment gives that section present mode, not a pending one-liner on its own.
   Checked again in U12a, because the earlier wording here reads as the latter.
-- **The deck caption's N is the area's listed count**, not the national 5,991 — a deck presented on
+- **The deck caption's N is the area's listed count**, not the national 5,987 — a deck presented on
   Mayoyao reads `N = 27 listed barangays · MAYOYAO · 2025 list (DC No. 2025-0549)`.
 - **Feedback is dataset-aware.** `SpotFeedback` already rendered here; what was added is
   `feedback.dataset_slug`, derived server-side from `page_path` in `app/api/feedback/route.ts` via
@@ -649,7 +659,7 @@ edges in `kb_node` / `kb_edge`.
 
 The loader refuses to emit on a failed check (row count, PSGC format, duplicates, `UUA`-only, the
 87-code Sulu count, all 17 regional counts): a silently short load is worse than a failed one when
-5,991 is a headline figure.
+5,987 is a headline figure.
 
 ## Key files
 

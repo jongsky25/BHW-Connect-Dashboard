@@ -25,7 +25,7 @@ export function benchmark(n: number | null): string {
 /**
  * A share to one decimal, floored at "<0.1%" rather than rounded down to zero.
  *
- * Two bounded ABR values out of 5,991 is 0.03%. Printing that as "0%" says none were bounded,
+ * Two bounded ABR values out of 5,987 is 0.03%. Printing that as "0%" says none were bounded,
  * which is the opposite of what the row exists to report — and it is the one indicator whose
  * bounding is rare enough for a reader to conclude the cap never binds.
  */

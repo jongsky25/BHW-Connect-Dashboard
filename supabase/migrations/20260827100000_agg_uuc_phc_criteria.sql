@@ -3,7 +3,7 @@
 --
 -- DOH AO No. 2020-0023 §VI.A lists a barangay only when a physical factor AND a socio-economic
 -- factor are both present. The physical factor is not counted here: it holds in every one of the
--- 5,991 rows by construction, because a barangay below the 25% floor never entered the list, so a
+-- every row by construction, because a barangay below the 25% floor never entered the list, so a
 -- count of it is a count of the list. What varies is *which* socio-economic route carried the
 -- barangay, and until now that was visible only inside a <details> on one city page at a time.
 --
@@ -20,7 +20,7 @@
 -- that does.
 --
 -- **Criterion (b) is summed, not either/or.** The source marks it met when armed_conf + idp >= 10,
--- which reproduces its own Pass/Fail on all 5,991 rows; reading the order's "or" as either-alone
+-- which reproduces its own Pass/Fail on every row it scored; reading the order's "or" as either-alone
 -- disagrees on 15. Implemented as the file does, with the divergence recorded in
 -- docs/UUC_PHC_2025_PLAN.md §1a — the same choice lib/db/uuc-phc-indicators.ts made in U3, so the
 -- aggregate and the per-barangay disclosure cannot say different things about the same barangay.
@@ -98,13 +98,13 @@ comment on table agg_uuc_phc_criteria is
   'Per-geo counts of listed barangays qualifying by each socio-economic route of DOH AO No. 2020-0023 §VI.A. The four route counts OVERLAP and do not sum to n_listed — a barangay can qualify on several — so they must be rendered as four independent shares, never stacked or as a pie. Route (d) counts only barangays whose provincial reference can support the comparison: its denominator is n_health_evaluable, not n_listed. See docs/UUC_PHC_2025_PLAN.md §9 U7.';
 
 comment on column agg_uuc_phc_criteria.n_route_conflict is
-  'Criterion (b): armed_conf + idp >= 10, or the barangay is ELCAC-designated. The two are summed rather than read as the order''s "or" — that is what reproduces the source''s own Pass/Fail on all 5,991 rows. See docs/UUC_PHC_2025_PLAN.md §1a.';
+  'Criterion (b): armed_conf + idp >= 10, or the barangay is ELCAC-designated. The two are summed rather than read as the order''s "or" — that is what reproduces the source''s own Pass/Fail on every row it scored. See docs/UUC_PHC_2025_PLAN.md §1a.';
 
 comment on column agg_uuc_phc_criteria.n_route_health is
   'Criterion (d): the source''s own health_indicators score is at least 4 of 7, counted only among barangays whose provincial reference can support the comparison. Its denominator is n_health_evaluable, never n_listed.';
 
 comment on column agg_uuc_phc_criteria.n_health_evaluable is
-  'Listed barangays in this area whose provincial reference can support criterion (d). Nationally 5,765 of 5,991: 226 barangays in 5 provinces carry benchmarks that are placeholders, zeroes, missing or fractions. n_listed - n_health_evaluable is the excluded count, derived in the read layer.';
+  'Listed barangays in this area whose provincial reference can support criterion (d). Nationally 5,761 of 5,987: 226 barangays in 5 provinces carry benchmarks that are placeholders, zeroes, missing or fractions. n_listed - n_health_evaluable is the excluded count, derived in the read layer.';
 
 alter table agg_uuc_phc_criteria enable row level security;
 

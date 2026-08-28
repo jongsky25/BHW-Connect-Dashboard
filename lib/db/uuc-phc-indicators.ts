@@ -213,7 +213,7 @@ export function toBarangayDetail(row: Row, geoName: string): UucPhcBarangayDetai
   });
 
   // Criterion (b) is summed, not either/or: the source marks it met when armed conflict + IDP
-  // together reach 10%, which reproduces its own Pass/Fail on all 5,991 rows. Reading the order's
+  // together reach 10%, which reproduces its own Pass/Fail on every row it scored. Reading the order's
   // "or" as either-alone disagrees on 15 barangays. Following the file, with the note recorded —
   // see docs/UUC_PHC_2025_PLAN.md §1a.
   const conflict =

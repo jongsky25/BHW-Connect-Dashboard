@@ -15,7 +15,7 @@ export const revalidate = 3_600;
 export const metadata: Metadata = {
   title: { absolute: "Why these barangays qualified · UUC for PHC 2025" },
   description:
-    "How the 5,991 barangays on the 2025 UUC for PHC list qualified: Indigenous Peoples, conflict and displacement, 4Ps enrolment, and health indicators against the province. The four routes overlap.",
+    "How the 5,987 barangays on the 2025 UUC for PHC list qualified: Indigenous Peoples, conflict and displacement, 4Ps enrolment, and health indicators against the province. The four routes overlap.",
 };
 
 export default async function UucPhcCriteriaLanding() {
