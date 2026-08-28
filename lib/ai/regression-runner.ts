@@ -1,7 +1,7 @@
 import "server-only";
 import { createInternalTools } from "./dataset-tools";
 import { getDocChunk } from "@/lib/db/doc-chunks";
-import type { ReplayableCase } from "@/lib/db/regression-cases";
+import type { Expectation, ExpectedValue, ReplayableCase } from "@/lib/db/regression-cases";
 
 /**
  * The §10 runner: re-executes a stored regression case against the build in front of it and diffs
@@ -57,23 +57,45 @@ export type CitationReplay = {
   stillRetrieved: boolean;
 };
 
+export type ExpectationReplay = Expectation & {
+  /**
+   * met        — the payload still holds this value at this field.
+   * unmet      — the field is there and the figure has changed. The regression route 1 exists for.
+   * unresolved — the assertion could not be scored at all: the call did not run, the selector
+   *              named no row or more than one, or the field is gone. Not the same as unmet, and
+   *              collapsing the two would report a renamed column as a changed figure.
+   */
+  status: "met" | "unmet" | "unresolved";
+  /** What was actually there, when a single value could be reached. Null otherwise. */
+  actual: ExpectedValue | null;
+  /** Why, in the words the finding uses. Null when met. */
+  reason: string | null;
+};
+
 export type CaseReplay = {
   caseId: number;
   question: string;
   /**
-   * broken   — something the case did no longer runs, or a cited chunk is gone.
+   * broken   — something the case did no longer runs, a cited chunk is gone, or a figure the case
+   *            pinned has changed or can no longer be found.
    * degraded — everything runs, but a citation moved, changed text, or dropped out of its search.
-   * ok       — every recorded call ran and every citation still resolves and is still retrieved.
+   * ok       — every recorded call ran, every citation still resolves and is still retrieved, and
+   *            every pinned figure is unchanged.
+   *
+   * A moved figure is `broken` rather than `degraded` deliberately. It is the only check in this
+   * runner that scores an answer's *content* rather than its plumbing, and grading it below a
+   * citation changing pages would put the thing route 1 was seeded to catch in the quieter colour.
    */
   verdict: "ok" | "degraded" | "broken";
   findings: string[];
   toolCalls: ToolReplay[];
   citations: CitationReplay[];
+  expectations: ExpectationReplay[];
 };
 
 /** Stated once, in the result, so nobody reads a green run as more than it is. */
 export const REPLAY_CAVEAT =
-  "Tool calls and citations only. The answer text was not regenerated — that needs a provider key, and a case can pass here while reading badly.";
+  "Tool calls, cited passages and pinned figures only. The answer text was not regenerated — that needs a provider key, and a case can pass here while reading badly.";
 
 function chunkIdsIn(payload: unknown): number[] {
   if (!payload || typeof payload !== "object") return [];
@@ -88,10 +110,142 @@ function chunkIdsIn(payload: unknown): number[] {
     .filter((id): id is number => id !== null);
 }
 
+/** Comma-grouped for a number, quoted for a string, so a finding reads like the page does. */
+function describeValue(value: ExpectedValue): string {
+  if (typeof value === "number") return new Intl.NumberFormat("en-US").format(value);
+  if (typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
+/** `{geo_code: "PH", cert_type: "tesda_certified"}` → `geo_code=PH, cert_type=tesda_certified`. */
+function describeSelector(where: Record<string, ExpectedValue>): string {
+  return Object.entries(where)
+    .map(([key, value]) => `${key}=${typeof value === "string" ? value : String(value)}`)
+    .join(", ");
+}
+
+function isExpectedValue(value: unknown): value is ExpectedValue {
+  return typeof value === "string" || typeof value === "boolean" || Number.isFinite(value);
+}
+
+/** What a payload holds where the expectation points, or why it could not be reached. */
+function selectTarget(
+  payload: unknown,
+  where: Record<string, ExpectedValue> | null,
+): { row: Record<string, unknown> } | { reason: string } {
+  if (!payload || typeof payload !== "object") return { reason: "the call returned no payload" };
+  if (where === null) return { row: payload as Record<string, unknown> };
+
+  const rows = (payload as { rows?: unknown }).rows;
+  if (!Array.isArray(rows))
+    return { reason: "the payload has no rows to select from (a count payload has no `where`)" };
+
+  const candidates = rows.filter(
+    (row): row is Record<string, unknown> =>
+      !!row &&
+      typeof row === "object" &&
+      Object.entries(where).every(
+        ([key, value]) => (row as Record<string, unknown>)[key] === value,
+      ),
+  );
+  if (candidates.length === 1) return { row: candidates[0] };
+
+  const selector = describeSelector(where);
+  if (candidates.length === 0) {
+    // A projection that dropped the selector's own key fails the same way as a row that is gone,
+    // and the two are worth telling apart: the first is a broken case, the second a real finding.
+    const missing = Object.keys(where).filter(
+      (key) => !rows.some((row) => !!row && typeof row === "object" && key in row),
+    );
+    return {
+      reason: missing.length
+        ? `no row matched ${selector} — no row carries ${missing.join(", ")}`
+        : `no row matched ${selector} (${rows.length} rows returned)`,
+    };
+  }
+  // Never the first row. A selector that names more than one thing has stopped identifying
+  // anything, and scoring one of them at random is how a case passes for the wrong reason. The
+  // live shape of this is a republication: a second dataset_id doubles every geography's rows.
+  return { reason: `${candidates.length} rows matched ${selector} — a selector must name one` };
+}
+
+/**
+ * Scores one assertion against the payloads this replay collected.
+ *
+ * Exported because it is the whole of the new judgement and the only part of this module testable
+ * without a service-role client: everything else needs the registry, and the registry is
+ * service-role only.
+ */
+export function evaluateExpectation(
+  expectation: Expectation,
+  calls: { name: string; payload: unknown }[],
+): ExpectationReplay {
+  const base = { ...expectation, actual: null };
+  const unresolved = (reason: string): ExpectationReplay => ({
+    ...base,
+    status: "unresolved",
+    reason,
+  });
+
+  const call = calls[expectation.call];
+  if (!call)
+    return unresolved(
+      `call ${expectation.call} was not made (the case records ${calls.length} tool ${calls.length === 1 ? "call" : "calls"})`,
+    );
+  if (call.name !== expectation.tool)
+    return unresolved(
+      `call ${expectation.call} is ${call.name}, but this expectation is about ${expectation.tool}`,
+    );
+  if (
+    call.payload &&
+    typeof call.payload === "object" &&
+    typeof (call.payload as { error?: unknown }).error === "string"
+  )
+    return unresolved(`${call.name} refused, so there is no figure to compare`);
+
+  const target = selectTarget(call.payload, expectation.where);
+  if ("reason" in target) return unresolved(target.reason);
+
+  if (!(expectation.field in target.row)) {
+    const available = Object.keys(target.row);
+    return unresolved(
+      `no field ${expectation.field}` +
+        (available.length ? ` (the row has: ${available.slice(0, 25).join(", ")})` : ""),
+    );
+  }
+  const actual = target.row[expectation.field];
+  if (!isExpectedValue(actual))
+    return unresolved(
+      `${expectation.field} is ${actual === null ? "null" : typeof actual}, not a value`,
+    );
+
+  if (actual === expectation.value) return { ...expectation, status: "met", actual, reason: null };
+
+  // The type is named on a mismatch on purpose. Values are compared strictly, because every
+  // numeric column these cases read was measured to arrive as a JSON number — so if a string ever
+  // does turn up against a number, this finding is the evidence for adding a coercion rule rather
+  // than the rule being written on a guess. See the migration header.
+  const typed =
+    typeof actual === typeof expectation.value
+      ? ""
+      : ` (${typeof expectation.value} → ${typeof actual})`;
+  const at = expectation.where ? `${describeSelector(expectation.where)}: ` : "";
+  return {
+    ...expectation,
+    status: "unmet",
+    actual,
+    reason: `${at}${expectation.field} was ${describeValue(expectation.value)}, now ${describeValue(actual)}${typed}`,
+  };
+}
+
 export async function replayCase(stored: ReplayableCase): Promise<CaseReplay> {
   const tools = new Map(createInternalTools().map((tool) => [tool.definition.name, tool]));
   const findings: string[] = [];
   const toolCalls: ToolReplay[] = [];
+  // Index-aligned with `stored.toolCalls`, including the calls that failed — an expectation names
+  // its call by index, so a skipped entry would shift every later assertion onto the wrong call.
+  // Kept local: returning whole payloads would put internal rows into a rendered page.
+  const payloads: { name: string; payload: unknown }[] = [];
   const retrieved = new Set<number>();
 
   for (const call of stored.toolCalls) {
@@ -106,6 +260,7 @@ export async function replayCase(stored: ReplayableCase): Promise<CaseReplay> {
         detail: null,
         chunkIds: [],
       });
+      payloads.push({ name: call.name, payload: undefined });
       findings.push(`${call.name} is not a tool in this build`);
       continue;
     }
@@ -115,6 +270,7 @@ export async function replayCase(stored: ReplayableCase): Promise<CaseReplay> {
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : "the call threw";
       toolCalls.push({ name: call.name, args: call.args, status: "error", detail, chunkIds: [] });
+      payloads.push({ name: call.name, payload: undefined });
       findings.push(`${call.name} threw: ${detail}`);
       continue;
     }
@@ -135,6 +291,7 @@ export async function replayCase(stored: ReplayableCase): Promise<CaseReplay> {
       detail: error,
       chunkIds,
     });
+    payloads.push({ name: call.name, payload });
     if (error) findings.push(`${call.name} refused: ${error}`);
   }
 
@@ -168,8 +325,24 @@ export async function replayCase(stored: ReplayableCase): Promise<CaseReplay> {
     }
   }
 
+  const expectations = stored.expectations.map((expectation) =>
+    evaluateExpectation(expectation, payloads),
+  );
+  for (const scored of expectations) {
+    if (scored.reason) findings.push(`${scored.tool}[${scored.call}] ${scored.reason}`);
+  }
+  // Reported, never skipped: an assertion this build could not read is one the case is no longer
+  // checking, and a case that quietly checks less than it claims is the failure mode the whole
+  // expected-payload design is arranged against.
+  for (const raw of stored.malformedExpectations) {
+    findings.push(`an expectation could not be read and was not checked: ${raw}`);
+  }
+
   const broken =
-    toolCalls.some((call) => call.status !== "ok") || citations.some((cite) => !cite.resolves);
+    toolCalls.some((call) => call.status !== "ok") ||
+    citations.some((cite) => !cite.resolves) ||
+    expectations.some((scored) => scored.status !== "met") ||
+    stored.malformedExpectations.length > 0;
   const degraded = citations.some(
     (cite) => !cite.pageUnchanged || cite.textUnchanged === false || !cite.stillRetrieved,
   );
@@ -181,6 +354,7 @@ export async function replayCase(stored: ReplayableCase): Promise<CaseReplay> {
     findings,
     toolCalls,
     citations,
+    expectations,
   };
 }
 

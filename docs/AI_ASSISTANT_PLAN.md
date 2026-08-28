@@ -630,11 +630,23 @@ search*. That last check is the one a model cannot help with and a prose diff ca
 It deliberately does not re-ask the question: that needs a provider key, and a suite that only runs
 when someone has one never runs. Every result carries the caveat saying so.
 
-**Two things are still missing, and they are about the list rather than the runner.** There is
-nowhere to record an *expected payload*, so a `queryDataset` case is scored on whether the call
-still runs and not on whether it returns the same figure — which is exactly what route 1 below
-needs, so route 1 waits on that column. And the list is one case long: route 2 is live, route 3 is
-unbuilt.
+**The expected payload exists, and route 1 is seeded** *(2026-08-28)*. `ai_regression_case`
+carries an `expectations` column: a list of assertions, each naming the recorded call it reads, the
+row it selects and the field and value it expects, scored `met` / `unmet` / `unresolved`
+separately — so a failure says *which* figure moved rather than that the payload differs. A
+selector matching more than one row is a failure rather than a first-row pick, which is what keeps
+a republication from being scored at random.
+
+Ten cases are seeded from figures already rendered on public pages, per route 1, and every one of
+their 29 pinned figures was checked against live data before the seeds were written. `conversation`
+and `answer_given` are nullable now, because §10.1's seeds are figures on a screen and there is no
+assistant turn to record — the one earlier seeded case had invented both, and a provider to
+attribute the invented answer to.
+
+**Still missing: route 3, and the swept path.** `ai_ask_cache` rows at `status = 'approved'` (seven
+of them today) are unharvested. And the 4.2 sweep still does not feed this list — the column it was
+waiting for is here, but all 12 `kb_contradiction` rows sit at `status = 'auto'`, so there is
+nothing confirmed to file and `source` still admits only `'reported'` and `'seeded'`.
 
 ## 11. Open questions
 
