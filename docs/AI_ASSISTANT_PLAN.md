@@ -24,11 +24,11 @@ queue it filled is now empty** (2026-08-27): 7 nodes and 14 edges approved, 9 no
 rejected as duplicate identities. Extracted rows stand at 84 nodes / 114 edges approved.
 **Increment 4.1 is built and the plan's success condition is met** — `profile_dataset()` took
 `fact_bhw_raw` from no registry row to queryable with no code change (2026-08-27), and since
-2026-08-28 `ingestion/ingest.py` calls the pass after a load, run end to end on the full extract. **4.2 is built
-too (2026-08-28): every increment in this plan now exists.** The contradiction sweep computes
-disagreements between the corpus and the registry rather than noticing them, and rediscovered both
-of §8's known cases without either being seeded. What remains is not an increment but the list in
-§10 and the two open questions in §11.
+2026-08-28 `ingestion/ingest.py` calls the pass after a load, run end to end on the full extract.
+**4.2 is built too (2026-08-28): every increment in this plan now exists.** The contradiction
+sweep computes disagreements between the corpus and the registry rather than noticing them, and
+rediscovered both of §8's known cases without either being seeded. What remains is not an
+increment but the list in §10 and the two open questions in §11.
 
 **Revision (2026-08-26) — the graph work moved forward.** `kb_node`/`kb_edge` and the traversal
 primitive are now Increments 1.5–1.6, seeded from lineage this repository already asserts rather
@@ -552,7 +552,7 @@ join targets an approved row already names — it extends the join graph from ex
 create one. See `DECISIONS.md`.
 
 **4.2 — Contradiction sweep.** *(built — 2026-08-28; `sweep_contradictions()`. Re-run 2026-08-28:
-**22 rows**, all still at `auto`)*
+**22 rows**, all still at `auto`. Corroboration fix committed 2026-08-28, **not yet applied**)*
 A batch job rather than a chat tool: walk node pairs that assert
 the same measure from different sources, and file each disagreement as a reviewable row carrying
 both values with their as-of dates.
@@ -581,16 +581,38 @@ resolved exactly as that entry predicted — and the slide then fell through to
 `agg_uuc_phc_criteria.n_health_evaluable` at a fit of 0.7647, which is a **subset** of the listed
 count rather than a competing measure of it. Ten new rows on two slides, replacing six.
 
-**A perfect fit suppresses the candidate, not the slide**, so a slide whose true counterpart agrees
-everywhere is handed to its best *disagreeing* column — which is necessarily a different measure. The
-sweep's precision therefore falls as the data improves. Deliberately not fixed by that re-run: what
+**A perfect fit suppressed the candidate, not the slide**, so a slide whose true counterpart agreed
+everywhere was handed to its best *disagreeing* column — which is necessarily a different measure. The
+sweep's precision therefore fell as the data improved. Deliberately not fixed by that re-run: what
 to do about it is a judgement about this queue's precision, and §7 and owner decision 5 put that with
 the owner. See `DECISIONS.md`.
 
+*Fixed 2026-08-28, committed but **not applied***. `20260828210000_sweep_corroboration_suppression.sql`
+replaces the function: once any candidate agrees on every cell the slide lists, that distribution is
+accounted for and the whole `(chunk, geo_level)` group is dropped — its cell rows and its level_total
+alike — rather than the slide falling through to the runner-up. The flag is read **after** the
+candidate loop, because candidates are iterated `order by 1, 3` and the corroborating one is often
+probed after a disagreeing one has already been recorded as best; the same guard read inside the loop
+is a fix-shaped bug, and was built and run to confirm it still files five false rows. `p_min_fit`
+stays at 0.5: the ten false rows fit at 0.7647 and slide 161's real case at 0.6667, so the false ones
+fit *better* and no floor separates them.
+
+Not run against the live database — no owner instruction to apply a migration, and the sweep writes.
+Verified instead in two halves that are named for what they are: the real function against a local
+fixture built to the p37 shape with the disagreeing column probed first (12 rows to 2, and the
+un-corroborated slide md5-identical), and a read-only reproduction of the pass over live data, which
+matches the function exactly on the one slide that offers a comparison. On live data it would drop
+the ten `n_health_evaluable` rows on slides 37 and 141, keep slide 161's two and the four
+`scalar_magnitude` rows unchanged, and start nothing new — 16 findings become 6.
+
 *Still open from this increment:* the output does not yet feed the §10 list. Nothing is confirmed
 (all 22 rows await judgement) and `ai_regression_case` cannot express a swept case without the
-expected-payload column §10 records as missing — which is the prerequisite for route 1 as well. See
-`DECISIONS.md`.
+expected-payload column §10 records as missing — which is the prerequisite for route 1 as well. The
+ten rows the defect filed are **still in the table**: the fix deletes nothing, so after it is applied
+they go stale-but-pending, and clearing them — by rejection rather than deletion, since a rejection
+records that a subset is not the same measure — is an owner action the migration deliberately does
+not take. And corroboration is still invisible: a suppressed slide and a slide nothing fitted both
+return nothing, which would need a return-type change to tell apart. See `DECISIONS.md`.
 
 ---
 

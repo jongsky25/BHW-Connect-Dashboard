@@ -6585,6 +6585,247 @@ the pre-#109 tree, both 148 — so #109 did not change it and the drift is `"pre
 to 3.9.5. This branch fails on the same 148, compared file by file rather than by count, and every
 file it touches is clean.
 
+## 2026-08-28 — Corroboration suppresses the slide, not the candidate: the sweep stops losing precision as the data improves
+
+The re-run entry above ends by naming a defect and deliberately not fixing it: *"What the fix should
+be — suppress a slide once any candidate corroborates it, rather than suppress only that candidate —
+is recorded here to be decided rather than applied."* This applies it.
+
+`20260828210000_sweep_corroboration_suppression.sql` replaces `sweep_contradictions()`. Four lines
+of behaviour change and nothing else: the candidate set, the probes, the evidence, the identity
+constraint and every guardrail are byte-identical to 4.2's.
+
+### The defect, restated in one sentence
+
+A candidate fitting every cell was skipped with `continue`, which discards **the candidate, not the
+slide** — so a slide whose true counterpart agrees everywhere is handed to the best-fitting column
+that *disagrees*, and for a corroborated slide that is necessarily a different measure.
+
+The fix sets a flag inside the candidate loop and reads it after, so the slide is dropped instead:
+
+```
+if v_fit >= 1.0 then
+  v_corroborated := true;
+  exit;
+end if;
+...
+continue when v_corroborated or v_best_fit is null;
+```
+
+**The read has to be after the loop, and that is the whole of the design.** Candidates are iterated
+`order by 1, 3`, so the corroborating one is often probed *after* a disagreeing one has already been
+recorded as `v_best`. A guard placed inside the candidate loop — `continue when v_corroborated`,
+which looks like the same fix — only suppresses candidates probed *later* than the corroborator, and
+leaves an earlier disagreement standing. That variant was built and run: on a fixture whose
+disagreeing column sorts first it still files all five rows on the corroborated slide, and suppresses
+only the slide whose corroborator happens to come first. It is a fix-shaped bug, and the test below
+fails on it.
+
+`v_fit >= 1.0` is stronger than it looks, which is why it is safe to read as a fact about the slide.
+The coverage guard runs first and `v_fit` divides by the slide's cell count, not by the cells the
+candidate covered — so a perfect fit means the candidate carried a value for **every** geography the
+slide names and agreed on all of them. There is no reading of that under which the distribution is
+still open.
+
+### The level_total goes with the cells, and the reason is not symmetry
+
+4.2 left this unsettled and the re-run entry named it as undecided. The argument for keeping the
+total is real: a slide whose cells all agree can still have a total that differs from the table's
+level-wide total, because the table covers geographies the slide does not list, and that difference
+is a claim about scope rather than about any one geography.
+
+It does not survive contact with the code. The total row is labelled and computed from
+`v_best_table` / `v_best_column` — the *runner-up*, since the corroborating candidate was never
+recorded as best. So a surviving total on a corroborated slide would compare the slide's own cells
+against a different column's level-wide sum: not a scope finding, the same mispairing restated over
+17 cells at once. On p37 that row is the slide's 5,987 against `n_health_evaluable`'s 5,761 — a
+difference of exactly the 226 excluded barangays, filed as though it were a disagreement about how
+many barangays are listed.
+
+The scope reading is worth having, and it is a comparison against the **corroborating** column, which
+this function has never computed and does not compute here. Filing the runner-up's total in its place
+would be worse than filing nothing, so the total is suppressed and the scope comparison is left
+unbuilt rather than approximated.
+
+### `p_min_fit` stays at 0.5, and the re-run entry's reason for it was arithmetically backwards
+
+Agreed with the conclusion, not with the number. That entry argued *"raising the floor to 0.8 would
+keep all ten of these rows and lose slide 161's genuine three-cell case."* Measured on live data, the
+ten `n_health_evaluable` rows sit at a fit of **0.7647** and slide 161 sits at **0.6667**, so a floor
+of 0.8 excludes both — it would have removed the ten as well, and p37 has no other candidate between
+0.8 and 1.0 to fall through to.
+
+The conclusion survives, and in a sharper form than the entry gave it. **The false rows fit better
+than the true one**, so no floor separates them: every floor that removes 0.7647 also removes 0.6667.
+A threshold can only have bought this queue precision by narrowing what it looks at until the one
+real case went with it — which is the same trade `p_min_cells` was refused on, for the same reason.
+
+Nothing here is evidence for moving the floor in either direction. After the fix the geographic pass
+files two rows on live data, both from slide 161; a floor is a statement about how much disagreement
+is worth reading, and one row is not a distribution to calibrate against. It stays at 0.5, still
+chosen before any data, and still the thing to revisit when a corpus with more geographic tables
+arrives.
+
+### It has not been run against the live database, and here is what was done instead
+
+**Stated plainly: this migration has not been applied.** There is no owner instruction to apply one
+in this session, and `sweep_contradictions()` writes, so it was not called either. The 22 rows at
+`status = 'auto'` are untouched — none confirmed, none rejected, none deleted.
+
+That leaves the gap `--propose` recorded — *typed and unrun is not a safety property* — and it is
+closed from two directions, neither of which is the function on live data. Both are named for what
+they are.
+
+**Real function, synthetic data.** A local PostgreSQL 16 cluster, the 4.2 migration applied to a
+fixture built to the p37 shape: 17 regions, a corroborating column and a subset column differing on
+four of them. The candidate tables are named so that the **disagreeing** one sorts first under
+`order by 1, 3`, which is the ordering hazard rather than the easy case.
+
+| | old function | fixed function |
+|---|---|---|
+| slide with the disagreeing column probed **first** | 5 rows (4 cells + total) | none |
+| slide with the corroborator probed **first** | 5 rows | none |
+| slide corroborated by nothing (the 161 shape) | 2 rows | 2 rows, **md5-identical** |
+
+Twelve rows to two. The third row is the one that matters as much as the first two: the fix removes
+only what corroboration accounts for, and a genuinely paired slide comes out bit for bit unchanged.
+The 161-shaped slide is also the *last* distribution in the fixture, after two corroborated ones, so
+it doubles as the check that the flag is cleared per distribution — left set, it would have silenced
+everything after the first corroborated slide, and a run that files nothing looks exactly like a run
+with nothing to file. Both migrations were applied twice; the sweep run twice returns the same rows
+and inserts nothing.
+
+**Real data, reproduced logic.** The geographic pass was rewritten as one read-only query against
+`bhw-connect` — the label view, the `dim_geo` resolution, the dedup, the candidate set from the
+registry, the uniqueness and coverage guards, and the fit — and run over live data. It is a
+reproduction of the logic, not the function.
+
+It reproduces the live function exactly where the two can be compared: on slide 161 it picks
+`agg_bhw_by_uuc_status.n_listed_no_bhw` at 0.6667 and names
+`unallocated_households` and `unallocated_n_bhw` as the ties, which is the filed row's `evidence`
+field for field. On that basis, what the corrected sweep would file:
+
+```
+slide  candidates at fit 1.0000                                    best disagreeing   verdict
+ 37    n_barangays_listed, n_listed_with_data, agg_uuc_phc_counts   n_health_evaluable  corroborated
+       .n_listed, agg_uuc_phc_criteria.n_listed                     @ 0.7647            → 5 rows dropped
+141    (the same four)                                              (the same)          → 5 rows dropped
+161    none                                                         n_listed_no_bhw     unchanged, 2 rows
+                                                                    @ 0.6667
+```
+
+- **The ten `n_health_evaluable` rows on slides 37 and 141 are not filed.** Four columns agree with
+  p37 on all 17 regions — the four the re-run entry said were tied at 15 before the alignment — so
+  both slides are corroborated and both are dropped whole.
+- **Slide 161's two rows are filed unchanged**, same column, same fit, same ties.
+- **The four `scalar_magnitude` rows on slides 8, 26 and 151 are filed unchanged.** Pass 2 is not
+  touched by the diff at all; this is byte identity, not a measurement.
+- **No slide that files nothing starts filing something**, on two independent grounds. By
+  construction, the change only ever adds a suppression: per slide the output is unchanged or empty,
+  never different. And empirically there is no such slide to worry about — the whole corpus yields
+  **three** distributions of three cells or more (chunks 37, 155, 175), and all three already file.
+
+Sixteen findings become six.
+
+### The ten rows already in the table, and whose call it is to clear them
+
+The migration deletes nothing. After it is applied and the sweep re-run, the ten
+`n_health_evaluable` rows simply stop being reproduced: `last_swept_at` stays behind, the card marks
+them stale, and they remain at `status = 'auto'`. The queue would then hold 22 rows, **16 of them
+stale** — the ten plus the six already stale since the re-run — against 6 current.
+
+That is honest but it is a bad queue. Sixteen stale cards of twenty-two, ten of them filed by a
+defect that no longer exists, is a reviewer's whole afternoon spent on rows the sweep would not file
+today.
+
+**It needs an explicit step, and it is the owner's.** Not this session's: §7 and owner decision 5 put
+these rows with the owner, and a session that fixed the sweep clearing away the evidence of what the
+sweep used to do is exactly the shape to avoid. Two ways to do it, and the recommendation is the
+second:
+
+- Delete them. Defensible here in a way the stale-not-deleted rule did not anticipate — that rule
+  exists because *"deleting it would erase somebody's judgement"*, and these ten carry none. But it
+  leaves no record that they were ever filed.
+- **Reject them.** The queue already has this control and it is the honest answer to the question
+  the card asks: `n_health_evaluable` and the listed count are **not** the same measure, and the
+  registry's own `meaning` says why — *"n_listed minus this is the excluded count."* A rejection
+  records that, where a delete records nothing. The six stale rows against `n_barangays_listed` are
+  the opposite case and want the opposite judgement.
+
+Either way it is one deliberate action after the migration lands, not something a migration should
+do on its way past.
+
+### The test parses the loop rather than scanning the file
+
+Five entries in this log record the same mistake: a test asserting on a migration through a raw
+string scan — twice silently asserting nothing, three times failing on a legitimate mention. The
+rule settled on is to parse the thing being asserted about. This is the first time that rule has had
+to bite on *control flow* rather than on a constraint or a format string, and a scan genuinely
+cannot do it: the correct fix and the fix-shaped bug above contain the same tokens and differ only in
+**where** the flag is read.
+
+So the suite blanks comments and string literals with offsets preserved, matches `loop` to its own
+`end loop` counting nesting (with `end loop` matched ahead of the bare keyword so the two never
+collide), and asserts positions: the perfect-fit branch inside the candidate loop, the read of the
+flag *after* it and before either insert, the reset inside the distribution loop and before the
+candidate loop begins. Four deliberate breakages were run against it — the original `continue`, the
+flag read inside the loop, the missing reset, and the guard moved below the cell insert so the
+level_total survives — and each fails on the assertion that describes it and no other.
+
+**The same pass found a second thing wrong with this suite, which is why it also changed.** Every SQL
+assertion in it read `20260828100000_kb_contradiction.sql` by name. The function is `create or
+replace`d, so from this migration onward that file describes a body the database does not run — and
+a test pinned to it goes on passing while asserting about dead text. That is the string-scan failure
+in a new costume: still green, no longer meaning anything. The suite now finds every migration
+defining `sweep_contradictions` in apply order. Guardrail assertions run against **all** of them,
+since each is live between its own migration and the next; behavioural assertions run against the
+last. Table and view assertions still read the 4.2 file, which is where the table and views are.
+
+### What this does and does not establish
+
+It establishes that a slide's corroboration is a property of the slide rather than of a column, and
+that suppressing it there removes the ten false rows without touching the two the same run files for
+other reasons — demonstrated on the real function against a fixture, and on live data against a
+reproduction of the logic that matches the real function everywhere the two can be compared. It
+establishes that the ordering hazard is real and not hypothetical: the near-miss fix was built, run,
+and files five false rows.
+
+**It does not establish that the sweep has been run with this change.** The migration is committed and
+unapplied. Everything above about live data is a reproduction of the pass in read-only SQL, which
+matched the function on the one slide that offers a comparison — one slide is what that check is
+worth.
+
+**It does not establish that the geographic pass now files anything true.** After the fix it files two
+rows on live data, and 4.2 already recorded both as a false positive — slide 161's JMC reinstatements
+against `n_listed_no_bhw`, *"not the same measure"*, kept rather than tuned away. The pass's one real
+finding was p37, and the data correction resolved it. So the honest summary is that this fix stops
+the pass inventing findings; it does not give it any. A corpus with a second geographic table would
+say whether the pass is worth its floor at all, and this one cannot.
+
+**It does not establish that corroboration is visible when it happens.** A suppressed slide and a
+slide no candidate fitted are indistinguishable from the outside: both return no rows and say
+nothing. The function's return type would have to change to tell them apart, which is a
+`drop function` rather than a `create or replace`, and it is out of this fix's scope. The cost is
+real — if some later change made every candidate look like a perfect fit, the sweep would file
+nothing and look healthy — and it is recorded here rather than absorbed.
+
+**And it does not establish how many other slides are one data correction away from this.** The re-run
+entry raised that and this does not answer it; it removes the consequence rather than surveying the
+exposure. Today the corpus has three geographic distributions, so the survey is small, but the
+question is about a corpus that grows.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **822 tests, 6 more than
+`main`'s 816**, confirmed by running `main` rather than taken from the previous entry. The migration
+parses under `pglast` 8.4 as three statements (`CreateFunctionStmt`, `CommentStmt`, `GrantStmt`) and
+was applied twice to a local cluster to check it is idempotent. `npx prettier --check .` fails on the
+same **148** files as untouched `main` — compared file by file, not by count — with prettier 3.9.5,
+which is the number the re-run entry corrected the record to. Two of the three files this branch
+edits, `DECISIONS.md` and `AI_ASSISTANT_PLAN.md`, were already on that list before it and are still
+on it; the third, `contradiction-review.test.ts`, is clean and was clean. `.sql` is outside
+prettier's scope entirely, so the new migration neither joins that list nor can be checked against
+it. No database writes: no migration applied, no sweep called, no `kb_contradiction` row judged, and
+no `ai_regression_case` filed.
+
 ## 2026-08-28 — Increment 4.1's leftover: `ingest.py` calls the profiling pass, and the four things running it found
 
 4.1 built `profile_dataset()` and met the plan's success condition with it, then declined to add one
@@ -6779,3 +7020,4 @@ none, so there is nothing for `pglast` to parse. `npx prettier --check .` fails 
 files as untouched `main` — measured on both trees and compared file by file rather than by count,
 confirming #110's correction of the older 149 — and prettier does not format Python, so the one file
 this branch touches is not among them.
+
