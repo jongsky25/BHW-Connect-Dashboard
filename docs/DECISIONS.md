@@ -6086,3 +6086,115 @@ reproduction should have been checked against it rather than against the aggrega
 the final list contradicts itself on the five Cavite barangays — its summary tab and 17 regional
 sheets against its own national sheet. Both want confirming with the source office; the dashboard
 now publishes the 3-to-1 majority reading in the meantime.
+
+## 2026-08-28 — The regression list catches its first real change, and it was a correction
+
+Not an increment. The same morning route 1 seeded ten cases from figures rendered on public pages,
+`20260828180000_uuc_phc_final_list_alignment.sql` replaced the reconciled 5,991-barangay UUC
+submission with the source office's final list of **5,987**. Eight of route 1's twenty-nine pins
+stopped matching the moment it landed.
+
+**This is the suite working, and it is worth writing down as such.** §10 exists to "tell whether a
+change made answers better or worse", and until now nothing had exercised that against a change
+anyone actually made. What it caught was not a defect: it was a deliberate data correction, and the
+right response is to re-derive the pins rather than to relax them.
+
+### What moved, measured before anything was written
+
+The ten seeds were parsed out of the committed migration, each recorded `queryDataset` call
+re-issued through PostgREST with the anon key, and every pin scored by `evaluateExpectation` itself
+— the same path the seeds were derived on, so the comparison is like-for-like.
+
+**21 of 29 met. All eight that moved read a UUC table:**
+
+```
+agg_uuc_phc_counts     n_listed              5,991 -> 5,987
+fact_uuc_phc_barangay  matchingRows          5,991 -> 5,987
+agg_uuc_phc_criteria   n_route_ip            3,677 -> 3,678
+agg_uuc_phc_criteria   n_route_conflict      2,302 -> 2,303
+agg_uuc_phc_criteria   n_route_health        2,000 -> 1,995
+agg_uuc_phc_criteria   n_health_evaluable    5,765 -> 5,761
+agg_bhw_by_uuc_status  n_barangays_listed    5,991 -> 5,987
+agg_bhw_by_uuc_status  listed_n_bhw         48,485 -> 48,480
+```
+
+**Every one came back `unmet`, not `unresolved`** — and that distinction is the reassuring part.
+The selectors still found their rows and every field is still there, so nothing structural broke;
+only the numbers moved. Had the alignment dropped or renamed a column these would have read
+`unresolved`, which means something entirely different and wants a different fix. Keeping the two
+statuses apart was argued for on paper when the column was designed; this is the first time the
+distinction did work.
+
+**The second-order movements are the case for pinning more than the headline.** Six barangays
+changed — five out of Bacoor and Cavite City, one into Sumisip — and that moved the route (d) health
+count by five, the BHW headcount by five, and routes (a) and (b) by one each *in opposite
+directions*. A suite pinned only on 5,987 would have reported "one figure changed" and missed all of
+it. The three pins that legitimately held (`n_barangays` 41,958, `n_route_four_ps` 726,
+`n_listed_no_bhw` 100) are left exactly as they were.
+
+**Nothing outside the UUC dataset moved, established rather than assumed.** Cases 6, 7 and 12–15 pin
+`agg_bhw_counts`, `agg_bhw_profiling_status`, `agg_certification`, `agg_by_income_class` and
+`agg_workload`, and every one of their pins still met. The seven harvested cases read those same
+census tables through the indicator tools, and none of them reads a UUC table at all — so they are
+unaffected for a reason that was measured, not inferred from the diff.
+
+### The notes were rewritten too, and that is not cosmetic
+
+Route 1's claim is that a seeded case's expected answer is *"not authored — it is on screen"*, and
+the `note` is the only thing that makes the claim checkable, because it names the screen. Three of
+these notes quoted 5,991 as the rendered figure. Leaving them would have kept the pins honest while
+making their provenance false — the worse of the two failures, because a reader checking the claim
+would find the page saying 5,987 and no way to tell whether the case or the page was wrong.
+`/uuc-phc` and `/uuc-phc/criteria` both render 5,987 now, verified in the tree rather than assumed:
+the alignment changed their metadata strings, and the criteria page's structure is otherwise
+untouched, so case 10's note still describes what it renders.
+
+### Keyed on the question, not on the case id
+
+The seeds' case ids skipped four values while the original migration's refusals were being
+exercised against the live table, so they are an artifact of how that migration was run rather than
+a property of the data. A migration replayed against a fresh database has to reach the same four
+rows, and `question` is unique among seeded cases and is what the case actually *is*. Asserted.
+
+### A defect the run found — in the test, and for the fourth time
+
+The assertion that no pin still claims 5,991 was first written as a raw scan for the string over the
+migration text. It failed, on the case-8 note: *"Re-derived when the source office's final list
+replaced the reconciled 5,991"* — which mentions the number legitimately, as the figure that was
+superseded. That is provenance worth keeping, and a test forcing it out would have been the
+instrument being wrong rather than the migration.
+
+It now asserts on the **parsed pin values**, with a separate check that any note mentioning 5,991
+also names 5,987. **This is the fourth time a naive string scan in a migration test has been the
+wrong instrument in this repository** — twice silently asserting nothing, and now twice failing
+loudly, which is the better direction but still the same mistake. The rule that keeps emerging:
+parse the thing you mean to assert about; do not scan the file it lives in.
+
+### Verify
+
+- **29 of 29 pins met** after the re-seed, scored through the same live path.
+- **Zero disagreements** between the four cases' stored expectations and the live tables, checked
+  directly in SQL as a second, independent comparison that does not go through the evaluator.
+- The four questions each match **exactly one** seeded row, checked before the update was applied.
+- 5 new tests (**773 total**, 5 more than `main`'s 768): that the re-seed touches exactly the four
+  UUC seeds and no fifth exists, that it keys on `question` and never on `case_id`, that pin counts
+  per case are unchanged at 2 / 1 / 5 / 3 rather than any being dropped, that no pin is on 5,991,
+  and that the three unmoved pins are preserved.
+- `npm run lint`, `npm run typecheck`, `npm test` clean. `npx prettier --check .` fails on the same
+  **149** files as untouched `main`.
+
+### What this does and does not establish
+
+It establishes that the expected-payload column does the job it was built for: a change to published
+data reached the list within hours, named the eight figures it moved and the three it did not, and
+distinguished a moved figure from a broken one. It establishes that the second-order effects of a
+six-row data change are visible to this suite and would not have been to a hand-written check.
+
+**It does not establish that the list would have caught a change nobody announced.** This one was
+known — a concurrent branch merged it — and the pins were re-measured deliberately. Nothing runs the
+replay on a schedule, so the list still only speaks when someone opens `/admin/regressions`.
+
+**And it does not establish that these pins are right for longer than this dataset version.** They
+are correct against the final list as merged; the next republication moves them again, which is the
+point rather than a defect. What this increment adds is the first worked example of what to do when
+that happens.
