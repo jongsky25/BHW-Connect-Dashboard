@@ -20,10 +20,10 @@ export const metadata: Metadata = {
 function SectionHeader() {
   return (
     <header className="border-b border-border bg-background">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-1 gap-y-2 px-4 py-3 sm:px-6">
         <Link
           href="/uuc-phc"
-          className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+          className="order-1 flex items-center gap-2 text-lg font-semibold tracking-tight"
         >
           <span className="equity-mark sm" aria-hidden="true" />
           <span>UUC for PHC</span>
@@ -31,45 +31,56 @@ function SectionHeader() {
             2025
           </span>
         </Link>
-        <nav aria-label="UUC for PHC" className="flex items-center gap-1 text-sm">
-          <Link href="/uuc-phc" className="rounded-md px-3 py-2 font-medium hover:bg-surface">
+        {/* The way back up to the portal keeps a row of its own on narrow screens:
+            the section nav below has more links than a phone is wide, so it scrolls
+            sideways — and a return link parked at the end of a scrolling row is the
+            one link you can never reach. Only at lg do all seven links fit on one
+            row, and there it sits at the end of the nav, where it has always been. */}
+        <Link
+          href="/"
+          className="order-2 ml-auto shrink-0 rounded-md px-3 py-2 text-sm text-muted hover:bg-surface hover:text-foreground lg:order-3 lg:ml-0"
+        >
+          ← Portal
+        </Link>
+        <nav
+          aria-label="UUC for PHC"
+          className="order-3 -my-1 flex w-full items-center gap-1 overflow-x-auto py-1 text-sm lg:order-2 lg:my-0 lg:ml-auto lg:w-auto lg:overflow-x-visible lg:py-0"
+        >
+          <Link
+            href="/uuc-phc"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
+          >
             Overview
           </Link>
           <Link
             href="/uuc-phc/criteria"
-            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
           >
             Criteria
           </Link>
           <Link
             href="/uuc-phc/indicators"
-            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
           >
             Indicators
           </Link>
           <Link
             href="/uuc-phc/bhw-coverage"
-            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
           >
             BHW coverage
           </Link>
           <Link
             href="/uuc-phc/data-quality"
-            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
           >
             Data quality
           </Link>
           <Link
             href="/uuc-phc/methodology"
-            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
           >
             Methodology
-          </Link>
-          <Link
-            href="/"
-            className="rounded-md px-3 py-2 text-muted hover:bg-surface hover:text-foreground"
-          >
-            ← Portal
           </Link>
         </nav>
       </div>

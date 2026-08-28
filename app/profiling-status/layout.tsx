@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 function SectionHeader() {
   return (
     <header className="border-b border-border bg-background">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
         <Link
           href="/profiling-status"
           className="flex items-center gap-2 text-lg font-semibold tracking-tight"
@@ -30,19 +30,25 @@ function SectionHeader() {
             2026
           </span>
         </Link>
-        <nav aria-label="Profiling status" className="flex items-center gap-1 text-sm">
-          <Link href="/profiling-status" className="rounded-md px-3 py-2 font-medium hover:bg-surface">
+        {/* Wrapping, not squeezing: a nav row narrower than its links used to
+            compress the last one — the way back to the portal — into an unreadable
+            sliver at the screen edge (see /uuc-phc, which scrolls instead). */}
+        <nav aria-label="Profiling status" className="flex flex-wrap items-center gap-1 text-sm">
+          <Link
+            href="/profiling-status"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
+          >
             Overview
           </Link>
           <Link
             href="/profiling-status/methodology"
-            className="rounded-md px-3 py-2 font-medium hover:bg-surface"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 font-medium hover:bg-surface"
           >
             Methodology
           </Link>
           <Link
             href="/"
-            className="rounded-md px-3 py-2 text-muted hover:bg-surface hover:text-foreground"
+            className="shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-muted hover:bg-surface hover:text-foreground"
           >
             ← Portal
           </Link>
