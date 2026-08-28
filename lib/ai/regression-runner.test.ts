@@ -20,6 +20,7 @@ function storedCase(over: Record<string, unknown> = {}) {
     toolCalls: [{ name: "searchDocuments", args: { query: "registered and accredited BHWs" } }],
     citations: [{ chunkId: 26, page: 26, text: "277,767 (Registered and Accredited BHWs)" }],
     source: "reported",
+    harvestLastSeenAt: null,
     expectations: [],
     malformedExpectations: [],
     ...over,
@@ -218,6 +219,9 @@ const CERTIFICATION = {
 const pin = (over: Record<string, unknown> = {}) => ({
   call: 0,
   tool: "queryDataset",
+  // Absent for every `queryDataset` case: that payload puts everything in `rows`. §10.1 route 3's
+  // harvested cases set it, because the indicator tool names its array after the indicator.
+  from: null,
   where: { geo_code: "PH" },
   field: "n_total",
   value: 270917,
@@ -239,6 +243,62 @@ describe("evaluateExpectation", () => {
       calls({ table: "fact_uuc_phc_barangay", mode: "count", matchingRows: 5991 }),
     );
     expect(scored.status).toBe("met");
+  });
+
+  it("selects from the list `from` names, which is how a harvested case reaches its subject", () => {
+    // §10.1 route 3. `getIndicatorByGeo` puts its counts on the root and its breakdown in an array
+    // named after the indicator, and the breakdown is what most harvested answers are *about*.
+    const payload = {
+      totalBhw: 306835,
+      demographics: [
+        { dimension: "ip_status", category: "YES", n: 30600, pct: 11.29 },
+        { dimension: "ip_status", category: "NO", n: 240317, pct: 88.71 },
+      ],
+    };
+    const scored = evaluateExpectation(
+      pin({
+        tool: "getIndicatorByGeo",
+        from: "demographics",
+        where: { category: "YES" },
+        field: "n",
+        value: 30600,
+      }),
+      calls(payload, "getIndicatorByGeo"),
+    );
+    expect(scored).toMatchObject({ status: "met", actual: 30600 });
+  });
+
+  it("names the list in the finding, so a moved figure says which array it was in", () => {
+    const payload = { demographics: [{ category: "YES", n: 30601 }] };
+    const scored = evaluateExpectation(
+      pin({
+        tool: "getIndicatorByGeo",
+        from: "demographics",
+        where: { category: "YES" },
+        field: "n",
+        value: 30600,
+      }),
+      calls(payload, "getIndicatorByGeo"),
+    );
+    expect(scored.status).toBe("unmet");
+    expect(scored.reason).toBe("demographics category=YES: n was 30,600, now 30,601");
+  });
+
+  it("reports a named list that is gone as unresolved, not as a moved figure", () => {
+    // A renamed array and a changed number want different fixes, exactly as a renamed column and a
+    // changed figure do.
+    const scored = evaluateExpectation(
+      pin({
+        tool: "getIndicatorByGeo",
+        from: "demographics",
+        where: { category: "YES" },
+        field: "n",
+        value: 30600,
+      }),
+      calls({ totalBhw: 306835 }, "getIndicatorByGeo"),
+    );
+    expect(scored.status).toBe("unresolved");
+    expect(scored.reason).toBe("the payload has no demographics array to select from");
   });
 
   it("selects one row out of several on a two-key selector", () => {

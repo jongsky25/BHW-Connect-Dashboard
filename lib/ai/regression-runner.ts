@@ -131,14 +131,25 @@ function isExpectedValue(value: unknown): value is ExpectedValue {
 /** What a payload holds where the expectation points, or why it could not be reached. */
 function selectTarget(
   payload: unknown,
+  from: string | null,
   where: Record<string, ExpectedValue> | null,
 ): { row: Record<string, unknown> } | { reason: string } {
   if (!payload || typeof payload !== "object") return { reason: "the call returned no payload" };
   if (where === null) return { row: payload as Record<string, unknown> };
 
-  const rows = (payload as { rows?: unknown }).rows;
+  // `rows` when the assertion does not say otherwise, which is every case route 1 seeded. A named
+  // list is how §10.1 route 3 reaches the arrays `getIndicatorByGeo` returns alongside its root
+  // counts — `demographics`, `training`, `honorarium` — where most harvested answers' actual
+  // subject lives.
+  const list = from ?? "rows";
+  const rows = (payload as Record<string, unknown>)[list];
   if (!Array.isArray(rows))
-    return { reason: "the payload has no rows to select from (a count payload has no `where`)" };
+    return {
+      reason:
+        from === null
+          ? "the payload has no rows to select from (a count payload has no `where`)"
+          : `the payload has no ${list} array to select from`,
+    };
 
   const candidates = rows.filter(
     (row): row is Record<string, unknown> =>
@@ -203,7 +214,7 @@ export function evaluateExpectation(
   )
     return unresolved(`${call.name} refused, so there is no figure to compare`);
 
-  const target = selectTarget(call.payload, expectation.where);
+  const target = selectTarget(call.payload, expectation.from, expectation.where);
   if ("reason" in target) return unresolved(target.reason);
 
   if (!(expectation.field in target.row)) {
@@ -229,7 +240,8 @@ export function evaluateExpectation(
     typeof actual === typeof expectation.value
       ? ""
       : ` (${typeof expectation.value} → ${typeof actual})`;
-  const at = expectation.where ? `${describeSelector(expectation.where)}: ` : "";
+  const list = expectation.from ? `${expectation.from} ` : "";
+  const at = expectation.where ? `${list}${describeSelector(expectation.where)}: ` : "";
   return {
     ...expectation,
     status: "unmet",
