@@ -24,15 +24,27 @@ export default async function AdminRegressionsPage({
   const cases = await loadReplayableCases();
   const suite = run === "1" ? await replaySuite(cases) : null;
 
+  // The newest harvest stamp in the list *is* the last harvest run, because every case that run
+  // reproduced was stamped with the same timestamp. A harvested case carrying an older one was not
+  // reproduced — its ask-cache row was edited, blocked or unapproved — and it is kept rather than
+  // deleted, so the page has to say so or the case reads as still vouched for.
+  const lastHarvest = cases.reduce<string | null>(
+    (newest, stored) =>
+      stored.harvestLastSeenAt && (!newest || stored.harvestLastSeenAt > newest)
+        ? stored.harvestLastSeenAt
+        : newest,
+    null,
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="text-lg font-semibold">Regression cases</h2>
         <p className="mt-1 text-xs text-muted">
-          Cases are filed from answers someone marked wrong, and seeded from figures already
-          rendered on public pages. Replaying re-issues the tool calls a case recorded, re-resolves
-          the passages it cited, and checks that the figures it pinned still come back unchanged —
-          against this build.
+          Cases are filed from answers someone marked wrong, seeded from figures already rendered on
+          public pages, and harvested from answers approved in the answer bank. Replaying re-issues
+          the tool calls a case recorded, re-resolves the passages it cited, and checks that the
+          figures it pinned still come back unchanged — against this build.
         </p>
       </div>
 
@@ -76,10 +88,24 @@ export default async function AdminRegressionsPage({
               {stored.note && (
                 <p className="mt-1 text-xs text-muted">
                   {/* A reported case's note is the answer that should have been given; a seeded
-                      case's is the screen its figure is rendered on. Same column, different claim,
-                      and one label for both would misdescribe ten of the eleven cases here. */}
-                  {stored.source === "seeded" ? "On screen at: " : "Should have said: "}
+                      case's is the screen its figure is rendered on; a harvested case's is where
+                      in the answer bank it came from. Same column, three different claims, and one
+                      label for all of them would misdescribe most of the list. */}
+                  {NOTE_LABEL[stored.source] ?? "Should have said: "}
                   {stored.note}
+                </p>
+              )}
+              {stored.harvestLastSeenAt && (
+                <p className="mt-1 text-xs text-muted">
+                  {stored.harvestLastSeenAt === lastHarvest ? (
+                    <>Confirmed against the answer bank on {day(stored.harvestLastSeenAt)}.</>
+                  ) : (
+                    <span className="text-warning">
+                      Stale: the last harvest did not reproduce this case. Its answer-bank row was
+                      last confirmed on {day(stored.harvestLastSeenAt)} and may since have been
+                      edited, blocked or unapproved. Kept, not deleted.
+                    </span>
+                  )}
                 </p>
               )}
               <p className="mt-1 font-mono text-[11px] text-muted">
@@ -94,6 +120,18 @@ export default async function AdminRegressionsPage({
       </ul>
     </div>
   );
+}
+
+/** What a `note` is claiming, which differs by where the case came from. */
+const NOTE_LABEL: Record<string, string> = {
+  seeded: "On screen at: ",
+  harvested: "Provenance: ",
+  reported: "Should have said: ",
+};
+
+/** A stamp reads as a date here; the exact minute is a detail the case row does not turn on. */
+function day(stamp: string): string {
+  return stamp.slice(0, 10);
 }
 
 function Verdict({ verdict }: { verdict: CaseReplay["verdict"] }) {

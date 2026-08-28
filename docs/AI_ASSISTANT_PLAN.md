@@ -643,10 +643,29 @@ and `answer_given` are nullable now, because §10.1's seeds are figures on a scr
 assistant turn to record — the one earlier seeded case had invented both, and a provider to
 attribute the invented answer to.
 
-**Still missing: route 3, and the swept path.** `ai_ask_cache` rows at `status = 'approved'` (seven
-of them today) are unharvested. And the 4.2 sweep still does not feed this list — the column it was
-waiting for is here, but all 12 `kb_contradiction` rows sit at `status = 'auto'`, so there is
-nothing confirmed to file and `source` still admits only `'reported'` and `'seeded'`.
+**Route 3 is built, and the list is 18 cases and 66 pinned figures** *(2026-08-28)*.
+`harvest_ask_cache_cases()` files every `ai_ask_cache` row at `status = 'approved'` as a replayable
+case. The ask cache stores no tool calls, so they are recovered from the `ai_ask_log` row whose
+`answer_md` matches the approved answer byte for byte — a derivation, not a guess, and where more
+than one log row qualifies nothing is harvested. Idempotent through a unique key on the source row;
+an edited source rebuilds its case and clears its pins; a case the run did not reproduce is shown
+stale rather than deleted.
+
+Its 37 pinned figures were **derived rather than authored**: re-issue the recorded calls, match each
+numeral in the approved answer against the payload fields by exact equality, and pin only where the
+matching addresses agree on which quantity they name. No model reads the answer. 37 of the 41
+distinct numbers pin; two are ambiguous and two are prose. `source` gains `'harvested'`, written by
+that increment.
+
+**And the replay now runs end to end** — the gap the expected-payload entry named as its own biggest.
+A harvested case's calls are all public tools, so a replay of one needs no service-role key: seven
+cases replayed against live data through the real runner, 37 of 37 figures met, with seven negative
+controls failing as they should. Route 1's ten still have not, because `queryDataset` reads the
+registry.
+
+**Still missing: the swept path.** The 4.2 sweep does not feed this list — the column it was waiting
+for is here, but all 12 `kb_contradiction` rows sit at `status = 'auto'`, so there is nothing
+confirmed to file and `source` still does not admit `'swept'`.
 
 ## 11. Open questions
 
