@@ -1374,11 +1374,12 @@ export type Database = {
       };
       ai_regression_case: {
         Row: {
-          answer_given: string;
+          answer_given: string | null;
           case_id: number;
           citations: Json;
-          conversation: Json;
+          conversation: Json | null;
           created_at: string;
+          expectations: Json;
           note: string | null;
           provider: string | null;
           question: string;
@@ -1389,11 +1390,12 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          answer_given: string;
+          answer_given?: string | null;
           case_id?: never;
           citations?: Json;
-          conversation: Json;
+          conversation?: Json | null;
           created_at?: string;
+          expectations?: Json;
           note?: string | null;
           provider?: string | null;
           question: string;
@@ -1404,11 +1406,12 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          answer_given?: string;
+          answer_given?: string | null;
           case_id?: never;
           citations?: Json;
-          conversation?: Json;
+          conversation?: Json | null;
           created_at?: string;
+          expectations?: Json;
           note?: string | null;
           provider?: string | null;
           question?: string;
