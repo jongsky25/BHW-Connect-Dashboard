@@ -6825,3 +6825,203 @@ on it; the third, `contradiction-review.test.ts`, is clean and was clean. `.sql`
 prettier's scope entirely, so the new migration neither joins that list nor can be checked against
 it. No database writes: no migration applied, no sweep called, no `kb_contradiction` row judged, and
 no `ai_regression_case` filed.
+
+## 2026-08-28 — Increment 4.1's leftover: `ingest.py` calls the profiling pass, and the four things running it found
+
+4.1 built `profile_dataset()` and met the plan's success condition with it, then declined to add one
+line: *"`ingestion/ingest.py` does not yet call the pass after a load — one line, deliberately not
+added unrun."* The reason was not doubt about the line. It was that the session had no database
+credentials and no source extract, and the `--propose` entry two before it had already settled the
+principle: **typed and unrun is not a safety property**. Adding the call and reasoning about it would
+have reproduced exactly the state 4.1 chose over that.
+
+So the deliverable here is not the line. It is the line **plus the run behind it**, and the run is
+what the rest of this entry is about — including two things it contradicted.
+
+### What made the run possible, and where it ran
+
+Both of 4.1's blockers had lifted. `ingestion/data/dataset.parquet` is in the tree at its full
+**270,917 rows**, and a PostgreSQL 16.13 is available in the container. So the pipeline was run
+end to end against a **local** database, never the live project:
+
+- the 87 committed migrations applied in order (18 fail locally on pgvector, Supabase `auth`/`storage`
+  schemas, or seed data whose FK parents those failures removed — none of them registry migrations,
+  except `20260826090000_ai_dataset_registry.sql`, which needed only its `create extension vector`
+  line stripped: its own comment says *"nothing in this increment stores a vector"*);
+- which reproduced the registry state 4.1 verified against — **32 approved datasets, 382 approved
+  column rows**, `dim_geo` among them;
+- and left `fact_bhw_raw` and `fact_honorarium` with **no registry row at all**, because 4.1's profile
+  of `fact_bhw_raw` was a data operation on the live database, not a migration. The local fixture is
+  therefore the genuine pre-4.1 state, and the first-profile path is the one that ran.
+
+**No write reached the live database.** This branch adds no migration and applies none.
+
+### The three design decisions, and the measurement behind each
+
+**1. A profiling failure must not be able to lose a good load.** The hook runs after
+`run_via_psycopg2()` has committed, on its own connection, one transaction per table; a failure is
+recorded in the QA report, warned about on stderr, and **does not change the exit status**.
+
+The arguable half is the exit code, so: the load is the expensive, irreversible half and the profile
+is a cheap catch-up any operator can run by hand. A failed profile leaves the database in exactly the
+state 4.1 shipped — the dataset is simply not registered yet — which is the status quo, not a
+corruption. Exiting non-zero would report a successful load as a failed one, and the obvious response
+to a failed ingest is to run the ingest again.
+
+Tested rather than asserted, on the realistic version of this failure — a database where the 4.1
+migration was never applied. A second local database was built with only the four tables the
+pipeline writes, and the full pipeline run against it:
+
+```
+EXIT CODE: 0
+WARNING: profiling fact_bhw_raw failed: function profile_dataset_refusal(unknown) does not exist
+→ 41,052 dim_geo, 270,917 fact_bhw_raw, 577,069 fact_honorarium   (the load, intact)
+→ ingestion_batches.qa_report->'profile'->'tables'->'fact_bhw_raw'->>'failed' reads that same text
+```
+
+All three tables failed independently rather than the first aborting the rest, and the failure is
+durable **in the database** rather than only in a terminal nobody was watching.
+
+**2. The hook never forces, and that is the whole of its idempotence.** `profile_dataset()` refuses a
+table whose registry row is `approved` unless called with `p_force`. Three states were run against a
+real 270,917-row load:
+
+| the second load finds | hook does | after |
+|---|---|---|
+| registry row at `auto`, unreviewed | re-profiles | 1 registry row, 26 column rows — unchanged from the first run |
+| registry row `approved` | **skips** | still `approved`, all 26 columns `approved`, all 26 reviewer meanings intact |
+| *counterfactual:* the same call with `p_force => true` | re-profiles | registry back to `auto`, **approved columns 26 → 0** |
+
+The third row is why the decision matters. The reviewer's `meaning` **text** survives a force — the
+function lifts approved meanings forward — but their **approval** does not, and
+`lib/db/dataset-registry.ts` filters both tables to `approved`. A forcing hook would make a reviewed
+dataset silently vanish from the assistant on the next re-load, with no error raised anywhere.
+Re-profiling an approved dictionary is a reviewer's decision; it is never a side effect of
+re-running ingest.
+
+That is one word away from being undone, so it is pinned by a test — and the test **parses**
+`ingest.py`, walks to `profile_loaded_tables`, and reads the SQL literals passed to `cur.execute`,
+rather than scanning the file. **The first version of that test was wrong in precisely the way this
+repository has now been wrong six times**: it collected every string in the function and fired on the
+hook's own skip message, which mentions `p_force` as prose. A grep would have been satisfied by a
+comment. Verified by mutation — the guard fails on a copy with `p_force => true` spliced into the
+call and passes on the committed file.
+
+**3. Guardrail 4 applies to the profiler, and to anything wrapped around it.** 4.1 reads `pg_stats`
+after an ANALYZE rather than scanning, and a hook that then asks "so how many rows did we profile?"
+would put the scan back at load time through the front door. Per table the hook issues exactly one
+catalogue query and one `profile_dataset()` call, and every number it reports is read out of the rows
+that call already returned. It never counts rows: `row_estimate` exists so that nobody has to. The
+estimate needs no apology here — ANALYZE returned **270,917** and **577,069**, both exactly right.
+
+A fourth, smaller one: **the refusal set is consulted, not reimplemented.** The hook asks
+`profile_dataset_refusal()` and the approved-row question directly instead of catching an exception
+and parsing its message, so the allowlist has one home. That is also why `dim_geo` is in the target
+list despite having had a hand-written dictionary since 1.2 — the pipeline loads it, so it is
+offered, and the database declines it. A hardcoded exclusion would be a second source of truth for a
+decision `profile_dataset()` already owns.
+
+### The second 4.1 leftover, measured — and the answer is worse than "unproven"
+
+4.1 recorded that 25 of `fact_bhw_raw`'s 26 meanings had to be hand-written, leaving the
+borrow-from-the-dictionary route *unproven at scale*. The run measured it, on two tables:
+
+| table | columns | supplied by the dictionary | still needing a sentence |
+|---|---|---|---|
+| `fact_bhw_raw` | 26 | **1** (`geo_code`) | 25 |
+| `fact_honorarium` | 8 | **1** (`id`) | 7 |
+
+The first line **independently reproduces 4.1's hand-count** — the same 1-of-26, arrived at by
+running rather than by counting sentences, along with the same `geo_code → dim_geo.geo_code` join at
+an overlap of **1.0000**.
+
+The second line is the new evidence, and it does not help the hypothesis. `fact_honorarium`'s single
+borrow is `id` — *"Surrogate row identifier; carries no meaning"* — which is a statement that the
+column means nothing. **Across 34 columns of two datasets the approved dictionary supplied one hub
+key and one admission of emptiness, and not a single domain column.** The route works exactly where
+vocabulary is genuinely shared and nowhere else, which is a narrower claim than "it will earn its
+keep once several datasets share vocabulary."
+
+One caveat, measured rather than assumed: the count is **order-dependent within a single ingest**.
+`fact_bhw_raw` and `fact_honorarium` are profiled in the same run, so the first is still at `auto` —
+and therefore cannot lend — when the second is profiled. Re-profiling `fact_honorarium` after its
+sibling was approved raises it to **2 of 8**, `bhw_id` borrowing its sentence. The honest figure for
+a first ingest is 1; the honest figure for a mature registry is not yet known.
+
+### Two things the run contradicted
+
+**`fact_honorarium.bhw_id` is profiled `role = 'measure'`.** This is the defect 4.1 found and fixed on
+`fact_bhw_raw`, recurring on the very next table the same pipeline loads. The fix was the rule *"a
+numeric column with about as many distinct values as the table has rows is a row identity, not a
+quantity"* (`distinct / rows >= 0.9`). On the **child** side of a one-to-many join the ratio is
+229,428 / 577,069 = **0.40**, so the rule does not fire. `role = 'measure'` is what tells the model a
+column may be summed and averaged, and 4.1 said of this exact column that *"the mean of `bhw_id` is a
+number that would eventually be reported to someone."* The rule turns out to be a rule about the
+table where an identity is the grain; it does not survive the foreign-key side of a join.
+
+Worse, this is **not** repaired by the borrow route, and finding out why corrected a second record.
+Both the migration header and 4.1's log entry say route 1 lends *"description, unit and join target"*
+(`DECISIONS.md` line 5230). The code lends `meaning` and `unit` — nothing else; `role`, `is_join_key`
+and `joins_to` are recomputed from the profile on every pass. So when `bhw_id` did borrow, it took a
+sentence describing a foreign key while remaining typed a measure and joined to nothing. **The prose
+in both places overstates what the function does**, and the mismatch was invisible until a second
+table borrowed from a first.
+
+**No join was proposed between `fact_honorarium` and `fact_bhw_raw`** — the one join this pipeline
+most obviously has. Not a measurement that failed: an empty candidate set. `profile_dataset()`
+proposes joins only toward columns some already-**approved** row names as a join target, and the
+entire 32-dataset registry names two — `dim_geo.geo_code` and `dim_dataset.dataset_id`. Nothing names
+`fact_bhw_raw.bhw_id`, and nothing will: `bhw_id` is a surrogate that joins to nothing, so it is
+`role = 'key'` with `joins_to` null even after review. **The profiler extends the join graph outward
+from existing hubs; it cannot create one.** §3 sells the registry on *"which datasets can I connect to
+answer this?"*, and regression question 3 is a join-path question — so a child table arriving
+unjoinable to its parent is a limit on the thing the registry is for, not a cosmetic gap.
+
+Neither is fixed here. Both are `profile_dataset()`'s rules rather than the hook's, and this increment
+is the hook; widening it to retune the role vocabulary would make a hook bug and a profiler bug
+indistinguishable, which is the argument §4 already makes about schemas and extractors. Both are
+recorded in `ingest.py`'s header as well as here, because the hook now writes rows carrying them
+without anyone asking.
+
+### What this does and does not establish
+
+It establishes that the call runs, on a real full-size load, and that its three contracts hold under
+test rather than under argument: a profiling failure leaves the load committed and the exit status
+clean while recording itself durably; a re-load neither duplicates registry rows nor disturbs an
+approved dictionary; and the pass adds no scan at load time. It establishes that a table with no
+registry row acquires a reviewable dictionary as a side effect of being loaded, which is what 4.1
+left undone.
+
+**It does not establish that the resulting rows are good.** Two of the eight columns it wrote for
+`fact_honorarium` are wrong in ways described above, and both are sitting at `auto` waiting for a
+reviewer who now has more to catch than 4.1's run implied.
+
+**It does not establish anything about the live database.** The run was local. On the live project
+`fact_bhw_raw` is already approved, so the hook's first act there would be to skip it; the first live
+row it writes will be for `fact_honorarium`, which has never been profiled and whose eight columns
+carry the `bhw_id` defect. That is a prediction, not a result.
+
+**It does not establish that the borrow route scales**, and the measurement moved against it: one hub
+key and one surrogate across 34 columns. Nor does it establish the mature-registry figure, since the
+one number that improved (1 of 8 → 2 of 8) came from re-profiling by hand in an order a single ingest
+cannot produce.
+
+**And it does not establish that `--emit-sql-dir` loads get profiled at all.** They do not. That mode
+exists for environments with no database connection, which is exactly what the pass needs, so it
+prints the statements to run and records in the QA report that profiling did not happen — rather than
+emitting a call whose correctness would depend on the operator applying the batch files in order.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **822 tests, the same as
+`main`**, confirmed by running `main` rather than taken from the previous entry; this branch changes
+no TypeScript. That baseline was measured twice: 816 on `main` at `f889404`, and 822 after #111
+merged underneath this branch and was merged back into it — the six new tests are #111's, not this
+branch's. `ingestion/`'s own convention is a `--selftest` flag, and `ingest.py`
+had none: it has one now, and all six pass (`build_poverty`, `build_psgc_crosswalk`, `extract_kb`,
+`ingest_documents`, `ingest_population`, `ingest`). No migration: this branch adds none and applies
+none, so there is nothing of its own for `pglast` to parse — the one migration in the tree that was
+not here before arrived with #111 through the merge below, and parses as three statements under
+`pglast` 8.4. `npx prettier --check .` fails on the same **148**
+files as untouched `main` — measured on both trees and compared file by file rather than by count,
+confirming #110's correction of the older 149 — and prettier does not format Python, so the one file
+this branch touches is not among them.
+
