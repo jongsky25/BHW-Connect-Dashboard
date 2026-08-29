@@ -25,13 +25,13 @@ export function ChildBreakdown({
   return (
     <section aria-label={heading}>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{heading}</h2>
+        <h2 className="text-base font-semibold">{heading}</h2>
         <span className="text-xs text-muted">Count · % of total — stages sum to 100%</span>
       </div>
       <div className="mt-2 overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-base">
           <thead>
-            <tr className="border-b border-border text-left text-xs text-muted">
+            <tr className="border-b border-border text-left text-sm text-muted">
               <th scope="col" className="py-2 pr-3 font-medium">
                 Area
               </th>

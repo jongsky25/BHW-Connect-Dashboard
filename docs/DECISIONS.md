@@ -7025,3 +7025,59 @@ files as untouched `main` — measured on both trees and compared file by file r
 confirming #110's correction of the older 149 — and prettier does not format Python, so the one file
 this branch touches is not among them.
 
+
+## 2026-08-29 — Icon-only feedback button; type scale on the profiling breakdown table
+
+Re-cuts the two surviving changes from **#67**, which was closed as superseded rather than rebased.
+
+- `components/feedback/spot-feedback.tsx`: the floating action button is now icon-only — the
+  "Feedback" / "Cancel" text label is gone, the pill padding with it. The chat bubble stays and
+  swaps to a ✕ while feedback mode is active. The FAB moved into an exported `FeedbackFab` in the
+  same file purely so both states can be rendered and asserted in a test; `SpotFeedback` owns the
+  state exactly as before.
+- `components/profiling-status/child-breakdown.tsx`: section heading and table body `text-sm` →
+  `text-base`, header row `text-xs` → `text-sm`. Nothing else.
+
+**Why the third change from #67 was not carried over.** #67 also removed a "To certify" column from
+the breakdown table, on the grounds that it was the inverse of "Certified" and therefore clutter.
+That premise no longer holds. #70 rebuilt the table as four mutually-exclusive stages that partition
+the headcount — Total / Encoded / Validated / Attested / Not encoded — and `certify.remaining` /
+`certify.pctToGo` no longer exist. "Not encoded" is a _member_ of that partition, not a redundant
+inverse, and the section caption reads "stages sum to 100%", so dropping it would falsify the
+caption and leave the remaining columns summing to less than the total. The column set is unchanged
+here, and `child-breakdown.test.tsx` now pins the header labels and count so a future re-run of
+#67's idea fails in CI instead of shipping.
+
+**Accessibility.** Dropping the visible label means the accessible name comes entirely from
+`aria-label` (plus `title` for sighted mouse users), and it has to track state: "Give feedback" when
+idle, "Cancel feedback mode" when active. Deliberately _not_ "Cancel feedback" — the comment panel's
+own close button already uses that name, and the two are on screen together while commenting. Both
+states are asserted rather than eyeballed. Hit target is pinned at `h-11 w-11` = **44x44 CSS px**
+(measured in Chromium against the project's own Tailwind build, both states; the old pill was
+124x45), meeting WCAG 2.5.5 and well clear of the 24x24 minimum in 2.5.8.
+
+**Testing approach.** The repo had no React render tests and no jsdom/testing-library, and this did
+not seem worth adding two devDependencies for: the two new suites render with `react-dom/server` and
+parse with `linkedom`, both already dependencies. Each assertion was mutation-checked — removing the
+"Not encoded" column fails 3 tests, dropping `aria-label` fails 3, freezing the label so it stops
+tracking state fails 2, and restoring the old `px-4 py-3` padding fails 1.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **835 tests, up from 822
+on `main`** (baseline measured on `main` in this session, not carried over from the previous entry);
+the 13 new tests are this branch's two suites. No migration and no database access — presentation
+only. No e2e change was needed: nothing in `e2e/` selects the feedback button, by text or otherwise
+(the CI-gated smoke path is home → explore → filter → CSV), so the label removal breaks no selector.
+`npx prettier --check .` fails on **147** files, down from **148** on `main`: the only difference in
+the set is `components/feedback/spot-feedback.tsx`, a pre-existing failure that this branch had to
+touch anyway and therefore left clean. Both new test files are clean. Compared file by file, not by
+count.
+`docs/DECISIONS.md` remains a pre-existing failure: prettier wants to rewrite 849 lines across 225
+hunks of six weeks of history (`*italics*` → `_italics_`, blank lines before lists), which would
+bury a 17-line UI change. Left alone, as every prior entry has left it; this entry's own text is
+prettier-clean.
+
+**Not changed, but worth flagging.** `components/chat/chat-launcher.tsx` has a sibling floating
+button ("Ask the data") in the same bottom-right stack with the same
+`rounded-full bg-accent px-4 py-3 text-sm` styling. It is now the only pill FAB on the page, so the
+two no longer match. It was left alone deliberately — it is text-only with no icon, so there is no
+mechanical icon-only equivalent, and picking one would be a design decision beyond this change.

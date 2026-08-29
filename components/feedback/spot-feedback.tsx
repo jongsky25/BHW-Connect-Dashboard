@@ -142,7 +142,9 @@ export function SpotFeedback() {
     <div data-feedback-ui>
       {/* Live region announces pick mode for screen-reader users. */}
       <div aria-live="polite" className="sr-only">
-        {mode === "picking" ? "Feedback mode on. Click any part of the page to leave a comment." : ""}
+        {mode === "picking"
+          ? "Feedback mode on. Click any part of the page to leave a comment."
+          : ""}
       </div>
 
       {/* Picking overlay: intercepts hover + click so we target the element without triggering it. */}
@@ -313,21 +315,56 @@ export function SpotFeedback() {
 
       {/* Floating action button. */}
       {mode !== "done" && (
-        <button
+        <FeedbackFab
           ref={fabRef}
-          type="button"
-          data-feedback-ui
+          isActive={isActive}
           onClick={() => (isActive ? reset() : startPicking())}
-          aria-pressed={isActive}
-          className="fixed bottom-6 right-6 z-[63] flex items-center gap-2 rounded-full bg-accent px-4 py-3 text-sm font-medium text-accent-foreground shadow-lg transition-colors hover:opacity-90"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.04 2 11c0 2.7 1.34 5.1 3.47 6.74L5 22l4.6-2.02c.77.18 1.58.27 2.4.27 5.52 0 10-4.04 10-9S17.52 2 12 2z" />
-          </svg>
-          {isActive ? "Cancel" : "Feedback"}
-        </button>
+        />
       )}
     </div>
+  );
+}
+
+/**
+ * The floating action button, icon-only. With no visible text the accessible name has to come from
+ * `aria-label` (and `title`, for sighted mouse users), and it has to track the state the click will
+ * produce: a chat bubble that starts feedback mode when idle, a ✕ that cancels it when active.
+ * Exported so both states can be asserted directly — an unlabelled icon button is a silent
+ * regression, not a visible one. Sized `h-11 w-11` (44x44 CSS px) so dropping the label does not
+ * shrink the hit target below the 44x44 in WCAG 2.5.5.
+ */
+export function FeedbackFab({
+  isActive,
+  onClick,
+  ref,
+}: {
+  isActive: boolean;
+  onClick: () => void;
+  ref?: React.Ref<HTMLButtonElement>;
+}) {
+  const label = isActive ? "Cancel feedback mode" : "Give feedback";
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      data-feedback-ui
+      onClick={onClick}
+      aria-pressed={isActive}
+      aria-label={label}
+      title={label}
+      className="fixed bottom-6 right-6 z-[63] flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-colors hover:opacity-90"
+    >
+      {isActive ? (
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+          <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+        </svg>
+      ) : (
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.04 2 11c0 2.7 1.34 5.1 3.47 6.74L5 22l4.6-2.02c.77.18 1.58.27 2.4.27 5.52 0 10-4.04 10-9S17.52 2 12 2z" />
+        </svg>
+      )}
+    </button>
   );
 }
 
