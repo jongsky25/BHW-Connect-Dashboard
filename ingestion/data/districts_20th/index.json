@@ -1858,5 +1858,12 @@
    "title": "Ilocos Sur's 2nd congressional district"
   }
  },
- "articles_missing": []
+ "articles_missing": [],
+ "city_lists": {
+  "Davao City": {
+   "file": "Davao_City.json",
+   "revid": 1368756755,
+   "title": "Districts of Davao City"
+  }
+ }
 }

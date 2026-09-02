@@ -9,14 +9,14 @@ Every membership row carries the source revision it came from, so any row on
 - Congress: **20th** (valid from 2025-06-30)
 - Snapshot retrieved: **2026-09-02T04:12:52Z**
 - Districts: **250**
-- Membership rows: **3411**
+- Membership rows: **3491**
 - Representatives: **194**
 
 ## How each membership row was resolved
 
 | match_method       | rows |
 | ------------------ | ---: |
-| `exact`            | 2350 |
+| `exact`            | 2430 |
 | `independent_city` |    5 |
 | `manual_override`  |    1 |
 | `whole_citymun`    |    8 |
@@ -46,9 +46,9 @@ PSGC files a highly urbanised city under its own province-level row, so a city t
 | `no_barangay_in_two_districts`           | pass     | {"offenders": []}                                                                                                                                                                                                                                                                                            |
 | `no_partylist_seats`                     | pass     | {"count": 0}                                                                                                                                                                                                                                                                                                 |
 | `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
-| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3411, "corroborated_rows": 0, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                    |
+| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3491, "corroborated_rows": 0, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                    |
 | `no_conflicting_rows_shipped`            | pass     | {"conflicting_rows": 0, "sample": [], "withheld_before_gate": 0}                                                                                                                                                                                                                                             |
-| `unresolved_reported`                    | pass     | {"unresolved": 92, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
+| `unresolved_reported`                    | pass     | {"unresolved": 96, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
 
 ## Corroboration (guardrail 2)
 
@@ -67,10 +67,10 @@ Checking work against a third party needs no licence; republishing it would.
 | measure               | count |
 | --------------------- | ----: |
 | rows compared         |  2286 |
-| agree                 |  2130 |
+| agree                 |  2209 |
 | disagree              |     0 |
-| only in the other set |   156 |
-| only in ours          |  1281 |
+| only in the other set |    77 |
+| only in ours          |  1282 |
 
 ## What is still uncovered, and why
 
@@ -97,7 +97,9 @@ Checking work against a third party needs no licence; republishing it would.
 
 **Manila was 258 of 857 barangays mapped, and the count hid it. Mostly closed.** Its citymun-coverage shortfall read as 'nine uncovered rows', which sounds like nine small gaps; it was four legislative districts holding no members at all. Manila's 1st and 2nd enumerate numbered barangays and resolved (all in Tondo, hence the 258), while its 3rd to 6th name administrative districts -- 'Sampaloc', 'Santa Cruz', 'Port Area' -- which are not barangays. PSGC does model these, as Manila's ten citymun children, so the `whole_citymun` rung now matches them within the city's own scope and coverage is **813 of 857**. What is left is reported, not forced: Paco is claimed by BOTH the 5th and the 6th, so neither gets it (43 barangays, which COMELEC precinct returns settle exactly); six administrative districts Wikipedia names have no dim_geo row at all (Binondo, Ermita, Intramuros, San Andres, San Miguel, Santa Mesa); and nine barangay numbers the source lists -- 21-24, 27, 40, 113-115 -- exist nowhere in PSA's Manila, a source disagreement rather than a parse failure. BARANGAY 202-A is enumerated by no district.
 
-**Davao City is described the same way as Manila, but at a grain PSGC does not model.** Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', 'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays directly off the city with no intermediate level -- which is exactly why the `whole_citymun` rung closes Manila and cannot touch this. Those 84 barangays cannot be placed from this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in a barangay and names its own contest; this is the clearest single argument for the second source.
+**Davao City: 84 unplaceable barangays, closed from a different Wikipedia page. 4 left.** Its 3rd district's article names administrative districts -- 'Baguio (8 barangays)', 'Toril (25)' -- which dim_geo does not model at any level, so those barangays could not be placed from it at all, and the COMELEC returns that would resolve it are no longer reachable by anyone (see the corroboration section). Wikipedia carries the mapping on another page: 'Districts of Davao City' tabulates all 182 barangays under their legislative district. Parsing it places 80 of the 84, taking the city to 178/182 -- and the result agrees with the independently derived COMELEC-based mapping on 79 further rows with zero disagreements, which is the strongest available evidence the parse is right. The remaining four are name disagreements between Wikipedia and PSA, not parse failures: 'Leon Garcia' against LEON GARCIA, SR.; 'Tungkalan' against TUNGAKALAN; 'Balenggaeng' against BALENGAENG; 'Biao Guinga' against BIAO GUIANGA. A one-letter miss is where a wrong match is least visible, so guardrail 1 applies hardest there, not least.
+
+**Cebu, Quezon City, Zamboanga City and Valenzuela have list pages this parser will not read.** Each has a 'List of barangays in X' page that mentions legislative districts, but none uses the bolded row-spanning district cell that 'Districts of Davao City' does. The fetch keeps a page only when the parser actually returns rows from it, so these are skipped rather than half-read -- an unparsed page is a visible gap, a mis-parsed one is a silent wrong answer. Cebu is now the largest single gap at 12 barangays.
 
 **The BARMM Special Geographic Area is not covered by any district article.** Its municipalities were transferred from Cotabato and the sources in this set have not caught up. Reported rather than assigned.
 
@@ -111,7 +113,7 @@ Published rather than hidden, on the same reasoning `/data-quality` already take
 missing assignment reads as a known finding rather than a hidden one. An unresolved LGU
 is a visible gap; a wrongly-matched one would be a silent lie.
 
-- Unresolved members: **92**
+- Unresolved members: **96**
 - Ambiguous members: **6**
 
 The full lists are in `ingestion/_qa_report_legislative_districts.json`.
