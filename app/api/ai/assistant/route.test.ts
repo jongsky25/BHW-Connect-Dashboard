@@ -501,3 +501,59 @@ describe("POST /api/ai/assistant — the route (Increment 5.1)", () => {
     expect((await POST(request)).status).toBe(400);
   });
 });
+
+/**
+ * Increment 5.2. Follow-ups ride on the `message` event and are computed by a pure function from
+ * the turn's tool payloads — the point being that a suggested question is a promise the assistant
+ * can answer it, so it may only name things that came back this turn.
+ */
+describe("POST /api/ai/assistant — follow-ups (Increment 5.2)", () => {
+  it("offers follow-ups built from the turn's payloads", async () => {
+    runToolLoop.mockResolvedValue({
+      finalText: "Poverty incidence there is 21.4%.",
+      toolPayloads: [
+        {
+          table: "agg_poverty",
+          grain: "one geography x SAE year",
+          mode: "rows",
+          rows: [{ poverty_incidence: 21.4 }],
+        },
+      ],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const event = eventOfType(await eventsOf(await POST(ask())), "message");
+    expect(event.followUps).toContain("Where does agg_poverty come from?");
+  });
+
+  it("never suggests a table the turn did not read", async () => {
+    runToolLoop.mockResolvedValue({
+      finalText: "Nothing to report.",
+      toolPayloads: [{ error: "Table agg_secret is not registered." }],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const event = eventOfType(await eventsOf(await POST(ask())), "message");
+    expect(JSON.stringify(event.followUps)).not.toContain("agg_secret");
+  });
+
+  it("carries an empty list rather than omitting the field when nothing is groundable", async () => {
+    routeRequest.mockResolvedValue({
+      lane: "policy",
+      scope: null,
+      output: "answer",
+      confidence: "matched",
+    });
+    runToolLoop.mockResolvedValue({
+      finalText: "Nothing to report.",
+      toolPayloads: [],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const event = eventOfType(await eventsOf(await POST(ask())), "message");
+    expect(event.followUps).toEqual([]);
+  });
+});

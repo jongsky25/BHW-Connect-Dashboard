@@ -7972,3 +7972,66 @@ replay-the-turn behaviour is asserted through the route handler and the pure red
 the DOM; the e2e pass in 5.2 is where that belongs. The memo is per-instance and unbounded in
 lifetime rather than time-based, which is right for a serverless instance and wrong if this ever
 runs long-lived.
+
+## 2026-09-02 — Increment 5.2: markdown, starters and follow-ups
+
+The response-quality half of Phase 5 that needs no provider change. Three things the admin chat
+lacked that the public launcher has had since Phase 2, plus one it never had.
+
+**Markdown, as a bounded subset rather than a dependency.** Answers are already written as prose
+with lists and figures — rule 13 asks for exactly that — and rendered through
+`whitespace-pre-wrap`, so a comparison the model wrote as a table arrived as a wall of pipes.
+`lib/ai/markdown-blocks.ts` parses headings, lists, `**bold**`, `` `code` `` and pipe tables into a
+data structure; `components/admin/answer-markdown.tsx` renders it. Pulling a Markdown stack in for
+one admin surface would have been the faster build and the wrong one against the README's
+free-tier and bundle posture.
+
+**Two rules make the subset safe rather than merely small.** *No links, ever* — not unsupported,
+deliberately absent. The text is model-authored, and the only trustworthy links on this page are
+the citation links the server emits from the retrieval payload (2.3). A clickable URL the model
+wrote would be indistinguishable from one, which is precisely the property 2.3 exists to
+guarantee, so `[text](url)` renders as those literal characters. *No raw HTML* — the parser emits
+data, never markup, and the renderer turns it into React elements, so angle brackets are text by
+construction. There is no `dangerouslySetInnerHTML` and no code path that builds a markup string.
+Both are asserted, not assumed: a test feeds it `<script>alert(1)</script>` and
+`[here](javascript:alert(1))` and checks they come through as text, and another asserts no emitted
+block kind can carry a URL.
+
+**Unclosed markers degrade to literal text.** `parseInline` is hand-written rather than
+regex-driven for this reason: a regex matching only balanced pairs silently drops the unbalanced
+remainder, and an answer that survived two audits must not lose characters to a formatting parser.
+`2 ** 3 = 8` prints as written. A test asserts every non-blank line's text survives somewhere in
+the output.
+
+**A table needs its separator row.** Without that check a single sentence containing a pipe opens
+a one-column table — which is how a naive line-shape parser turns prose into a rendering bug.
+
+**Follow-ups are computed, never generated.** Asking the model for suggestions is the obvious build
+and wrong twice: it spends free-tier quota on decoration, and a suggested question is a *promise
+the assistant can answer it* — a model inventing "compare this to 2024" would offer a question no
+registered dataset can serve. `suggestFollowUps` is pure and fires a template only when the payload
+carries what the template names, which is the same inversion as the citations in 2.3: evidence
+comes from the retrieval, never from the prose. Payloads carrying an `error` are excluded — a
+refused call is not a fact to build on.
+
+Two exclusions are about not training the reader to ignore the suggestions: no peer comparison at
+national or barangay, because `agg_peer_ranks` has no row there and the question is guaranteed to
+come back "not ranked at this level"; and no drill-down at barangay, which has no children. The
+generic discovery prompt fires only when nothing else is groundable, and never crowds out a
+grounded suggestion.
+
+**Starters exercise different lanes.** Five, one each for the router's policy / geographic /
+lineage / data-quality / general paths, so the empty state teaches what the surface can do rather
+than only that it accepts text.
+
+**Only the assistant's own text is parsed.** A user turn and a system notice stay literal — a
+reader's question should render as they typed it, and a system notice is not model output.
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**930 tests, up from 900**. `npx prettier --check` passes on every file touched. No migration, no
+new dependency, and no provider call added.
+
+**Still open.** The renderer has no component-level test — its logic lives in `markdown-blocks.ts`,
+which is covered, but the React output itself is asserted only through typecheck. Nested lists,
+blockquotes and fenced code blocks are outside the subset and render as literal text; if answers
+start using them, extend `parseBlocks` rather than reaching for a dependency.

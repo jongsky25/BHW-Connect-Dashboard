@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { AnswerMarkdown } from "./answer-markdown";
 import { RouteChips } from "./route-chips";
 import type { AssistantRoute, PinnedRoute, RouteScope } from "@/lib/ai/route";
 
@@ -26,7 +27,7 @@ type Citation = {
 type StreamEvent =
   | { type: "route"; route: AssistantRoute }
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
-  | { type: "message"; content: string; provider: string | null }
+  | { type: "message"; content: string; provider: string | null; followUps: string[] }
   | { type: "citations"; citations: Citation[]; droppedPages: number[] }
   | { type: "capacity"; message: string }
   | { type: "error"; message: string };
@@ -49,6 +50,19 @@ type StreamEvent =
  * so the model never authors them; a page it named but was not given is dropped upstream by
  * `auditCitations` and reported here rather than passing silently.
  */
+/**
+ * Increment 5.2. Five starters chosen to exercise a different lane each (§5.1's router), so the
+ * empty state teaches what this surface can do rather than only that it accepts text. The public
+ * launcher has had these since Phase 2; the admin chat opened on a paragraph of prose.
+ */
+const STARTER_QUESTIONS = [
+  "Which provinces are outliers on honorarium receipt?",
+  "Is DC No. 2025-0549 still the current UUC for PHC issuance?",
+  "Where does pct_accredited come from, and what built it?",
+  "Which fields have the largest gaps in the BHW census?",
+  "How does Basilan compare with its provincial peers on accreditation?",
+];
+
 export function AssistantChat() {
   const [turns, setTurns] = useState<Turn[]>([]);
   // Increment 5.1. Three separate pieces of state, because they have three different lifetimes.
@@ -59,6 +73,9 @@ export function AssistantChat() {
   const [route, setRoute] = useState<AssistantRoute | null>(null);
   const [pinned, setPinned] = useState<PinnedRoute>({});
   const [carriedScope, setCarriedScope] = useState<RouteScope | null>(null);
+  // Increment 5.2. Derived server-side from the turn's tool payloads, so every offered question is
+  // about something that was actually returned.
+  const [followUps, setFollowUps] = useState<string[]>([]);
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [citations, setCitations] = useState<Citation[]>([]);
   const [droppedPages, setDroppedPages] = useState<number[]>([]);
@@ -148,6 +165,7 @@ export function AssistantChat() {
     setCitations([]);
     setDroppedPages([]);
     setRoute(null);
+    setFollowUps([]);
     setProvider(null);
     setReport(null);
     setReportState("idle");
@@ -210,6 +228,7 @@ export function AssistantChat() {
           } else if (event.type === "message") {
             setTurns((prev) => [...prev, { role: "assistant", content: event.content }]);
             setProvider(event.provider);
+            setFollowUps(event.followUps);
           } else if (event.type === "citations") {
             setCitations(event.citations);
             setDroppedPages(event.droppedPages);
@@ -237,12 +256,27 @@ export function AssistantChat() {
         className="flex max-h-[60vh] min-h-[16rem] flex-col gap-3 overflow-y-auto rounded-lg border border-border p-4"
       >
         {turns.length === 0 && (
-          <p className="text-sm text-muted">
-            Ask across every registered dataset, or about anything in the ingested documents.
-            Figures are grounded in tool results and pass the same numeric audit as the public chat;
-            document claims come back with the passage they were drawn from, which you can open and
-            read. Anything it cannot ground, it drops.
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted">
+              Ask across every registered dataset, or about anything in the ingested documents.
+              Figures are grounded in tool results and pass the same numeric audit as the public
+              chat; document claims come back with the passage they were drawn from, which you can
+              open and read. Anything it cannot ground, it drops.
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              {STARTER_QUESTIONS.map((question) => (
+                <li key={question}>
+                  <button
+                    type="button"
+                    onClick={() => void send(question)}
+                    className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-foreground"
+                  >
+                    {question}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <ul className="flex flex-col gap-3">
@@ -251,13 +285,15 @@ export function AssistantChat() {
               key={i}
               className={
                 turn.role === "user"
-                  ? "ml-8 rounded-md bg-accent-subtle px-3 py-2 text-sm"
+                  ? "ml-8 whitespace-pre-wrap rounded-md bg-accent-subtle px-3 py-2 text-sm"
                   : turn.role === "system"
                     ? "rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted"
-                    : "mr-8 whitespace-pre-wrap rounded-md border border-border px-3 py-2 text-sm"
+                    : "mr-8 rounded-md border border-border px-3 py-2 text-sm"
               }
             >
-              {turn.content}
+              {/* Only the assistant's own audited text is parsed. A user turn and a system notice
+                  stay literal — the reader's question should render as they typed it. */}
+              {turn.role === "assistant" ? <AnswerMarkdown text={turn.content} /> : turn.content}
             </li>
           ))}
         </ul>
@@ -331,6 +367,22 @@ export function AssistantChat() {
           §10's list only grows if reporting is cheaper than shrugging. A reader who knows an
           answer is wrong but not why should still be able to say so.
         */}
+        {followUps.length > 0 && status === "idle" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted">Next:</span>
+            {followUps.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => void send(question)}
+                className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-foreground"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
+        )}
+
         {lastAnswer && status === "idle" && (
           <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
             {reportState === "saved" ? (

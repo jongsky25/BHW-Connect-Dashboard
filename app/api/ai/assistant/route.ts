@@ -4,6 +4,7 @@ import { runToolLoop } from "@/lib/ai/agent-loop";
 import { auditNarrative } from "@/lib/ai/audit";
 import { auditCitations, collectCitations, type Citation } from "@/lib/ai/citations";
 import { createInternalTools } from "@/lib/ai/dataset-tools";
+import { suggestFollowUps } from "@/lib/ai/follow-ups";
 import { INTERNAL_SYSTEM_PROMPT } from "@/lib/ai/internal-system-prompt";
 import {
   pinnedRouteSchema,
@@ -43,7 +44,9 @@ type AssistantStreamEvent =
   // working and the reader can see what the question was taken to be *before* the answer lands.
   | { type: "route"; route: AssistantRoute }
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
-  | { type: "message"; content: string; provider: string | null }
+  // Increment 5.2. `followUps` are derived from this turn's tool payloads by a pure function,
+  // never authored by the model — a suggested question is a promise the assistant can answer it.
+  | { type: "message"; content: string; provider: string | null; followUps: string[] }
   // Increment 2.3. Emitted from the retrieval payload, never from the answer text: the model does
   // not get to author its own citations, so it cannot mis-cite a passage it was never handed.
   // `droppedPages` names the pages a sentence claimed before the citation audit removed it.
@@ -158,6 +161,7 @@ export async function POST(request: Request) {
           type: "message",
           content: "No answer came back — try rephrasing the question.",
           provider: null,
+          followUps: [],
         });
         return;
       }
@@ -182,6 +186,7 @@ export async function POST(request: Request) {
 
       send({
         type: "message",
+        followUps: suggestFollowUps(route, result.toolPayloads),
         content:
           audited.text ||
           (droppedPages.length > 0
