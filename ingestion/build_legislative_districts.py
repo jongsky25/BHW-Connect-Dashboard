@@ -120,6 +120,26 @@ MANUAL_OVERRIDES = {
     # Populated as the reconciliation report surfaces real cases; empty is the honest start.
 }
 
+# Rung 4 at the SCOPE level: pages whose parent name cannot pick out one dim_geo row, so the
+# evidence-based reading in choose_scope has nothing to choose between. Each entry carries its
+# reason, and each was surfaced by the reconciliation report rather than guessed at in advance --
+# these are the only two of 114 pages that needed one.
+MANUAL_SCOPES = {
+    # "Calamba" is two municipalities: CITY OF CALAMBA in Laguna and CALAMBA in Misamis
+    # Occidental. Only the Laguna city has a congressional district of its own; the Misamis
+    # Occidental municipality votes within its province's 2nd. A lone district lists no members,
+    # so there is no evidence for choose_scope to score and the tie is real.
+    "Calamba": {"grain": "barangay", "citymun_codes": {"0403405"}, "parent_geo_code": "0403405"},
+    # Taguig-Pateros spans a city AND a municipality -- the case §1.1 names as the reason district
+    # codes are slugs rather than PSGC-derived. No single dim_geo row is the parent, so the scope
+    # is the union of both, and parent_geo_code stays null exactly as the schema intends for a
+    # district that spans parents.
+    "Taguig–Pateros": {"grain": "barangay", "citymun_codes": {"1381500", "1381701"},
+                       "parent_geo_code": None},
+    "Taguig-Pateros": {"grain": "barangay", "citymun_codes": {"1381500", "1381701"},
+                       "parent_geo_code": None},
+}
+
 # Members that are not places at all: footnote markers, stray table syntax, and the handful of
 # labels Wikipedia uses for a whole city rather than one of its barangays.
 NON_PLACE_MEMBERS = {"", "-", "—", "none", "n/a", "tbd"}
@@ -148,15 +168,34 @@ def normalise_name(name):
     return s
 
 
+def slug_normalise(name):
+    """normalise_name, except that it KEEPS the word "city".
+
+    The distinction is load-bearing and cost a real bug: normalise_name folds "Iloilo City" onto
+    "iloilo" so that PSA's "CITY OF ILOILO" and Wikipedia's "Iloilo City" compare equal, which is
+    right for *matching a place*. Used for a district code it is catastrophic -- Iloilo City's
+    lone district and Iloilo province's districts share a slug stem, and the city's lone district
+    was in fact expanded across all 35 municipalities of the province before this split existed.
+    Matching folds; identity must not.
+    """
+    s = (name or "").strip().lower()
+    s = s.replace("\u00f1", "n").replace("\u00e7", "c")
+    for a, b in (("\u00e1", "a"), ("\u00e9", "e"), ("\u00ed", "i"), ("\u00f3", "o"), ("\u00fa", "u")):
+        s = s.replace(a, b)
+    s = re.sub(r"\(.*?\)", " ", s)
+    s = re.sub(r"[^a-z0-9 ]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def district_slug(parent, ordinal_label):
-    """'Leyte', '1st' -> 'leyte-1st'; 'Batanes', 'Lone' -> 'batanes-lone'.
+    """'Leyte', '1st' -> 'leyte-1st'; 'Iloilo City', 'at-large' -> 'iloilo-city-at-large'.
 
     A slug, not a PSGC-derived code, per §1.1: a code that encodes a parent asserts a parentage
     that is sometimes false (Taguig-Pateros spans a city and a municipality; Tacloban votes with
     Leyte's 1st while being a province-level row in dim_geo).
     """
-    p = normalise_name(parent).replace(" ", "-")
-    o = normalise_name(ordinal_label).replace(" ", "-")
+    p = slug_normalise(parent).replace(" ", "-")
+    o = slug_normalise(ordinal_label).replace(" ", "-")
     return f"{p}-{o}"
 
 
@@ -625,12 +664,21 @@ def resolve_member(member, scope, geo, crosswalk=None):
             if len(b) == 1:
                 return b[0], "disambiguated"
 
-    # Rung 1 without a province scope: unique nationally is still exact.
-    cands = geo.citymun_by_name.get(name, [])
-    if len(cands) == 1:
-        return cands[0], "exact"
-    if len(cands) > 1:
-        return None, "ambiguous_nationally"
+    # NO NATIONAL FALLBACK WHEN A SCOPE IS KNOWN, and none at all for an unscoped page.
+    #
+    # This was the last place a wrong row could get in, and it did: Taguig-Pateros does not
+    # resolve to a dim_geo row by name, so its page was unscoped, and its barangay "San Roque"
+    # matched the *municipality* of San Roque in Northern Samar -- another island group entirely.
+    # Bataan's "Samal" was filed under Davao del Norte the same way. Both were nationally unique,
+    # so both looked like clean `exact` matches.
+    #
+    # A member of Davao del Norte's district that is not in Davao del Norte is a finding, not a
+    # lookup to widen. Unresolved is a published gap; a nationally-unique wrong match is an
+    # invisible lie, which is the trade guardrail 1 exists to make in this direction.
+    if scope.get("grain") == "unknown" or not (scope.get("province_code") or scope.get("citymun_codes")):
+        return None, "scope_unknown"
+    if prov:
+        return None, "unresolved_in_province"
 
     # Rung 3: PSGC crosswalk (pre-NIR / pre-Maguindanao-split names carried by older sources).
     if crosswalk:
@@ -887,6 +935,27 @@ def default_scope(parent_name, geo):
     grain, a city (whether filed as citymun or as an HUC province row) at barangay grain.
     """
     n = normalise_name(parent_name)
+    # When the source itself says "City" -- "Iloilo City", "City of Manila" -- that is evidence,
+    # not decoration, and it outranks a province of the same folded name. Without this, a city's
+    # lone district falls through to its namesake province and is expanded across every
+    # municipality in it, which is exactly what happened to Iloilo City.
+    says_city = bool(re.search(r"\bcity\b", parent_name or "", re.I))
+    if says_city:
+        cities = geo.citymun_by_name.get(n, [])
+        if len(cities) == 1:
+            c = cities[0]
+            return {"parent_name": parent_name, "grain": "barangay",
+                    "citymun_codes": {c["geo_code"]},
+                    "parent_geo_code": c["geo_code"], "region_code": c.get("region_code"),
+                    "reading": f"citymun {c['geo_code']} (named City)"}
+        hucs = [r for r in geo.province_by_name.get(n, []) if is_huc_province_row(r)]
+        if len(hucs) == 1:
+            cms = geo.citymun_codes_under(hucs[0]["geo_code"])
+            return {"parent_name": parent_name, "grain": "barangay", "citymun_codes": cms,
+                    "parent_geo_code": hucs[0]["geo_code"],
+                    "region_code": hucs[0].get("region_code"),
+                    "reading": f"HUC subtree {hucs[0]['geo_code']} (named City)"}
+
     plain = [r for r in geo.province_by_name.get(n, []) if not is_huc_province_row(r)]
     if len(plain) == 1:
         return {"parent_name": parent_name, "grain": "citymun", "province_code": plain[0]["geo_code"],
@@ -932,6 +1001,14 @@ def choose_scope(parent_name, districts, geo, crosswalk=None):
     strict winner. A tie or a zero score is reported as scope_unknown rather than guessed --
     the same posture the resolution ladder takes one level down.
     """
+    manual = MANUAL_SCOPES.get(parent_name)
+    if manual:
+        sc = dict(manual)
+        sc["parent_name"] = parent_name
+        sc.setdefault("region_code", None)
+        sc["reading"] = "manual scope override"
+        return sc, [(0, "manual scope override")]
+
     members = [m for d in districts for m in d["members"]]
     if not members:
         # Nothing to score (a lone-district page). Fall back to what the levels mean.
@@ -1111,6 +1188,304 @@ def _membership(code, row, method, source_ref, retrieved_at):
 
 
 # --------------------------------------------------------------------------- #
+# 5b. COMELEC returns: the second source (guardrail 2)                        #
+# --------------------------------------------------------------------------- #
+# Why this source and not BetterGov.PH's derived file, decided after D1.1:
+#
+#   * They are not two sources. BetterGov's districts_generated.json IS a COMELEC derivative --
+#     their extract_districts_from_elections.py reads the House contest out of crawled precinct
+#     returns. Taking their file would be taking the same source at two removes, through someone
+#     else's parser, which is the shape of the mistake D1.1 found in the first place.
+#   * Coverage. Their file resolves barangay grain for 12 multi-district cities; there are ~34,
+#     and the multi-district city is the hard part of D1 (guardrail 3's double-count trap).
+#     COMELEC returns exist for every precinct in the country.
+#   * Licence. Their repo has no LICENSE and scopes itself to "educational and research
+#     purposes". COMELEC returns are public election records, and what we take from them -- which
+#     contest a precinct voted in -- is a fact rather than expression, the same §8 argument the
+#     plan already makes for the Wikipedia-derived mapping.
+#
+# Their file still earns a role, just not this one: as a VALIDATION SET (see
+# load_validation_set). Checking work against something needs no licence; republishing it does.
+#
+# WHY THERE IS NO --fetch FOR THIS. comelec.gov.ph and 2025electionresults.comelec.gov.ph both
+# return HTTP 403 to this build environment, with the agent proxy reporting no relay failures --
+# the block is theirs, the same constraint build_psgc_crosswalk.py documents for PSA. And the one
+# bulk CC BY 4.0 precinct-level dataset that IS reachable (Figshare 29086472, 63 MB) carries
+# SENATE and PARTY-LIST only: nationwide contests whose columns say nothing about congressional
+# districts. The House contest lives in the per-precinct returns. So this snapshot is produced by
+# hand, on an unblocked connection, and committed -- exactly as every PSA file in this repo is.
+#
+# Expected layout, which is the one the public crawlers already produce:
+#
+#   <snapshot>/PROVINCE/MUNICIPALITY/BARANGAY/<precinct>.csv
+#
+# Each CSV names its contests; the one that matters reads
+# "MEMBER, HOUSE OF REPRESENTATIVES - <DISTRICT>".
+HOUSE_CONTEST_RE = re.compile(
+    r"MEMBER,\s*HOUSE OF REPRESENTATIVES.*?-\s*([A-Z0-9 \-]+?(?:DISTRICT|LEGDIST))",
+    re.I,
+)
+ORDINAL_WORDS = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6,
+    "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10,
+}
+
+
+def parse_contest_district(text):
+    """'MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT' -> (1, False); 'LONE LEGDIST' -> (None, True).
+
+    Returns (ordinal, is_lone) or None. Only the ordinal is taken, never the province name in the
+    contest string: the precinct's own place in dim_geo already says where it is, and trusting two
+    different spellings of a province name to agree is how a silent mismatch gets in.
+    """
+    m = HOUSE_CONTEST_RE.search(text or "")
+    if not m:
+        return None
+    raw = m.group(1).upper().strip()
+    if "LONE" in raw or "AT-LARGE" in raw or "AT LARGE" in raw:
+        return (None, True)
+    for word, n in ORDINAL_WORDS.items():
+        if word.upper() in raw:
+            return (n, False)
+    m2 = re.search(r"(\d+)\s*(?:ST|ND|RD|TH)?", raw)
+    if m2:
+        return (int(m2.group(1)), False)
+    return None
+
+
+def load_comelec_facts(snapshot_dir: Path):
+    """Walk a COMELEC returns snapshot into {(province, municipality, barangay): (ordinal, lone)}.
+
+    One precinct is read per barangay. Every precinct in a barangay votes in the same
+    congressional contest by construction -- that is what a district *is* -- so reading more would
+    cost time without adding information. Disagreement between precincts of one barangay would be
+    a transmission fault rather than a mapping fact, and is reported, not averaged.
+    """
+    facts, conflicts, unreadable = {}, [], 0
+    if not snapshot_dir.exists():
+        return facts, conflicts, unreadable
+    for prov_dir in sorted(p for p in snapshot_dir.iterdir() if p.is_dir()):
+        for muni_dir in sorted(p for p in prov_dir.iterdir() if p.is_dir()):
+            for brgy_dir in sorted(p for p in muni_dir.iterdir() if p.is_dir()):
+                seen = set()
+                for csv_path in sorted(brgy_dir.glob("*.csv")):
+                    try:
+                        text = csv_path.read_text(encoding="utf-8", errors="ignore")
+                    except OSError:
+                        unreadable += 1
+                        continue
+                    d = parse_contest_district(text)
+                    if d:
+                        seen.add(d)
+                    break                       # one precinct per barangay is enough
+                if len(seen) == 1:
+                    key = (prov_dir.name.replace("_", " "),
+                           muni_dir.name.replace("_", " "),
+                           brgy_dir.name.replace("_", " "))
+                    facts[key] = next(iter(seen))
+                elif len(seen) > 1:
+                    conflicts.append({"path": str(brgy_dir), "districts": sorted(map(str, seen))})
+    return facts, conflicts, unreadable
+
+
+def resolve_comelec_facts(facts, geo):
+    """Map COMELEC's (province, municipality, barangay) names onto dim_geo codes.
+
+    Reuses the same ladder as the Wikipedia path and the same refusal to guess: a name that does
+    not resolve is counted and reported, never approximated. A COMELEC fact we cannot place is a
+    corroboration we simply do not have, which is a smaller harm than a corroboration we invent.
+    """
+    by_geo, unresolved = {}, []
+    for (prov, muni, brgy), district in facts.items():
+        muni_rows = geo.citymun_by_name.get(normalise_name(muni), [])
+        prov_rows = geo.province_by_name.get(normalise_name(prov), [])
+        target = None
+        if len(prov_rows) == 1:
+            cands = geo.citymun_by_province.get(prov_rows[0]["geo_code"], {}).get(normalise_name(muni), [])
+            if len(cands) == 1:
+                target = cands[0]
+        if target is None and len(muni_rows) == 1:
+            target = muni_rows[0]
+        if target is None:
+            unresolved.append({"province": prov, "municipality": muni, "barangay": brgy,
+                               "reason": "citymun_unresolved"})
+            continue
+        b = geo.find_barangay(normalise_name(brgy), geo.citymun_codes_under(target["geo_code"]))
+        if len(b) == 1:
+            by_geo[b[0]["geo_code"]] = district
+        else:
+            # Barangay unplaceable, but the municipality is known. Record the fact at citymun
+            # grain -- it still corroborates a province-level district assignment.
+            by_geo.setdefault(target["geo_code"], district)
+            if not b:
+                unresolved.append({"province": prov, "municipality": muni, "barangay": brgy,
+                                   "reason": "barangay_unresolved"})
+    return by_geo, unresolved
+
+
+def apply_corroboration(built, comelec_by_geo, geo, source_ref):
+    """Mark each membership row corroborated / conflict / single_source against COMELEC.
+
+    Comparison is on ordinal and lone-ness, never on parent name: the row and the COMELEC fact are
+    about the SAME dim_geo row, so they are already talking about the same place, and matching
+    province spellings on top of that would only add a way to be wrong.
+
+    A citymun-grain row is corroborated by its own fact, or -- for a municipality whose barangays
+    were the resolvable grain -- by its barangays agreeing on one district.
+    """
+    ordinal_by_district = {d["district_code"]: (d["ordinal"], d["is_lone"]) for d in built["districts"]}
+
+    barangays_by_citymun = defaultdict(list)
+    for gcode, fact in comelec_by_geo.items():
+        row = geo.by_code.get(gcode)
+        if row and row["geo_level"] == "barangay" and row.get("parent_code"):
+            barangays_by_citymun[row["parent_code"]].append(fact)
+
+    counts = {"corroborated": 0, "conflict": 0, "single_source": 0}
+    conflicts = []
+    for m in built["memberships"]:
+        fact = comelec_by_geo.get(m["geo_code"])
+        if fact is None and geo.by_code.get(m["geo_code"], {}).get("geo_level") == "citymun":
+            kids = set(barangays_by_citymun.get(m["geo_code"], []))
+            fact = next(iter(kids)) if len(kids) == 1 else None
+        if fact is None:
+            counts["single_source"] += 1
+            continue
+        ours = ordinal_by_district.get(m["district_code"])
+        if ours is None:
+            counts["single_source"] += 1
+            continue
+        same = (bool(ours[1]) and bool(fact[1])) or (
+            not ours[1] and not fact[1] and ours[0] is not None and ours[0] == fact[0]
+        )
+        if same:
+            m["corroboration"] = "corroborated"
+            m["corroborating_source_ref"] = source_ref
+            counts["corroborated"] += 1
+        else:
+            m["corroboration"] = "conflict"
+            m["corroborating_source_ref"] = source_ref
+            counts["conflict"] += 1
+            conflicts.append({"district_code": m["district_code"], "geo_code": m["geo_code"],
+                              "wikipedia": {"ordinal": ours[0], "is_lone": ours[1]},
+                              "comelec": {"ordinal": fact[0], "is_lone": fact[1]}})
+    return counts, conflicts
+
+
+# --------------------------------------------------------------------------- #
+# 5c. Validation set: a third opinion, checked against but never ingested     #
+# --------------------------------------------------------------------------- #
+def load_validation_set(path, geo):
+    """Load a third-party municipality->district mapping for comparison only.
+
+    Written for BetterGov.PH's `static/data/districts_generated.json`, whose shape is
+    {province: {municipality: "1st District" | {"is_mixed": true, "barangays": {...}}}}.
+
+    **Compared against, never ingested and never committed.** That distinction is the whole point:
+    checking our work against someone else's needs no licence, while republishing their file would
+    -- and theirs carries none. The role is the one §2 already gives PSA: a validation set, not a
+    source. Nothing this function returns reaches a membership row.
+    """
+    raw = json.loads(Path(path).read_text())
+    by_geo, unresolved = {}, []
+
+    def record(prov, muni, value, brgy=None):
+        prov_rows = geo.province_by_name.get(normalise_name(prov), [])
+        target = None
+        if len(prov_rows) == 1:
+            cands = geo.citymun_by_province.get(prov_rows[0]["geo_code"], {}).get(normalise_name(muni), [])
+            if len(cands) == 1:
+                target = cands[0]
+        if target is None:
+            cands = geo.citymun_by_name.get(normalise_name(muni), [])
+            if len(cands) == 1:
+                target = cands[0]
+        if target is None:
+            unresolved.append({"province": prov, "municipality": muni, "barangay": brgy})
+            return
+        code = target["geo_code"]
+        if brgy:
+            b = geo.find_barangay(normalise_name(brgy), geo.citymun_codes_under(code))
+            if len(b) != 1:
+                unresolved.append({"province": prov, "municipality": muni, "barangay": brgy})
+                return
+            code = b[0]["geo_code"]
+        parsed = parse_ordinal_label(value)
+        if parsed:
+            by_geo[code] = parsed
+
+    for prov, munis in raw.items():
+        if not isinstance(munis, dict):
+            continue
+        for muni, value in munis.items():
+            if isinstance(value, dict) and value.get("is_mixed"):
+                for brgy, v in value.get("barangays", {}).items():
+                    record(prov, muni, v, brgy)
+            elif isinstance(value, str):
+                record(prov, muni, value)
+    return by_geo, unresolved
+
+
+def parse_ordinal_label(label):
+    """'1st District' -> (1, False); 'Lone District' -> (None, True)."""
+    if not isinstance(label, str):
+        return None
+    s = label.strip().lower()
+    if "lone" in s or "at-large" in s or "at large" in s:
+        return (None, True)
+    m = re.match(r"^(\d+)", s)
+    return (int(m.group(1)), False) if m else None
+
+
+def compare_against_validation_set(built, other_by_geo, geo, label="validation set"):
+    """Diff our mapping against a third-party one and report, in both directions.
+
+    Reported, never applied. An agreement is reassurance; a disagreement is a finding to chase,
+    not a row to overwrite. Two-way, on the same reasoning as every other reconciliation in this
+    repo: "they have a row we do not" and "we have a row they disagree with" are different bugs.
+    """
+    ordinal_by_district = {d["district_code"]: (d["ordinal"], d["is_lone"]) for d in built["districts"]}
+    ours_by_geo = {}
+    for m in built["memberships"]:
+        ours = ordinal_by_district.get(m["district_code"])
+        if ours:
+            ours_by_geo[m["geo_code"]] = (ours, m["district_code"])
+
+    agree, disagree = 0, []
+    for gcode, theirs in other_by_geo.items():
+        mine = ours_by_geo.get(gcode)
+        if mine is None:
+            continue
+        (ordinal, is_lone), dcode = mine
+        same = (bool(is_lone) and bool(theirs[1])) or (
+            not is_lone and not theirs[1] and ordinal is not None and ordinal == theirs[0]
+        )
+        if same:
+            agree += 1
+        else:
+            row = geo.by_code.get(gcode, {})
+            disagree.append({
+                "geo_code": gcode, "geo_name": row.get("geo_name"),
+                "geo_level": row.get("geo_level"), "our_district": dcode,
+                "ours": {"ordinal": ordinal, "is_lone": is_lone},
+                "theirs": {"ordinal": theirs[0], "is_lone": theirs[1]},
+            })
+    only_theirs = sorted(set(other_by_geo) - set(ours_by_geo))
+    only_ours = sorted(set(ours_by_geo) - set(other_by_geo))
+    return {
+        "source": label,
+        "compared": len(other_by_geo),
+        "agree": agree,
+        "disagree": len(disagree),
+        "disagreements": disagree[:200],
+        "only_in_validation_set": len(only_theirs),
+        "sample_only_in_validation_set": only_theirs[:10],
+        "only_in_ours": len(only_ours),
+        "sample_only_in_ours": only_ours[:10],
+    }
+
+
+# --------------------------------------------------------------------------- #
 # 6. Validation gates (D1.5)                                                   #
 # --------------------------------------------------------------------------- #
 def validate(built, registry, geo, allow_single_source=False):
@@ -1254,7 +1629,7 @@ def md_table(headers, rows, aligns=None):
     return out
 
 
-def write_doc_summary(built, gates, idx):
+def write_doc_summary(built, gates, idx, corroboration=None, validation=None):
     """The report IS the doc, as docs/PSGC_CROSSWALK.md and BOUNDARY_RECONCILIATION.md are."""
     d, m = built["districts"], built["memberships"]
     by_method = defaultdict(int)
@@ -1290,6 +1665,41 @@ def write_doc_summary(built, gates, idx):
         gate_rows.append([f"`{g['gate']}`", "pass" if g["ok"] else "**FAIL**",
                           detail.replace("|", "\\|")])
     lines += md_table(["gate", "result", "detail"], gate_rows)
+    lines += ["", "## Corroboration (guardrail 2)", ""]
+    if corroboration:
+        lines += [
+            f"Second source: `{corroboration['source_ref']}`.",
+            "",
+        ]
+        lines += md_table(["state", "rows"],
+                          [[k, v] for k, v in sorted(corroboration["rows"].items())],
+                          ["left", "right"])
+    else:
+        lines += [
+            "**No second source was supplied, so every row is `single_source` and the",
+            "corroboration gate fails.** That is deliberate: no district assignment ships on one",
+            "source alone. COMELEC's House-contest precinct returns are the intended second",
+            "opinion and are not fetchable from the build environment (HTTP 403); they are",
+            "downloaded by hand and passed with `--comelec-snapshot`, as every PSA file in this",
+            "repo already is.",
+        ]
+    if validation:
+        lines += [
+            "",
+            "## Independent cross-check",
+            "",
+            f"Compared against `{Path(validation['source']).name}` — **compared against, never ingested**.",
+            "Checking work against a third party needs no licence; republishing it would.",
+            "",
+        ]
+        lines += md_table(
+            ["measure", "count"],
+            [["rows compared", validation["compared"]],
+             ["agree", validation["agree"]],
+             ["disagree", validation["disagree"]],
+             ["only in the other set", validation["only_in_validation_set"]],
+             ["only in ours", validation["only_in_ours"]]],
+            ["left", "right"])
     lines += [
         "",
         "## Unresolved and disputed",
@@ -1373,7 +1783,12 @@ def selftest():
     assert normalise_name("Dasmariñas City") == "dasmarinas"
     assert normalise_name("Sablayan (capital)") == "sablayan"
     assert district_slug("Leyte", "1st") == "leyte-1st"
-    assert district_slug("Quezon City", "3rd") == "quezon-3rd"
+    # A city and its namesake province must NOT share a slug stem. Iloilo City's lone district
+    # was expanded across all 35 municipalities of Iloilo province before this was split.
+    assert district_slug("Quezon City", "3rd") == "quezon-city-3rd"
+    assert district_slug("Iloilo City", "at-large") == "iloilo-city-at-large"
+    assert district_slug("Iloilo", "1st") == "iloilo-1st"
+    assert district_slug("Iloilo City", "at-large") != district_slug("Iloilo", "at-large")
     assert district_slug("Batanes", "Lone") == "batanes-lone"
 
     # -- the resolution ladder ---------------------------------------------------
@@ -1397,8 +1812,13 @@ def selftest():
     # it resolves; with no scope it must come back unresolved rather than pick one.
     row, meth = resolve_member({"name": "Bravo", "link_target": None}, prov_scope, geo)
     assert (row["geo_code"], meth) == ("C2", "exact"), (row, meth)
+    # No scope means no resolution at all -- not a national lookup. "San Roque" in Taguig-Pateros
+    # matched a municipality in Northern Samar this way before the fallback was removed.
     row, meth = resolve_member({"name": "Bravo", "link_target": None}, {"parent_name": "?"}, geo)
-    assert row is None and meth == "ambiguous_nationally", (row, meth)
+    assert row is None and meth == "scope_unknown", (row, meth)
+    # A name absent from the scoped province is unresolved, never borrowed from another province.
+    row, meth = resolve_member({"name": "Metro", "link_target": None}, prov_scope, geo)
+    assert row is None and meth == "unresolved_in_province", (row, meth)
     # …unless the wikitext disambiguated it, which is rung 2 and the reason we parse wikitext.
     row, meth = resolve_member({"name": "Bravo", "link_target": "Bravo, Otherland"}, {"parent_name": "?"}, geo)
     assert (row["geo_code"], meth) == ("C3", "disambiguated"), (row, meth)
@@ -1423,6 +1843,17 @@ def selftest():
                               {"name": "Dos", "link_target": None}]}]
     sc, scoring = choose_scope("Metro", city_page, geo)
     assert sc and sc["grain"] == "barangay", (sc, scoring)
+    # A manual scope override wins outright, and is the only way a page with no resolvable name
+    # gets a reading -- Taguig-Pateros spans a city and a municipality, so no single row is it.
+    MANUAL_SCOPES["__fixture city"] = {"grain": "barangay", "citymun_codes": {"C4"},
+                                       "parent_geo_code": "C4"}
+    try:
+        sc, _ = choose_scope("__fixture city", [{"members": []}], geo)
+        assert sc and sc["grain"] == "barangay" and sc["citymun_codes"] == {"C4"}, sc
+        assert sc["reading"] == "manual scope override", sc
+    finally:
+        del MANUAL_SCOPES["__fixture city"]
+
     # Nothing resolves anywhere -> reported, never guessed.
     sc, scoring = choose_scope("Nowhere", [{"members": [{"name": "Zzz", "link_target": None}]}], geo)
     assert sc is None, (sc, scoring)
@@ -1452,7 +1883,70 @@ def selftest():
     # A citymun claimed by nobody is the other direction of the same report.
     assert gates["citymun_covered_exactly_once"]["ok"] is False, gates["citymun_covered_exactly_once"]
 
-    print("selftest OK: parsing, normalisation, ladder, scope detection and gates all asserted")
+    # -- COMELEC contest parsing --------------------------------------------------
+    assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT") == (1, False)
+    assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - 2ND DISTRICT") == (2, False)
+    assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES of MAGUINDANAO - LONE LEGDIST") == (None, True)
+    assert parse_contest_district("PROVINCIAL GOVERNOR") is None, "only the House contest counts"
+    # A Sangguniang Bayan district is a local board district, not a congressional one.
+    assert parse_contest_district("MEMBER, SANGGUNIANG BAYAN - FIRST DISTRICT") is None
+
+    # -- corroboration: agree, disagree, and absent -------------------------------
+    built2 = {
+        "districts": [
+            {"district_code": "fakeland-1st", "district_name": "Fakeland's 1st congressional district",
+             "ordinal": 1, "is_lone": False},
+            {"district_code": "fakeland-2nd", "district_name": "Fakeland's 2nd congressional district",
+             "ordinal": 2, "is_lone": False},
+        ],
+        "memberships": [
+            _membership("fakeland-1st", {"geo_code": "C1", "geo_level": "citymun"}, "exact", "w@1", "t"),
+            _membership("fakeland-2nd", {"geo_code": "C2", "geo_level": "citymun"}, "exact", "w@1", "t"),
+            _membership("fakeland-1st", {"geo_code": "C4", "geo_level": "citymun"}, "exact", "w@1", "t"),
+        ],
+    }
+    # C1 agrees, C2 is claimed by our 2nd but COMELEC says 1st, C4 has no COMELEC fact at all.
+    counts, conflicts = apply_corroboration(
+        built2, {"C1": (1, False), "C2": (1, False)}, geo, "comelec:test")
+    assert counts == {"corroborated": 1, "conflict": 1, "single_source": 1}, counts
+    assert built2["memberships"][0]["corroboration"] == "corroborated"
+    assert built2["memberships"][0]["corroborating_source_ref"] == "comelec:test"
+    assert built2["memberships"][1]["corroboration"] == "conflict"
+    assert built2["memberships"][2]["corroboration"] == "single_source"
+    assert len(conflicts) == 1 and conflicts[0]["geo_code"] == "C2", conflicts
+
+    # A corroborated row satisfies the gate that a single-source one does not. This is the whole
+    # point of the second source, so it is asserted rather than assumed.
+    built2["memberships"] = [built2["memberships"][0]]
+    built2.update({"representatives": [], "unresolved": [], "ambiguous": [], "scope_unknown": [],
+                   "parsed_district_labels": []})
+    g2 = {g["gate"]: g for g in validate(built2, [], geo)}
+    assert g2["corroborated_by_two_sources"]["ok"] is True, g2["corroborated_by_two_sources"]
+
+    # -- validation set: compared, never applied ----------------------------------
+    built3 = {
+        "districts": [{"district_code": "fakeland-1st",
+                       "district_name": "Fakeland's 1st congressional district",
+                       "ordinal": 1, "is_lone": False}],
+        "memberships": [
+            _membership("fakeland-1st", {"geo_code": "C1", "geo_level": "citymun"}, "exact", "w@1", "t"),
+            _membership("fakeland-1st", {"geo_code": "C2", "geo_level": "citymun"}, "exact", "w@1", "t"),
+        ],
+    }
+    report = compare_against_validation_set(
+        built3, {"C1": (1, False), "C2": (3, False), "C9": (1, False)}, geo, label="third party")
+    assert report["agree"] == 1 and report["disagree"] == 1, report
+    assert report["disagreements"][0]["geo_code"] == "C2", report
+    assert report["only_in_validation_set"] == 1, report
+    # Nothing the comparison saw may have changed a row: it reports, it does not apply.
+    assert all(m["corroboration"] == "single_source" for m in built3["memberships"]), \
+        "the validation set must never write to a membership row"
+
+    assert parse_ordinal_label("Lone District") == (None, True)
+    assert parse_ordinal_label("3rd District") == (3, False)
+
+
+    print("selftest OK: parsing, normalisation, ladder, scope detection, gates,\n             COMELEC corroboration and the validation-set diff all asserted")
 
 
 # --------------------------------------------------------------------------- #
@@ -1469,6 +1963,12 @@ def main():
     ap.add_argument("--emit-sql-dir", help="Write batched INSERT .sql files here")
     ap.add_argument("--database-url", help="Postgres connection string (psycopg2 mode)")
     ap.add_argument("--write-doc-summary", action="store_true", help="Regenerate docs/LEGISLATIVE_DISTRICTS.md")
+    ap.add_argument("--comelec-snapshot",
+                    help="COMELEC House-contest precinct returns (PROVINCE/MUNICIPALITY/BARANGAY/*.csv), "
+                         "downloaded by hand -- see section 5b for why there is no --fetch for this")
+    ap.add_argument("--validation-set",
+                    help="Third-party municipality->district JSON to compare against and report. "
+                         "Compared only: never ingested, never committed, never overwrites a row.")
     ap.add_argument("--allow-single-source", action="store_true",
                     help="Build without COMELEC corroboration, recording the gap in the QA report")
     args = ap.parse_args()
@@ -1505,6 +2005,32 @@ def main():
 
     geo = GeoIndex(dim_geo_rows)
     built = build(idx, registry, pages, articles, geo)
+
+    corroboration = None
+    if args.comelec_snapshot:
+        facts, precinct_conflicts, unreadable = load_comelec_facts(Path(args.comelec_snapshot))
+        by_geo, unresolved_facts = resolve_comelec_facts(facts, geo)
+        ref = f"comelec:2025-national-local@{Path(args.comelec_snapshot).name}"
+        counts, conflicts = apply_corroboration(built, by_geo, geo, ref)
+        corroboration = {
+            "source_ref": ref,
+            "barangay_facts_read": len(facts),
+            "facts_resolved_to_dim_geo": len(by_geo),
+            "facts_unresolved": len(unresolved_facts),
+            "sample_unresolved": unresolved_facts[:10],
+            "precinct_level_conflicts": precinct_conflicts[:10],
+            "unreadable_files": unreadable,
+            "rows": counts,
+            "conflicts": conflicts[:200],
+            "conflict_count": len(conflicts),
+        }
+
+    validation = None
+    if args.validation_set:
+        other, unresolved_other = load_validation_set(args.validation_set, geo)
+        validation = compare_against_validation_set(built, other, geo, label=args.validation_set)
+        validation["unresolved_in_validation_set"] = len(unresolved_other)
+
     gates = validate(built, registry, geo, allow_single_source=args.allow_single_source)
 
     qa = {
@@ -1523,6 +2049,8 @@ def main():
             for k in {m["match_method"] for m in built["memberships"]}
         )),
         "gates": gates,
+        "corroboration": corroboration,
+        "validation_set": validation,
         "unresolved": built["unresolved"],
         "ambiguous": built["ambiguous"],
         "scope_unknown": built["scope_unknown"],
@@ -1540,10 +2068,16 @@ def main():
         qa["applied"] = "dry-run"
 
     if args.write_doc_summary:
-        qa["doc"] = str(write_doc_summary(built, gates, idx))
+        qa["doc"] = str(write_doc_summary(built, gates, idx, corroboration, validation))
 
     QA_REPORT_PATH.write_text(json.dumps(qa, indent=2, default=str))
     summary = {k: qa[k] for k in ("counts", "match_methods", "gates_failed", "applied")}
+    if corroboration:
+        summary["corroboration"] = corroboration["rows"]
+        summary["corroboration_conflicts"] = corroboration["conflict_count"]
+    if validation:
+        summary["validation_set"] = {k: validation[k] for k in
+                                     ("compared", "agree", "disagree", "only_in_validation_set")}
     print(json.dumps(summary, indent=2, default=str))
     print(f"QA report written to {QA_REPORT_PATH}")
     if failed:
