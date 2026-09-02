@@ -48,6 +48,7 @@ PSGC files a highly urbanised city under its own province-level row, so a city t
 | `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
 | `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3491, "corroborated_rows": 0, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                    |
 | `no_conflicting_rows_shipped`            | pass     | {"conflicting_rows": 0, "sample": [], "withheld_before_gate": 0}                                                                                                                                                                                                                                             |
+| `population_reconciles_with_psa`         | **FAIL** | {"tolerance_pct": 0.5, "districts_checked": 155, "exact": 148, "non_zero_delta": 7, "beyond_tolerance": 5, "skipped": {"barangay_grain": 37, "member_population_missing": 4, "known_incomplete": 18, "census_2015_not_held": 32, "census_None_not_held": 2, "census_2025_not_held": 2}, "discrepancies": ... |
 | `unresolved_reported`                    | pass     | {"unresolved": 96, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
 
 ## Corroboration (guardrail 2)
@@ -71,6 +72,31 @@ Checking work against a third party needs no licence; republishing it would.
 | disagree              |     0 |
 | only in the other set |    77 |
 | only in ours          |  1282 |
+
+## Population reconciliation against PSA
+
+For each province-grain district, the sum of its member city/municipality populations against the district total PSA publishes. This is the only check here that can catch a **wrong** assignment rather than a missing one: a municipality in the wrong district is still covered exactly once, so no coverage gate sees it, but it moves two district totals in opposite directions by its own population. Compared at the census year each article quotes, or not at all -- the articles quote 2015, 2020, 2024 and 2025, and comparing across vintages reads population growth as error.
+
+| measure                               | value |
+| ------------------------------------- | ----: |
+| districts checked                     |   155 |
+| summed exactly to the published total |   148 |
+| non-zero delta                        |     7 |
+| beyond the 0.5% tolerance             |     5 |
+
+Every non-zero delta, published in full -- the tolerance decides what fails the build, not what gets shown:
+
+| district                | census | members |  summed | PSA published |    delta |      % |
+| ----------------------- | -----: | ------: | ------: | ------------: | -------: | -----: |
+| `pampanga-2nd`          |   2020 |       6 | 655,973 |       514,041 | +141,932 | +27.61 |
+| `surigao-del-norte-1st` |   2020 |       9 | 136,092 |       128,117 |   +7,975 |  +6.22 |
+| `albay-3rd`             |   2020 |       7 | 501,080 |       489,114 |  +11,966 |  +2.45 |
+| `ilocos-norte-2nd`      |   2020 |      11 | 296,004 |       297,611 |   -1,607 |  -0.54 |
+| `ilocos-norte-1st`      |   2020 |      12 | 313,584 |       311,977 |   +1,607 |  +0.52 |
+| `laguna-3rd`            |   2024 |       7 | 613,846 |       611,539 |   +2,307 |  +0.38 |
+| `apayao-at-large`       |   2020 |       7 | 124,366 |       124,336 |      +30 |  +0.02 |
+
+Skipped, each for a reason that would otherwise manufacture a false finding: **37** barangay grain, **32** census 2015 not held, **2** census 2025 not held, **2** census None not held, **18** known incomplete, **4** member population missing.
 
 ## What is still uncovered, and why
 

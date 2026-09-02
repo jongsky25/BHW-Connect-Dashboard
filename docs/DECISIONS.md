@@ -7807,3 +7807,82 @@ application code. `npx prettier --check` passes on the regenerated doc and this 
 the new rows use `exact`, and which page said so is already carried by `source_ref`. The snapshot
 grows by 12 KB (`ingestion/data/districts_20th/city_lists/`), committed for the same reason the
 other snapshots are — the build must be reproducible without the network.
+
+## 2026-09-02 — D1.3h: the fifth gate finally exists, and the first thing it found was Carasi
+
+D1.5 named five validation gates. Four were built in D1.3 and the fifth — population
+reconciliation against PSA — never was. It is now, and it is the only gate here that can catch a
+**wrong** assignment rather than a missing one: a municipality in the wrong district is still
+covered exactly once, so `citymun_covered_exactly_once` is perfectly happy with it.
+
+**155 districts checked, 148 sum exactly to their published PSA total, 7 do not, 5 beyond
+tolerance.** The build now fails four gates rather than three, which is the gate working.
+
+**Why this became load-bearing rather than a nice-to-have.** Guardrail 2 assumed COMELEC returns
+were obtainable; D1.3g established they are not, by anyone. This is now the only _independent_
+check in the build, and it is independent in the way that matters: member populations come from
+our own PSA load (`agg_population`), the district total comes from PSA's published district
+figure, and only the **composition** under test is Wikipedia's. A wrong composition breaks the
+arithmetic. It does not replace a per-row second opinion and is not filed as one — it is
+aggregate, so two similar-sized municipalities swapped between two districts cancel out and pass.
+`corroborated_by_two_sources` is untouched and still fails on all 3,491 rows.
+
+**The finding worth the whole increment.** `ilocos-norte-1st` came out **+1,607** and
+`ilocos-norte-2nd` **−1,607** — equal and opposite, which is the exact signature D1.5 predicted.
+The municipality of **CARASI has a 2020 population of 1,607**. It is in our 1st district and the
+2nd is short by precisely its population, so Wikipedia files Carasi in Ilocos Norte's 1st and PSA's
+published totals say it belongs to the 2nd. No coverage gate could have seen this: Carasi is
+covered, exactly once, by a district. Arithmetic found it and named it.
+
+**The trap that would have made this gate useless, and nearly did.** The first run reported 42
+mismatches out of 199. Thirty-five were not errors at all: **the district articles do not all
+quote the same census.** 195 say 2020, 34 say 2015, 21 say 2024, 2 say 2025. Comparing a 2020 sum
+against a 2015 published total shows five years of population growth as a 6–10% "discrepancy" —
+Sulu's 1st, Tarlac's 3rd and Bohol's 1st all looked broken and are not. `parse_population_year`
+now reads the year out of the infobox and the district is compared against the census it actually
+quotes, or **skipped entirely**; a vintage we do not hold is never compared to the nearest one we
+do. Matching vintages took the check from 76% exact to **95.5%**.
+
+That is the difference between a gate and a noise generator, and it is why the numbers were
+measured before a line of the gate was written rather than after.
+
+**Three other skips, each of which would have manufactured a false finding rather than revealed a
+real one.** Barangay-grain districts (`agg_population` has no barangay rows, so 37 multi-district
+cities cannot be summed at all); districts already reported as incomplete (18 — their total is
+short _by construction_, and failing them twice is noise, not a second finding); and any district
+with a member carrying no population row (4 — summing a missing row as zero under-counts the
+district and reports our own gap as Wikipedia's error).
+
+**The tolerance is empirical and the margin is thin, which is said plainly rather than smoothed
+over.** PSA's district totals _are_ sums of member LGUs, so an exact match is the honest
+expectation and 148 districts deliver it. `POPULATION_TOLERANCE_PCT = 0.5` exists only so
+published-total noise does not fail a build. But the smallest **real** error found (Carasi) shows
+at 0.52% and the largest apparent noise (Laguna's 3rd) at 0.38% — so the threshold sits between
+them with very little room. Every non-zero delta is published in the QA report and the generated
+doc regardless of the tolerance, so nothing hides underneath it; the tolerance decides what fails
+the build, not what gets shown.
+
+**The four still-unexplained discrepancies are published, not resolved:** `pampanga-2nd` (+27.61%,
+and no single member's population accounts for the gap, so it is not one misfiled municipality),
+`surigao-del-norte-1st` (+6.22%), `albay-3rd` (+2.45%), and the sub-tolerance `laguna-3rd` and
+`apayao-at-large`. Each is a district for a person to look at, which is what a finding is for.
+
+**A defect this increment's own output exposed.** `md_table` padded a right-aligned column's
+_header_ to the left while padding its data cells to the right, so `prettier --write` rewrote any
+table whose right-aligned header was narrower than its widest cell — the exact generated-file churn
+that function's docstring exists to prevent. It had gone unnoticed because every right-aligned
+header so far happened to be as wide as its column. Fixed, and the regenerated doc is prettier-clean.
+
+**Testing.** `--selftest` asserts the year parse, an exactly-summing district, the equal-and-opposite
+signature of a swapped municipality, and each of the four skips — including that the gate is not run
+at all when no population export is supplied, so the build stays runnable without it. Mutation-checked
+six ways. **The first run had one survivor** — "a member with no population row is silently
+under-counted" — i.e. that skip was unasserted, exactly the D1.3c lesson about writing the assertion
+before claiming coverage. The assertion was added and all six now bite. The four earlier suites were
+re-run against the changed file: 6 + 4 + 5 + 6 = 21 mutations, all still caught.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated doc and this entry. No migration:
+this adds a gate and a report, no schema. `ingestion/data/agg_population_citymun.csv` is **not
+committed** — it is an export of our own `agg_population`, so it is rebuilt rather than versioned,
+the same posture `dim_geo.csv` already takes, and it is gitignored beside it.
