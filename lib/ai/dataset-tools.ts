@@ -12,6 +12,7 @@ import {
   MAX_ROWS,
   DEFAULT_ROWS,
 } from "./query-dataset";
+import { createAnalysisTools } from "./analysis-tools";
 import { TOOLS, type Tool } from "./tools";
 import { createSearchDocumentsTool } from "./search-documents";
 import { createTraversalTool } from "./traverse-graph";
@@ -150,6 +151,12 @@ export function createDatasetTools(exposure: Exposure, datasetSlugs?: readonly s
  * With `searchDocuments` the set now spans all three retrieval paths in §2: SQL for numbers,
  * edges for provenance, documents for prose. The model chooses; the loop is unchanged.
  *
+ * Increment 5.3 adds a fourth kind, which is not a retrieval path at all: `getPeerContext`,
+ * `getDistribution` and `getInsightCards` read nothing new. They wrap `agg_peer_ranks`,
+ * `lib/analysis/` and `lib/db/insights.ts` — code the dashboard already runs — so the assistant
+ * can say whether a figure it fetched is high or low, which is the one thing the first three
+ * paths cannot do at any depth.
+ *
  * The hand-written tools are kept rather than replaced. `searchGeo` resolves a place name to a
  * geo_code in one call — the registry path would need a `like` scan of `dim_geo` and still guess
  * between namesakes — and the indicator tools return the same shaped figures the dashboard shows,
@@ -162,5 +169,6 @@ export function createInternalTools(): Tool[] {
     ...createDatasetTools("internal"),
     createTraversalTool(),
     createSearchDocumentsTool(),
+    ...createAnalysisTools(),
   ];
 }

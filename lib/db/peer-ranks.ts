@@ -13,6 +13,10 @@ export type PeerRank = {
   nSiblings: number | null;
   /** percent_rank × 100 (0 = lowest, 100 = highest). */
   percentile: number | null;
+  /** Median across this geo's same-level siblings — the "versus what?" behind the rank. */
+  median: number | null;
+  /** Median absolute deviation across the siblings; the basis `isOutlier` is computed from. */
+  mad: number | null;
   isOutlier: boolean;
 };
 
@@ -32,7 +36,9 @@ export async function getPeerRank(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_peer_ranks")
-    .select("indicator, value, n_total, rank_position, n_siblings, percentile, is_outlier")
+    .select(
+      "indicator, value, n_total, rank_position, n_siblings, percentile, median, mad, is_outlier",
+    )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
     .eq("geo_level", geoLevel)
@@ -48,6 +54,8 @@ export async function getPeerRank(
     rankPosition: data.rank_position,
     nSiblings: data.n_siblings,
     percentile: data.percentile,
+    median: data.median,
+    mad: data.mad,
     isOutlier: data.is_outlier,
   };
 }
@@ -75,7 +83,9 @@ export async function getPeerRanks(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("agg_peer_ranks")
-    .select("indicator, value, n_total, rank_position, n_siblings, percentile, is_outlier")
+    .select(
+      "indicator, value, n_total, rank_position, n_siblings, percentile, median, mad, is_outlier",
+    )
     .eq("dataset_id", datasetId)
     .eq("geo_code", geoCode)
     .eq("geo_level", geoLevel)
@@ -93,6 +103,8 @@ export async function getPeerRanks(
         rankPosition: row.rank_position,
         nSiblings: row.n_siblings,
         percentile: row.percentile,
+        median: row.median,
+        mad: row.mad,
         isOutlier: row.is_outlier,
       },
     ]),

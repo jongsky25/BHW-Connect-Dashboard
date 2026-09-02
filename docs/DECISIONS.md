@@ -8035,3 +8035,64 @@ new dependency, and no provider call added.
 which is covered, but the React output itself is asserted only through typecheck. Nested lists,
 blockquotes and fenced code blocks are outside the subset and render as literal text; if answers
 start using them, extend `parseBlocks` rather than reaching for a dependency.
+
+## 2026-09-02 — Increment 5.3: interpretation tools
+
+The assistant could fetch "45.2%" and could not say whether that was good. Everything needed to
+answer that already existed and nothing exposed it: `agg_peer_ranks` carries the rank, percentile,
+sibling median and an outlier flag; `lib/analysis/` has spread and correlation; `lib/db/insights.ts`
+generates the same ranked cards `/bhw` and `/explore` render. Three tools —
+`getPeerContext`, `getDistribution`, `getInsightCards` — over code the dashboard already runs.
+
+**No schema, no query, no new data.** This is a tool surface, which is what keeps "the number in
+the answer matches the number on screen" (`lib/ai/tools.ts`) true for interpretation as well as for
+figures. It is the fourth *kind* of tool rather than a fourth retrieval path: §2's three paths —
+SQL for numbers, edges for provenance, documents for prose — can all fetch a figure and none can
+rank it.
+
+**`getPeerRank` now selects `median` and `mad`.** Both were already in `agg_peer_ranks` (E2.3) and
+neither was read. Additive — existing consumers destructure by name and are untouched — and it is
+what makes `isOutlier` explicable rather than magic. "Flagged an outlier" with no median and no
+deviation behind it is exactly the naked number this project's figure contract forbids; the
+dashboard gets the same two fields for free.
+
+**Every "nothing here" states why.** `agg_peer_ranks` has no national row (nothing to be a sibling
+of) and no barangay rows. A bare `{ranked: false}` reads to a model as *missing data*, which it
+then reports as a gap in the dataset rather than a property of the table — so `unrankedReason`
+returns the cause and the tool passes it through. Same for `getInsightCards` returning nothing
+(no card cleared the dashboard's thresholds) and `getDistribution` on a barangay (nothing is
+inside it). The reason is part of the answer.
+
+**Small samples are marked, not filtered.** `getDistribution` flags every child below
+`MIN_LEADER_N` (30) and warns in the payload, mirroring the floor `lib/db/insights.ts` already
+applies before crowning a leader — a 3-profile barangay at "100% accredited" is noise. Filtering
+them out silently would misstate the count; leaving them unmarked would let the model rank them.
+
+**Correlation passes `insufficient` straight through.** `describeCorrelation` refuses a
+coefficient below its own n floor, and the tool does not paper over that with a number nobody
+should quote.
+
+**`InsightCard.score` is dropped.** It is an editorial rank used to curate the grid and documented
+as not shown to users; handing it to the model invites it to quote a figure that means nothing
+outside the generator.
+
+**Prompt rule 14, and its last clause.** The rule tells the model to call `getPeerContext` before
+stating a figure for one place. What matters more is the closing constraint: it may quote a rank or
+an outlier flag a tool returned and may never derive one itself. `auditNarrative` strips sentences
+whose *numbers* are unsupported, so "Basilan looks like an outlier" passes it untouched — the
+sentence carries no number. The prompt is the only thing standing between a reported flag and an
+invented one, so the constraint is asserted by a test.
+
+**Indicator access is a lookup, not a switch.** `PICK_FROM_CHILD` and `PICK_FROM_BENCHMARK` are
+`Record<MapBaseIndicator, …>`, so a seventh indicator is a compile error rather than a silent null
+in an answer.
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**951 tests, up from 930**. `npx prettier --check` clean on every file touched. `next build`
+compiles and typechecks; its prerender step fails only in this sandbox, which has no database.
+No migration.
+
+**Still open.** `getDistribution` walks one level down only, so "every barangay in Region VII" is
+still two calls or a `traverseGraph` walk. The correlation is Spearman over the children of one
+parent — it does not control for anything, and the prompt does not yet warn the model against
+reading it causally.
