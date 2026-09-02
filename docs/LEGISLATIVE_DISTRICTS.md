@@ -9,29 +9,50 @@ Every membership row carries the source revision it came from, so any row on
 - Congress: **20th** (valid from 2025-06-30)
 - Snapshot retrieved: **2026-09-02T04:12:52Z**
 - Districts: **250**
-- Membership rows: **3043**
+- Membership rows: **3207**
 - Representatives: **194**
 
 ## How each membership row was resolved
 
-| match_method    | rows |
-| --------------- | ---: |
-| `disambiguated` |    4 |
-| `exact`         | 2211 |
-| `whole_parent`  |  828 |
+| match_method   | rows |
+| -------------- | ---: |
+| `exact`        | 2247 |
+| `whole_parent` |  960 |
 
 ## Validation gates
 
 | gate                                     | result   | detail                                                                                                                                                                                                                                                                                                       |
 | ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `registry_agreement`                     | pass     | {"in_wikidata_not_parsed": 6, "parsed_not_in_wikidata": 0, "sample_only_wikidata": ["Agusan del Norte's 1st congressional district", "Agusan del Norte's 2nd congressional district", "Albay's 4th congressional district", "Maguindanao's 1st congressional district", "Maguindanao's 2nd congressional ... |
-| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 56, "double_claimed_count": 46, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": ["0300812", "0403425", "0603001", "0603002", "0603003", "0603004", "0603005", "0603006",... |
-| `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 13, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "0403403": {"missing": 23, "extra": 0, "sample_missing": ["0403403002", "0403403003", "0403403004", "0403403005", "0403403006"]}, "1030500": {"missing": 1, "extra": 0, "... |
+| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 61, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
+| `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 14, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "0403403": {"missing": 23, "extra": 0, "sample_missing": ["0403403002", "0403403003", "0403403004", "0403403005", "0403403006"]}, "1030500": {"missing": 1, "extra": 0, "... |
 | `no_barangay_in_two_districts`           | pass     | {"offenders": []}                                                                                                                                                                                                                                                                                            |
 | `no_partylist_seats`                     | pass     | {"count": 0}                                                                                                                                                                                                                                                                                                 |
 | `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
-| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3043, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
-| `unresolved_reported`                    | pass     | {"unresolved": 140, "ambiguous": 10, "scope_unknown_pages": [{"parent": "Calamba", "candidates": [[0, "citymun 0403405 (CITY OF CALAMBA)"], [0, "citymun 1004204 (CALAMBA)"]], "districts": 1}, {"parent": "Taguig\u2013Pateros", "candidates": [], "districts": 2}]}                                        |
+| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3207, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
+| `unresolved_reported`                    | pass     | {"unresolved": 114, "ambiguous": 4, "scope_unknown_pages": []}                                                                                                                                                                                                                                               |
+
+## Corroboration (guardrail 2)
+
+**No second source was supplied, so every row is `single_source` and the
+corroboration gate fails.** That is deliberate: no district assignment ships on one
+source alone. COMELEC's House-contest precinct returns are the intended second
+opinion and are not fetchable from the build environment (HTTP 403); they are
+downloaded by hand and passed with `--comelec-snapshot`, as every PSA file in this
+repo already is.
+
+## Independent cross-check
+
+Compared against `districts_generated.json` — **compared against, never ingested**.
+Checking work against a third party needs no licence; republishing it would.
+
+| measure               | count |
+| --------------------- | ----: |
+| rows compared         |  2286 |
+| agree                 |  2012 |
+| disagree              |     0 |
+| only in the other set |   274 |
+| only in ours          |  1195 |
 
 ## Unresolved and disputed
 
@@ -39,7 +60,7 @@ Published rather than hidden, on the same reasoning `/data-quality` already take
 missing assignment reads as a known finding rather than a hidden one. An unresolved LGU
 is a visible gap; a wrongly-matched one would be a silent lie.
 
-- Unresolved members: **140**
-- Ambiguous members: **10**
+- Unresolved members: **114**
+- Ambiguous members: **4**
 
 The full lists are in `ingestion/_qa_report_legislative_districts.json`.

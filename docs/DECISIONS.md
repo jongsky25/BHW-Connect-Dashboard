@@ -7311,3 +7311,82 @@ generated.
 rebuilt, not versioned — the same posture `dim_geo_nir.csv` already takes. The Wikipedia and
 Wikidata snapshots (6.5 MB) **are** committed, because the build must be reproducible without the
 network and it must be possible to diff why a mapping changed between two runs.
+
+## 2026-09-02 — D1.3b: COMELEC as the second source, BetterGov as a validation set
+
+Implements the recommendation put to the owner and accepted: take the second source from **COMELEC
+directly**, and give BetterGov.PH's file the role it can actually hold — a validation set. Two new
+modes on `ingestion/build_legislative_districts.py` (`--comelec-snapshot`, `--validation-set`) and
+four bug fixes the cross-check paid for immediately.
+
+**Why COMELEC and not BetterGov, recorded because it is not obvious.** They are not two sources:
+BetterGov's `districts_generated.json` _is_ a COMELEC derivative — their
+`extract_districts_from_elections.py` reads the House contest out of crawled precinct returns.
+Taking their file would take the same source at two removes through someone else's parser, which is
+the shape of the mistake D1.1 found. Beyond that: coverage (their file resolves barangay grain for
+12 multi-district cities; there are ~34, and the multi-district city is the hard part of D1), and
+licence (their repo has none, while what we take from COMELEC — which contest a precinct voted in —
+is a fact rather than expression, the same §8 argument the plan already makes for the
+Wikipedia-derived mapping).
+
+**The licence question dissolves once the role is right.** Checking work against something needs no
+licence; republishing it does. So their file is compared against and never ingested — the role §2
+already gives PSA. `compare_against_validation_set()` reports and cannot write: a selftest asserts
+that no membership row is mutated by a comparison.
+
+**No `--fetch` for COMELEC, and the shortcut does not exist.** `comelec.gov.ph` and
+`2025electionresults.comelec.gov.ph` both return 403 with the proxy reporting no relay failures.
+The one reachable bulk CC BY 4.0 precinct-level dataset (Figshare 29086472, 63 MB) was checked
+column by column and carries **senate and party-list only** — nationwide contests that say nothing
+about congressional districts. The House contest lives in the per-precinct returns, so the snapshot
+is produced by hand on an unblocked connection and committed, exactly as every PSA file here is.
+
+**What the cross-check found.** Run against BetterGov's 2,286 resolvable rows, the first comparison
+returned **37 disagreements**. All four causes were ours:
+
+1. **`normalise_name` folded "Iloilo City" onto "Iloilo".** Iloilo City's lone district took the
+   slug `iloilo-at-large` and, having no members to score, fell through to the namesake province
+   and was expanded across **all 35 municipalities of Iloilo** — which have five districts of their
+   own. Fixed by splitting `slug_normalise()` from `normalise_name()`: matching a place folds
+   "city", identity must not.
+2. **`default_scope` ignored an explicit "City" in the source name.** When the source says "Iloilo
+   City" that is evidence, not decoration, and it now outranks a province of the same folded name.
+3. **A national name fallback fired even when a scope was known.** Taguig–Pateros does not resolve
+   to one dim_geo row, so its page was unscoped and its barangay **"San Roque" matched the
+   municipality of San Roque in Northern Samar** — a different island group. Bataan's **"Samal"**
+   was filed under Davao del Norte the same way. Both were nationally unique, so both looked like
+   clean `exact` matches. The fallback is gone: an unscoped page resolves nothing, and a member
+   absent from its scoped province is `unresolved_in_province`. Unresolved is a published gap; a
+   nationally-unique wrong match is an invisible lie.
+4. **Two pages genuinely need rung 4**, and only two of 114. `MANUAL_SCOPES` now carries Calamba
+   (two municipalities of that name; only the Laguna city has a district of its own) and
+   Taguig–Pateros (spans a city _and_ a municipality — the case §1.1 names as the reason district
+   codes are slugs), each with its reason.
+
+**Result: 37 disagreements → 0.** 2,012 rows agree with an independently derived COMELEC-based
+mapping and none disagree. Double-claimed citymuns went 46 → **0**; unresolved members 512 → 158;
+ambiguous 49 → 2; membership rows 3,043 → 3,207. Three of those four fixes were bugs no gate we had
+would have caught, because each produced a plausible, internally consistent row — which is the
+argument for a second opinion, made concrete.
+
+**Still failing, and honestly.** `corroborated_by_two_sources` (no COMELEC snapshot in this
+environment — 3,207 single-source rows), `citymun_covered_exactly_once` (62 uncovered), and
+`multi_district_city_barangays_complete` (13 cities with leftover barangays). The build still
+refuses to write. D1 is not done.
+
+One thing the fixes changed that is worth noting rather than hiding: `disambiguated` now resolves
+**0** rows in the real build, because removing the national fallback moved those cases onto the
+in-province exact path. The rung is still implemented and still selftested; it is simply not load
+-bearing against these sources. If a future source needs it, it is there.
+
+**Testing.** `--selftest` gains COMELEC contest parsing (including that a Sangguniang Bayan
+district is _not_ a congressional one), corroboration across agree/disagree/absent, the assertion
+that a corroborated row satisfies the gate a single-source row fails, the validation-set diff, and
+the manual-scope path. Mutation-checked four more ways, all caught: restoring the national fallback,
+folding "city" back into the slug, letting the validation set write to rows, and making
+corroboration ignore the ordinal.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated `docs/LEGISLATIVE_DISTRICTS.md`.
+BetterGov's file is **not** committed and not redistributed; it is read from a local checkout via
+`--validation-set`, and the generated doc names only its basename.
