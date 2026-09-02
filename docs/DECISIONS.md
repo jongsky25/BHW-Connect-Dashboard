@@ -7449,3 +7449,110 @@ rewriting is recurring diff noise.
 
 **Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
 application code. `npx prettier --check` passes on the regenerated doc.
+
+## 2026-09-02 — D1.3d: the six "missing districts" were a resolution failure here, not a gap in the sources
+
+The increment was scoped as "fetch the six lone-district HUCs Wikidata's roster is missing" —
+Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa, Isabela City — on the reading D1.3c recorded.
+**That diagnosis was wrong, and the correction is the substance of this entry.** None of the six
+has a legislative district of its own. Each is a _member_ of a district that the build had already
+fetched and parsed, named in that district's own article:
+
+| city            | district it votes in | the article's own words                                                        |
+| --------------- | -------------------- | ------------------------------------------------------------------------------ |
+| Angeles         | Pampanga's 1st       | "The district consists of Angeles City, the adjacent city of Mabalacat, and…"  |
+| Olongapo        | Zambales's 1st       | "consists of the city of Olongapo and adjacent municipalities…"                |
+| Lucena          | Quezon's 2nd         | "consists of Quezon's capital city of Lucena and adjacent municipalities…"     |
+| Tacloban        | Leyte's 1st          | "consists of the provincial capital, Tacloban, and adjacent municipalities…"   |
+| Puerto Princesa | Palawan's 3rd        | "composed of the city of Puerto Princesa and adjacent municipality of Aborlan" |
+| Isabela City    | Basilan's lone       | infobox `region = [[Zamboanga Peninsula]] ([[Isabela…]])` + `[[Bangsamoro]]`   |
+
+The independently derived COMELEC-based mapping agrees with all six, so this is not one source's
+opinion. Wikidata's roster was right to have no district for them, and the 250-vs-254 count was
+never the same question as the coverage gap — a point worth keeping, because the two were run
+together and the plan's expected 254 still needs its own look.
+
+**What actually failed is a fact about PSGC, and it was one level below where anyone was looking.**
+A highly urbanised city gets its **own province-level row** in `dim_geo`, with the city hanging off
+that row rather than off the province it sits in: `CITY OF ANGELES (HUC)` (03301) with child
+`CITY OF ANGELES` (0330100), beside but not inside `PAMPANGA`. Such a city can still vote with the
+province. So the province-scoped lookup — which is correct, and stays the default — could not reach
+a row that is not the province's child, and five of the six came back `unresolved_in_province`
+while the source said plainly where they belonged. The sixth sat inside a `whole_parent` expansion
+that had the same blind spot. This is exactly the case the plan's D1.4 named in advance as rung 4's
+expected work ("Isabela City/Basilan, Cotabato City, the HUC-votes-with-province cases"); what it
+did not anticipate is that five of them are attested well enough not to need a human at all.
+
+**The fix takes its evidence from the source rather than from a hand-maintained list.** A
+"Legislative districts of X" page states in its **lead sentence** exactly which independent cities
+its districts represent, as disambiguated wikilinks: _"…the representations of the province of
+[[Pampanga]] and the highly urbanized city of [[Angeles City|Angeles]]…"_. `independent_city_scope`
+reads that and widens the province's scope by those cities only. Two constraints keep it from being
+the national fallback D1.3b removed:
+
+- **The lead sentence only.** The same phrasing recurs throughout every page's History section
+  about arrangements that ended decades ago — Zambales's page has "the city of Olongapo (chartered
+  in 1966)" in a sentence about 1898–1972 — and a whole-page scan would import those as current.
+- **Within the province's region, and never nationally.** A city that votes with a neighbouring
+  province is in that province's region; requiring exactly one citymun of that name in the region
+  is narrow enough that the "San Roque in Northern Samar" class of accident cannot recur. A name
+  that does not resolve to exactly one is reported, never guessed at.
+
+The widening also happens **after** `choose_scope`, not before. Scope detection scores candidate
+readings by how many members resolve under each, and a scope widened first would let a wrong
+reading borrow a city to win on.
+
+**It is its own `match_method`, and that is the decision most worth arguing.** Filing these as
+`exact` would have been defensible — the name did match exactly — and it is precisely what makes it
+wrong. D1.3b's third bug was a barangay of Taguig matching the municipality of San Roque in
+Northern Samar, and it survived review because a widened lookup left no trace on the row it
+produced. The set a name was matched against is a property of how the row was made, and D2.2
+publishes a per-row receipt; `independent_city` puts it on the row instead of in a build log.
+Migration `20260902070000_district_independent_city.sql`, following D1.3's `whole_parent`.
+
+**Isabela City is deliberately not that method.** It votes with Basilan from Region IX while the
+rest of Basilan is in the Bangsamoro, so the region test refuses it — correctly — and Basilan's
+page lead names no city at all. A person decided it, with the reason committed beside the entry,
+and it ships as `manual_override`. One override in 3,403 rows is the rung working as designed
+rather than a list starting to grow.
+
+**Result.** Membership rows **3,397 → 3,403**; uncovered citymuns **59 → 53**; unresolved members
+**107 → 102**; rows agreeing with the independent COMELEC-derived mapping **2,125 → 2,130**, still
+with **zero disagreements** and **zero double-claimed** citymuns. No other gate moved. The build
+still fails `corroborated_by_two_sources` (no COMELEC snapshot in this environment) and
+`citymun_covered_exactly_once`, and still refuses to write. D1 is not done.
+
+**Two corrections to what the D1.3c entry recorded, since both would otherwise be re-derived.**
+Its "10 cities with leftover barangays" does not reproduce: the figure is **12**, both before and
+after this change, from an unmodified snapshot. And its first "cause already established" —
+Wikidata's incomplete roster — was the wrong diagnosis described above; `KNOWN_GAP_NOTES` now
+carries the corrected account rather than quietly dropping the old one, because the generated doc
+is what a reader checks.
+
+**The residual gap is now characterised down to individual rows**, in `RESIDUAL_GAP_NOTES` and the
+QA report. Of the 31 remaining `unresolved_in_province` members, **23 are name disagreements**
+between Wikipedia and PSA ("Impasugong" against `IMPASUG-ONG`, "Maayon" against `MA-AYON`), of
+which two look like renamings rather than spellings and one — "Talitay", filed under Maguindanao
+del Sur by the article and under Maguindanao del Norte by `dim_geo` — is a boundary disagreement
+between the sources, not a name question. The other **8 are template syntax**, not places: four
+articles write `| titlestyle              = …` with a long run of spaces the member parser does not
+recognise as a parameter, so the parameter and the list's own "LGU" title leak in as member names.
+Neither class is touched here. The 23 each need a decision and a reason, which is per-row work
+rather than a parser change; the 8 are harmless to the mapping but are noise in a list D2.2
+publishes.
+
+**Testing.** `--selftest` gains the whole rung on synthetic fixtures: lead-sentence extraction
+including that the History section's identical phrasing does _not_ leak in, the region test with a
+same-named city planted in another region, the barangay-grain guard, the override path, and
+`lone_district_rows` — extracted from `build()` for the same reason `lone_district_names_parent()`
+was, so it can be asserted directly. Mutation-checked six ways, **all six caught on the first run**:
+dropping the region test, scanning the whole page instead of the lead, letting the rung fire on a
+city page, reporting an override as `independent_city`, dropping the de-duplication in the lone
+expansion, and removing `independent_city` from the declared-method gate.
+
+**Standards.** The migration's constraint behaviour was verified against the live database rather
+than assumed — `independent_city` accepted, `fuzzy` rejected with a check violation, the probe rows
+removed and all four tables confirmed back at zero. `npm run lint`, `npm run typecheck` and
+`npm test` clean — 835 tests, unchanged; this increment adds no application code. `npx prettier
+--check` passes on the regenerated `docs/LEGISLATIVE_DISTRICTS.md` and on this entry. `.sql` and
+`.py` have no prettier parser.

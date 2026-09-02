@@ -9,28 +9,44 @@ Every membership row carries the source revision it came from, so any row on
 - Congress: **20th** (valid from 2025-06-30)
 - Snapshot retrieved: **2026-09-02T04:12:52Z**
 - Districts: **250**
-- Membership rows: **3397**
+- Membership rows: **3403**
 - Representatives: **194**
 
 ## How each membership row was resolved
 
-| match_method   | rows |
-| -------------- | ---: |
-| `exact`        | 2350 |
-| `whole_parent` | 1047 |
+| match_method       | rows |
+| ------------------ | ---: |
+| `exact`            | 2350 |
+| `independent_city` |    5 |
+| `manual_override`  |    1 |
+| `whole_parent`     | 1047 |
+
+## Independent cities added to a province's scope
+
+PSGC files a highly urbanised city under its own province-level row, so a city that votes with a neighbouring province is not among that province's `dim_geo` children and a province-scoped lookup cannot reach it. Each row below widened one province's scope by one city. `page_lead` means the province's own districts page says so in its lead sentence; `manual_override` means it does not and a person decided, with the reason shown.
+
+| province page  | city                              | geo_code  | resolved as        | rows | attested by                                                                                                                                                                |
+| -------------- | --------------------------------- | --------- | ------------------ | ---: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Basilan        | CITY OF ISABELA                   | `0990101` | `manual_override`  |    1 | Isabela City is in Region IX but votes with Basilan, whose lone district's infobox records the split region; Basilan's page lead names no city, so prose cannot attest it. |
+| Leyte          | CITY OF TACLOBAN (CAPITAL)        | `0831600` | `independent_city` |    1 | page lead sentence                                                                                                                                                         |
+| Palawan        | CITY OF PUERTO PRINCESA (CAPITAL) | `1731500` | `independent_city` |    1 | page lead sentence                                                                                                                                                         |
+| Pampanga       | CITY OF ANGELES                   | `0330100` | `independent_city` |    1 | page lead sentence                                                                                                                                                         |
+| Quezon         | CITY OF LUCENA (CAPITAL)          | `0431200` | `independent_city` |    1 | page lead sentence                                                                                                                                                         |
+| South Cotabato | CITY OF GENERAL SANTOS            | `1230800` | `independent_city` |    0 | page lead sentence                                                                                                                                                         |
+| Zambales       | CITY OF OLONGAPO                  | `0331400` | `independent_city` |    1 | page lead sentence                                                                                                                                                         |
 
 ## Validation gates
 
 | gate                                     | result   | detail                                                                                                                                                                                                                                                                                                       |
 | ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `registry_agreement`                     | pass     | {"in_wikidata_not_parsed": 6, "parsed_not_in_wikidata": 0, "sample_only_wikidata": ["Agusan del Norte's 1st congressional district", "Agusan del Norte's 2nd congressional district", "Albay's 4th congressional district", "Maguindanao's 1st congressional district", "Maguindanao's 2nd congressional ... |
-| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 59, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
+| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 53, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
 | `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 12, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "1030500": {"missing": 1, "extra": 0, "sample_missing": ["1030500043"]}, "0730600": {"missing": 12, "extra": 0, "sample_missing": ["0730600013", "0730600016", "073060002... |
 | `no_barangay_in_two_districts`           | pass     | {"offenders": []}                                                                                                                                                                                                                                                                                            |
 | `no_partylist_seats`                     | pass     | {"count": 0}                                                                                                                                                                                                                                                                                                 |
 | `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
-| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3397, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
-| `unresolved_reported`                    | pass     | {"unresolved": 107, "ambiguous": 4, "scope_unknown_pages": []}                                                                                                                                                                                                                                               |
+| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3403, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
+| `unresolved_reported`                    | pass     | {"unresolved": 102, "ambiguous": 4, "scope_unknown_pages": []}                                                                                                                                                                                                                                               |
 
 ## Corroboration (guardrail 2)
 
@@ -49,14 +65,14 @@ Checking work against a third party needs no licence; republishing it would.
 | measure               | count |
 | --------------------- | ----: |
 | rows compared         |  2286 |
-| agree                 |  2125 |
+| agree                 |  2130 |
 | disagree              |     0 |
-| only in the other set |   161 |
-| only in ours          |  1272 |
+| only in the other set |   156 |
+| only in ours          |  1273 |
 
 ## What is still uncovered, and why
 
-**59 municipalities/cities are not yet covered by any district.** Grouped by parent, so the shape of the gap is visible rather than just its size:
+**53 municipalities/cities are not yet covered by any district.** Grouped by parent, so the shape of the gap is visible rather than just its size:
 
 | parent                        | uncovered |
 | ----------------------------- | --------: |
@@ -70,16 +86,20 @@ Checking work against a third party needs no licence; republishing it would.
 | MAGUINDANAO DEL SUR           |         2 |
 | NUEVA ECIJA                   |         1 |
 | PAMPANGA                      |         1 |
-| CITY OF ANGELES (HUC)         |         1 |
-| CITY OF OLONGAPO (HUC)        |         1 |
+| BATANGAS                      |         1 |
+| CAVITE                        |         1 |
 
 ### Causes already established
 
-**Wikidata's roster is incomplete.** It carries no district for Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa or Isabela City -- all lone-district highly urbanised cities whose districts plainly exist. The registry drives the page list, so these were never fetched. This is most of the gap between the 250 districts built and the 254 the plan expects, and it is a finding about Wikidata rather than a defect here: inventing the missing rows from dim_geo would be exactly the fabrication this build refuses everywhere else.
+**Six uncovered cities were a resolution failure here, not a hole in the sources. Closed.** Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa and Isabela City were read as six lone districts missing from Wikidata's roster. They are not. None of the six has a district of its own: each is a member of an existing district, named in that district's own article -- Angeles in Pampanga's 1st, Olongapo in Zambales's 1st, Lucena in Quezon's 2nd, Tacloban in Leyte's 1st, Puerto Princesa in Palawan's 3rd, Isabela City in Basilan's lone -- and an independently derived COMELEC-based mapping agrees with all six. The cause was a fact about PSGC: a highly urbanised city gets its own province-level row in dim_geo, so it is not among the children of the province it votes with and a province-scoped lookup could not reach it. Resolved by the `independent_city` rung, which widens a province's scope only with the cities that province's own page lead names, and only within its region.
 
 **Davao City is described at a grain PSGC does not model.** Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', 'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays directly off the city with no intermediate level. Those 82 barangays cannot be placed from this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in a barangay and names its own contest; this is the clearest single argument for the second source.
 
 **The BARMM Special Geographic Area is not covered by any district article.** Its municipalities were transferred from Cotabato and the sources in this set have not caught up. Reported rather than assigned.
+
+**23 members are named differently by Wikipedia and by PSA, and none is fuzzy-matched.** Mostly spelling: 'Impasugong' against dim_geo's IMPASUG-ONG, 'Bulakan' against BULACAN, 'Maayon' against MA-AYON, 'Sergio Osmena' against SERGIO OSMENA SR. Two look like renamings instead -- Zamboanga del Norte's 'Leon B. Postigo' beside a BACUNGAN left uncovered in that same province, Maguindanao del Sur's 'Datu Montawal' beside a PAGAGAWAN -- and one is not a name question at all: 'Talitay' is listed under Maguindanao del Sur while dim_geo files TALITAY under Maguindanao del Norte, which is a boundary disagreement between the sources. Each is reported as unresolved_in_province and none is guessed at: guardrail 1 makes an unresolved LGU a published finding and a wrongly-matched one an invisible lie. Closing them needs the PSGC crosswalk (rung 3) or a committed override carrying a reason apiece -- a decision per row, not a parser change.
+
+**Eight `unresolved` entries are template syntax, not places.** Four district articles (Batangas's 1st, Cavite's 1st, 5th and 7th) write their collapsible list with a long run of spaces before the '=' (`| titlestyle              = font-weight:normal;...`), which the member parser does not recognise as a parameter, so the parameter and the list's own 'LGU' title leak in as member names. They resolve to nothing and are therefore harmless to the mapping, but they are noise in a list D2.2 publishes.
 
 ## Unresolved and disputed
 
@@ -87,7 +107,7 @@ Published rather than hidden, on the same reasoning `/data-quality` already take
 missing assignment reads as a known finding rather than a hidden one. An unresolved LGU
 is a visible gap; a wrongly-matched one would be a silent lie.
 
-- Unresolved members: **107**
+- Unresolved members: **102**
 - Ambiguous members: **4**
 
 The full lists are in `ingestion/_qa_report_legislative_districts.json`.
