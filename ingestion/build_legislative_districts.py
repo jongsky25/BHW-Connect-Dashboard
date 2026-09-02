@@ -439,7 +439,26 @@ GROUP_CAPTIONS = {"cities", "municipalities", "barangays", "city", "municipality
 BARANGAY_RANGE_RE = re.compile(r"^barangays?\s+(\d+)\s*[–—-]\s*(\d+)$", re.I)
 BARANGAY_ONE_RE = re.compile(r"^barangays?\s+(\d+(?:\s*-\s*[A-Za-z])?)$", re.I)
 BARE_CONTINUATION_RE = re.compile(r"^(\d+(?:\s*-\s*[A-Za-z])?)$")
-INLINE_RANGE_RE = re.compile(r"barangays?\s+(\d+)\s*[–—-]\s*(\d+)", re.I)
+INLINE_RANGE_RE = re.compile(r"barangays?\s+(\d+)\s*[–—]\s*(\d+)", re.I)
+# Davao City numbers its poblacion barangays with a letter suffix and writes runs as
+# "Barangays 1-A-10-A". The suffix is part of the name (dim_geo: "BARANGAY 1-A (POB.)"), so the
+# range walks the number and carries the letter through. Both bounds must share a letter -- a run
+# that crosses suffixes would be two runs, and guessing across them is exactly the kind of
+# arithmetic that stops being arithmetic.
+LETTERED_RANGE_RE = re.compile(
+    r"^barangays?\s+(\d+)\s*-\s*([A-Za-z])\s*[–—-]\s*(\d+)\s*-\s*([A-Za-z])$", re.I)
+
+
+def flatten_links(text):
+    """Replace [[target|display]] with display, leaving surrounding text intact.
+
+    link_text_and_target() returns only the FIRST link's display text, which silently discards
+    everything around it. Caloocan's 2nd district writes its range as
+    "Barangays 5-[[Barangay 76, Caloocan|76]]" -- the upper bound is a wikilink -- so taking the
+    link alone yielded the single member "76" and lost 71 barangays. Flattening first keeps the
+    range readable as "Barangays 5-76".
+    """
+    return WIKILINK_RE.sub(lambda m: (m.group(2) or m.group(1)).strip(), text or "")
 
 
 def expand_barangay_runs(members, raw_field=""):
@@ -459,6 +478,14 @@ def expand_barangay_runs(members, raw_field=""):
     numbering_context = False
     for m in members:
         name = m["name"].strip()
+        lettered = LETTERED_RANGE_RE.match(name)
+        if lettered:
+            lo, la, hi, ha = lettered.groups()
+            if la.upper() == ha.upper() and int(lo) <= int(hi) and int(hi) - int(lo) <= 1000:
+                numbering_context = True
+                for n in range(int(lo), int(hi) + 1):
+                    add(f"Barangay {n}-{la.upper()}")
+                continue
         rng = BARANGAY_RANGE_RE.match(name)
         if rng:
             numbering_context = True
@@ -507,6 +534,11 @@ def parse_towns_field(value):
         for piece in split_top_level(part, ","):
             piece = strip_markup(piece).strip()
             if not piece:
+                continue
+            # A run must be recognised BEFORE link extraction, or a linked bound eats the range.
+            flat = re.sub(r"\s+", " ", flatten_links(piece)).strip()
+            if BARANGAY_RANGE_RE.match(flat) or LETTERED_RANGE_RE.match(flat) or BARANGAY_ONE_RE.match(flat):
+                members.append({"name": flat, "link_target": None})
                 continue
             display, target = link_text_and_target(piece)
             if not display or display.lower() in NON_PLACE_MEMBERS:
@@ -1039,6 +1071,18 @@ def choose_scope(parent_name, districts, geo, crosswalk=None):
     return best_cand, [(h, c["reading"]) for h, c in scored]
 
 
+def lone_district_names_parent(members, is_lone, parent):
+    """Does a lone district's member list just name its own parent?
+
+    Binan's towns field reads simply "Binan", meaning "all of it". Left as a member it is worse
+    than an empty list, because Binan HAS a barangay named BINAN: the name resolves cleanly and
+    the district ends up with 1 of the city's 24 barangays. A clean match at the wrong grain is
+    the quiet kind of wrong, so it is recognised here rather than left to look like a success.
+    """
+    return bool(is_lone and len(members) == 1
+                and normalise_name(members[0]["name"]) == normalise_name(parent))
+
+
 def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=2025):
     """Parse + resolve every district into district / membership / representative rows.
 
@@ -1078,7 +1122,14 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
         if info["abolished"] and info["abolished"] <= congress_year:
             skipped.append({"label": item["label"], "reason": f"abolished {info['abolished']}"})
             continue
+        # Wikidata's label is not always the article's title. Butuan is filed as "Legislative
+        # district of Butuan", which the pattern below cannot read, but the page redirects to
+        # "Butuan's at-large congressional district" -- and fetch_pages_batch followed that, so
+        # the resolved title parses cleanly. Falling back to it recovers the district instead of
+        # dropping it for a naming variant.
         m = re.match(r"^(.*?)'s (.+?) congressional district$", item["label"])
+        if not m:
+            m = re.match(r"^(.*?)'s (.+?) congressional district$", art.get("title", ""))
         parent = m.group(1) if m else (info["parent"] or item["label"])
         ordinal_label = m.group(2) if m else "lone"
         by_parent[parent].append((item, art, info, ordinal_label))
@@ -1126,6 +1177,14 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
                 })
 
             members = info["members"]
+            # A lone district whose towns field names its own parent -- Binan's reads simply
+            # "Binan" -- means "all of it", not "one place called that". Left alone this is worse
+            # than an empty list: Binan HAS a barangay named BINAN, so the name resolved cleanly
+            # and the district ended up with 1 of the city's 24 barangays instead of all of them.
+            # A clean match to the wrong grain is the quiet kind of wrong, so it is caught by
+            # name here rather than left to look like a success.
+            if lone_district_names_parent(members, is_lone, parent):
+                members = []
             if not members and is_lone:
                 # A lone district lists no constituents because it covers the whole parent by
                 # definition. Recorded as `whole_parent`, never dressed up as a name match.
@@ -1589,6 +1648,61 @@ def validate(built, registry, geo, allow_single_source=False):
     return gates
 
 
+def analyse_gaps(built, geo):
+    """Characterise what is still uncovered, grouped so a reader can act on it.
+
+    A count of 60 uncovered municipalities is a number; "9 of them are Manila's administrative
+    districts and 8 are the BARMM Special Geographic Area" is a finding. D2.2 publishes the
+    unresolved list rather than hiding it, on the same reasoning /data-quality already takes, and
+    a bare total would make that page useless. This is also what stops the same gap being
+    re-diagnosed from scratch every time the build is run.
+    """
+    claimed = {m["geo_code"] for m in built["memberships"]}
+    covered = set(claimed)
+    for code in list(claimed):
+        row = geo.by_code.get(code)
+        if row and row["geo_level"] == "barangay" and row.get("parent_code"):
+            covered.add(row["parent_code"])
+
+    all_citymun = {r["geo_code"] for r in geo.rows if r["geo_level"] == "citymun"}
+    uncovered = sorted(all_citymun - covered)
+    by_parent = defaultdict(list)
+    for code in uncovered:
+        row = geo.by_code[code]
+        parent = geo.by_code.get(row.get("province_code") or "", {})
+        by_parent[parent.get("geo_name") or row.get("province_code") or "?"].append(
+            {"geo_code": code, "geo_name": row.get("geo_name")})
+
+    return {
+        "uncovered_citymun_total": len(uncovered),
+        "uncovered_by_parent": {k: {"count": len(v), "members": v[:25]}
+                                for k, v in sorted(by_parent.items(), key=lambda kv: -len(kv[1]))},
+    }
+
+
+# Gaps whose cause has been established, so a reader is not left to re-derive it. Each is a
+# statement about the SOURCES, not about the build: no amount of parsing closes them.
+KNOWN_GAP_NOTES = [
+    ("Wikidata's roster is incomplete.", 
+     "It carries no district for Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa or Isabela "
+     "City -- all lone-district highly urbanised cities whose districts plainly exist. The "
+     "registry drives the page list, so these were never fetched. This is most of the gap between "
+     "the 250 districts built and the 254 the plan expects, and it is a finding about Wikidata "
+     "rather than a defect here: inventing the missing rows from dim_geo would be exactly the "
+     "fabrication this build refuses everywhere else."),
+    ("Davao City is described at a grain PSGC does not model.",
+     "Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', "
+     "'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays "
+     "directly off the city with no intermediate level. Those 82 barangays cannot be placed from "
+     "this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in "
+     "a barangay and names its own contest; this is the clearest single argument for the second "
+     "source."),
+    ("The BARMM Special Geographic Area is not covered by any district article.",
+     "Its municipalities were transferred from Cotabato and the sources in this set have not "
+     "caught up. Reported rather than assigned."),
+]
+
+
 # --------------------------------------------------------------------------- #
 # 7. Emit                                                                      #
 # --------------------------------------------------------------------------- #
@@ -1629,7 +1743,7 @@ def md_table(headers, rows, aligns=None):
     return out
 
 
-def write_doc_summary(built, gates, idx, corroboration=None, validation=None):
+def write_doc_summary(built, gates, idx, corroboration=None, validation=None, geo=None):
     """The report IS the doc, as docs/PSGC_CROSSWALK.md and BOUNDARY_RECONCILIATION.md are."""
     d, m = built["districts"], built["memberships"]
     by_method = defaultdict(int)
@@ -1700,6 +1814,18 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None):
              ["only in the other set", validation["only_in_validation_set"]],
              ["only in ours", validation["only_in_ours"]]],
             ["left", "right"])
+    gaps = analyse_gaps(built, geo) if geo is not None else None
+    if gaps:
+        lines += ["", "## What is still uncovered, and why", "",
+                  f"**{gaps['uncovered_citymun_total']} municipalities/cities are not yet covered "
+                  "by any district.** Grouped by parent, so the shape of the gap is visible rather "
+                  "than just its size:", ""]
+        lines += md_table(["parent", "uncovered"],
+                          [[k, v["count"]] for k, v in gaps["uncovered_by_parent"].items()][:12],
+                          ["left", "right"])
+        lines += ["", "### Causes already established", ""]
+        for title, body in KNOWN_GAP_NOTES:
+            lines += [f"**{title}** {body}", ""]
     lines += [
         "",
         "## Unresolved and disputed",
@@ -1714,7 +1840,20 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None):
         "The full lists are in `ingestion/_qa_report_legislative_districts.json`.",
         "",
     ]
-    DOC_PATH.write_text("\n".join(lines))
+    # Collapse runs of blank lines. The sections above are assembled independently and each ends
+    # with its own spacer, so two adjacent ones produce a double blank that prettier would rewrite
+    # -- turning a generated file into recurring diff noise. Normalising here keeps regeneration a
+    # no-op for the formatter regardless of which sections are present.
+    out, blank = [], False
+    for line in lines:
+        if line.strip() == "":
+            if blank:
+                continue
+            blank = True
+        else:
+            blank = False
+        out.append(line)
+    DOC_PATH.write_text("\n".join(out))
     return DOC_PATH
 
 
@@ -1883,6 +2022,29 @@ def selftest():
     # A citymun claimed by nobody is the other direction of the same report.
     assert gates["citymun_covered_exactly_once"]["ok"] is False, gates["citymun_covered_exactly_once"]
 
+
+    # -- coverage fixes, each of which closed a real gap ---------------------------
+    # A range whose upper bound is a wikilink. Caloocan's 2nd writes "Barangays 5-[[...|76]]";
+    # taking the link alone yielded the single member "76" and lost 71 barangays.
+    linked = parse_towns_field("{{Collapsible list | Barangays 5\u201376 }}")
+    assert len(linked) == 72, len(linked)
+    linked2 = parse_towns_field("{{Collapsible list | Barangays 5\u2013[[Barangay 76, Caloocan|76]] }}")
+    assert len(linked2) == 72, [m["name"] for m in linked2][:5]
+    assert linked2[0]["name"] == "Barangay 5" and linked2[-1]["name"] == "Barangay 76"
+
+    # Lettered ranges (Davao City): the suffix is part of the name and must be carried through.
+    lettered = parse_towns_field("{{Collapsible list | Barangays 1-A\u201310-A }}")
+    assert [m["name"] for m in lettered] == [f"Barangay {n}-A" for n in range(1, 11)], lettered
+    # Bounds with DIFFERENT letters are two runs, not one; guessing across them is not arithmetic.
+    mixed = parse_towns_field("{{Collapsible list | Barangays 1-A\u201310-B }}")
+    assert not any(m["name"].startswith("Barangay 2-") for m in mixed), mixed
+
+    # A lone district naming its own parent means "all of it".
+    assert lone_district_names_parent([{"name": "Bi\u00f1an"}], True, "Bi\u00f1an") is True
+    assert lone_district_names_parent([{"name": "Bi\u00f1an"}], False, "Bi\u00f1an") is False
+    assert lone_district_names_parent([{"name": "Canlalay"}], True, "Bi\u00f1an") is False
+    assert lone_district_names_parent([{"name": "A"}, {"name": "B"}], True, "A") is False
+
     # -- COMELEC contest parsing --------------------------------------------------
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT") == (1, False)
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - 2ND DISTRICT") == (2, False)
@@ -2049,6 +2211,7 @@ def main():
             for k in {m["match_method"] for m in built["memberships"]}
         )),
         "gates": gates,
+        "gap_analysis": analyse_gaps(built, geo),
         "corroboration": corroboration,
         "validation_set": validation,
         "unresolved": built["unresolved"],
@@ -2068,7 +2231,7 @@ def main():
         qa["applied"] = "dry-run"
 
     if args.write_doc_summary:
-        qa["doc"] = str(write_doc_summary(built, gates, idx, corroboration, validation))
+        qa["doc"] = str(write_doc_summary(built, gates, idx, corroboration, validation, geo))
 
     QA_REPORT_PATH.write_text(json.dumps(qa, indent=2, default=str))
     summary = {k: qa[k] for k in ("counts", "match_methods", "gates_failed", "applied")}
