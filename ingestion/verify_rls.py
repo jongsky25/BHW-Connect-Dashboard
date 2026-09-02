@@ -34,6 +34,13 @@ PUBLIC_READ_TABLES = [
     "agg_data_completeness",
     "agg_bhw_stepzero_counts",
     "changelog_entries",
+    # Legislative districts (D1.2). Public because /districts and /districts/[code] publish the
+    # mapping and its per-row provenance. The policies additionally withhold status='rejected'
+    # rows; that half needs a service-role seed to exercise, so it is verified in the D1.2
+    # migration's own check rather than here (this script is deliberately anon-only).
+    "dim_legislative_district",
+    "geo_district_map",
+    "district_representative",
 ]
 
 SERVICE_ROLE_ONLY_TABLES = [
@@ -126,6 +133,31 @@ def main():
     if not ok:
         failures.append(f"feedback select-after-insert: expected zero rows, got {rows}")
 
+    # district_correction mirrors feedback: public INSERT, no SELECT policy, because
+    # submitter_email lives on the table. D2.5's public ledger must read through a server-side
+    # route that projects only the publishable columns -- never by relaxing this.
+    status, rows = request(
+        f"{rest}/district_correction",
+        anon_key,
+        method="POST",
+        body={
+            "session_id": "00000000-0000-0000-0000-000000000000",
+            "action": "other",
+            "rationale": "RLS verification test row - safe to delete __rls_verify__",
+        },
+        prefer="return=minimal",
+    )
+    ok = status in (200, 201, 204)
+    print(f"[{'ok' if ok else 'FAIL'}] anon INSERT district_correction: status={status}")
+    if not ok:
+        failures.append(f"district_correction insert: expected 200/201, got {status} {rows}")
+
+    status, rows = request(f"{rest}/district_correction?select=*", anon_key)
+    ok = status == 200 and rows == []
+    print(f"[{'ok' if ok else 'FAIL'}] anon SELECT district_correction (post-insert): status={status}, rows={len(rows) if isinstance(rows, list) else 'n/a'}")
+    if not ok:
+        failures.append(f"district_correction select-after-insert: expected zero rows, got {rows}")
+
     status, rows = request(
         f"{rest}/usage_events",
         anon_key,
@@ -159,7 +191,8 @@ def main():
     print(
         "Cleanup (run with service role): "
         "delete from feedback where page_path = '__rls_verify__'; "
-        "delete from usage_events where event_type = '__rls_verify__';"
+        "delete from usage_events where event_type = '__rls_verify__'; "
+        "delete from district_correction where rationale like '%__rls_verify__%';"
     )
 
 

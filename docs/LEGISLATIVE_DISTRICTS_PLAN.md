@@ -280,10 +280,19 @@ they will put `districts_generated.json` under CC0 or CC BY so it can serve as a
 corroboration source. Draft issue text: `docs/bettergov-district-mapping-issue.md`. It is not on
 the critical path; D1.2 onward proceed regardless.
 
-### D1.2 — Migration: the four tables (half a day)
+### D1.2 — Migration: the four tables — **done 2026-09-02.**
 
-Schema above, applied via the Supabase MCP as `20260902xxxxxx_legislative_districts.sql`, with the
+Schema above, applied via the Supabase MCP as `20260902030000_legislative_districts.sql`, with the
 per-table reasoning carried in comments as every other migration here does. No data.
+
+RLS decided per table and verified as `anon` against the live project: the three mapping tables are
+public-read gated on `status <> 'rejected'` (`auto` rows readable, because D1 loads at `auto` and
+D2.1 renders immediately), superseded rows stay visible because D2.2 publishes the history, and
+`district_correction` is insert-only with no SELECT policy exactly as `feedback` is.
+
+**One constraint this hands D2.5:** the public ledger cannot read `district_correction` from the
+client, because `submitter_email` is on the table. It needs a server-side route projecting only the
+publishable columns. Relaxing the policy is the wrong fix. See `docs/DECISIONS.md`, 2026-09-02.
 
 ### D1.3 — `ingestion/build_legislative_districts.py` (2–3 days)
 

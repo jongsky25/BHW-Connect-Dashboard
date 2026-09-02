@@ -7141,3 +7141,76 @@ untouched at its current baseline. `npx prettier --check` passes on
 `docs/LEGISLATIVE_DISTRICTS_PLAN.md` and `docs/bettergov-district-mapping-issue.md`.
 `docs/DECISIONS.md` remains the pre-existing prettier failure it has been since July, left alone as
 every prior entry has left it; this entry's own text is prettier-clean.
+
+## 2026-09-02 — D1.2: the four legislative-district tables
+
+`supabase/migrations/20260902030000_legislative_districts.sql`, applied to `bhw-connect`
+(`ejcuwrnxngdwvecxwrhy`) via the Supabase MCP. Schema exactly as
+`docs/LEGISLATIVE_DISTRICTS_PLAN.md` §3 specifies it — `dim_legislative_district`,
+`geo_district_map`, `district_representative`, `district_correction`, plus the partial unique index
+— with per-table reasoning carried in comments as every other migration here does. No data:
+all four tables are empty, and D1.3 loads them. `geo_level_enum` untouched, per §1.
+
+**RLS, decided per table rather than by default.** All four have RLS enabled in the same statement
+block as the `CREATE TABLE`, per the 0.3 guardrail.
+
+- **The three mapping tables are public-read**, gated on `status <> 'rejected'`. Two calls here.
+  Public at all, because /districts and /districts/[code] (D2.1, D2.2) publish this mapping and its
+  per-row provenance — the feature's whole posture is that the grouping is published rather than
+  asserted, and a service-role-only table would make the transparency page a server-rendered
+  privilege rather than a public fact. And `auto` rows readable, not just `approved`: D1 loads at
+  `status = 'auto'` and D2.1 renders all 254 districts immediately, so gating public read on
+  `approved` would leave the page empty after a _successful_ ingest. What tells a reader how much
+  to trust a row is the match-quality badge, not the status column. `rejected` rows are withheld
+  because rendering a row a reviewer has ruled wrong would contradict the review.
+- **`geo_district_map` publishes superseded rows too.** Hiding them would hide precisely the
+  evidence that makes the correction mechanism credible rather than decorative — D2.2 and D2.5
+  render the history, so the history has to be readable.
+- **`district_correction` is public-INSERT-only, with no SELECT policy**, exactly as `feedback` is.
+  `submitter_email` sits on the table, and any SELECT policy broad enough to serve D2.5's public
+  ledger would equally serve someone who wants the email column.
+
+  **This leaves D2.5 a constraint, not a gap, and it is worth stating now:** the public ledger
+  cannot read this table directly from the client. It needs a server-side route (or a view) that
+  projects only the publishable columns — id, action, district, status, `review_note`, timestamps —
+  and never `submitter_email`. Relaxing this policy is the wrong fix and the tempting one.
+
+**Three indexes beyond the plan's one.** The plan specifies `geo_district_map_live_idx` (the
+partial unique index that makes supersession possible at all — without the `where superseded_by is
+null` clause a correction would collide with the row it replaces). Added: `geo_district_map
+(geo_code)`, `geo_district_map (district_code)`, `district_representative (district_code)` and
+`district_correction (status, created_at desc)`. Postgres does not index a foreign key
+automatically, and the reverse lookup — "which district is this LGU in" — is a stated requirement,
+not a speculative one: D3.3's `/api/geo/search` has to surface "Leyte's 1st" from "Palo", and it is
+one of D3.4's four regression cases. Cheap on empty tables, awkward to add once loaded.
+
+**No `'fuzzy'` value in the `match_method` check constraint**, deliberately. Guardrail 1 says never
+fuzzy-match a place name into a district; putting the enumeration in a check constraint makes that
+a thing the database refuses rather than a thing an implementer has to remember.
+
+**Verification.** Not just "the migration applied":
+
+- All four tables present, RLS enabled on each, and exactly the intended policies
+  (`[r]` select on the three mapping tables, `[a]` insert on `district_correction`) — read back
+  from `pg_class`/`pg_policy`, not assumed.
+- All 10 indexes present and correct, including the partial unique index with its `WHERE` clause
+  intact.
+- `ingestion/verify_rls.py` extended to cover the new tables and **run against the live project as
+  `anon`: all 26 checks pass**, including the new `district_correction` insert (201) followed by a
+  select returning zero rows — the same insert-only shape `feedback` has.
+- The `rejected`-row gating exercised directly, since `verify_rls.py` is deliberately anon-only and
+  cannot seed one: two rows inserted as service role (`auto` and `rejected`), then read as `anon` —
+  the `auto` row is returned, and the `rejected` row is not, **including when `anon` asks for it
+  explicitly** with `?status=eq.rejected`. Both rows then deleted; all four tables verified back at
+  zero.
+- `get_advisors(security)` shows **no new findings**. Every lint returned is pre-existing
+  (`rls_enabled_no_policy` INFO on the service-role-only tables — the deny-all-by-design outcome
+  documented in increment 0.3 — plus the `function_search_path_mutable` WARNs and the auth setting).
+  None names any of the four new tables.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **835 tests, unchanged**:
+this increment adds no application code and no test, which is correct for a migration that creates
+empty tables. The behaviour that could regress here is RLS, and that is covered by `verify_rls.py`
+against the live database rather than by a unit test against a mock. `npx prettier` has no parser
+for `.sql` or `.py`, so neither changed file is in its scope, consistent with the other 88
+migrations.
