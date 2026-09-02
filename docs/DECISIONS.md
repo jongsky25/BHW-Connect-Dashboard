@@ -7887,6 +7887,55 @@ this adds a gate and a report, no schema. `ingestion/data/agg_population_citymun
 committed** — it is an export of our own `agg_population`, so it is rebuilt rather than versioned,
 the same posture `dim_geo.csv` already takes, and it is gitignored beside it.
 
+## 2026-09-02 — D1.3i: the aggregate finding names a municipality
+
+`attribute_population_discrepancies()`. D1.3h's gate says a district's total is wrong; on its own
+that is a district to squint at rather than a finding to act on. This turns it into a named row
+where the arithmetic supports one — and refuses to where it does not.
+
+**The rule.** Two districts of the same province wrong by the same amount in opposite directions
+is what one misfiled municipality looks like. If exactly one member of the over-counted district
+has that population, it is named. Against the real build it produces one attribution:
+
+> `ilocos-norte-1st` (+1,607) against `ilocos-norte-2nd` (−1,607): **CARASI** has a 2020 population
+> of 1,607, exactly the amount the 1st is over and the 2nd is under.
+
+D1.3h found the discrepancy and I identified Carasi by hand. Doing it by hand does not scale and
+does not survive a re-run, so the build does it now.
+
+**Named, never moved — and that is the whole design.** Moving Carasi would be inventing a fact from
+a subtraction. Wikipedia says one thing, PSA's published totals imply another, and D1.3f already
+settled what this build does with two sources disagreeing: report it and let a person decide. The
+mapping is untouched, and `--selftest` asserts that the attribution pass does not mutate a single
+membership row.
+
+**Three guards, and the first is the one that matters.**
+
+- **Same province only.** Two districts at opposite ends of the country happening to be wrong by
+  the same amount in opposite directions is a coincidence — nothing can move between them. Pairing
+  them would name an innocent municipality with total confidence, which is worse than saying
+  nothing. Pairs are formed within one district-slug stem.
+- **Exactly one candidate.** If two members of the over-counted district share that population,
+  which one moved cannot be read off a total. The pair is still reported; no member is named.
+- **Same census.** Deltas measured against different censuses are not comparable and are not paired.
+
+**Testing.** `--selftest` asserts the Carasi shape end to end, that a cross-province pair yields
+**nothing**, that a mixed-vintage pair yields nothing, that a tie reports the pair but names no
+member, and that no membership row is mutated. Mutation-checked five ways, **all five caught**:
+dropping the same-province guard, naming the first candidate on a tie, ignoring the census year,
+swapping the over/under sides, and having attribution write to the mapping. The five earlier suites
+were re-run against the changed file — 6 + 4 + 5 + 6 + 5 = **26 mutations, all still caught**.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated doc and this entry. No migration,
+no schema change, and no change to any membership row: the build's counts, gates and validation-set
+agreement are byte-identical to D1.3h. What is new is a section in
+`docs/LEGISLATIVE_DISTRICTS.md` naming the suspect, which is what D2.2 will publish.
+
+**Nothing has loaded.** Four gates still fail, `corroborated_by_two_sources` among them, and the
+decision that unblocks it is still the owner's: ship single-source with D2's public-correction
+pipeline as the second source, or hold. That is deliberately not taken here.
+
 ## 2026-09-02 — D1.3j: three of the "spelling variants" were renamings, and identity came from the article's contents
 
 Membership rows **3,491 → 3,513**; uncovered citymuns **45 → 23**; rows agreeing with the
