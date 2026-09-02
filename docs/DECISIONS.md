@@ -7081,3 +7081,233 @@ button ("Ask the data") in the same bottom-right stack with the same
 `rounded-full bg-accent px-4 py-3 text-sm` styling. It is now the only pill FAB on the page, so the
 two no longer match. It was left alone deliberately — it is text-only with no icon, so there is no
 mechanical icon-only equivalent, and picking one would be a design decision beyond this change.
+
+## 2026-09-02 — D1.1: BetterGov.PH investigated; COMELEC returns adopted as a second source
+
+`docs/LEGISLATIVE_DISTRICTS_PLAN.md` D1.1 asked whether BetterGov.PH's advertised district mapping
+(256 districts / 85 provinces / 22 cities / 7,418 barangays / 99.8% of members) is loadable, which
+would have collapsed D1.3 from 2–3 days into a loader. **It is not.** Full findings are in the plan
+at §4/D1.1; the parts that are decisions rather than findings are recorded here.
+
+**Correction to the plan's earlier research.** The plan's §2 said the file could not be located in
+BetterGov's 36 public repos. That was right about `open-congress-data` and wrong overall: the
+mapping is in `bettergovph/open-data-visualization`, a 34,654-file application repo that reads as
+an app rather than a dataset. The §2 row has been rewritten.
+
+**Decision 1 — do not load or depend on either BetterGov file.** Two independent reasons, either
+sufficient. (a) `static/data/districts.json`, the file that matches their "22 cities" claim, fails
+our own D1.5 gates: Quezon City's 1st and 3rd Districts hold the identical 115-barangay list with
+the other four sharing a 5-barangay placeholder (118 distinct barangays against QC's real 142), and
+Palo sits under Leyte's 4th District when it belongs to the 1st. Its own `metadata` describes it as
+derived from project-location caches and reports counts (162 districts, 26 provinces, 5 cities)
+that disagree with its own 115-entity payload. (b) Licensing: the repo has no `LICENSE` and its
+README scopes the work to "educational and research purposes", which cannot be republished under
+the CC BY 4.0 commitment in the plan's §8. (b) alone would have settled it even had (a) passed.
+
+**Decision 2 — adopt COMELEC 2025 precinct returns as a second source in D1.3/D1.4.** This is a
+deviation from the plan as written (Wikipedia for composition, Wikidata for the registry, PSA for
+validation, `jgngo/psgc-data` as a stale third opinion) and is the reason the half day was worth
+spending. BetterGov's other file, `static/data/districts_generated.json`, is sound — 86 provinces,
+1,627 municipality rows, 220 province-level districts, and correct barangay-grain splits for 12
+multi-district cities — because it is not really their data: `scripts/extract_districts_from_elections.py`
+derives it from precinct-level COMELEC returns by reading the
+`MEMBER, HOUSE OF REPRESENTATIVES - <DISTRICT>` contest each precinct voted in. Spot-checked
+against ground truth: Leyte's 1st (all 8 municipalities), Pampanga's 2nd (6) and 3rd (5), and
+Quezon City at 142 barangays with 37 in the 3rd District — the same 37 our own Wikipedia reading
+returned, from a wholly independent path.
+
+The district comes off the ballot, which makes it the best available answer to the multi-district
+city — the case the plan calls the hardest part of D1 and the one Wikipedia infoboxes serve worst.
+We crawl COMELEC ourselves rather than depending on `klescosia/ph-elections2025`, the upstream
+BetterGov used, because that repo also has no `LICENSE`.
+
+**Decision 3 — two sources or unresolved.** Added as D1.5 gate and guardrail 2 (renumbering the rest of §7): no district
+assignment ships unless Wikipedia and COMELEC agree; disagreements go to the disagreement report
+and the LGU stays unresolved. This is not a new principle so much as the existing two-way
+reconciliation discipline applied to a dimension that did not have a second source until now, and
+it is the gate that would have caught both BetterGov failures before they reached a page.
+
+**Not done, and deliberately.** No issue has been filed on `bettergovph/open-data-visualization`.
+The remaining ask is a licence question rather than a data question, it is off the critical path,
+and filing on a third party's repo is the owner's call. Draft text is committed at
+`docs/bettergov-district-mapping-issue.md`, including the two data problems above reported back to
+them, and the observation that their published "7,418 barangays" figure is `city_barangays_mapping.json`
+— a PSGC city→barangay roster carrying no district on any row — rather than mapped barangays, of
+which there are ~1,800.
+
+**Standards.** Documentation only: no migration, no schema, no application code, no dependency
+change, so `npm run lint` / `npm run typecheck` / `npm test` are unaffected and the suite is
+untouched at its current baseline. `npx prettier --check` passes on
+`docs/LEGISLATIVE_DISTRICTS_PLAN.md` and `docs/bettergov-district-mapping-issue.md`.
+`docs/DECISIONS.md` remains the pre-existing prettier failure it has been since July, left alone as
+every prior entry has left it; this entry's own text is prettier-clean.
+
+## 2026-09-02 — D1.2: the four legislative-district tables
+
+`supabase/migrations/20260902030000_legislative_districts.sql`, applied to `bhw-connect`
+(`ejcuwrnxngdwvecxwrhy`) via the Supabase MCP. Schema exactly as
+`docs/LEGISLATIVE_DISTRICTS_PLAN.md` §3 specifies it — `dim_legislative_district`,
+`geo_district_map`, `district_representative`, `district_correction`, plus the partial unique index
+— with per-table reasoning carried in comments as every other migration here does. No data:
+all four tables are empty, and D1.3 loads them. `geo_level_enum` untouched, per §1.
+
+**RLS, decided per table rather than by default.** All four have RLS enabled in the same statement
+block as the `CREATE TABLE`, per the 0.3 guardrail.
+
+- **The three mapping tables are public-read**, gated on `status <> 'rejected'`. Two calls here.
+  Public at all, because /districts and /districts/[code] (D2.1, D2.2) publish this mapping and its
+  per-row provenance — the feature's whole posture is that the grouping is published rather than
+  asserted, and a service-role-only table would make the transparency page a server-rendered
+  privilege rather than a public fact. And `auto` rows readable, not just `approved`: D1 loads at
+  `status = 'auto'` and D2.1 renders all 254 districts immediately, so gating public read on
+  `approved` would leave the page empty after a _successful_ ingest. What tells a reader how much
+  to trust a row is the match-quality badge, not the status column. `rejected` rows are withheld
+  because rendering a row a reviewer has ruled wrong would contradict the review.
+- **`geo_district_map` publishes superseded rows too.** Hiding them would hide precisely the
+  evidence that makes the correction mechanism credible rather than decorative — D2.2 and D2.5
+  render the history, so the history has to be readable.
+- **`district_correction` is public-INSERT-only, with no SELECT policy**, exactly as `feedback` is.
+  `submitter_email` sits on the table, and any SELECT policy broad enough to serve D2.5's public
+  ledger would equally serve someone who wants the email column.
+
+  **This leaves D2.5 a constraint, not a gap, and it is worth stating now:** the public ledger
+  cannot read this table directly from the client. It needs a server-side route (or a view) that
+  projects only the publishable columns — id, action, district, status, `review_note`, timestamps —
+  and never `submitter_email`. Relaxing this policy is the wrong fix and the tempting one.
+
+**Three indexes beyond the plan's one.** The plan specifies `geo_district_map_live_idx` (the
+partial unique index that makes supersession possible at all — without the `where superseded_by is
+null` clause a correction would collide with the row it replaces). Added: `geo_district_map
+(geo_code)`, `geo_district_map (district_code)`, `district_representative (district_code)` and
+`district_correction (status, created_at desc)`. Postgres does not index a foreign key
+automatically, and the reverse lookup — "which district is this LGU in" — is a stated requirement,
+not a speculative one: D3.3's `/api/geo/search` has to surface "Leyte's 1st" from "Palo", and it is
+one of D3.4's four regression cases. Cheap on empty tables, awkward to add once loaded.
+
+**No `'fuzzy'` value in the `match_method` check constraint**, deliberately. Guardrail 1 says never
+fuzzy-match a place name into a district; putting the enumeration in a check constraint makes that
+a thing the database refuses rather than a thing an implementer has to remember.
+
+**Verification.** Not just "the migration applied":
+
+- All four tables present, RLS enabled on each, and exactly the intended policies
+  (`[r]` select on the three mapping tables, `[a]` insert on `district_correction`) — read back
+  from `pg_class`/`pg_policy`, not assumed.
+- All 10 indexes present and correct, including the partial unique index with its `WHERE` clause
+  intact.
+- `ingestion/verify_rls.py` extended to cover the new tables and **run against the live project as
+  `anon`: all 26 checks pass**, including the new `district_correction` insert (201) followed by a
+  select returning zero rows — the same insert-only shape `feedback` has.
+- The `rejected`-row gating exercised directly, since `verify_rls.py` is deliberately anon-only and
+  cannot seed one: two rows inserted as service role (`auto` and `rejected`), then read as `anon` —
+  the `auto` row is returned, and the `rejected` row is not, **including when `anon` asks for it
+  explicitly** with `?status=eq.rejected`. Both rows then deleted; all four tables verified back at
+  zero.
+- `get_advisors(security)` shows **no new findings**. Every lint returned is pre-existing
+  (`rls_enabled_no_policy` INFO on the service-role-only tables — the deny-all-by-design outcome
+  documented in increment 0.3 — plus the `function_search_path_mutable` WARNs and the auth setting).
+  None names any of the four new tables.
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — **835 tests, unchanged**:
+this increment adds no application code and no test, which is correct for a migration that creates
+empty tables. The behaviour that could regress here is RLS, and that is covered by `verify_rls.py`
+against the live database rather than by a unit test against a mock. `npx prettier` has no parser
+for `.sql` or `.py`, so neither changed file is in its scope, consistent with the other 88
+migrations.
+
+## 2026-09-02 — D1.3: the legislative-district builder
+
+`ingestion/build_legislative_districts.py` (modes mirroring `build_psgc_crosswalk.py`:
+`--selftest`, `--fetch --snapshot-dir`, `--from-snapshot`, `--emit-sql-dir`/`--database-url`,
+`--write-doc-summary`), the committed snapshot at `ingestion/data/districts_20th/`, the generated
+`docs/LEGISLATIVE_DISTRICTS.md`, and a follow-on migration. **No data has been loaded**: the build
+fails three of its eight gates and therefore refuses to write, which is the design working, not a
+step skipped. What the increment delivers is a reproducible build and an honest account of what it
+cannot yet resolve.
+
+**Current build: 250 districts, 3,043 membership rows, 194 representatives**, from a snapshot of
+114 province/city pages and 256 district articles.
+
+**Deviation 1 — the district articles are the composition source, not the province tables.** §2
+said Wikipedia province pages carry the `{{Collapsible list}}` of constituent LGUs, and they do —
+for 68 of 114 pages. The other 46 either use one of eight different heading spellings, or carry no
+table at all (Agusan del Norte's "Congressional representation" section is a `{{main}}` hatnote and
+nothing else). Every one of the 256 district articles, by contrast, carries the same
+`{{Infobox constituency}}` with a `|towns =` field — and, decisively, an `|abolished =` field.
+Agusan del Norte's 1st reads `abolished = 2025`. Building from the province pages would have
+silently loaded six districts the 20th Congress does not have. The province pages are still read,
+for the sitting representative, which the articles do not carry uniformly.
+
+**Deviation 2 — a fifth match method, `whole_parent`** (migration
+`20260902050000_district_corroboration.sql`). A lone or at-large district covers its whole parent
+by definition, so Wikipedia does not enumerate its 25 municipalities. The builder expands those
+itself. Filing the result as `exact` would claim we matched a name we never read; `manual_override`
+would claim a person decided each one. It is a containment fact and now says so — 828 of 3,043
+rows. The same migration adds `corroboration` / `corroborating_source_ref`, because D1.1's
+two-source rule arrived after §3 was written and had nowhere on the row to live. The column is
+deliberately source-agnostic: the rule is about independence, not about COMELEC.
+
+**Deviation 3 — scope is chosen by evidence, not by name.** Deciding whether "Legislative
+districts of X" is about a province (members are municipalities) or a city (members are barangays)
+cannot be done by name lookup, and the failures are not hypothetical: **"Quezon City" normalises to
+the same key as the province of Quezon**, "Leyte" is both a province and a municipality inside it,
+every NCR HUC appears at both province and citymun level, and **Manila's barangays sit two levels
+down**, under the sixteen citymun rows that are its _administrative_ districts — the only place
+PSGC uses a "district" level at all. So the builder scores every candidate reading by how many of
+the page's own members actually resolve under it, and takes the strict winner. Candidates that
+resolve against the same set are deduped first, or an HUC's province row and its lone citymun child
+would look like a tie and be reported as ambiguous. No hand-maintained city list is needed.
+
+**The environmental constraint, stated plainly: COMELEC is unreachable.** HTTP 403 from both
+`2025electionresults.comelec.gov.ph` and `comelec.gov.ph`, with the agent proxy reporting no relay
+failures — so the block is theirs, the same class of constraint `build_psgc_crosswalk.py` already
+documents for PSA. Every row is therefore `corroboration = 'single_source'`, the two-source gate
+fails, and the build will not write without `--allow-single-source` saying so in as many words.
+This is the correct outcome: D1.1 found a plausible mapping nobody had cross-checked, and shipping
+one of our own would be the same mistake with better provenance.
+
+**Also learned, and worth not rediscovering.** Fetched one page at a time, en.wikipedia.org
+rate-limited this build to roughly one page every three minutes — about five hours for a full run.
+`action=query&prop=revisions` takes 40+ titles per request, which turns 370 pages into ten calls
+and seconds of wall time. A descriptive `User-Agent` is required; the default urllib one gets 429.
+WDQS was additionally under an active outage limiting to 1 request/minute, which the single
+registry query tolerates but a chattier design would not.
+
+**Residuals, all reported rather than hidden** (`ingestion/_qa_report_legislative_districts.json`,
+summarised in `docs/LEGISLATIVE_DISTRICTS.md`):
+
+- **250 districts against the plan's expected 254.** 256 Wikidata items minus 6 filtered as
+  abolished. The gap needs a look before load — most likely districts created by recent Republic
+  Acts that Wikidata has not caught up with, which is precisely the time-varying behaviour §1 gives
+  `congress_no` for.
+- **56 citymuns uncovered, 46 double-claimed; 13 multi-district cities with leftover barangays.**
+  Real gaps in the parse, not silent guesses.
+- **512 unresolved and 49 ambiguous members**, each with the name, the link target and the reason.
+- One of those is worth naming because it is the guardrail working: **Wikipedia lists "Dulian
+  (Upper Pasonanca)" in Zamboanga City's 1st and "Dulian (Upper Bunguiao)" in its 2nd, while PSA's
+  `dim_geo` carries a single `DULIAN`.** Two source names landing on one row is a source
+  disagreement, not a match; picking either would invent a fact and double-claim a barangay. Both
+  are reported and neither is emitted, which is why `no_barangay_in_two_districts` passes.
+
+**Testing.** `--selftest` runs on synthetic fixtures with no network and no DB, asserting parsing
+(including that the "History" and "At-Large (defunct)" tables do _not_ leak into the current
+roster), normalisation, all four rungs of the resolution ladder, evidence-based scope detection,
+and the gates. Mutation-checked, four ways: removing the section scoping admits the defunct and
+history districts (caught); adding a fuzzy fallback to the ladder makes "Bravoo" resolve to "Bravo"
+(caught — this is guardrail 1 enforced by a test rather than by a comment); neutering the
+corroboration gate lets single-source rows pass (caught); and loosening name normalisation collapses
+distinct places (caught).
+
+**Standards.** `npm run lint`, `npm run typecheck` and `npm test` clean — 835 tests, unchanged: this
+increment adds no application code. The migration's constraint behaviour was verified against the
+live database rather than assumed — `whole_parent` accepted, `fuzzy` rejected with a check
+violation, both seed rows removed and all four tables confirmed back at zero. `get_advisors` was
+already run for these tables in D1.2 and the new columns add no policy surface. `.sql` and `.py`
+have no prettier parser; `docs/LEGISLATIVE_DISTRICTS.md` is generated, and is prettier-clean as
+generated.
+
+**Not committed:** `ingestion/data/dim_geo.csv`, a local export of our own `dim_geo` produced for
+`--dim-geo-csv`. It is derived from the database rather than being a source snapshot, so it is
+rebuilt, not versioned — the same posture `dim_geo_nir.csv` already takes. The Wikipedia and
+Wikidata snapshots (6.5 MB) **are** committed, because the build must be reproducible without the
+network and it must be possible to diff why a mapping changed between two runs.

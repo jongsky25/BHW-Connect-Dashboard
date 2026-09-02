@@ -1,0 +1,1862 @@
+{
+ "retrieved_at": "2026-09-02T04:12:52Z",
+ "pages": {
+  "Abra": {
+   "file": "Abra.json",
+   "revid": 1367165564,
+   "title": "Legislative districts of Abra"
+  },
+  "Agusan del Norte": {
+   "file": "Agusan_del_Norte.json",
+   "revid": 1355658449,
+   "title": "Legislative districts of Agusan del Norte"
+  },
+  "Agusan del Sur": {
+   "file": "Agusan_del_Sur.json",
+   "revid": 1345325270,
+   "title": "Legislative districts of Agusan del Sur"
+  },
+  "Aklan": {
+   "file": "Aklan.json",
+   "revid": 1313583096,
+   "title": "Legislative districts of Aklan"
+  },
+  "Albay": {
+   "file": "Albay.json",
+   "revid": 1352807971,
+   "title": "Legislative districts of Albay"
+  },
+  "Antipolo": {
+   "file": "Antipolo.json",
+   "revid": 1344260119,
+   "title": "Legislative districts of Antipolo"
+  },
+  "Antique": {
+   "file": "Antique.json",
+   "revid": 1313582761,
+   "title": "Legislative districts of Antique"
+  },
+  "Apayao": {
+   "file": "Apayao.json",
+   "revid": 1331672111,
+   "title": "Legislative districts of Apayao"
+  },
+  "Aurora": {
+   "file": "Aurora.json",
+   "revid": 1343280942,
+   "title": "Legislative districts of Aurora"
+  },
+  "Bacolod": {
+   "file": "Bacolod.json",
+   "revid": 1358670038,
+   "title": "Legislative districts of Bacolod"
+  },
+  "Baguio": {
+   "file": "Baguio.json",
+   "revid": 1331673006,
+   "title": "Legislative districts of Baguio"
+  },
+  "Basilan": {
+   "file": "Basilan.json",
+   "revid": 1331673836,
+   "title": "Legislative districts of Basilan"
+  },
+  "Bataan": {
+   "file": "Bataan.json",
+   "revid": 1353812052,
+   "title": "Legislative districts of Bataan"
+  },
+  "Batanes": {
+   "file": "Batanes.json",
+   "revid": 1353925710,
+   "title": "Legislative districts of Batanes"
+  },
+  "Batangas": {
+   "file": "Batangas.json",
+   "revid": 1343990475,
+   "title": "Legislative districts of Batangas"
+  },
+  "Benguet": {
+   "file": "Benguet.json",
+   "revid": 1364330077,
+   "title": "Legislative districts of Benguet"
+  },
+  "Biliran": {
+   "file": "Biliran.json",
+   "revid": 1360513729,
+   "title": "Legislative districts of Biliran"
+  },
+  "Bi\u00f1an": {
+   "file": "Bi_an.json",
+   "revid": 1346200196,
+   "title": "Legislative districts of Bi\u00f1an"
+  },
+  "Bohol": {
+   "file": "Bohol.json",
+   "revid": 1367161513,
+   "title": "Legislative districts of Bohol"
+  },
+  "Bukidnon": {
+   "file": "Bukidnon.json",
+   "revid": 1367162348,
+   "title": "Legislative districts of Bukidnon"
+  },
+  "Bulacan": {
+   "file": "Bulacan.json",
+   "revid": 1350085247,
+   "title": "Legislative districts of Bulacan"
+  },
+  "Cagayan": {
+   "file": "Cagayan.json",
+   "revid": 1346571181,
+   "title": "Legislative districts of Cagayan"
+  },
+  "Cagayan de Oro": {
+   "file": "Cagayan_de_Oro.json",
+   "revid": 1353954061,
+   "title": "Legislative districts of Cagayan de Oro"
+  },
+  "Calamba": {
+   "file": "Calamba.json",
+   "revid": 1346219397,
+   "title": "Legislative districts of Calamba"
+  },
+  "Caloocan": {
+   "file": "Caloocan.json",
+   "revid": 1367358052,
+   "title": "Legislative districts of Caloocan"
+  },
+  "Camarines Norte": {
+   "file": "Camarines_Norte.json",
+   "revid": 1352671576,
+   "title": "Legislative districts of Camarines Norte"
+  },
+  "Camarines Sur": {
+   "file": "Camarines_Sur.json",
+   "revid": 1367324649,
+   "title": "Legislative districts of Camarines Sur"
+  },
+  "Camiguin": {
+   "file": "Camiguin.json",
+   "revid": 1365996657,
+   "title": "Legislative districts of Camiguin"
+  },
+  "Capiz": {
+   "file": "Capiz.json",
+   "revid": 1360509459,
+   "title": "Legislative districts of Capiz"
+  },
+  "Catanduanes": {
+   "file": "Catanduanes.json",
+   "revid": 1317366780,
+   "title": "Legislative districts of Catanduanes"
+  },
+  "Cavite": {
+   "file": "Cavite.json",
+   "revid": 1367169822,
+   "title": "Legislative districts of Cavite"
+  },
+  "Cebu": {
+   "file": "Cebu.json",
+   "revid": 1367164810,
+   "title": "Legislative districts of Cebu"
+  },
+  "Cebu City": {
+   "file": "Cebu_City.json",
+   "revid": 1353778125,
+   "title": "Legislative districts of Cebu City"
+  },
+  "Cotabato": {
+   "file": "Cotabato.json",
+   "revid": 1344447261,
+   "title": "Legislative districts of Cotabato"
+  },
+  "Davao City": {
+   "file": "Davao_City.json",
+   "revid": 1371442261,
+   "title": "Legislative districts of Davao City"
+  },
+  "Davao Occidental": {
+   "file": "Davao_Occidental.json",
+   "revid": 1350994775,
+   "title": "Legislative districts of Davao Occidental"
+  },
+  "Davao Oriental": {
+   "file": "Davao_Oriental.json",
+   "revid": 1360509548,
+   "title": "Legislative districts of Davao Oriental"
+  },
+  "Davao de Oro": {
+   "file": "Davao_de_Oro.json",
+   "revid": 1360801008,
+   "title": "Legislative districts of Davao de Oro"
+  },
+  "Davao del Norte": {
+   "file": "Davao_del_Norte.json",
+   "revid": 1353764789,
+   "title": "Legislative districts of Davao del Norte"
+  },
+  "Davao del Sur": {
+   "file": "Davao_del_Sur.json",
+   "revid": 1350993886,
+   "title": "Legislative districts of Davao del Sur"
+  },
+  "Dinagat Islands": {
+   "file": "Dinagat_Islands.json",
+   "revid": 1353925727,
+   "title": "Legislative districts of Dinagat Islands"
+  },
+  "Eastern Samar": {
+   "file": "Eastern_Samar.json",
+   "revid": 1350140287,
+   "title": "Legislative districts of Eastern Samar"
+  },
+  "General Santos": {
+   "file": "General_Santos.json",
+   "revid": 1369923275,
+   "title": "General Santos's at-large congressional district"
+  },
+  "Guimaras": {
+   "file": "Guimaras.json",
+   "revid": 1371959753,
+   "title": "Legislative districts of Guimaras"
+  },
+  "Ifugao": {
+   "file": "Ifugao.json",
+   "revid": 1364040806,
+   "title": "Legislative districts of Ifugao"
+  },
+  "Iligan": {
+   "file": "Iligan.json",
+   "revid": 1097057192,
+   "title": "Legislative districts of Iligan"
+  },
+  "Ilocos Norte": {
+   "file": "Ilocos_Norte.json",
+   "revid": 1348961940,
+   "title": "Legislative districts of Ilocos Norte"
+  },
+  "Ilocos Sur": {
+   "file": "Ilocos_Sur.json",
+   "revid": 1371557192,
+   "title": "Legislative districts of Ilocos Sur"
+  },
+  "Iloilo": {
+   "file": "Iloilo.json",
+   "revid": 1347079269,
+   "title": "Legislative districts of Iloilo"
+  },
+  "Iloilo City": {
+   "file": "Iloilo_City.json",
+   "revid": 1323318905,
+   "title": "Legislative districts of Iloilo City"
+  },
+  "Isabela": {
+   "file": "Isabela.json",
+   "revid": 1367046940,
+   "title": "Legislative districts of Isabela"
+  },
+  "Kalinga": {
+   "file": "Kalinga.json",
+   "revid": 1364330085,
+   "title": "Legislative districts of Kalinga"
+  },
+  "La Union": {
+   "file": "La_Union.json",
+   "revid": 1350825409,
+   "title": "Legislative districts of La Union"
+  },
+  "Laguna": {
+   "file": "Laguna.json",
+   "revid": 1358371843,
+   "title": "Legislative districts of Laguna"
+  },
+  "Lanao del Norte": {
+   "file": "Lanao_del_Norte.json",
+   "revid": 1356575818,
+   "title": "Legislative districts of Lanao del Norte"
+  },
+  "Lanao del Sur": {
+   "file": "Lanao_del_Sur.json",
+   "revid": 1361860467,
+   "title": "Legislative districts of Lanao del Sur"
+  },
+  "Lapu-Lapu": {
+   "file": "Lapu_Lapu.json",
+   "revid": 1333080616,
+   "title": "Legislative districts of Lapu-Lapu City"
+  },
+  "Las Pi\u00f1as": {
+   "file": "Las_Pi_as.json",
+   "revid": 1367525980,
+   "title": "Legislative districts of Las Pi\u00f1as"
+  },
+  "Leyte": {
+   "file": "Leyte.json",
+   "revid": 1352810710,
+   "title": "Legislative districts of Leyte"
+  },
+  "Maguindanao": {
+   "file": "Maguindanao.json",
+   "revid": 1361629008,
+   "title": "Legislative districts of Maguindanao"
+  },
+  "Maguindanao del Norte": {
+   "file": "Maguindanao_del_Norte.json",
+   "revid": 1361629749,
+   "title": "Legislative districts of Maguindanao del Norte"
+  },
+  "Maguindanao del Sur": {
+   "file": "Maguindanao_del_Sur.json",
+   "revid": 1316074473,
+   "title": "Legislative districts of Maguindanao del Sur"
+  },
+  "Makati": {
+   "file": "Makati.json",
+   "revid": 1347065439,
+   "title": "Legislative districts of Makati"
+  },
+  "Malabon": {
+   "file": "Malabon.json",
+   "revid": 1331671044,
+   "title": "Legislative districts of Malabon"
+  },
+  "Mandaluyong": {
+   "file": "Mandaluyong.json",
+   "revid": 1317371176,
+   "title": "Legislative districts of Mandaluyong"
+  },
+  "Mandaue": {
+   "file": "Mandaue.json",
+   "revid": 1367685071,
+   "title": "Mandaue's at-large congressional district"
+  },
+  "Manila": {
+   "file": "Manila.json",
+   "revid": 1363897469,
+   "title": "Legislative districts of Manila"
+  },
+  "Marikina": {
+   "file": "Marikina.json",
+   "revid": 1345224724,
+   "title": "Legislative districts of Marikina"
+  },
+  "Marinduque": {
+   "file": "Marinduque.json",
+   "revid": 1343280584,
+   "title": "Legislative districts of Marinduque"
+  },
+  "Masbate": {
+   "file": "Masbate.json",
+   "revid": 1361839961,
+   "title": "Legislative districts of Masbate"
+  },
+  "Misamis Occidental": {
+   "file": "Misamis_Occidental.json",
+   "revid": 1302881264,
+   "title": "Legislative districts of Misamis Occidental"
+  },
+  "Misamis Oriental": {
+   "file": "Misamis_Oriental.json",
+   "revid": 1350829999,
+   "title": "Legislative districts of Misamis Oriental"
+  },
+  "Mountain Province": {
+   "file": "Mountain_Province.json",
+   "revid": 1368951043,
+   "title": "Legislative districts of Mountain Province"
+  },
+  "Muntinlupa": {
+   "file": "Muntinlupa.json",
+   "revid": 1317373692,
+   "title": "Legislative districts of Muntinlupa"
+  },
+  "Navotas": {
+   "file": "Navotas.json",
+   "revid": 1342689802,
+   "title": "Legislative districts of Navotas"
+  },
+  "Negros Occidental": {
+   "file": "Negros_Occidental.json",
+   "revid": 1358222688,
+   "title": "Legislative districts of Negros Occidental"
+  },
+  "Negros Oriental": {
+   "file": "Negros_Oriental.json",
+   "revid": 1358540297,
+   "title": "Legislative districts of Negros Oriental"
+  },
+  "Northern Samar": {
+   "file": "Northern_Samar.json",
+   "revid": 1353925729,
+   "title": "Legislative districts of Northern Samar"
+  },
+  "Nueva Ecija": {
+   "file": "Nueva_Ecija.json",
+   "revid": 1367166648,
+   "title": "Legislative districts of Nueva Ecija"
+  },
+  "Nueva Vizcaya": {
+   "file": "Nueva_Vizcaya.json",
+   "revid": 1367166400,
+   "title": "Legislative districts of Nueva Vizcaya"
+  },
+  "Occidental Mindoro": {
+   "file": "Occidental_Mindoro.json",
+   "revid": 1342358814,
+   "title": "Legislative districts of Occidental Mindoro"
+  },
+  "Oriental Mindoro": {
+   "file": "Oriental_Mindoro.json",
+   "revid": 1363637232,
+   "title": "Legislative districts of Oriental Mindoro"
+  },
+  "Palawan": {
+   "file": "Palawan.json",
+   "revid": 1354039157,
+   "title": "Legislative districts of Palawan"
+  },
+  "Pampanga": {
+   "file": "Pampanga.json",
+   "revid": 1359328600,
+   "title": "Legislative districts of Pampanga"
+  },
+  "Pangasinan": {
+   "file": "Pangasinan.json",
+   "revid": 1351978579,
+   "title": "Legislative districts of Pangasinan"
+  },
+  "Para\u00f1aque": {
+   "file": "Para_aque.json",
+   "revid": 1317373259,
+   "title": "Legislative districts of Para\u00f1aque"
+  },
+  "Pasay": {
+   "file": "Pasay.json",
+   "revid": 1317372773,
+   "title": "Legislative districts of Pasay"
+  },
+  "Pasig": {
+   "file": "Pasig.json",
+   "revid": 1346057236,
+   "title": "Legislative districts of Pasig"
+  },
+  "Quezon": {
+   "file": "Quezon.json",
+   "revid": 1361638767,
+   "title": "Legislative districts of Quezon"
+  },
+  "Quezon City": {
+   "file": "Quezon_City.json",
+   "revid": 1351633012,
+   "title": "Legislative districts of Quezon City"
+  },
+  "Quirino": {
+   "file": "Quirino.json",
+   "revid": 1367358336,
+   "title": "Legislative districts of Quirino"
+  },
+  "Rizal": {
+   "file": "Rizal.json",
+   "revid": 1310196063,
+   "title": "Legislative districts of Rizal"
+  },
+  "Romblon": {
+   "file": "Romblon.json",
+   "revid": 1345475054,
+   "title": "Legislative districts of Romblon"
+  },
+  "Samar": {
+   "file": "Samar.json",
+   "revid": 1370285543,
+   "title": "Legislative districts of Samar"
+  },
+  "San Jose del Monte": {
+   "file": "San_Jose_del_Monte.json",
+   "revid": 1358015011,
+   "title": "Legislative districts of San Jose del Monte"
+  },
+  "San Juan": {
+   "file": "San_Juan.json",
+   "revid": 1359291256,
+   "title": "Legislative districts of San Juan"
+  },
+  "Sarangani": {
+   "file": "Sarangani.json",
+   "revid": 1367170286,
+   "title": "Legislative districts of Sarangani"
+  },
+  "Siquijor": {
+   "file": "Siquijor.json",
+   "revid": 1308669762,
+   "title": "Legislative districts of Siquijor"
+  },
+  "Sorsogon": {
+   "file": "Sorsogon.json",
+   "revid": 1353925734,
+   "title": "Legislative districts of Sorsogon"
+  },
+  "South Cotabato": {
+   "file": "South_Cotabato.json",
+   "revid": 1350992644,
+   "title": "Legislative districts of South Cotabato"
+  },
+  "Southern Leyte": {
+   "file": "Southern_Leyte.json",
+   "revid": 1367164122,
+   "title": "Legislative districts of Southern Leyte"
+  },
+  "Sultan Kudarat": {
+   "file": "Sultan_Kudarat.json",
+   "revid": 1331827815,
+   "title": "Legislative districts of Sultan Kudarat"
+  },
+  "Sulu": {
+   "file": "Sulu.json",
+   "revid": 1354051154,
+   "title": "Legislative districts of Sulu"
+  },
+  "Surigao del Norte": {
+   "file": "Surigao_del_Norte.json",
+   "revid": 1365071279,
+   "title": "Legislative districts of Surigao del Norte"
+  },
+  "Surigao del Sur": {
+   "file": "Surigao_del_Sur.json",
+   "revid": 1344419359,
+   "title": "Legislative districts of Surigao del Sur"
+  },
+  "Taguig\u2013Pateros": {
+   "file": "Taguig_Pateros.json",
+   "revid": 1341794365,
+   "title": "Legislative districts of Pateros\u2013Taguig"
+  },
+  "Tarlac": {
+   "file": "Tarlac.json",
+   "revid": 1353925743,
+   "title": "Legislative districts of Tarlac"
+  },
+  "Tawi-Tawi": {
+   "file": "Tawi_Tawi.json",
+   "revid": 1368274275,
+   "title": "Legislative districts of Tawi-Tawi"
+  },
+  "Valenzuela": {
+   "file": "Valenzuela.json",
+   "revid": 1371056787,
+   "title": "Legislative districts of Valenzuela"
+  },
+  "Zambales": {
+   "file": "Zambales.json",
+   "revid": 1347864014,
+   "title": "Legislative districts of Zambales"
+  },
+  "Zamboanga City": {
+   "file": "Zamboanga_City.json",
+   "revid": 1352732639,
+   "title": "Legislative districts of Zamboanga City"
+  },
+  "Zamboanga Sibugay": {
+   "file": "Zamboanga_Sibugay.json",
+   "revid": 1369407901,
+   "title": "Legislative districts of Zamboanga Sibugay"
+  },
+  "Zamboanga del Norte": {
+   "file": "Zamboanga_del_Norte.json",
+   "revid": 1338964315,
+   "title": "Legislative districts of Zamboanga del Norte"
+  },
+  "Zamboanga del Sur": {
+   "file": "Zamboanga_del_Sur.json",
+   "revid": 1351522756,
+   "title": "Legislative districts of Zamboanga del Sur"
+  }
+ },
+ "missing": [],
+ "unparsed_labels": [
+  "Legislative district of Butuan"
+ ],
+ "articles": {
+  "Maguindanao's 1st congressional district": {
+   "file": "Maguindanao_s_1st_congressional_district.json",
+   "revid": 1369360305,
+   "title": "Maguindanao's 1st congressional district"
+  },
+  "Nueva Ecija's 1st congressional district": {
+   "file": "Nueva_Ecija_s_1st_congressional_district.json",
+   "revid": 1359923198,
+   "title": "Nueva Ecija's 1st congressional district"
+  },
+  "Sultan Kudarat's 2nd congressional district": {
+   "file": "Sultan_Kudarat_s_2nd_congressional_district.json",
+   "revid": 1350052942,
+   "title": "Sultan Kudarat's 2nd congressional district"
+  },
+  "Quezon's 3rd congressional district": {
+   "file": "Quezon_s_3rd_congressional_district.json",
+   "revid": 1350052665,
+   "title": "Quezon's 3rd congressional district"
+  },
+  "Quezon's 2nd congressional district": {
+   "file": "Quezon_s_2nd_congressional_district.json",
+   "revid": 1359815107,
+   "title": "Quezon's 2nd congressional district"
+  },
+  "Quezon City's 4th congressional district": {
+   "file": "Quezon_City_s_4th_congressional_district.json",
+   "revid": 1368506337,
+   "title": "Quezon City's 4th congressional district"
+  },
+  "Bulacan's 1st congressional district": {
+   "file": "Bulacan_s_1st_congressional_district.json",
+   "revid": 1370274496,
+   "title": "Bulacan's 1st congressional district"
+  },
+  "Camarines Norte's 1st congressional district": {
+   "file": "Camarines_Norte_s_1st_congressional_district.json",
+   "revid": 1352674096,
+   "title": "Camarines Norte's 1st congressional district"
+  },
+  "Para\u00f1aque's 2nd congressional district": {
+   "file": "Para_aque_s_2nd_congressional_district.json",
+   "revid": 1350052880,
+   "title": "Para\u00f1aque's 2nd congressional district"
+  },
+  "Isabela's 4th congressional district": {
+   "file": "Isabela_s_4th_congressional_district.json",
+   "revid": 1367035597,
+   "title": "Isabela's 4th congressional district"
+  },
+  "Quezon's 4th congressional district": {
+   "file": "Quezon_s_4th_congressional_district.json",
+   "revid": 1350052670,
+   "title": "Quezon's 4th congressional district"
+  },
+  "Sulu's 1st congressional district": {
+   "file": "Sulu_s_1st_congressional_district.json",
+   "revid": 1364091181,
+   "title": "Sulu's 1st congressional district"
+  },
+  "Samar's 2nd congressional district": {
+   "file": "Samar_s_2nd_congressional_district.json",
+   "revid": 1370890784,
+   "title": "Samar's 2nd congressional district"
+  },
+  "Cotabato's 3rd congressional district": {
+   "file": "Cotabato_s_3rd_congressional_district.json",
+   "revid": 1350053039,
+   "title": "Cotabato's 3rd congressional district"
+  },
+  "Negros Oriental's 3rd congressional district": {
+   "file": "Negros_Oriental_s_3rd_congressional_district.json",
+   "revid": 1356387139,
+   "title": "Negros Oriental's 3rd congressional district"
+  },
+  "Navotas's at-large congressional district": {
+   "file": "Navotas_s_at_large_congressional_district.json",
+   "revid": 1360600532,
+   "title": "Navotas's at-large congressional district"
+  },
+  "Cavite's 8th congressional district": {
+   "file": "Cavite_s_8th_congressional_district.json",
+   "revid": 1350053106,
+   "title": "Cavite's 8th congressional district"
+  },
+  "Leyte's 4th congressional district": {
+   "file": "Leyte_s_4th_congressional_district.json",
+   "revid": 1359813281,
+   "title": "Leyte's 4th congressional district"
+  },
+  "Iloilo's 5th congressional district": {
+   "file": "Iloilo_s_5th_congressional_district.json",
+   "revid": 1363419901,
+   "title": "Iloilo's 5th congressional district"
+  },
+  "Misamis Occidental's 1st congressional district": {
+   "file": "Misamis_Occidental_s_1st_congressional_district.json",
+   "revid": 1350052507,
+   "title": "Misamis Occidental's 1st congressional district"
+  },
+  "Oriental Mindoro's 2nd congressional district": {
+   "file": "Oriental_Mindoro_s_2nd_congressional_district.json",
+   "revid": 1359631604,
+   "title": "Oriental Mindoro's 2nd congressional district"
+  },
+  "Misamis Oriental's 1st congressional district": {
+   "file": "Misamis_Oriental_s_1st_congressional_district.json",
+   "revid": 1350837589,
+   "title": "Misamis Oriental's 1st congressional district"
+  },
+  "Davao City's 3rd congressional district": {
+   "file": "Davao_City_s_3rd_congressional_district.json",
+   "revid": 1361117942,
+   "title": "Davao City's 3rd congressional district"
+  },
+  "Misamis Oriental's 2nd congressional district": {
+   "file": "Misamis_Oriental_s_2nd_congressional_district.json",
+   "revid": 1362209883,
+   "title": "Misamis Oriental's 2nd congressional district"
+  },
+  "Cagayan de Oro's 1st congressional district": {
+   "file": "Cagayan_de_Oro_s_1st_congressional_district.json",
+   "revid": 1363601522,
+   "title": "Cagayan de Oro's 1st congressional district"
+  },
+  "Manila's 2nd congressional district": {
+   "file": "Manila_s_2nd_congressional_district.json",
+   "revid": 1359813287,
+   "title": "Manila's 2nd congressional district"
+  },
+  "Negros Occidental's 1st congressional district": {
+   "file": "Negros_Occidental_s_1st_congressional_district.json",
+   "revid": 1359813868,
+   "title": "Negros Occidental's 1st congressional district"
+  },
+  "Quezon City's 5th congressional district": {
+   "file": "Quezon_City_s_5th_congressional_district.json",
+   "revid": 1350053046,
+   "title": "Quezon City's 5th congressional district"
+  },
+  "Marinduque's at-large congressional district": {
+   "file": "Marinduque_s_at_large_congressional_district.json",
+   "revid": 1370685228,
+   "title": "Marinduque's at-large congressional district"
+  },
+  "Leyte's 3rd congressional district": {
+   "file": "Leyte_s_3rd_congressional_district.json",
+   "revid": 1359813275,
+   "title": "Leyte's 3rd congressional district"
+  },
+  "Nueva Ecija's 3rd congressional district": {
+   "file": "Nueva_Ecija_s_3rd_congressional_district.json",
+   "revid": 1364268798,
+   "title": "Nueva Ecija's 3rd congressional district"
+  },
+  "Siquijor's at-large congressional district": {
+   "file": "Siquijor_s_at_large_congressional_district.json",
+   "revid": 1363477199,
+   "title": "Siquijor's at-large congressional district"
+  },
+  "Camarines Sur's 2nd congressional district": {
+   "file": "Camarines_Sur_s_2nd_congressional_district.json",
+   "revid": 1359811016,
+   "title": "Camarines Sur's 2nd congressional district"
+  },
+  "Tarlac's 3rd congressional district": {
+   "file": "Tarlac_s_3rd_congressional_district.json",
+   "revid": 1357772893,
+   "title": "Tarlac's 3rd congressional district"
+  },
+  "Las Pi\u00f1as's at-large congressional district": {
+   "file": "Las_Pi_as_s_at_large_congressional_district.json",
+   "revid": 1370791126,
+   "title": "Las Pi\u00f1as's at-large congressional district"
+  },
+  "Bulacan's 4th congressional district": {
+   "file": "Bulacan_s_4th_congressional_district.json",
+   "revid": 1350052265,
+   "title": "Bulacan's 4th congressional district"
+  },
+  "Nueva Ecija's 2nd congressional district": {
+   "file": "Nueva_Ecija_s_2nd_congressional_district.json",
+   "revid": 1372345266,
+   "title": "Nueva Ecija's 2nd congressional district"
+  },
+  "Tarlac's 2nd congressional district": {
+   "file": "Tarlac_s_2nd_congressional_district.json",
+   "revid": 1362203523,
+   "title": "Tarlac's 2nd congressional district"
+  },
+  "Zamboanga del Sur's 1st congressional district": {
+   "file": "Zamboanga_del_Sur_s_1st_congressional_district.json",
+   "revid": 1350052765,
+   "title": "Zamboanga del Sur's 1st congressional district"
+  },
+  "San Juan's at-large congressional district": {
+   "file": "San_Juan_s_at_large_congressional_district.json",
+   "revid": 1362799683,
+   "title": "San Juan's at-large congressional district"
+  },
+  "Davao de Oro's 1st congressional district": {
+   "file": "Davao_de_Oro_s_1st_congressional_district.json",
+   "revid": 1366969917,
+   "title": "Davao de Oro's 1st congressional district"
+  },
+  "Bukidnon's 3rd congressional district": {
+   "file": "Bukidnon_s_3rd_congressional_district.json",
+   "revid": 1369291292,
+   "title": "Bukidnon's 3rd congressional district"
+  },
+  "South Cotabato's 1st congressional district": {
+   "file": "South_Cotabato_s_1st_congressional_district.json",
+   "revid": 1350052684,
+   "title": "South Cotabato's 1st congressional district"
+  },
+  "Albay's 4th congressional district": {
+   "file": "Albay_s_4th_congressional_district.json",
+   "revid": 1304977160,
+   "title": "Albay's 4th congressional district"
+  },
+  "Agusan del Norte's at-large congressional district": {
+   "file": "Agusan_del_Norte_s_at_large_congressional_district.json",
+   "revid": 1370240337,
+   "title": "Agusan del Norte's at-large congressional district"
+  },
+  "Mandaue's at-large congressional district": {
+   "file": "Mandaue_s_at_large_congressional_district.json",
+   "revid": 1367685071,
+   "title": "Mandaue's at-large congressional district"
+  },
+  "Southern Leyte's 1st congressional district": {
+   "file": "Southern_Leyte_s_1st_congressional_district.json",
+   "revid": 1367041683,
+   "title": "Southern Leyte's 1st congressional district"
+  },
+  "Southern Leyte's 2nd congressional district": {
+   "file": "Southern_Leyte_s_2nd_congressional_district.json",
+   "revid": 1367164412,
+   "title": "Southern Leyte's 2nd congressional district"
+  },
+  "Bulacan's 5th congressional district": {
+   "file": "Bulacan_s_5th_congressional_district.json",
+   "revid": 1356725776,
+   "title": "Bulacan's 5th congressional district"
+  },
+  "Rizal's 3rd congressional district": {
+   "file": "Rizal_s_3rd_congressional_district.json",
+   "revid": 1350053139,
+   "title": "Rizal's 3rd congressional district"
+  },
+  "Rizal's 4th congressional district": {
+   "file": "Rizal_s_4th_congressional_district.json",
+   "revid": 1350053144,
+   "title": "Rizal's 4th congressional district"
+  },
+  "Caloocan's 3rd congressional district": {
+   "file": "Caloocan_s_3rd_congressional_district.json",
+   "revid": 1367360289,
+   "title": "Caloocan's 3rd congressional district"
+  },
+  "Maguindanao del Norte's at-large congressional district": {
+   "file": "Maguindanao_del_Norte_s_at_large_congressional_district.json",
+   "revid": 1361627001,
+   "title": "Maguindanao del Norte's at-large congressional district"
+  },
+  "Maguindanao del Sur's at-large congressional district": {
+   "file": "Maguindanao_del_Sur_s_at_large_congressional_district.json",
+   "revid": 1367705640,
+   "title": "Maguindanao del Sur's at-large congressional district"
+  },
+  "Legislative district of Butuan": {
+   "file": "Legislative_district_of_Butuan.json",
+   "revid": 1350773589,
+   "title": "Butuan's at-large congressional district"
+  },
+  "Pampanga's at-large congressional district": {
+   "file": "Pampanga_s_at_large_congressional_district.json",
+   "revid": 1350052193,
+   "title": "Pampanga's at-large congressional district"
+  },
+  "Bohol's 1st congressional district": {
+   "file": "Bohol_s_1st_congressional_district.json",
+   "revid": 1359810575,
+   "title": "Bohol's 1st congressional district"
+  },
+  "Bohol's 2nd congressional district": {
+   "file": "Bohol_s_2nd_congressional_district.json",
+   "revid": 1367414893,
+   "title": "Bohol's 2nd congressional district"
+  },
+  "Bohol's 3rd congressional district": {
+   "file": "Bohol_s_3rd_congressional_district.json",
+   "revid": 1367414156,
+   "title": "Bohol's 3rd congressional district"
+  },
+  "Cebu's 2nd congressional district": {
+   "file": "Cebu_s_2nd_congressional_district.json",
+   "revid": 1370441186,
+   "title": "Cebu's 2nd congressional district"
+  },
+  "Cebu's 3rd congressional district": {
+   "file": "Cebu_s_3rd_congressional_district.json",
+   "revid": 1367677236,
+   "title": "Cebu's 3rd congressional district"
+  },
+  "Cebu's 4th congressional district": {
+   "file": "Cebu_s_4th_congressional_district.json",
+   "revid": 1367677731,
+   "title": "Cebu's 4th congressional district"
+  },
+  "Abra's at-large congressional district": {
+   "file": "Abra_s_at_large_congressional_district.json",
+   "revid": 1370686079,
+   "title": "Abra's at-large congressional district"
+  },
+  "General Santos's at-large congressional district": {
+   "file": "General_Santos_s_at_large_congressional_district.json",
+   "revid": 1369923275,
+   "title": "General Santos's at-large congressional district"
+  },
+  "Manila's 6th congressional district": {
+   "file": "Manila_s_6th_congressional_district.json",
+   "revid": 1360924505,
+   "title": "Manila's 6th congressional district"
+  },
+  "Cavite's 1st congressional district": {
+   "file": "Cavite_s_1st_congressional_district.json",
+   "revid": 1367170134,
+   "title": "Cavite's 1st congressional district"
+  },
+  "Cebu City's 2nd congressional district": {
+   "file": "Cebu_City_s_2nd_congressional_district.json",
+   "revid": 1353779291,
+   "title": "Cebu City's 2nd congressional district"
+  },
+  "Batangas's 2nd congressional district": {
+   "file": "Batangas_s_2nd_congressional_district.json",
+   "revid": 1359810366,
+   "title": "Batangas's 2nd congressional district"
+  },
+  "Palawan's 2nd congressional district": {
+   "file": "Palawan_s_2nd_congressional_district.json",
+   "revid": 1361988758,
+   "title": "Palawan's 2nd congressional district"
+  },
+  "Eastern Samar's at-large congressional district": {
+   "file": "Eastern_Samar_s_at_large_congressional_district.json",
+   "revid": 1372337665,
+   "title": "Eastern Samar's at-large congressional district"
+  },
+  "Antipolo's 2nd congressional district": {
+   "file": "Antipolo_s_2nd_congressional_district.json",
+   "revid": 1350052870,
+   "title": "Antipolo's 2nd congressional district"
+  },
+  "Palawan's 3rd congressional district": {
+   "file": "Palawan_s_3rd_congressional_district.json",
+   "revid": 1350143300,
+   "title": "Palawan's 3rd congressional district"
+  },
+  "Bukidnon's 1st congressional district": {
+   "file": "Bukidnon_s_1st_congressional_district.json",
+   "revid": 1367163025,
+   "title": "Bukidnon's 1st congressional district"
+  },
+  "Lanao del Sur's 1st congressional district": {
+   "file": "Lanao_del_Sur_s_1st_congressional_district.json",
+   "revid": 1367703602,
+   "title": "Lanao del Sur's 1st congressional district"
+  },
+  "Cavite's 3rd congressional district": {
+   "file": "Cavite_s_3rd_congressional_district.json",
+   "revid": 1364570521,
+   "title": "Cavite's 3rd congressional district"
+  },
+  "Pangasinan's 6th congressional district": {
+   "file": "Pangasinan_s_6th_congressional_district.json",
+   "revid": 1372328689,
+   "title": "Pangasinan's 6th congressional district"
+  },
+  "Laguna's 4th congressional district": {
+   "file": "Laguna_s_4th_congressional_district.json",
+   "revid": 1361306746,
+   "title": "Laguna's 4th congressional district"
+  },
+  "Isabela's 1st congressional district": {
+   "file": "Isabela_s_1st_congressional_district.json",
+   "revid": 1359291102,
+   "title": "Isabela's 1st congressional district"
+  },
+  "Cagayan's 2nd congressional district": {
+   "file": "Cagayan_s_2nd_congressional_district.json",
+   "revid": 1366968300,
+   "title": "Cagayan's 2nd congressional district"
+  },
+  "Davao Oriental's 2nd congressional district": {
+   "file": "Davao_Oriental_s_2nd_congressional_district.json",
+   "revid": 1367361897,
+   "title": "Davao Oriental's 2nd congressional district"
+  },
+  "Bi\u00f1an's at-large congressional district": {
+   "file": "Bi_an_s_at_large_congressional_district.json",
+   "revid": 1363952797,
+   "title": "Bi\u00f1an's at-large congressional district"
+  },
+  "Palawan's 1st congressional district": {
+   "file": "Palawan_s_1st_congressional_district.json",
+   "revid": 1357405547,
+   "title": "Palawan's 1st congressional district"
+  },
+  "Negros Occidental's 6th congressional district": {
+   "file": "Negros_Occidental_s_6th_congressional_district.json",
+   "revid": 1350052539,
+   "title": "Negros Occidental's 6th congressional district"
+  },
+  "Davao del Norte's 1st congressional district": {
+   "file": "Davao_del_Norte_s_1st_congressional_district.json",
+   "revid": 1350995018,
+   "title": "Davao del Norte's 1st congressional district"
+  },
+  "Agusan del Norte's 2nd congressional district": {
+   "file": "Agusan_del_Norte_s_2nd_congressional_district.json",
+   "revid": 1370358120,
+   "title": "Agusan del Norte's 2nd congressional district"
+  },
+  "Zamboanga del Norte's 3rd congressional district": {
+   "file": "Zamboanga_del_Norte_s_3rd_congressional_district.json",
+   "revid": 1350052755,
+   "title": "Zamboanga del Norte's 3rd congressional district"
+  },
+  "Camarines Sur's 1st congressional district": {
+   "file": "Camarines_Sur_s_1st_congressional_district.json",
+   "revid": 1371953726,
+   "title": "Camarines Sur's 1st congressional district"
+  },
+  "Aurora's at-large congressional district": {
+   "file": "Aurora_s_at_large_congressional_district.json",
+   "revid": 1351987907,
+   "title": "Aurora's at-large congressional district"
+  },
+  "Laguna's 3rd congressional district": {
+   "file": "Laguna_s_3rd_congressional_district.json",
+   "revid": 1371790418,
+   "title": "Laguna's 3rd congressional district"
+  },
+  "Sulu's 2nd congressional district": {
+   "file": "Sulu_s_2nd_congressional_district.json",
+   "revid": 1364091291,
+   "title": "Sulu's 2nd congressional district"
+  },
+  "Pangasinan's 3rd congressional district": {
+   "file": "Pangasinan_s_3rd_congressional_district.json",
+   "revid": 1361590706,
+   "title": "Pangasinan's 3rd congressional district"
+  },
+  "Pampanga's 2nd congressional district": {
+   "file": "Pampanga_s_2nd_congressional_district.json",
+   "revid": 1370636442,
+   "title": "Pampanga's 2nd congressional district"
+  },
+  "Negros Occidental's 5th congressional district": {
+   "file": "Negros_Occidental_s_5th_congressional_district.json",
+   "revid": 1360289965,
+   "title": "Negros Occidental's 5th congressional district"
+  },
+  "Zamboanga del Sur's 2nd congressional district": {
+   "file": "Zamboanga_del_Sur_s_2nd_congressional_district.json",
+   "revid": 1371976138,
+   "title": "Zamboanga del Sur's 2nd congressional district"
+  },
+  "Manila's 5th congressional district": {
+   "file": "Manila_s_5th_congressional_district.json",
+   "revid": 1352629589,
+   "title": "Manila's 5th congressional district"
+  },
+  "Lanao del Sur's 2nd congressional district": {
+   "file": "Lanao_del_Sur_s_2nd_congressional_district.json",
+   "revid": 1367704068,
+   "title": "Lanao del Sur's 2nd congressional district"
+  },
+  "Ilocos Norte's 2nd congressional district": {
+   "file": "Ilocos_Norte_s_2nd_congressional_district.json",
+   "revid": 1367591212,
+   "title": "Ilocos Norte's 2nd congressional district"
+  },
+  "Surigao del Norte's 2nd congressional district": {
+   "file": "Surigao_del_Norte_s_2nd_congressional_district.json",
+   "revid": 1365455907,
+   "title": "Surigao del Norte's 2nd congressional district"
+  },
+  "Iloilo City's at-large congressional district": {
+   "file": "Iloilo_City_s_at_large_congressional_district.json",
+   "revid": 1363167443,
+   "title": "Iloilo City's at-large congressional district"
+  },
+  "Cavite's 4th congressional district": {
+   "file": "Cavite_s_4th_congressional_district.json",
+   "revid": 1372717289,
+   "title": "Cavite's 4th congressional district"
+  },
+  "Agusan del Sur's 1st congressional district": {
+   "file": "Agusan_del_Sur_s_1st_congressional_district.json",
+   "revid": 1370241985,
+   "title": "Agusan del Sur's 1st congressional district"
+  },
+  "Davao Occidental's at-large congressional district": {
+   "file": "Davao_Occidental_s_at_large_congressional_district.json",
+   "revid": 1367409200,
+   "title": "Davao Occidental's at-large congressional district"
+  },
+  "Quezon City's 6th congressional district": {
+   "file": "Quezon_City_s_6th_congressional_district.json",
+   "revid": 1363305164,
+   "title": "Quezon City's 6th congressional district"
+  },
+  "Negros Occidental's 3rd congressional district": {
+   "file": "Negros_Occidental_s_3rd_congressional_district.json",
+   "revid": 1371637879,
+   "title": "Negros Occidental's 3rd congressional district"
+  },
+  "Muntinlupa's at-large congressional district": {
+   "file": "Muntinlupa_s_at_large_congressional_district.json",
+   "revid": 1350052831,
+   "title": "Muntinlupa's at-large congressional district"
+  },
+  "Capiz's 1st congressional district": {
+   "file": "Capiz_s_1st_congressional_district.json",
+   "revid": 1370464006,
+   "title": "Capiz's 1st congressional district"
+  },
+  "Iloilo's 4th congressional district": {
+   "file": "Iloilo_s_4th_congressional_district.json",
+   "revid": 1371841383,
+   "title": "Iloilo's 4th congressional district"
+  },
+  "Batangas's 4th congressional district": {
+   "file": "Batangas_s_4th_congressional_district.json",
+   "revid": 1351198998,
+   "title": "Batangas's 4th congressional district"
+  },
+  "Pampanga's 4th congressional district": {
+   "file": "Pampanga_s_4th_congressional_district.json",
+   "revid": 1362337305,
+   "title": "Pampanga's 4th congressional district"
+  },
+  "Camarines Sur's 3rd congressional district": {
+   "file": "Camarines_Sur_s_3rd_congressional_district.json",
+   "revid": 1367324221,
+   "title": "Camarines Sur's 3rd congressional district"
+  },
+  "Masbate's 1st congressional district": {
+   "file": "Masbate_s_1st_congressional_district.json",
+   "revid": 1350131070,
+   "title": "Masbate's 1st congressional district"
+  },
+  "Apayao's at-large congressional district": {
+   "file": "Apayao_s_at_large_congressional_district.json",
+   "revid": 1350052817,
+   "title": "Apayao's at-large congressional district"
+  },
+  "Albay's 3rd congressional district": {
+   "file": "Albay_s_3rd_congressional_district.json",
+   "revid": 1366453390,
+   "title": "Albay's 3rd congressional district"
+  },
+  "Davao del Sur's at-large congressional district": {
+   "file": "Davao_del_Sur_s_at_large_congressional_district.json",
+   "revid": 1359811643,
+   "title": "Davao del Sur's at-large congressional district"
+  },
+  "Cebu's 7th congressional district": {
+   "file": "Cebu_s_7th_congressional_district.json",
+   "revid": 1367679372,
+   "title": "Cebu's 7th congressional district"
+  },
+  "Pasay's at-large congressional district": {
+   "file": "Pasay_s_at_large_congressional_district.json",
+   "revid": 1366833905,
+   "title": "Pasay's at-large congressional district"
+  },
+  "Makati's 2nd congressional district": {
+   "file": "Makati_s_2nd_congressional_district.json",
+   "revid": 1371102355,
+   "title": "Makati's 2nd congressional district"
+  },
+  "Cotabato's 2nd congressional district": {
+   "file": "Cotabato_s_2nd_congressional_district.json",
+   "revid": 1350052321,
+   "title": "Cotabato's 2nd congressional district"
+  },
+  "Leyte's 5th congressional district": {
+   "file": "Leyte_s_5th_congressional_district.json",
+   "revid": 1357903510,
+   "title": "Leyte's 5th congressional district"
+  },
+  "Quezon City's 2nd congressional district": {
+   "file": "Quezon_City_s_2nd_congressional_district.json",
+   "revid": 1350052649,
+   "title": "Quezon City's 2nd congressional district"
+  },
+  "Capiz's 2nd congressional district": {
+   "file": "Capiz_s_2nd_congressional_district.json",
+   "revid": 1370612394,
+   "title": "Capiz's 2nd congressional district"
+  },
+  "Taguig\u2013Pateros's 1st congressional district": {
+   "file": "Taguig_Pateros_s_1st_congressional_district.json",
+   "revid": 1370642964,
+   "title": "Taguig\u2013Pateros's 1st congressional district"
+  },
+  "Taguig\u2013Pateros's 2nd congressional district": {
+   "file": "Taguig_Pateros_s_2nd_congressional_district.json",
+   "revid": 1367585704,
+   "title": "Taguig\u2013Pateros's 2nd congressional district"
+  },
+  "Pangasinan's 1st congressional district": {
+   "file": "Pangasinan_s_1st_congressional_district.json",
+   "revid": 1361667636,
+   "title": "Pangasinan's 1st congressional district"
+  },
+  "Calamba's at-large congressional district": {
+   "file": "Calamba_s_at_large_congressional_district.json",
+   "revid": 1350053102,
+   "title": "Calamba's at-large congressional district"
+  },
+  "Ifugao's at-large congressional district": {
+   "file": "Ifugao_s_at_large_congressional_district.json",
+   "revid": 1370823580,
+   "title": "Ifugao's at-large congressional district"
+  },
+  "Tarlac's 1st congressional district": {
+   "file": "Tarlac_s_1st_congressional_district.json",
+   "revid": 1359815797,
+   "title": "Tarlac's 1st congressional district"
+  },
+  "Batangas's 3rd congressional district": {
+   "file": "Batangas_s_3rd_congressional_district.json",
+   "revid": 1372285402,
+   "title": "Batangas's 3rd congressional district"
+  },
+  "Quezon City's 1st congressional district": {
+   "file": "Quezon_City_s_1st_congressional_district.json",
+   "revid": 1353483560,
+   "title": "Quezon City's 1st congressional district"
+  },
+  "Quirino's at-large congressional district": {
+   "file": "Quirino_s_at_large_congressional_district.json",
+   "revid": 1367359287,
+   "title": "Quirino's at-large congressional district"
+  },
+  "Nueva Vizcaya's at-large congressional district": {
+   "file": "Nueva_Vizcaya_s_at_large_congressional_district.json",
+   "revid": 1370243091,
+   "title": "Nueva Vizcaya's at-large congressional district"
+  },
+  "Negros Occidental's 2nd congressional district": {
+   "file": "Negros_Occidental_s_2nd_congressional_district.json",
+   "revid": 1359813874,
+   "title": "Negros Occidental's 2nd congressional district"
+  },
+  "Zamboanga City's 2nd congressional district": {
+   "file": "Zamboanga_City_s_2nd_congressional_district.json",
+   "revid": 1351180115,
+   "title": "Zamboanga City's 2nd congressional district"
+  },
+  "Mountain Province's at-large congressional district": {
+   "file": "Mountain_Province_s_at_large_congressional_district.json",
+   "revid": 1371394317,
+   "title": "Mountain Province's at-large congressional district"
+  },
+  "Northern Samar's 1st congressional district": {
+   "file": "Northern_Samar_s_1st_congressional_district.json",
+   "revid": 1353933495,
+   "title": "Northern Samar's 1st congressional district"
+  },
+  "Pangasinan's 4th congressional district": {
+   "file": "Pangasinan_s_4th_congressional_district.json",
+   "revid": 1359814957,
+   "title": "Pangasinan's 4th congressional district"
+  },
+  "Iloilo's 3rd congressional district": {
+   "file": "Iloilo_s_3rd_congressional_district.json",
+   "revid": 1359812347,
+   "title": "Iloilo's 3rd congressional district"
+  },
+  "Cebu City's 1st congressional district": {
+   "file": "Cebu_City_s_1st_congressional_district.json",
+   "revid": 1353778736,
+   "title": "Cebu City's 1st congressional district"
+  },
+  "Zambales's 2nd congressional district": {
+   "file": "Zambales_s_2nd_congressional_district.json",
+   "revid": 1350052740,
+   "title": "Zambales's 2nd congressional district"
+  },
+  "Lanao del Norte's 2nd congressional district": {
+   "file": "Lanao_del_Norte_s_2nd_congressional_district.json",
+   "revid": 1366841573,
+   "title": "Lanao del Norte's 2nd congressional district"
+  },
+  "Lanao del Norte's 1st congressional district": {
+   "file": "Lanao_del_Norte_s_1st_congressional_district.json",
+   "revid": 1363442869,
+   "title": "Lanao del Norte's 1st congressional district"
+  },
+  "Rizal's 1st congressional district": {
+   "file": "Rizal_s_1st_congressional_district.json",
+   "revid": 1361532175,
+   "title": "Rizal's 1st congressional district"
+  },
+  "Davao del Norte's 2nd congressional district": {
+   "file": "Davao_del_Norte_s_2nd_congressional_district.json",
+   "revid": 1364903217,
+   "title": "Davao del Norte's 2nd congressional district"
+  },
+  "Davao City's 1st congressional district": {
+   "file": "Davao_City_s_1st_congressional_district.json",
+   "revid": 1363448131,
+   "title": "Davao City's 1st congressional district"
+  },
+  "Isabela's 5th congressional district": {
+   "file": "Isabela_s_5th_congressional_district.json",
+   "revid": 1367002984,
+   "title": "Isabela's 5th congressional district"
+  },
+  "Isabela's 6th congressional district": {
+   "file": "Isabela_s_6th_congressional_district.json",
+   "revid": 1370503981,
+   "title": "Isabela's 6th congressional district"
+  },
+  "Isabela's 3rd congressional district": {
+   "file": "Isabela_s_3rd_congressional_district.json",
+   "revid": 1352956491,
+   "title": "Isabela's 3rd congressional district"
+  },
+  "Dinagat Islands's at-large congressional district": {
+   "file": "Dinagat_Islands_s_at_large_congressional_district.json",
+   "revid": 1350052910,
+   "title": "Dinagat Islands's at-large congressional district"
+  },
+  "Quezon's 1st congressional district": {
+   "file": "Quezon_s_1st_congressional_district.json",
+   "revid": 1363663759,
+   "title": "Quezon's 1st congressional district"
+  },
+  "Caloocan's 2nd congressional district": {
+   "file": "Caloocan_s_2nd_congressional_district.json",
+   "revid": 1350052287,
+   "title": "Caloocan's 2nd congressional district"
+  },
+  "La Union's 2nd congressional district": {
+   "file": "La_Union_s_2nd_congressional_district.json",
+   "revid": 1367045768,
+   "title": "La Union's 2nd congressional district"
+  },
+  "Batangas's 1st congressional district": {
+   "file": "Batangas_s_1st_congressional_district.json",
+   "revid": 1359810357,
+   "title": "Batangas's 1st congressional district"
+  },
+  "Sorsogon's 1st congressional district": {
+   "file": "Sorsogon_s_1st_congressional_district.json",
+   "revid": 1359815396,
+   "title": "Sorsogon's 1st congressional district"
+  },
+  "Biliran's at-large congressional district": {
+   "file": "Biliran_s_at_large_congressional_district.json",
+   "revid": 1362756543,
+   "title": "Biliran's at-large congressional district"
+  },
+  "Pangasinan's 2nd congressional district": {
+   "file": "Pangasinan_s_2nd_congressional_district.json",
+   "revid": 1359814964,
+   "title": "Pangasinan's 2nd congressional district"
+  },
+  "Ilocos Norte's 1st congressional district": {
+   "file": "Ilocos_Norte_s_1st_congressional_district.json",
+   "revid": 1371731816,
+   "title": "Ilocos Norte's 1st congressional district"
+  },
+  "Laguna's 1st congressional district": {
+   "file": "Laguna_s_1st_congressional_district.json",
+   "revid": 1371789762,
+   "title": "Laguna's 1st congressional district"
+  },
+  "Marikina's 1st congressional district": {
+   "file": "Marikina_s_1st_congressional_district.json",
+   "revid": 1350052920,
+   "title": "Marikina's 1st congressional district"
+  },
+  "Negros Occidental's 4th congressional district": {
+   "file": "Negros_Occidental_s_4th_congressional_district.json",
+   "revid": 1350052528,
+   "title": "Negros Occidental's 4th congressional district"
+  },
+  "Cavite's 6th congressional district": {
+   "file": "Cavite_s_6th_congressional_district.json",
+   "revid": 1365983414,
+   "title": "Cavite's 6th congressional district"
+  },
+  "Bukidnon's 2nd congressional district": {
+   "file": "Bukidnon_s_2nd_congressional_district.json",
+   "revid": 1363448779,
+   "title": "Bukidnon's 2nd congressional district"
+  },
+  "Benguet's at-large congressional district": {
+   "file": "Benguet_s_at_large_congressional_district.json",
+   "revid": 1371910090,
+   "title": "Benguet's at-large congressional district"
+  },
+  "Agusan del Norte's 1st congressional district": {
+   "file": "Agusan_del_Norte_s_1st_congressional_district.json",
+   "revid": 1350683020,
+   "title": "Agusan del Norte's 1st congressional district"
+  },
+  "Camarines Sur's 5th congressional district": {
+   "file": "Camarines_Sur_s_5th_congressional_district.json",
+   "revid": 1352609535,
+   "title": "Camarines Sur's 5th congressional district"
+  },
+  "Cebu's 5th congressional district": {
+   "file": "Cebu_s_5th_congressional_district.json",
+   "revid": 1367678411,
+   "title": "Cebu's 5th congressional district"
+  },
+  "Camarines Sur's 4th congressional district": {
+   "file": "Camarines_Sur_s_4th_congressional_district.json",
+   "revid": 1352608926,
+   "title": "Camarines Sur's 4th congressional district"
+  },
+  "Davao City's 2nd congressional district": {
+   "file": "Davao_City_s_2nd_congressional_district.json",
+   "revid": 1361116683,
+   "title": "Davao City's 2nd congressional district"
+  },
+  "Bataan's 2nd congressional district": {
+   "file": "Bataan_s_2nd_congressional_district.json",
+   "revid": 1350052223,
+   "title": "Bataan's 2nd congressional district"
+  },
+  "Iloilo's 1st congressional district": {
+   "file": "Iloilo_s_1st_congressional_district.json",
+   "revid": 1370821056,
+   "title": "Iloilo's 1st congressional district"
+  },
+  "Bacolod's at-large congressional district": {
+   "file": "Bacolod_s_at_large_congressional_district.json",
+   "revid": 1360554737,
+   "title": "Bacolod's at-large congressional district"
+  },
+  "Valenzuela's 1st congressional district": {
+   "file": "Valenzuela_s_1st_congressional_district.json",
+   "revid": 1351982912,
+   "title": "Valenzuela's 1st congressional district"
+  },
+  "Batanes's at-large congressional district": {
+   "file": "Batanes_s_at_large_congressional_district.json",
+   "revid": 1361328527,
+   "title": "Batanes's at-large congressional district"
+  },
+  "Isabela's 2nd congressional district": {
+   "file": "Isabela_s_2nd_congressional_district.json",
+   "revid": 1367042529,
+   "title": "Isabela's 2nd congressional district"
+  },
+  "Baguio's at-large congressional district": {
+   "file": "Baguio_s_at_large_congressional_district.json",
+   "revid": 1365464923,
+   "title": "Baguio's at-large congressional district"
+  },
+  "Davao de Oro's 2nd congressional district": {
+   "file": "Davao_de_Oro_s_2nd_congressional_district.json",
+   "revid": 1363591083,
+   "title": "Davao de Oro's 2nd congressional district"
+  },
+  "Pampanga's 3rd congressional district": {
+   "file": "Pampanga_s_3rd_congressional_district.json",
+   "revid": 1365559547,
+   "title": "Pampanga's 3rd congressional district"
+  },
+  "Mandaluyong's at-large congressional district": {
+   "file": "Mandaluyong_s_at_large_congressional_district.json",
+   "revid": 1350052804,
+   "title": "Mandaluyong's at-large congressional district"
+  },
+  "Iloilo's 2nd congressional district": {
+   "file": "Iloilo_s_2nd_congressional_district.json",
+   "revid": 1359812344,
+   "title": "Iloilo's 2nd congressional district"
+  },
+  "Pangasinan's 5th congressional district": {
+   "file": "Pangasinan_s_5th_congressional_district.json",
+   "revid": 1359814951,
+   "title": "Pangasinan's 5th congressional district"
+  },
+  "Cebu's 1st congressional district": {
+   "file": "Cebu_s_1st_congressional_district.json",
+   "revid": 1367676096,
+   "title": "Cebu's 1st congressional district"
+  },
+  "Aklan's 2nd congressional district": {
+   "file": "Aklan_s_2nd_congressional_district.json",
+   "revid": 1350053097,
+   "title": "Aklan's 2nd congressional district"
+  },
+  "Basilan's at-large congressional district": {
+   "file": "Basilan_s_at_large_congressional_district.json",
+   "revid": 1366450667,
+   "title": "Basilan's at-large congressional district"
+  },
+  "South Cotabato's 2nd congressional district": {
+   "file": "South_Cotabato_s_2nd_congressional_district.json",
+   "revid": 1369770077,
+   "title": "South Cotabato's 2nd congressional district"
+  },
+  "Zamboanga Sibugay's 2nd congressional district": {
+   "file": "Zamboanga_Sibugay_s_2nd_congressional_district.json",
+   "revid": 1370244807,
+   "title": "Zamboanga Sibugay's 2nd congressional district"
+  },
+  "Zamboanga del Norte's 1st congressional district": {
+   "file": "Zamboanga_del_Norte_s_1st_congressional_district.json",
+   "revid": 1360275762,
+   "title": "Zamboanga del Norte's 1st congressional district"
+  },
+  "Leyte's 2nd congressional district": {
+   "file": "Leyte_s_2nd_congressional_district.json",
+   "revid": 1366985021,
+   "title": "Leyte's 2nd congressional district"
+  },
+  "Zamboanga City's 1st congressional district": {
+   "file": "Zamboanga_City_s_1st_congressional_district.json",
+   "revid": 1357190482,
+   "title": "Zamboanga City's 1st congressional district"
+  },
+  "Masbate's 2nd congressional district": {
+   "file": "Masbate_s_2nd_congressional_district.json",
+   "revid": 1361838380,
+   "title": "Masbate's 2nd congressional district"
+  },
+  "Masbate's 3rd congressional district": {
+   "file": "Masbate_s_3rd_congressional_district.json",
+   "revid": 1353442880,
+   "title": "Masbate's 3rd congressional district"
+  },
+  "Zambales's 1st congressional district": {
+   "file": "Zambales_s_1st_congressional_district.json",
+   "revid": 1350052732,
+   "title": "Zambales's 1st congressional district"
+  },
+  "Zamboanga del Norte's 2nd congressional district": {
+   "file": "Zamboanga_del_Norte_s_2nd_congressional_district.json",
+   "revid": 1350052748,
+   "title": "Zamboanga del Norte's 2nd congressional district"
+  },
+  "Malabon's at-large congressional district": {
+   "file": "Malabon_s_at_large_congressional_district.json",
+   "revid": 1350052962,
+   "title": "Malabon's at-large congressional district"
+  },
+  "Albay's 1st congressional district": {
+   "file": "Albay_s_1st_congressional_district.json",
+   "revid": 1359809728,
+   "title": "Albay's 1st congressional district"
+  },
+  "Cagayan's 3rd congressional district": {
+   "file": "Cagayan_s_3rd_congressional_district.json",
+   "revid": 1350052270,
+   "title": "Cagayan's 3rd congressional district"
+  },
+  "Pampanga's 1st congressional district": {
+   "file": "Pampanga_s_1st_congressional_district.json",
+   "revid": 1366843307,
+   "title": "Pampanga's 1st congressional district"
+  },
+  "Oriental Mindoro's 1st congressional district": {
+   "file": "Oriental_Mindoro_s_1st_congressional_district.json",
+   "revid": 1350052588,
+   "title": "Oriental Mindoro's 1st congressional district"
+  },
+  "Antique's at-large congressional district": {
+   "file": "Antique_s_at_large_congressional_district.json",
+   "revid": 1359810125,
+   "title": "Antique's at-large congressional district"
+  },
+  "Negros Oriental's 1st congressional district": {
+   "file": "Negros_Oriental_s_1st_congressional_district.json",
+   "revid": 1359813884,
+   "title": "Negros Oriental's 1st congressional district"
+  },
+  "Manila's 1st congressional district": {
+   "file": "Manila_s_1st_congressional_district.json",
+   "revid": 1359813285,
+   "title": "Manila's 1st congressional district"
+  },
+  "Cavite's 5th congressional district": {
+   "file": "Cavite_s_5th_congressional_district.json",
+   "revid": 1361615954,
+   "title": "Cavite's 5th congressional district"
+  },
+  "Manila's 4th congressional district": {
+   "file": "Manila_s_4th_congressional_district.json",
+   "revid": 1359813297,
+   "title": "Manila's 4th congressional district"
+  },
+  "Romblon's at-large congressional district": {
+   "file": "Romblon_s_at_large_congressional_district.json",
+   "revid": 1370878095,
+   "title": "Romblon's at-large congressional district"
+  },
+  "Caloocan's 1st congressional district": {
+   "file": "Caloocan_s_1st_congressional_district.json",
+   "revid": 1350052277,
+   "title": "Caloocan's 1st congressional district"
+  },
+  "Kalinga's at-large congressional district": {
+   "file": "Kalinga_s_at_large_congressional_district.json",
+   "revid": 1370242661,
+   "title": "Kalinga's at-large congressional district"
+  },
+  "Maguindanao's 2nd congressional district": {
+   "file": "Maguindanao_s_2nd_congressional_district.json",
+   "revid": 1367704631,
+   "title": "Maguindanao's 2nd congressional district"
+  },
+  "Laguna's 2nd congressional district": {
+   "file": "Laguna_s_2nd_congressional_district.json",
+   "revid": 1370864581,
+   "title": "Laguna's 2nd congressional district"
+  },
+  "Batangas's 5th congressional district": {
+   "file": "Batangas_s_5th_congressional_district.json",
+   "revid": 1350053061,
+   "title": "Batangas's 5th congressional district"
+  },
+  "Aklan's 1st congressional district": {
+   "file": "Aklan_s_1st_congressional_district.json",
+   "revid": 1350053092,
+   "title": "Aklan's 1st congressional district"
+  },
+  "Valenzuela's 2nd congressional district": {
+   "file": "Valenzuela_s_2nd_congressional_district.json",
+   "revid": 1363594221,
+   "title": "Valenzuela's 2nd congressional district"
+  },
+  "Tawi-Tawi's at-large congressional district": {
+   "file": "Tawi_Tawi_s_at_large_congressional_district.json",
+   "revid": 1350481899,
+   "title": "Tawi-Tawi's at-large congressional district"
+  },
+  "Surigao del Norte's 1st congressional district": {
+   "file": "Surigao_del_Norte_s_1st_congressional_district.json",
+   "revid": 1363661079,
+   "title": "Surigao del Norte's 1st congressional district"
+  },
+  "Nueva Ecija's 4th congressional district": {
+   "file": "Nueva_Ecija_s_4th_congressional_district.json",
+   "revid": 1367168082,
+   "title": "Nueva Ecija's 4th congressional district"
+  },
+  "Guimaras's at-large congressional district": {
+   "file": "Guimaras_s_at_large_congressional_district.json",
+   "revid": 1350052787,
+   "title": "Guimaras's at-large congressional district"
+  },
+  "Manila's 3rd congressional district": {
+   "file": "Manila_s_3rd_congressional_district.json",
+   "revid": 1367495374,
+   "title": "Manila's 3rd congressional district"
+  },
+  "Rizal's 2nd congressional district": {
+   "file": "Rizal_s_2nd_congressional_district.json",
+   "revid": 1359815172,
+   "title": "Rizal's 2nd congressional district"
+  },
+  "Cagayan's 1st congressional district": {
+   "file": "Cagayan_s_1st_congressional_district.json",
+   "revid": 1366969309,
+   "title": "Cagayan's 1st congressional district"
+  },
+  "Davao Oriental's 1st congressional district": {
+   "file": "Davao_Oriental_s_1st_congressional_district.json",
+   "revid": 1351063232,
+   "title": "Davao Oriental's 1st congressional district"
+  },
+  "Misamis Occidental's 2nd congressional district": {
+   "file": "Misamis_Occidental_s_2nd_congressional_district.json",
+   "revid": 1366126887,
+   "title": "Misamis Occidental's 2nd congressional district"
+  },
+  "Para\u00f1aque's 1st congressional district": {
+   "file": "Para_aque_s_1st_congressional_district.json",
+   "revid": 1350052875,
+   "title": "Para\u00f1aque's 1st congressional district"
+  },
+  "Northern Samar's 2nd congressional district": {
+   "file": "Northern_Samar_s_2nd_congressional_district.json",
+   "revid": 1350052557,
+   "title": "Northern Samar's 2nd congressional district"
+  },
+  "La Union's 1st congressional district": {
+   "file": "La_Union_s_1st_congressional_district.json",
+   "revid": 1370539972,
+   "title": "La Union's 1st congressional district"
+  },
+  "Cebu's 6th congressional district": {
+   "file": "Cebu_s_6th_congressional_district.json",
+   "revid": 1367685421,
+   "title": "Cebu's 6th congressional district"
+  },
+  "Sarangani's at-large congressional district": {
+   "file": "Sarangani_s_at_large_congressional_district.json",
+   "revid": 1367171033,
+   "title": "Sarangani's at-large congressional district"
+  },
+  "Zamboanga Sibugay's 1st congressional district": {
+   "file": "Zamboanga_Sibugay_s_1st_congressional_district.json",
+   "revid": 1370244488,
+   "title": "Zamboanga Sibugay's 1st congressional district"
+  },
+  "Bulacan's 2nd congressional district": {
+   "file": "Bulacan_s_2nd_congressional_district.json",
+   "revid": 1370671931,
+   "title": "Bulacan's 2nd congressional district"
+  },
+  "Camarines Norte's 2nd congressional district": {
+   "file": "Camarines_Norte_s_2nd_congressional_district.json",
+   "revid": 1352612683,
+   "title": "Camarines Norte's 2nd congressional district"
+  },
+  "Makati's 1st congressional district": {
+   "file": "Makati_s_1st_congressional_district.json",
+   "revid": 1350358940,
+   "title": "Makati's 1st congressional district"
+  },
+  "Surigao del Sur's 1st congressional district": {
+   "file": "Surigao_del_Sur_s_1st_congressional_district.json",
+   "revid": 1370164354,
+   "title": "Surigao del Sur's 1st congressional district"
+  },
+  "Surigao del Sur's 2nd congressional district": {
+   "file": "Surigao_del_Sur_s_2nd_congressional_district.json",
+   "revid": 1350052714,
+   "title": "Surigao del Sur's 2nd congressional district"
+  },
+  "Agusan del Sur's 2nd congressional district": {
+   "file": "Agusan_del_Sur_s_2nd_congressional_district.json",
+   "revid": 1370241992,
+   "title": "Agusan del Sur's 2nd congressional district"
+  },
+  "Antipolo's 1st congressional district": {
+   "file": "Antipolo_s_1st_congressional_district.json",
+   "revid": 1350052866,
+   "title": "Antipolo's 1st congressional district"
+  },
+  "Marikina's 2nd congressional district": {
+   "file": "Marikina_s_2nd_congressional_district.json",
+   "revid": 1350052925,
+   "title": "Marikina's 2nd congressional district"
+  },
+  "Lapu-Lapu's at-large congressional district": {
+   "file": "Lapu_Lapu_s_at_large_congressional_district.json",
+   "revid": 1350053031,
+   "title": "Lapu-Lapu City's at-large congressional district"
+  },
+  "Occidental Mindoro's at-large congressional district": {
+   "file": "Occidental_Mindoro_s_at_large_congressional_district.json",
+   "revid": 1361584868,
+   "title": "Occidental Mindoro's at-large congressional district"
+  },
+  "Sorsogon's 2nd congressional district": {
+   "file": "Sorsogon_s_2nd_congressional_district.json",
+   "revid": 1359815400,
+   "title": "Sorsogon's 2nd congressional district"
+  },
+  "Cavite's 7th congressional district": {
+   "file": "Cavite_s_7th_congressional_district.json",
+   "revid": 1365465560,
+   "title": "Cavite's 7th congressional district"
+  },
+  "Cavite's 2nd congressional district": {
+   "file": "Cavite_s_2nd_congressional_district.json",
+   "revid": 1365409501,
+   "title": "Cavite's 2nd congressional district"
+  },
+  "Quezon City's 3rd congressional district": {
+   "file": "Quezon_City_s_3rd_congressional_district.json",
+   "revid": 1371819312,
+   "title": "Quezon City's 3rd congressional district"
+  },
+  "San Jose del Monte's at-large congressional district": {
+   "file": "San_Jose_del_Monte_s_at_large_congressional_district.json",
+   "revid": 1372228233,
+   "title": "San Jose del Monte's at-large congressional district"
+  },
+  "Cagayan de Oro's 2nd congressional district": {
+   "file": "Cagayan_de_Oro_s_2nd_congressional_district.json",
+   "revid": 1365626004,
+   "title": "Cagayan de Oro's 2nd congressional district"
+  },
+  "Bataan's 1st congressional district": {
+   "file": "Bataan_s_1st_congressional_district.json",
+   "revid": 1350052221,
+   "title": "Bataan's 1st congressional district"
+  },
+  "Leyte's 1st congressional district": {
+   "file": "Leyte_s_1st_congressional_district.json",
+   "revid": 1363662411,
+   "title": "Leyte's 1st congressional district"
+  },
+  "Camiguin's at-large congressional district": {
+   "file": "Camiguin_s_at_large_congressional_district.json",
+   "revid": 1359811018,
+   "title": "Camiguin's at-large congressional district"
+  },
+  "Pasig's at-large congressional district": {
+   "file": "Pasig_s_at_large_congressional_district.json",
+   "revid": 1354732480,
+   "title": "Pasig's at-large congressional district"
+  },
+  "Bukidnon's 4th congressional district": {
+   "file": "Bukidnon_s_4th_congressional_district.json",
+   "revid": 1358677534,
+   "title": "Bukidnon's 4th congressional district"
+  },
+  "Cotabato's 1st congressional district": {
+   "file": "Cotabato_s_1st_congressional_district.json",
+   "revid": 1366960975,
+   "title": "Cotabato's 1st congressional district"
+  },
+  "Negros Oriental's 2nd congressional district": {
+   "file": "Negros_Oriental_s_2nd_congressional_district.json",
+   "revid": 1368701992,
+   "title": "Negros Oriental's 2nd congressional district"
+  },
+  "Sultan Kudarat's 1st congressional district": {
+   "file": "Sultan_Kudarat_s_1st_congressional_district.json",
+   "revid": 1350052931,
+   "title": "Sultan Kudarat's 1st congressional district"
+  },
+  "Albay's 2nd congressional district": {
+   "file": "Albay_s_2nd_congressional_district.json",
+   "revid": 1367158709,
+   "title": "Albay's 2nd congressional district"
+  },
+  "Catanduanes's at-large congressional district": {
+   "file": "Catanduanes_s_at_large_congressional_district.json",
+   "revid": 1359811118,
+   "title": "Catanduanes's at-large congressional district"
+  },
+  "Batangas's 6th congressional district": {
+   "file": "Batangas_s_6th_congressional_district.json",
+   "revid": 1362754981,
+   "title": "Batangas's 6th congressional district"
+  },
+  "Samar's 1st congressional district": {
+   "file": "Samar_s_1st_congressional_district.json",
+   "revid": 1350048896,
+   "title": "Samar's 1st congressional district"
+  },
+  "Ilocos Sur's 1st congressional district": {
+   "file": "Ilocos_Sur_s_1st_congressional_district.json",
+   "revid": 1370170497,
+   "title": "Ilocos Sur's 1st congressional district"
+  },
+  "Iligan's at-large congressional district": {
+   "file": "Iligan_s_at_large_congressional_district.json",
+   "revid": 1365543055,
+   "title": "Iligan's at-large congressional district"
+  },
+  "Bulacan's 3rd congressional district": {
+   "file": "Bulacan_s_3rd_congressional_district.json",
+   "revid": 1350052258,
+   "title": "Bulacan's 3rd congressional district"
+  },
+  "Ilocos Sur's 2nd congressional district": {
+   "file": "Ilocos_Sur_s_2nd_congressional_district.json",
+   "revid": 1370171107,
+   "title": "Ilocos Sur's 2nd congressional district"
+  }
+ },
+ "articles_missing": []
+}
