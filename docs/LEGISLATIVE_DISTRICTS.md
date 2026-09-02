@@ -96,6 +96,12 @@ Every non-zero delta, published in full -- the tolerance decides what fails the 
 | `laguna-3rd`            |   2024 |       7 | 613,846 |       611,539 |   +2,307 |  +0.38 |
 | `apayao-at-large`       |   2020 |       7 | 124,366 |       124,336 |      +30 |  +0.02 |
 
+### Where the arithmetic names a municipality
+
+Two districts of the same province wrong by the same amount in opposite directions is what one misfiled municipality looks like. Where exactly one member of the over-counted district has that population, it is named below. **Named, never moved** -- a published total disagreeing with a source is a disagreement between two sources, and this build reports those rather than picking a winner.
+
+- `ilocos-norte-1st` (+1,607) against `ilocos-norte-2nd` (-1,607): CARASI has a 2020 population of 1,607, exactly the amount ilocos-norte-1st is over and ilocos-norte-2nd is under. Reported, not moved.
+
 Skipped, each for a reason that would otherwise manufacture a false finding: **37** barangay grain, **32** census 2015 not held, **2** census 2025 not held, **2** census None not held, **18** known incomplete, **4** member population missing.
 
 ## What is still uncovered, and why
