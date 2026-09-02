@@ -8374,3 +8374,65 @@ who wants a chart must ask for one or flip the chip. `figureFromPayloads` return
 plottable payload rather than judging between several — picking would be an editorial judgement it
 has no basis for. The deck export is per-geography across indicators; a deck across *places* for
 one indicator has no route yet.
+
+## 2026-09-02 — Increment 5.6: the streaming primitive ships; streaming itself is blocked
+
+`lib/ai/stream-audit.ts` is built and proven. The feature it exists for is **not** built, because
+implementing it as planned would cost either free-tier quota or the grounding property, and neither
+is mine to spend. This entry records the finding rather than a half-measure.
+
+### What was built
+
+`createSentenceAuditor(citations, toolPayloads)` audits a model's output **one sentence at a time**,
+emitting a sentence only once it is complete and has passed `auditCitations` then `auditNarrative`
+— the same two audits in the same order the route runs them.
+
+The plan's premise holds exactly: `app/api/ai/chat/route.ts` rejected token streaming because the
+numeric audit must see the response before any of it is safe to show, and that reasoning is right.
+What it overlooked is that **both audits are already sentence-scoped** — neither looks across a
+sentence boundary — so a sentence can be audited the moment it completes, and an ungrounded number
+is never rendered because it is never sent.
+
+A property test asserts the streamed result equals the batch pipeline over six fixtures, and that
+the result is invariant to chunk boundaries (tested at 1, 3, 7 and 20 characters).
+
+**One divergence is asserted rather than hidden.** The plan claimed byte-identity in all cases;
+that is not quite true. When a kept sentence does not end in terminal punctuation, the batch
+pipeline's re-join makes its second pass read it as one sentence with the text that follows, pooling
+their numbers, so one bad number drops both. Per-sentence auditing drops only the offending
+fragment. That is stricter per sentence and never looser, and the invariant the route depends on —
+**every emitted sentence passed both audits on its own** — still holds. The claim is corrected here
+rather than restated.
+
+### Why the feature is blocked
+
+`runToolLoop` calls the provider **with tools on every round of the common path**
+(`agent-loop.ts:67`) and returns as soon as a round comes back with no tool calls. The tool-free
+calls at lines 96 and 119 are the wrap-up and its retry — the exceptional path, reached only when
+four tool rounds ran out. So in the ordinary case *there is no tool-free call to stream*, and the
+plan's "only the final, tool-free round streams" describes a round that does not exist.
+
+Three ways out, none of them free:
+
+1. **An extra tool-free call after the tools finish.** Clean, and it costs one more provider call on
+   every question — a seventh on the budget Increment 5.1 went to some length to protect, on a
+   Gemini window seeded at 10 requests/minute. This directly contradicts 5.1's own reasoning.
+2. **Stream the tools-enabled rounds.** Then text emitted before a tool call is shown to the reader
+   as if it were the answer, and audited against payloads that do not exist yet. Emitting
+   optimistically and retracting on a tool call is worse: the answer visibly flashes and vanishes.
+3. **Buffer until the round ends, then emit sentence by sentence.** Identical latency to today —
+   the appearance of streaming with none of the benefit.
+
+Option 1 trades quota for latency and option 2 trades the reader's trust for it. Which — if either —
+is worth it is an owner decision, so the primitive is committed and the wiring is not.
+
+**Nothing is wired, deliberately.** `stream-audit.ts` has no consumer today. It is committed rather
+than discarded because it is the exact artifact the decision turns on: whichever option is chosen,
+this is the module that makes it safe, and it is proven now rather than written under time pressure
+later.
+
+### Standards
+
+`npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean — **1020 tests, up
+from 1007**. `npx prettier --check` clean on every file touched. No migration, no provider change,
+no change to any existing code path.
