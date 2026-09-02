@@ -13,7 +13,7 @@ export const maxDuration = 60;
  * PPTX export: one slide per requested indicator, each with native editable title/caption/source
  * text boxes and the same PNG chart embedded.
  *
- * Increment 5.6 generalised this from exactly one slide to a deck. `?indicator=` is unchanged and
+ * Increment 5.5 generalised this from exactly one slide to a deck. `?indicator=` is unchanged and
  * still yields a single slide, so every existing export link keeps working; `?indicators=a,b,c`
  * builds a deck for one geography. The per-slide layout, the "no naked numbers" benchmark block
  * and the source footer moved to `lib/exports/pptx-slide.ts` and are applied to every slide — a

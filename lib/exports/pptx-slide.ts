@@ -4,7 +4,7 @@ import { formatBenchmarkLine, type ExportFigureData } from "./figure-data";
 import { footerLines, renderFigurePng } from "./render-png";
 
 /**
- * One figure as one PPTX slide (docs/AI_ASSISTANT_PLAN.md §8, Increment 5.6).
+ * One figure as one PPTX slide (docs/AI_ASSISTANT_PLAN.md §8, Increment 5.5).
  *
  * Lifted verbatim out of `app/api/export/pptx/route.ts`, which built exactly one slide inline.
  * Extracting it is what lets a whole area profile or a chat session export as a deck, and it keeps

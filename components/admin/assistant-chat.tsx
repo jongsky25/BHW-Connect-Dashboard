@@ -96,7 +96,7 @@ export function AssistantChat() {
   // Increment 5.2. Derived server-side from the turn's tool payloads, so every offered question is
   // about something that was actually returned.
   const [followUps, setFollowUps] = useState<string[]>([]);
-  // Increment 5.6. Built server-side from the tool payloads; this holds values, never text.
+  // Increment 5.5. Built server-side from the tool payloads; this holds values, never text.
   const [figure, setFigure] = useState<AssistantFigure | null>(null);
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [citations, setCitations] = useState<Citation[]>([]);
@@ -275,7 +275,7 @@ export function AssistantChat() {
   }
 
   /**
-   * Increment 5.6. The deck's header facts track the live route, which is why the provider lives
+   * Increment 5.5. The deck's header facts track the live route, which is why the provider lives
    * inside this client component rather than on the server page: the page cannot know which place
    * the current question resolved to.
    */
@@ -333,7 +333,7 @@ export function AssistantChat() {
                 {/* Only the assistant's own audited text is parsed. A user turn and a system notice
                   stay literal — the reader's question should render as they typed it.
 
-                  An answer is also a slide (5.6): `components/present/` needs no change, because
+                  An answer is also a slide (5.5): `components/present/` needs no change, because
                   slides register themselves and order by DOM position, so a deck of a chat
                   session is its answers in the order they were given. */}
                 {turn.role === "assistant" ? (

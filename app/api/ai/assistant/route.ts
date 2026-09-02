@@ -52,7 +52,7 @@ type AssistantStreamEvent =
   // not get to author its own citations, so it cannot mis-cite a passage it was never handed.
   // `droppedPages` names the pages a sentence claimed before the citation audit removed it.
   | { type: "citations"; citations: Citation[]; droppedPages: number[] }
-  // Increment 5.6. Built from the tool payloads, never from the answer text — the same inversion
+  // Increment 5.5. Built from the tool payloads, never from the answer text — the same inversion
   // as the citations above: a model cannot mis-plot data it was never handed.
   | { type: "figure"; figure: AssistantFigure }
   | { type: "capacity"; message: string }

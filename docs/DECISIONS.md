@@ -7887,6 +7887,136 @@ this adds a gate and a report, no schema. `ingestion/data/agg_population_citymun
 committed** — it is an export of our own `agg_population`, so it is rebuilt rather than versioned,
 the same posture `dim_geo.csv` already takes, and it is gitignored beside it.
 
+## 2026-09-02 — D1.3i: the aggregate finding names a municipality
+
+`attribute_population_discrepancies()`. D1.3h's gate says a district's total is wrong; on its own
+that is a district to squint at rather than a finding to act on. This turns it into a named row
+where the arithmetic supports one — and refuses to where it does not.
+
+**The rule.** Two districts of the same province wrong by the same amount in opposite directions
+is what one misfiled municipality looks like. If exactly one member of the over-counted district
+has that population, it is named. Against the real build it produces one attribution:
+
+> `ilocos-norte-1st` (+1,607) against `ilocos-norte-2nd` (−1,607): **CARASI** has a 2020 population
+> of 1,607, exactly the amount the 1st is over and the 2nd is under.
+
+D1.3h found the discrepancy and I identified Carasi by hand. Doing it by hand does not scale and
+does not survive a re-run, so the build does it now.
+
+**Named, never moved — and that is the whole design.** Moving Carasi would be inventing a fact from
+a subtraction. Wikipedia says one thing, PSA's published totals imply another, and D1.3f already
+settled what this build does with two sources disagreeing: report it and let a person decide. The
+mapping is untouched, and `--selftest` asserts that the attribution pass does not mutate a single
+membership row.
+
+**Three guards, and the first is the one that matters.**
+
+- **Same province only.** Two districts at opposite ends of the country happening to be wrong by
+  the same amount in opposite directions is a coincidence — nothing can move between them. Pairing
+  them would name an innocent municipality with total confidence, which is worse than saying
+  nothing. Pairs are formed within one district-slug stem.
+- **Exactly one candidate.** If two members of the over-counted district share that population,
+  which one moved cannot be read off a total. The pair is still reported; no member is named.
+- **Same census.** Deltas measured against different censuses are not comparable and are not paired.
+
+**Testing.** `--selftest` asserts the Carasi shape end to end, that a cross-province pair yields
+**nothing**, that a mixed-vintage pair yields nothing, that a tie reports the pair but names no
+member, and that no membership row is mutated. Mutation-checked five ways, **all five caught**:
+dropping the same-province guard, naming the first candidate on a tie, ignoring the census year,
+swapping the over/under sides, and having attribution write to the mapping. The five earlier suites
+were re-run against the changed file — 6 + 4 + 5 + 6 + 5 = **26 mutations, all still caught**.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated doc and this entry. No migration,
+no schema change, and no change to any membership row: the build's counts, gates and validation-set
+agreement are byte-identical to D1.3h. What is new is a section in
+`docs/LEGISLATIVE_DISTRICTS.md` naming the suspect, which is what D2.2 will publish.
+
+**Nothing has loaded.** Four gates still fail, `corroborated_by_two_sources` among them, and the
+decision that unblocks it is still the owner's: ship single-source with D2's public-correction
+pipeline as the second source, or hold. That is deliberately not taken here.
+
+## 2026-09-02 — D1.3j: three of the "spelling variants" were renamings, and identity came from the article's contents
+
+Membership rows **3,491 → 3,513**; uncovered citymuns **45 → 23**; rows agreeing with the
+independently derived COMELEC-based mapping **2,209 → 2,229**, still **zero disagreements** and
+zero double-claims. Migration `20260902110000_district_article_identity.sql`.
+
+**Why the obvious fix was the wrong one.** 23 members were unresolved because Wikipedia and PSA
+spell the same place differently, and every earlier entry in this log deferred them as "a decision
+and a reason each". Looking properly, three of the 23 are not spellings at all:
+
+| Wikipedia says  | PSA says      |
+| --------------- | ------------- |
+| Banguingui      | **TONGKIL**   |
+| Datu Montawal   | **PAGAGAWAN** |
+| Leon B. Postigo | **BACUNGAN**  |
+
+They are renamings. The two names share nothing, so no name-based rule could ever resolve them —
+and a fuzzy rule would have got them **wrong** rather than merely failed. That is guardrail 1
+restated with evidence: the near-miss is where a wrong match is least visible, not most excusable.
+
+**So identity is taken from the linked article's contents, never its title.** Two tiers:
+
+1. **`psgc_identifier` (5 rows).** The article states a PSGC code — in `{{PH brgy table}}` rows
+   (`{{PH brgy table lite|101305001|Bontongon|…}}`, sometimes hyphenated `03-49-17-001`) or in a
+   PSA citation URL (`muncode=042123000`). A code is an identifier; nothing is inferred. dim_geo
+   carries a 3-digit province segment where the 9-digit PSGC uses 2, so the two differ by one
+   zero: `101305001` → `1001305` → IMPASUG-ONG.
+2. **`barangay_roster` (17 rows).** The article lists the place's barangays and exactly one
+   candidate in the scoped province has that set. Two municipalities of one province do not share
+   their barangay names, so this is identity by contents.
+
+**The roster tier is not a similarity score in disguise, and the measurement is why that can be
+asserted.** Acceptance needs a high match _and_ a clear margin over the runner-up. In the real
+build every accepted match scores **0.81–1.00 against a runner-up of 0.00–0.33**, while the one
+case that must be refused scores **0.08**. Any threshold across a wide band gives the same answer —
+which is the difference between a measurement and a tuned constant, and the opposite of D1.3h's
+population tolerance, whose thin margin was flagged as such.
+
+**What it refuses, which is where the guards show.** `Talitay` resolves to nothing: dim_geo files
+TALITAY under Maguindanao del **Norte** while its article is scoped to del Sur, so the right answer
+is not among the candidates. And a PSGC code resolving outside the scoped province is refused
+rather than reinterpreted — General Salipada K. Pendatun's article cites an **ARMM-era** code for a
+place now in the Bangsamoro, and quietly accepting a stale identifier is how a confident wrong
+answer gets made. The roster tier still gets its turn there, on evidence rather than on the code.
+
+**A second fetch pass, because the question is not knowable earlier.** Which members need their own
+article cannot be known until a build has reported what it could not place, and fetching every
+member's article would be thousands of pages to answer a question about twenty-three.
+`--fetch-member-articles` builds from the snapshot, takes the unresolved list, fetches exactly
+those, and writes them back into the same snapshot so the next build is offline and reproducible.
+
+**Also fixed, because this increment's own output exposed it.** Eight "unresolved members" were
+never places: four articles align their `=` with a long run of spaces
+(`| titlestyle              = font-weight:normal;…`), and the named-parameter filter only looked
+at the first 20 characters, so both the parameter and the list's own "LGU" title were read as
+member names — and this increment then dutifully fetched an article for `LGU`. Matched as a
+leading identifier now. The unresolved-in-province list is consequently **one entry: Talitay.**
+
+**Testing.** `--selftest` asserts the PSGC transformation (including hyphenated and malformed
+input), code extraction from both shapes, disagreeing codes resolving nothing, roster parsing, the
+renaming case end to end, identifier-beats-roster, the stale out-of-province code falling through
+to the roster rather than being accepted, and three distinct refusals: no roster, a _partial_
+roster (0.33 — non-zero, and a "better than nothing" threshold would take it), and a **tie** (1.00
+against 1.00 — a perfect score with an unknowable answer, which is what the margin is for).
+
+Mutation-checked six ways. **The first run had four survivors** — the province check, the national
+scan, the score threshold and the margin were all unasserted, because the fixtures did not contain
+a competing candidate for them to discriminate against. Fixtures rewritten (a same-roster citymun
+in another province; a real row for the stale code to land on), and all six now bite. This is the
+third time in this phase that a mutation run has found an assertion missing rather than a bug, and
+it keeps earning its place. The other suites were re-run: 5 + 4 + 5 + 6 + 6 = **26 mutations**, all
+caught, plus the two declared-method guards checked directly.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated doc and this entry. The
+migration's constraint behaviour was verified against the live database rather than assumed — both
+new methods accepted, `similar_name` rejected with a check violation, probe rows removed and all
+four tables confirmed back at zero.
+
+**Nothing has loaded.** Four gates still fail. The corroboration one is still an owner decision.
+
 ## 2026-09-02 — Increment 5.1: the assistant's route (pre-filter chips)
 
 The first increment of Phase 5. Before the tool loop runs, a question is classified into a **lane**
@@ -8173,7 +8303,7 @@ and `agg_bhw_by_uuc_status`'s `*_is_suppressed` sides are not yet run through it
 listed/other split has the same two-cell structure that makes differencing easy. And the public
 `/place` exposure above is unaddressed by design.
 
-## 2026-09-02 — Increment 5.6: output modes — chart, slide, deck
+## 2026-09-02 — Increment 5.5: output modes — chart, slide, deck
 
 The assistant had one output shape, plain text, while the repo already shipped Observable Plot
 specs, a presentation deck, server-side PNG rendering and a PPTX writer that it could not reach.
@@ -8227,6 +8357,11 @@ yields a thinner deck; all of them missing is a 404.
 **1007 tests, up from 983**. `npx prettier --check` clean on every file touched. `next build`
 compiles and typechecks; its prerender step fails only in this sandbox, which has no database.
 No migration.
+
+**Numbering correction.** This increment is **5.5** in the plan (output modes); 5.6 is
+sentence-level streaming, which is not built. The commit that introduced it says "5.6" in its
+message and cannot be corrected without rewriting pushed history — every code comment and this
+heading say 5.5, which is what the §8 cross-references follow.
 
 **CI note, not a code finding.** GitHub Actions did not create a workflow run for `71532f3`
 (Increment 5.4), confirmed absent over a four-minute poll; the same happened for this branch's

@@ -5,7 +5,7 @@ import { FigureCard } from "@/components/narrative/figure-card";
 import type { AssistantFigure } from "@/lib/ai/figure-from-payload";
 
 /**
- * A chart for an assistant answer (Increment 5.6). Rendered through the same `FigureCard`
+ * A chart for an assistant answer (Increment 5.5). Rendered through the same `FigureCard`
  * contract and the same `BarChartClient` the dashboard uses, so an assistant chart and an Explore
  * chart of the same numbers are the same picture — the visual counterpart of `lib/ai/tools.ts`'s
  * "the number in the answer matches the number on screen".

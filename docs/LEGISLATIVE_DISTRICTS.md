@@ -9,16 +9,18 @@ Every membership row carries the source revision it came from, so any row on
 - Congress: **20th** (valid from 2025-06-30)
 - Snapshot retrieved: **2026-09-02T04:12:52Z**
 - Districts: **250**
-- Membership rows: **3491**
+- Membership rows: **3513**
 - Representatives: **194**
 
 ## How each membership row was resolved
 
 | match_method       | rows |
 | ------------------ | ---: |
+| `barangay_roster`  |   17 |
 | `exact`            | 2430 |
 | `independent_city` |    5 |
 | `manual_override`  |    1 |
+| `psgc_identifier`  |    5 |
 | `whole_citymun`    |    8 |
 | `whole_parent`     | 1047 |
 
@@ -41,15 +43,15 @@ PSGC files a highly urbanised city under its own province-level row, so a city t
 | gate                                     | result   | detail                                                                                                                                                                                                                                                                                                       |
 | ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `registry_agreement`                     | pass     | {"in_wikidata_not_parsed": 6, "parsed_not_in_wikidata": 0, "sample_only_wikidata": ["Agusan del Norte's 1st congressional district", "Agusan del Norte's 2nd congressional district", "Albay's 4th congressional district", "Maguindanao's 1st congressional district", "Maguindanao's 2nd congressional ... |
-| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 45, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
+| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 23, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301413", "0301423", "0403428", "1206311", "1206313"], "sample_double_claimed": []}                                                                                          |
 | `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 12, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "1030500": {"missing": 1, "extra": 0, "sample_missing": ["1030500043"]}, "0730600": {"missing": 12, "extra": 0, "sample_missing": ["0730600013", "0730600016", "073060002... |
 | `no_barangay_in_two_districts`           | pass     | {"offenders": []}                                                                                                                                                                                                                                                                                            |
 | `no_partylist_seats`                     | pass     | {"count": 0}                                                                                                                                                                                                                                                                                                 |
 | `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
-| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3491, "corroborated_rows": 0, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                    |
+| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3513, "corroborated_rows": 0, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                    |
 | `no_conflicting_rows_shipped`            | pass     | {"conflicting_rows": 0, "sample": [], "withheld_before_gate": 0}                                                                                                                                                                                                                                             |
-| `population_reconciles_with_psa`         | **FAIL** | {"tolerance_pct": 0.5, "districts_checked": 155, "exact": 148, "non_zero_delta": 7, "beyond_tolerance": 5, "skipped": {"barangay_grain": 37, "member_population_missing": 4, "known_incomplete": 18, "census_2015_not_held": 32, "census_None_not_held": 2, "census_2025_not_held": 2}, "discrepancies": ... |
-| `unresolved_reported`                    | pass     | {"unresolved": 96, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
+| `population_reconciles_with_psa`         | **FAIL** | {"tolerance_pct": 0.5, "districts_checked": 168, "exact": 161, "non_zero_delta": 7, "beyond_tolerance": 5, "skipped": {"barangay_grain": 37, "member_population_missing": 5, "census_2015_not_held": 32, "census_None_not_held": 2, "census_2025_not_held": 2, "known_incomplete": 4}, "discrepancies": [... |
+| `unresolved_reported`                    | pass     | {"unresolved": 66, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
 
 ## Corroboration (guardrail 2)
 
@@ -68,10 +70,10 @@ Checking work against a third party needs no licence; republishing it would.
 | measure               | count |
 | --------------------- | ----: |
 | rows compared         |  2286 |
-| agree                 |  2209 |
+| agree                 |  2229 |
 | disagree              |     0 |
-| only in the other set |    77 |
-| only in ours          |  1282 |
+| only in the other set |    57 |
+| only in ours          |  1284 |
 
 ## Population reconciliation against PSA
 
@@ -79,8 +81,8 @@ For each province-grain district, the sum of its member city/municipality popula
 
 | measure                               | value |
 | ------------------------------------- | ----: |
-| districts checked                     |   155 |
-| summed exactly to the published total |   148 |
+| districts checked                     |   168 |
+| summed exactly to the published total |   161 |
 | non-zero delta                        |     7 |
 | beyond the 0.5% tolerance             |     5 |
 
@@ -96,26 +98,27 @@ Every non-zero delta, published in full -- the tolerance decides what fails the 
 | `laguna-3rd`            |   2024 |       7 | 613,846 |       611,539 |   +2,307 |  +0.38 |
 | `apayao-at-large`       |   2020 |       7 | 124,366 |       124,336 |      +30 |  +0.02 |
 
-Skipped, each for a reason that would otherwise manufacture a false finding: **37** barangay grain, **32** census 2015 not held, **2** census 2025 not held, **2** census None not held, **18** known incomplete, **4** member population missing.
+### Where the arithmetic names a municipality
+
+Two districts of the same province wrong by the same amount in opposite directions is what one misfiled municipality looks like. Where exactly one member of the over-counted district has that population, it is named below. **Named, never moved** -- a published total disagreeing with a source is a disagreement between two sources, and this build reports those rather than picking a winner.
+
+- `ilocos-norte-1st` (+1,607) against `ilocos-norte-2nd` (-1,607): CARASI has a 2020 population of 1,607, exactly the amount ilocos-norte-1st is over and ilocos-norte-2nd is under. Reported, not moved.
+
+Skipped, each for a reason that would otherwise manufacture a false finding: **37** barangay grain, **32** census 2015 not held, **2** census 2025 not held, **2** census None not held, **4** known incomplete, **5** member population missing.
 
 ## What is still uncovered, and why
 
-**45 municipalities/cities are not yet covered by any district.** Grouped by parent, so the shape of the gap is visible rather than just its size:
+**23 municipalities/cities are not yet covered by any district.** Grouped by parent, so the shape of the gap is visible rather than just its size:
 
 | parent                        | uncovered |
 | ----------------------------- | --------: |
 | SPECIAL GEOGRAPHIC AREA (SGA) |         8 |
 | SOUTH COTABATO                |         5 |
 | BATAAN                        |         4 |
-| BULACAN                       |         4 |
-| ZAMBOANGA DEL NORTE           |         3 |
-| CAPIZ                         |         2 |
-| MAGUINDANAO DEL SUR           |         2 |
-| NUEVA ECIJA                   |         1 |
-| PAMPANGA                      |         1 |
-| BATANGAS                      |         1 |
-| CAVITE                        |         1 |
+| BULACAN                       |         3 |
 | LAGUNA                        |         1 |
+| CITY OF MANILA (HUC)          |         1 |
+| MAGUINDANAO DEL NORTE         |         1 |
 
 ### Causes already established
 
@@ -129,9 +132,7 @@ Skipped, each for a reason that would otherwise manufacture a false finding: **3
 
 **The BARMM Special Geographic Area is not covered by any district article.** Its municipalities were transferred from Cotabato and the sources in this set have not caught up. Reported rather than assigned.
 
-**23 members are named differently by Wikipedia and by PSA, and none is fuzzy-matched.** Mostly spelling: 'Impasugong' against dim_geo's IMPASUG-ONG, 'Bulakan' against BULACAN, 'Maayon' against MA-AYON, 'Sergio Osmena' against SERGIO OSMENA SR. Two look like renamings instead -- Zamboanga del Norte's 'Leon B. Postigo' beside a BACUNGAN left uncovered in that same province, Maguindanao del Sur's 'Datu Montawal' beside a PAGAGAWAN -- and one is not a name question at all: 'Talitay' is listed under Maguindanao del Sur while dim_geo files TALITAY under Maguindanao del Norte, which is a boundary disagreement between the sources. Each is reported as unresolved_in_province and none is guessed at: guardrail 1 makes an unresolved LGU a published finding and a wrongly-matched one an invisible lie. Closing them needs the PSGC crosswalk (rung 3) or a committed override carrying a reason apiece -- a decision per row, not a parser change.
-
-**Eight `unresolved` entries are template syntax, not places.** Four district articles (Batangas's 1st, Cavite's 1st, 5th and 7th) write their collapsible list with a long run of spaces before the '=' (`| titlestyle              = font-weight:normal;...`), which the member parser does not recognise as a parameter, so the parameter and the list's own 'LGU' title leak in as member names. They resolve to nothing and are therefore harmless to the mapping, but they are noise in a list D2.2 publishes.
+**22 of the 23 Wikipedia/PSA name disagreements are closed -- from article contents, never from spelling.** Three of them were not spellings at all but renamings, where the names share nothing: 'Banguingui' is PSA's TONGKIL, 'Datu Montawal' is PAGAGAWAN, 'Leon B. Postigo' is BACUNGAN. No name rule resolves those and a fuzzy one gets them wrong. So the member's own article settles it: `psgc_identifier` where the article states a PSGC code (5 rows), and `barangay_roster` where its barangay list matches exactly one candidate in the scoped province (17 rows). The one refusal is the proof the guards hold -- 'Talitay' scores 0.08 and resolves to nothing, because dim_geo files TALITAY under Maguindanao del NORTE while the article is scoped to del Sur, so the right answer is not among the candidates and no threshold should invent one.
 
 ## Unresolved and disputed
 
@@ -139,7 +140,7 @@ Published rather than hidden, on the same reasoning `/data-quality` already take
 missing assignment reads as a known finding rather than a hidden one. An unresolved LGU
 is a visible gap; a wrongly-matched one would be a silent lie.
 
-- Unresolved members: **96**
+- Unresolved members: **66**
 - Ambiguous members: **6**
 
 The full lists are in `ingestion/_qa_report_legislative_districts.json`.

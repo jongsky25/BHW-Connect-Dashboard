@@ -20,7 +20,7 @@ export function parseExportQuery(url: string) {
 }
 
 /**
- * Increment 5.6. A deck is the single-figure contract with more than one indicator, so the same
+ * Increment 5.5. A deck is the single-figure contract with more than one indicator, so the same
  * `getExportFigureData(geoCode, geoLevel, indicator)` call builds every slide and nothing new has
  * to be plumbed. `indicator` (singular) still parses exactly as before, which is what keeps every
  * existing export link — and the PNG/CSV/XLSX routes that share this schema — unchanged.

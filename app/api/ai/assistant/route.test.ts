@@ -559,10 +559,10 @@ describe("POST /api/ai/assistant — follow-ups (Increment 5.2)", () => {
 });
 
 /**
- * Increment 5.6. The chart is built server-side from the tool payloads by a pure function; the
+ * Increment 5.5. The chart is built server-side from the tool payloads by a pure function; the
  * model chooses whether a chart is wanted (via the route), never what is in it.
  */
-describe("POST /api/ai/assistant — figures (Increment 5.6)", () => {
+describe("POST /api/ai/assistant — figures (Increment 5.5)", () => {
   const distributionPayload = {
     parent: { geoCode: "07", geoLevel: "region", geoName: "Region VII" },
     indicator: { key: "pct_accredited", label: "% accredited", unit: "percent" },

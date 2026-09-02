@@ -1,5 +1,5 @@
 /**
- * Builds a chart from this turn's tool payloads (docs/AI_ASSISTANT_PLAN.md §8, Increment 5.6).
+ * Builds a chart from this turn's tool payloads (docs/AI_ASSISTANT_PLAN.md §8, Increment 5.5).
  *
  * Pure and client-safe: no `server-only`, no Plot import — it emits plain `{label, value}` rows
  * that `components/admin/assistant-figure.tsx` hands to the same `horizontalBarSpec` the dashboard
