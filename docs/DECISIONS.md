@@ -7642,3 +7642,83 @@ rows, no COMELEC snapshot reachable here), `citymun_covered_exactly_once` (45 un
 coverage gap is now dominated by cases only the second source can close — Davao's 84, Manila's
 Paco 43 — which is the same conclusion D1.3c reached, arrived at with far less left in the "we
 have not looked yet" column.
+
+## 2026-09-02 — D1.3f: a row the two sources contradict was shipping, and the gate said fine
+
+A latent defect, found while writing up what a COMELEC snapshot would require, and fixed before
+the snapshot exists rather than after. **No numbers move** — the build is byte-identical without a
+snapshot — which is the point: this is a trap armed to spring the moment the second source lands.
+
+**The defect.** `apply_corroboration` marks each membership row `corroborated`, `conflict` or
+`single_source`. The `corroborated_by_two_sources` gate then reads:
+
+```python
+single = [m for m in memberships if m["corroboration"] == "single_source"]
+gate("corroborated_by_two_sources", not single or allow_single_source, ...)
+```
+
+It counts `single_source` only. A row marked **`conflict`** — Wikipedia says the 1st district,
+COMELEC says the 3rd — is not `single_source`, so it **passed the gate and shipped**, silently
+resolved in Wikipedia's favour. Confirmed by running it rather than by reading it: one contradicted
+row, `corroborated_by_two_sources` → `True`.
+
+That contradicts plan D1.5 in as many words: _"Wikipedia and COMELEC agree on every shipped
+assignment. Disagreements are written to the disagreement report and the LGU is left unresolved,
+never silently resolved in favour of either."_ It is guardrail 1 arrived at from the other
+direction — not a name matched wrongly, but two sources contradicting each other and one of them
+quietly winning. Nothing in the row would show it: `corroboration = 'conflict'` sat there as a
+label nobody enforced.
+
+**Why the fix withholds the row rather than only failing the gate.** Failing the build on any
+conflict was the tempting one-line fix and it is a trap. Against ~3,400 rows and two genuinely
+independent sources, some disagreement is close to certain, so that gate would never pass — and an
+un-passable gate is exactly how a gate gets relaxed, which is the argument this log keeps making in
+the other direction. `withhold_conflicting_rows()` drops the disputed row instead. The LGU then
+falls out of the mapping and reappears in `citymun_covered_exactly_once` as uncovered, which is the
+honest place for it: **a published gap beats a coin-flip dressed as a mapping.**
+
+**And a backstop gate, `no_conflicting_rows_shipped`.** Not redundant with gate 7, and the
+distinction is the whole bug: `single_source` means nobody corroborated the row, `conflict` means
+somebody contradicted it, and gate 7 counts only the former. The new gate guards against a future
+edit that stops calling the withholding — the same job `match_methods_are_declared` does for the
+ladder. Its detail carries `withheld_before_gate`, so "0 conflicting rows" is never confused with
+"no conflicts were found".
+
+**A second, smaller thing the end-to-end run exposed.** The corroboration gate's `note` was a fixed
+string reading "COMELEC returns unavailable in this environment (HTTP 403)" — which is false the
+moment a snapshot is supplied, and it would have been the first thing a reader saw next to a
+legitimate coverage number. The note now tracks reality: unreachable when nothing was read, and
+"the gap is in the snapshot's coverage, not in its availability" once rows have been corroborated.
+A report that explains a number with a stale reason is worse than one that gives the number alone.
+
+**Verified end to end against a synthetic snapshot**, because the directory contract in §5b had
+never actually been exercised. Four barangay-level returns under
+`LEYTE/<MUNICIPALITY>/<BARANGAY>/precinct0001.csv`, three agreeing with the build and one written
+to disagree: all four resolved to `dim_geo`, three came back `corroborated`, and the contradicted
+row (Kananga, `0803726`, ours 4th against COMELEC's 9th) was withheld — memberships 3,411 → 3,410,
+`exact` 2,350 → 2,349, the conflict published with both sides' ordinals, and
+`no_conflicting_rows_shipped` passing with `withheld_before_gate: 1`. That also confirms the layout
+the owner's crawl has to produce, which was previously only asserted in a comment.
+
+**Testing.** `--selftest` asserts the defect directly: it builds a contradicted row, checks that
+gate 7 is _still satisfied_ by it (the reason gate 7b has to exist), that gate 7b fails on it, that
+withholding removes exactly that row and leaves the corroborated one alone, and that the withheld
+LGU then shows up as uncovered rather than vanishing. Mutation-checked four ways, **all four
+caught**: restoring the original bug, removing the backstop gate, over-broadening the filter so it
+also drops corroborated rows, and treating a conflict as corroboration.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated `docs/LEGISLATIVE_DISTRICTS.md`
+and on this entry. No migration: this changes which rows are emitted, not the schema.
+
+**What this does NOT do, recorded because it was nearly overstated to the owner.** A COMELEC
+snapshot corroborates rows; it does not create them. `comelec_by_geo` is read in exactly one place,
+`apply_corroboration`, which walks existing memberships and stamps them. So a snapshot closes
+`corroborated_by_two_sources` and does nothing for `citymun_covered_exactly_once` or
+`multi_district_city_barangays_complete` — Davao's 84 barangays and Manila's Paco 43 stay unplaced.
+Making COMELEC place them means promoting it from second opinion to row-creating source, and that
+runs into a real tension rather than a coding task: **the rows that need COMELEC most are exactly
+the ones Wikipedia cannot corroborate, so a COMELEC-created row is single-source by construction
+and fails the very gate COMELEC was brought in to satisfy.** That needs an owner decision — its own
+`match_method` plus an explicit carve-out in the gate, or left unresolved and published — and is
+deliberately not decided here.
