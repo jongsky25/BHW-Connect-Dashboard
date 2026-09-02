@@ -1865,5 +1865,127 @@
    "revid": 1368756755,
    "title": "Districts of Davao City"
   }
+ },
+ "member_articles": {
+  "Balo-i": {
+   "file": "Balo_i.json",
+   "revid": 1369458101,
+   "title": "Balo-i"
+  },
+  "Banguingui, Sulu": {
+   "file": "Banguingui_Sulu.json",
+   "revid": 1346620406,
+   "title": "Banguingui, Sulu"
+  },
+  "Bulakan": {
+   "file": "Bulakan.json",
+   "revid": 1362339382,
+   "title": "Bulakan, Bulacan"
+  },
+  "Datu Montawal": {
+   "file": "Datu_Montawal.json",
+   "revid": 1368010783,
+   "title": "Datu Montawal"
+  },
+  "Don Salvador Benedicto": {
+   "file": "Don_Salvador_Benedicto.json",
+   "revid": 1353915183,
+   "title": "Don Salvador Benedicto"
+  },
+  "Don Victoriano": {
+   "file": "Don_Victoriano.json",
+   "revid": 1364221993,
+   "title": "Don Victoriano"
+  },
+  "General Mariano Alvarez": {
+   "file": "General_Mariano_Alvarez.json",
+   "revid": 1358087417,
+   "title": "General Mariano Alvarez"
+  },
+  "General Salipada K. Pendatun, Maguindanao del Sur": {
+   "file": "General_Salipada_K_Pendatun_Maguindanao_del_Sur.json",
+   "revid": 1358675276,
+   "title": "General Salipada K. Pendatun, Maguindanao del Sur"
+  },
+  "Impasugong": {
+   "file": "Impasugong.json",
+   "revid": 1344877110,
+   "title": "Impasugong"
+  },
+  "Jalajala": {
+   "file": "Jalajala.json",
+   "revid": 1364555357,
+   "title": "Jalajala"
+  },
+  "Leon B. Postigo": {
+   "file": "Leon_B_Postigo.json",
+   "revid": 1371904150,
+   "title": "Leon B. Postigo"
+  },
+  "Local government in the Philippines": {
+   "file": "Local_government_in_the_Philippines.json",
+   "revid": 1364564472,
+   "title": "Local government in the Philippines"
+  },
+  "Maayon": {
+   "file": "Maayon.json",
+   "revid": 1359310731,
+   "title": "Ma-ayon"
+  },
+  "Mu\u00f1oz, Nueva Ecija": {
+   "file": "Mu_oz_Nueva_Ecija.json",
+   "revid": 1369681780,
+   "title": "Mu\u00f1oz, Nueva Ecija"
+  },
+  "Pigcawayan": {
+   "file": "Pigcawayan.json",
+   "revid": 1367654350,
+   "title": "Pigcawayan"
+  },
+  "President Manuel A. Roxas, Zamboanga del Norte": {
+   "file": "President_Manuel_A_Roxas_Zamboanga_del_Norte.json",
+   "revid": 1349465936,
+   "title": "Roxas, Zamboanga del Norte"
+  },
+  "Quezon, Quezon": {
+   "file": "Quezon_Quezon.json",
+   "revid": 1345688022,
+   "title": "Quezon, Quezon"
+  },
+  "Samal, Davao del Norte": {
+   "file": "Samal_Davao_del_Norte.json",
+   "revid": 1361156691,
+   "title": "Samal, Davao del Norte"
+  },
+  "Santo Tomas, Batangas": {
+   "file": "Santo_Tomas_Batangas.json",
+   "revid": 1368866667,
+   "title": "Santo Tomas, Batangas"
+  },
+  "Santo Tomas, Pampanga": {
+   "file": "Santo_Tomas_Pampanga.json",
+   "revid": 1368865488,
+   "title": "Santo Tomas, Pampanga"
+  },
+  "Sapian": {
+   "file": "Sapian.json",
+   "revid": 1347226457,
+   "title": "Sapian"
+  },
+  "Senator Ninoy Aquino, Sultan Kudarat": {
+   "file": "Senator_Ninoy_Aquino_Sultan_Kudarat.json",
+   "revid": 1351376421,
+   "title": "Senator Ninoy Aquino, Sultan Kudarat"
+  },
+  "Sergio Osme\u00f1a, Zamboanga del Norte": {
+   "file": "Sergio_Osme_a_Zamboanga_del_Norte.json",
+   "revid": 1346998236,
+   "title": "Sergio Osme\u00f1a, Zamboanga del Norte"
+  },
+  "Talitay": {
+   "file": "Talitay.json",
+   "revid": 1358577291,
+   "title": "Talitay"
+  }
  }
 }

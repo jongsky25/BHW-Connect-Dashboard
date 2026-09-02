@@ -7935,3 +7935,84 @@ agreement are byte-identical to D1.3h. What is new is a section in
 **Nothing has loaded.** Four gates still fail, `corroborated_by_two_sources` among them, and the
 decision that unblocks it is still the owner's: ship single-source with D2's public-correction
 pipeline as the second source, or hold. That is deliberately not taken here.
+
+## 2026-09-02 — D1.3j: three of the "spelling variants" were renamings, and identity came from the article's contents
+
+Membership rows **3,491 → 3,513**; uncovered citymuns **45 → 23**; rows agreeing with the
+independently derived COMELEC-based mapping **2,209 → 2,229**, still **zero disagreements** and
+zero double-claims. Migration `20260902110000_district_article_identity.sql`.
+
+**Why the obvious fix was the wrong one.** 23 members were unresolved because Wikipedia and PSA
+spell the same place differently, and every earlier entry in this log deferred them as "a decision
+and a reason each". Looking properly, three of the 23 are not spellings at all:
+
+| Wikipedia says  | PSA says      |
+| --------------- | ------------- |
+| Banguingui      | **TONGKIL**   |
+| Datu Montawal   | **PAGAGAWAN** |
+| Leon B. Postigo | **BACUNGAN**  |
+
+They are renamings. The two names share nothing, so no name-based rule could ever resolve them —
+and a fuzzy rule would have got them **wrong** rather than merely failed. That is guardrail 1
+restated with evidence: the near-miss is where a wrong match is least visible, not most excusable.
+
+**So identity is taken from the linked article's contents, never its title.** Two tiers:
+
+1. **`psgc_identifier` (5 rows).** The article states a PSGC code — in `{{PH brgy table}}` rows
+   (`{{PH brgy table lite|101305001|Bontongon|…}}`, sometimes hyphenated `03-49-17-001`) or in a
+   PSA citation URL (`muncode=042123000`). A code is an identifier; nothing is inferred. dim_geo
+   carries a 3-digit province segment where the 9-digit PSGC uses 2, so the two differ by one
+   zero: `101305001` → `1001305` → IMPASUG-ONG.
+2. **`barangay_roster` (17 rows).** The article lists the place's barangays and exactly one
+   candidate in the scoped province has that set. Two municipalities of one province do not share
+   their barangay names, so this is identity by contents.
+
+**The roster tier is not a similarity score in disguise, and the measurement is why that can be
+asserted.** Acceptance needs a high match _and_ a clear margin over the runner-up. In the real
+build every accepted match scores **0.81–1.00 against a runner-up of 0.00–0.33**, while the one
+case that must be refused scores **0.08**. Any threshold across a wide band gives the same answer —
+which is the difference between a measurement and a tuned constant, and the opposite of D1.3h's
+population tolerance, whose thin margin was flagged as such.
+
+**What it refuses, which is where the guards show.** `Talitay` resolves to nothing: dim_geo files
+TALITAY under Maguindanao del **Norte** while its article is scoped to del Sur, so the right answer
+is not among the candidates. And a PSGC code resolving outside the scoped province is refused
+rather than reinterpreted — General Salipada K. Pendatun's article cites an **ARMM-era** code for a
+place now in the Bangsamoro, and quietly accepting a stale identifier is how a confident wrong
+answer gets made. The roster tier still gets its turn there, on evidence rather than on the code.
+
+**A second fetch pass, because the question is not knowable earlier.** Which members need their own
+article cannot be known until a build has reported what it could not place, and fetching every
+member's article would be thousands of pages to answer a question about twenty-three.
+`--fetch-member-articles` builds from the snapshot, takes the unresolved list, fetches exactly
+those, and writes them back into the same snapshot so the next build is offline and reproducible.
+
+**Also fixed, because this increment's own output exposed it.** Eight "unresolved members" were
+never places: four articles align their `=` with a long run of spaces
+(`| titlestyle              = font-weight:normal;…`), and the named-parameter filter only looked
+at the first 20 characters, so both the parameter and the list's own "LGU" title were read as
+member names — and this increment then dutifully fetched an article for `LGU`. Matched as a
+leading identifier now. The unresolved-in-province list is consequently **one entry: Talitay.**
+
+**Testing.** `--selftest` asserts the PSGC transformation (including hyphenated and malformed
+input), code extraction from both shapes, disagreeing codes resolving nothing, roster parsing, the
+renaming case end to end, identifier-beats-roster, the stale out-of-province code falling through
+to the roster rather than being accepted, and three distinct refusals: no roster, a _partial_
+roster (0.33 — non-zero, and a "better than nothing" threshold would take it), and a **tie** (1.00
+against 1.00 — a perfect score with an unknowable answer, which is what the margin is for).
+
+Mutation-checked six ways. **The first run had four survivors** — the province check, the national
+scan, the score threshold and the margin were all unasserted, because the fixtures did not contain
+a competing candidate for them to discriminate against. Fixtures rewritten (a same-roster citymun
+in another province; a real row for the stale code to land on), and all six now bite. This is the
+third time in this phase that a mutation run has found an assertion missing rather than a bug, and
+it keeps earning its place. The other suites were re-run: 5 + 4 + 5 + 6 + 6 = **26 mutations**, all
+caught, plus the two declared-method guards checked directly.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated doc and this entry. The
+migration's constraint behaviour was verified against the live database rather than assumed — both
+new methods accepted, `similar_name` rejected with a check violation, probe rows removed and all
+four tables confirmed back at zero.
+
+**Nothing has loaded.** Four gates still fail. The corroboration one is still an owner decision.
