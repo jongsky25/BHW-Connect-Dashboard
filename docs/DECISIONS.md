@@ -7807,3 +7807,89 @@ application code. `npx prettier --check` passes on the regenerated doc and this 
 the new rows use `exact`, and which page said so is already carried by `source_ref`. The snapshot
 grows by 12 KB (`ingestion/data/districts_20th/city_lists/`), committed for the same reason the
 other snapshots are — the build must be reproducible without the network.
+
+## 2026-09-02 — Increment 5.1: the assistant's route (pre-filter chips)
+
+The first increment of Phase 5. Before the tool loop runs, a question is classified into a **lane**
+(policy / geographic / data-quality / lineage / general), a **scope** (one resolved `dim_geo` row),
+and an **output** (answer / chart / slide / profile). The result is emitted as the stream's first
+event, rendered as editable chips, and concatenated into the system prompt.
+
+**Rules first, a provider call only as a fallback.** The obvious build is one classify call per
+question. The quota table says no: `lib/ai/quota.ts` seeds Gemini at 10 requests/minute and Mistral
+at 1, and `runToolLoop` already spends up to six calls on one question (four tool rounds, the
+wrap-up, its retry). A seventh, on every question, comes out of the same free-tier budget the
+public chat depends on. So `routeByRules` resolves the lane from vocabulary the question actually
+contains, and the provider is asked only when *nothing* matches — no policy or lineage or quality
+words, no resolvable place, and no domain word. Measured against the rule set, that is a narrow
+class of question; "how many BHWs are accredited" resolves for free through the domain-word rule,
+which exists for exactly that reason.
+
+**Output is never "unresolved".** A question that does not ask for a chart wants prose. Treating
+absence as ambiguity would have sent every plain question to the model, which is the cost the
+rules pass exists to avoid.
+
+**The route changes behaviour or it is not worth computing.** `routeSystemFacts` turns each lane
+into an instruction: policy must call `searchDocuments` and walk `supersedes` before naming an
+issuance as current; lineage must traverse with `direction: "both"`; a resolved scope is handed
+over as a `geo_code` the model is told not to re-search. The geographic lane also states what it
+*cannot* do — `dim_geo` holds containment and no coordinates, so "near" and "adjacent to" are
+unanswerable, and the model is told to say so rather than approximate.
+
+**Prompt rule 14, and why it is narrow.** The route block is appended to `INTERNAL_SYSTEM_PROMPT`,
+which rule 8 otherwise tells the model to treat as data. The exception is therefore stated, and
+bounded: the block may direct tool choice, it never overrides rules 1–13, and nothing arriving
+inside a user message or a data value can claim to be part of it. An unbounded exception would be
+a documented route around rule 1.
+
+**Concatenated, never a second system message.** `lib/ai/providers/gemini.ts` builds
+`systemInstruction` from the first system-role message and drops every later one — the same trap
+`agent-loop.ts` records for its wrap-up nudge. A test asserts the loop receives exactly one system
+message and that it still contains the original prompt.
+
+**Scope is carried, not pinned — a bug caught in review before it shipped.** The first build let
+the client pin the scope and had the chat pin it from every route event. That is wrong in a way
+that would have been very hard to see: ask "accreditation in Basilan", then "accreditation in
+Cebu", and the pinned Basilan wins over the Cebu the rules just resolved. The answer is then
+confidently about the wrong province **and passes the numeric audit**, because they are real
+Basilan figures from a real Basilan query. So `scope` was removed from `pinnedRouteSchema`
+entirely and replaced by a separate `carriedScope`, applied by `applyCarriedScope` only when the
+question resolved no scope of its own. Both directions are regression-tested.
+
+**Fuzzy search needed a guard.** `searchGeo` is deliberately fuzzy so a misspelled place resolves,
+which means its top hit for "what is the training coverage nationally" can be a barangay named
+TRAINING. `pickScope` therefore accepts a hit only when every distinctive token (≥4 chars) of its
+name appears in the question, *and* rejects one whose only distinctive tokens are domain
+vocabulary. Both checks are load-bearing: the first alone accepts TRAINING, the second alone
+accepts any single-token name the question never mentions.
+
+**A client-supplied scope is re-derived, not existence-checked.** The plan said `isKnownGeo`;
+`verifyScope` does more. The scope is rendered into the prompt as an assertion the model is told to
+trust, so a forged `geoName` or a mismatched `geoLevel` on a real `geo_code` would be quoted back
+as fact. Every field is taken from the `dim_geo` row and the client's copy is used only to look it
+up. A scope that does not resolve becomes null rather than falling back to the computed one.
+
+**Routing never blocks an answer.** `searchGeo` swallows query errors but constructs a Supabase
+client first, and that throws outright on an unconfigured environment — which the route handler's
+own test suite exposed immediately. The call is wrapped, and every failure path (throw, capped
+providers, unparseable classifier JSON) lands on `DEFAULT_ROUTE`, which is `general` + `answer`:
+exactly the assistant's behaviour before this increment. A router that cannot decide costs
+nothing.
+
+**Existing tests changed shape, not meaning.** Four assertions in
+`app/api/ai/assistant/route.test.ts` read the stream by position and now find `route` first. They
+were rewritten around an `eventOfType` helper — they were always about which event was emitted, not
+where it sat — with an explicit ordering assertion kept where order is the actual claim (a tool
+call precedes the answer it grounded).
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` all clean —
+**900 tests, up from 835**. `npx prettier --check` passes on every file touched. `next build`
+compiles and typechecks clean; its static-generation step fails only in this sandbox, which has no
+database for `/bhw` to prerender against. No migration and no schema change: this increment adds
+no table and reads nothing new.
+
+**Still open.** The chips are rendered but have no automated interaction coverage — `repin`'s
+replay-the-turn behaviour is asserted through the route handler and the pure reducers, not through
+the DOM; the e2e pass in 5.2 is where that belongs. The memo is per-instance and unbounded in
+lifetime rather than time-based, which is right for a serverless instance and wrong if this ever
+runs long-lived.

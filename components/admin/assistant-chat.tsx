@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { RouteChips } from "./route-chips";
+import type { AssistantRoute, PinnedRoute, RouteScope } from "@/lib/ai/route";
 
 type Turn = { role: "user" | "assistant" | "system"; content: string };
 type ToolCall = { name: string; args: Record<string, unknown> };
@@ -22,6 +24,7 @@ type Citation = {
 };
 
 type StreamEvent =
+  | { type: "route"; route: AssistantRoute }
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
   | { type: "message"; content: string; provider: string | null }
   | { type: "citations"; citations: Citation[]; droppedPages: number[] }
@@ -48,6 +51,14 @@ type StreamEvent =
  */
 export function AssistantChat() {
   const [turns, setTurns] = useState<Turn[]>([]);
+  // Increment 5.1. Three separate pieces of state, because they have three different lifetimes.
+  // `route` is what the server decided for the last question and is replaced every turn.
+  // `pinned` is a lane/output override the reader chose and persists until they change it.
+  // `carriedScope` is the last resolved place, offered to the next question only as a fallback —
+  // pinning it instead would let a stale Basilan win over the Cebu a new question just named.
+  const [route, setRoute] = useState<AssistantRoute | null>(null);
+  const [pinned, setPinned] = useState<PinnedRoute>({});
+  const [carriedScope, setCarriedScope] = useState<RouteScope | null>(null);
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [citations, setCitations] = useState<Citation[]>([]);
   const [droppedPages, setDroppedPages] = useState<number[]>([]);
@@ -93,16 +104,50 @@ export function AssistantChat() {
     }
   }
 
-  async function send(question: string) {
+  /**
+   * Re-ask the last question with a chip changed. The turn is replayed rather than appended: the
+   * reader is correcting how the question was read, not asking a second one, so a new pair of
+   * bubbles would make the transcript claim they asked twice.
+   */
+  function repin(next: {
+    lane?: AssistantRoute["lane"];
+    output?: AssistantRoute["output"];
+    clearScope?: true;
+  }) {
+    if (!lastQuestion || status === "sending") return;
+    const { clearScope, ...pins } = next;
+    const mergedPins: PinnedRoute = { ...pinned, ...pins };
+    const nextCarried = clearScope ? null : carriedScope;
+    setPinned(mergedPins);
+    setCarriedScope(nextCarried);
+    const withoutLastAnswer = turns.slice(
+      0,
+      turns.findLastIndex((t) => t.role === "user"),
+    );
+    setTurns(withoutLastAnswer);
+    void send(lastQuestion.content, withoutLastAnswer, mergedPins, nextCarried);
+  }
+
+  async function send(
+    question: string,
+    baseTurns?: Turn[],
+    pinnedOverride?: PinnedRoute,
+    carriedOverride?: RouteScope | null,
+  ) {
     const text = question.trim();
     if (!text || status === "sending") return;
 
-    const history = [...turns, { role: "user" as const, content: text }];
+    // `repin` passes its own values: it calls this synchronously, before React has committed the
+    // state it just set, so reading `pinned`/`carriedScope` here would use the previous turn's.
+    const pinnedRoute = pinnedOverride ?? pinned;
+    const scope = carriedOverride === undefined ? carriedScope : carriedOverride;
+    const history = [...(baseTurns ?? turns), { role: "user" as const, content: text }];
     setTurns(history);
     setInput("");
     setToolCalls([]);
     setCitations([]);
     setDroppedPages([]);
+    setRoute(null);
     setProvider(null);
     setReport(null);
     setReportState("idle");
@@ -112,7 +157,13 @@ export function AssistantChat() {
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history.filter((t) => t.role !== "system") }),
+        body: JSON.stringify({
+          messages: history.filter((t) => t.role !== "system"),
+          // Omitted entirely when nothing is pinned, so the server's schema sees `undefined`
+          // rather than an empty object it would have to treat as cleared fields.
+          ...(Object.keys(pinnedRoute).length > 0 ? { pinnedRoute } : {}),
+          ...(scope ? { carriedScope: scope } : {}),
+        }),
       });
 
       if (res.status === 401) {
@@ -148,7 +199,13 @@ export function AssistantChat() {
         for (const line of lines) {
           if (!line.trim()) continue;
           const event: StreamEvent = JSON.parse(line);
-          if (event.type === "tool_call") {
+          if (event.type === "route") {
+            setRoute(event.route);
+            // Offer this turn's place to the next question. Lane and output are deliberately not
+            // carried: they describe *this* question, and applying them silently would misroute
+            // the next one.
+            setCarriedScope(event.route.scope);
+          } else if (event.type === "tool_call") {
             setToolCalls((prev) => [...prev, { name: event.name, args: event.args }]);
           } else if (event.type === "message") {
             setTurns((prev) => [...prev, { role: "assistant", content: event.content }]);
@@ -218,7 +275,8 @@ export function AssistantChat() {
 
         {droppedPages.length > 0 && (
           <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted">
-            Dropped {droppedPages.length === 1 ? "a sentence citing slide" : "sentences citing slides"}{" "}
+            Dropped{" "}
+            {droppedPages.length === 1 ? "a sentence citing slide" : "sentences citing slides"}{" "}
             {droppedPages.join(", ")}: no document search this turn returned{" "}
             {droppedPages.length === 1 ? "it" : "them"}, so the citation could not be checked.
           </p>
@@ -339,10 +397,12 @@ export function AssistantChat() {
         {status === "sending" && <p className="text-xs text-muted">Working…</p>}
       </div>
 
+      {route && <RouteChips route={route} disabled={status === "sending"} onChange={repin} />}
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          send(input);
+          void send(input);
         }}
         className="flex gap-2"
       >
