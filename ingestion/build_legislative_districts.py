@@ -140,6 +140,29 @@ MANUAL_SCOPES = {
                        "parent_geo_code": None},
 }
 
+# Rung 4 for the INDEPENDENT-CITY case that the source does not attest in prose.
+#
+# A city that is administratively independent of a province can still vote with it for
+# representation, and PSGC files such a city under its OWN province-level row -- so it is absent
+# from the province's citymun children and a province-scoped lookup cannot reach it. Where the
+# province's own districts page says so in its lead sentence, that is evidence and
+# `independent_cities_in_lead` reads it. This table is for the case where it does not.
+#
+# Keyed by (parent page, dim_geo geo_code) so the entry names the row it adds rather than a name
+# to be matched; the value is the reason, which the QA report and /districts/[code] publish.
+INDEPENDENT_CITY_OVERRIDES = {
+    # Isabela City is the case the plan's D1.4 names outright ("Isabela City/Basilan"). It is the
+    # only one of these that the region test would refuse anyway: the city sits in Region IX
+    # (Zamboanga Peninsula) while Basilan is in the Bangsamoro, so it is not merely outside the
+    # province's citymun children but outside its region as well. Basilan's page lead names only
+    # the province, so there is no prose to read -- but the district article's own infobox says
+    # `region = [[Zamboanga Peninsula]] ([[Isabela, Basilan|Isabela]])<br/>[[Bangsamoro]] (Rest of
+    # Basilan)`, which is the attestation, in a free-form field no parser should be built around.
+    ("Basilan", "0990101"):
+        "Isabela City is in Region IX but votes with Basilan, whose lone district's infobox "
+        "records the split region; Basilan's page lead names no city, so prose cannot attest it.",
+}
+
 # Members that are not places at all: footnote markers, stray table syntax, and the handful of
 # labels Wikipedia uses for a whole city rather than one of its barangays.
 NON_PLACE_MEMBERS = {"", "-", "—", "none", "n/a", "tbd"}
@@ -390,6 +413,54 @@ def parse_district_table(wikitext, parent_name):
                 "is_lone": is_lone,
             })
     return districts
+
+
+# The lead sentence of a "Legislative districts of X" page states, in prose, exactly which
+# independent cities the province's districts represent alongside the province itself. Pampanga's
+# reads: "...are the representations of the [[Provinces of the Philippines|province]] of
+# [[Pampanga]] and the [[Cities of the Philippines#Independent cities|highly urbanized city]] of
+# [[Angeles City|Angeles]] in the...".
+#
+# Leyte names two ("the independent component city of [[Ormoc]], and highly urbanized city of
+# [[Tacloban]]"), so this matches repeatedly rather than once. Both the piped form above and the
+# bare "[[highly urbanized city]] of [[Marikina]]" appear in the wild.
+INDEPENDENT_CITY_RE = re.compile(
+    r"\[\[(?:[^\]|]*\|)?"
+    r"(?:highly[ -]urban(?:iz|is)ed|independent component|independent|urban(?:iz|is)ed)\s+city"
+    r"\]\]\s*of\s+(\[\[[^\]]+\]\])",
+    re.I,
+)
+
+LEAD_SENTENCE_RE = re.compile(
+    r"The\s+'''legislative districts?\s+of\s+[^']+'''\s+(?:are|is)\s+the\s+representations?\s+of\s+"
+    r"(.*?)(?:\.\s|\n\n)",
+    re.S | re.I,
+)
+
+
+def independent_cities_in_lead(wikitext):
+    """The independent cities a province page's OWN lead sentence says its districts represent.
+
+    This is read from the lead sentence and nowhere else, deliberately. The same phrasing recurs
+    all over a page's History section describing arrangements that ended decades ago -- Zambales's
+    page has "the city of Olongapo (chartered in 1966)" in a sentence about 1898-1972 -- and a
+    whole-page scan would import those as current. The lead sentence is the page saying what it is
+    about now.
+
+    Returns [{"name": display text, "link_target": target}], in page order.
+    """
+    m = LEAD_SENTENCE_RE.search(wikitext or "")
+    if not m:
+        return []
+    out, seen = [], set()
+    for frag in INDEPENDENT_CITY_RE.findall(m.group(1)):
+        name, target = link_text_and_target(frag)
+        name = (name or "").strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        out.append({"name": name, "link_target": target})
+    return out
 
 
 def extract_template(wikitext, name):
@@ -649,6 +720,12 @@ def resolve_member(member, scope, geo, crosswalk=None):
                            to a pre-NIR or pre-Maguindanao-split entity.
       4. manual_override-- a committed entry with a stated reason.
 
+    Plus rung 1b, `independent_city`: a city that PSGC files under its own province-level row but
+    that votes with a neighbouring province, where that province's page says so in its lead. It
+    sits between 1 and 2 because it is still an exact name match -- only the set it matches
+    against is widened, and only by something the source itself asserts. See
+    independent_city_scope.
+
     There is no rung 5. An ambiguous or missing name returns unresolved and is reported;
     fuzzy-matching a place name into a district assignment is the failure this repo's
     reconciliation discipline exists to prevent (guardrail 1).
@@ -679,6 +756,15 @@ def resolve_member(member, scope, geo, crosswalk=None):
             return cands[0], "exact"
         if len(cands) > 1:
             return None, "ambiguous_in_province"
+
+    # Rung 1b: an independent city that votes with this province but is not one of its dim_geo
+    # children. Pre-resolved once per page by independent_city_scope (which is where the reasoning
+    # and the region test live), so this is a keyed lookup rather than a second search.
+    hit = (scope.get("independent_citymun_codes") or {}).get(name)
+    if hit:
+        row = geo.by_code.get(hit)
+        if row is not None:
+            return row, (scope.get("independent_citymun_methods") or {}).get(hit, "independent_city")
 
     # Rung 2: the disambiguated link target names its province ('San Miguel, Leyte').
     if target and "," in target:
@@ -1008,6 +1094,83 @@ def default_scope(parent_name, geo):
     return None
 
 
+def independent_city_scope(parent_name, page_wikitext, scope, geo):
+    """Resolve the independent cities a province page names onto dim_geo citymun rows.
+
+    Why this rung exists at all. PSGC gives a highly urbanised city its OWN province-level row,
+    with the city's citymun row hanging off that rather than off the province it sits in --
+    'CITY OF ANGELES (HUC)' (03301) with child 'CITY OF ANGELES' (0330100), beside but not inside
+    PAMPANGA. Such a city can still vote with the province for representation, and five do:
+    Angeles with Pampanga's 1st, Olongapo with Zambales's 1st, Lucena with Quezon's 2nd, Tacloban
+    with Leyte's 1st, Puerto Princesa with Palawan's 3rd. The district articles name them as
+    members, so nothing was missing from the sources -- a province-scoped lookup simply could not
+    reach a row that is not the province's child, and each came back `unresolved_in_province`.
+
+    The lookup is scoped to the province's REGION, not run nationally. That is the difference
+    between this and the national fallback D1.3b removed: a region is a real containment fact
+    about a city that votes with a neighbouring province, and it is narrow enough that the
+    Northern Samar "San Roque" class of accident cannot occur. A name that does not resolve to
+    exactly one citymun in the region is reported, never guessed at -- and it is a further check,
+    not a weaker one, that every city reached this way must already be OUTSIDE the province's own
+    children, since a city inside them resolves at rung 1 and never gets here.
+
+    Returns ({normalised name: geo_code}, {geo_code: match_method}, [report entries]).
+    """
+    # Only meaningful for a province-grain page. A city page's lead names the city itself
+    # ("the highly urbanized city of [[Marikina]]"), which says nothing about its barangays.
+    prov = scope.get("province_code")
+    if not prov or scope.get("grain") != "citymun":
+        return {}, {}, []
+
+    region = (geo.by_code.get(prov) or {}).get("region_code")
+    own = {r["geo_code"] for r in geo.children.get(prov, []) if r["geo_level"] == "citymun"}
+    codes, methods, report = {}, {}, []
+
+    for city in independent_cities_in_lead(page_wikitext):
+        n = normalise_name(city["name"])
+        hits = [r for r in geo.citymun_by_name.get(n, [])
+                if r.get("region_code") == region and r["geo_code"] not in own]
+        if not hits:
+            # Either the page named its own province's city (already reachable at rung 1) or the
+            # name does not resolve in this region. Both are reported; neither is widened.
+            report.append({"parent": parent_name, "name": city["name"],
+                           "link_target": city.get("link_target"),
+                           "resolved": None,
+                           "reason": "already_in_province" if geo.citymun_by_province.get(prov, {}).get(n)
+                                     else "no_citymun_of_that_name_in_region"})
+            continue
+        if len(hits) > 1:
+            report.append({"parent": parent_name, "name": city["name"],
+                           "link_target": city.get("link_target"), "resolved": None,
+                           "reason": "ambiguous_in_region",
+                           "candidates": sorted(r["geo_code"] for r in hits)})
+            continue
+        codes[n] = hits[0]["geo_code"]
+        methods[hits[0]["geo_code"]] = "independent_city"
+        report.append({"parent": parent_name, "name": city["name"],
+                       "link_target": city.get("link_target"),
+                       "resolved": hits[0]["geo_code"], "geo_name": hits[0]["geo_name"],
+                       "source": "page_lead"})
+
+    # Rung 4: the committed table, for the case the prose does not attest. Applied after the
+    # prose so an override can never silently shadow a source that already says the same thing.
+    for (page, code), reason in INDEPENDENT_CITY_OVERRIDES.items():
+        if page != parent_name:
+            continue
+        row = geo.by_code.get(code)
+        if row is None or row["geo_level"] != "citymun":
+            report.append({"parent": parent_name, "name": code, "resolved": None,
+                           "reason": "override_code_not_a_citymun_in_dim_geo"})
+            continue
+        codes.setdefault(normalise_name(row["geo_name"]), code)
+        # A person decided this one, so it says so: `manual_override`, not `independent_city`.
+        methods.setdefault(code, "manual_override")
+        report.append({"parent": parent_name, "name": row["geo_name"], "resolved": code,
+                       "geo_name": row["geo_name"], "source": "manual_override",
+                       "reason_note": reason})
+    return codes, methods, report
+
+
 def whole_parent_members(scope, geo):
     """Every dim_geo row a lone district covers, by definition of 'lone'.
 
@@ -1024,6 +1187,85 @@ def whole_parent_members(scope, geo):
             out.extend(r for r in geo.children.get(cm, []) if r["geo_level"] == "barangay")
         return out
     return []
+
+
+def enumerated_barangay_parents(settled):
+    """The citymuns whose own barangays a district has already enumerated by name.
+
+    Extracted from build() so the caption rule in whole_citymun_member can be asserted directly
+    rather than only through a full build -- the same reason lone_district_names_parent() and
+    lone_district_rows() are functions. `settled` is [(member, row, method)].
+    """
+    return {row.get("parent_code") for _, row, _ in settled
+            if row.get("geo_level") == "barangay" and row.get("parent_code")}
+
+
+def whole_citymun_member(member, scope, geo, enumerated_parents):
+    """A member of a barangay-grain city that names a whole sub-city unit PSGC models as a citymun.
+
+    Manila is the case, and it is the one place PSGC uses a sub-city level at all (§2, GeoIndex):
+    the city's province-level row (13806) has ten citymun children which are its *administrative*
+    districts -- TONDO I/II, QUIAPO, SAMPALOC, MALATE -- and the barangays hang off those. Manila's
+    legislative districts are described at two grains and the parser only ever handled one:
+
+      * the 1st and 2nd enumerate numbered barangays ("Barangay 1" ... "Barangay 267"), which
+        resolve, and are all in Tondo;
+      * the 3rd to 6th name administrative districts instead ("Sampaloc", "Santa Cruz", "Port
+        Area"), which are not barangays, so every one came back `unresolved_barangay` and those
+        four districts produced no membership rows at all -- 599 of Manila's 857 barangays
+        unmapped, hidden behind a citymun-coverage count of nine.
+
+    Unlike Davao's administrative districts, which dim_geo does not model at any level, these ARE
+    dim_geo rows. So this is not an expansion or a guess: the name matches exactly one citymun
+    already inside the page's own scope, and the row is emitted at that grain -- which is what §3
+    means by membership "at whatever grain the district is actually defined at", and what
+    geo_level on the row records.
+
+    `enumerated_parents` is what keeps a caption from becoming a claim. Manila's 1st writes its
+    towns field as "Tondo" followed by barangays 1-146, and the 2nd as "Tondo" followed by 147-267:
+    "Tondo" there is a heading over the list, not a member, and reading it as one would hand each
+    district the whole of Tondo and double-claim all 259 barangays. So a citymun whose barangays
+    this district already enumerates is treated as the caption it is. (Against today's dim_geo the
+    guard is belt-and-braces -- "Tondo" does not normalise onto "TONDO I/II" -- which is exactly
+    why it is asserted in the selftest rather than left to a spelling.)
+
+    Returns a dim_geo row, or None.
+    """
+    if not scope.get("citymun_codes"):
+        return None
+    name = normalise_name(member["name"])
+    hits = [c for c in scope["citymun_codes"]
+            if normalise_name((geo.by_code.get(c) or {}).get("geo_name", "")) == name]
+    if len(hits) != 1 or hits[0] in enumerated_parents:
+        return None
+    return geo.by_code.get(hits[0])
+
+
+def lone_district_rows(scope, geo, independent_methods=None):
+    """Every (row, match_method) a lone district covers when it lists no constituents.
+
+    Two different claims, kept apart because they fail in different ways and a reader of
+    /districts/[code] is owed the distinction:
+
+      * `whole_parent` -- containment. The district is the parent, so the parent's children are
+        its members. Nothing was matched by name.
+      * `independent_city` / `manual_override` -- the independent cities that vote with the parent
+        without being its dim_geo children. Basilan's lone district is the live case: expanding
+        the province alone left Isabela City uncovered, because PSGC files the city in Region IX
+        under its own province-level row while the rest of Basilan sits in the Bangsamoro.
+
+    Extracted from build() rather than left inline so it can be asserted directly, the same
+    reason lone_district_names_parent() was.
+    """
+    out = [(row, "whole_parent") for row in whole_parent_members(scope, geo)]
+    covered = {row["geo_code"] for row, _ in out}
+    for gcode, method in sorted((independent_methods or {}).items()):
+        row = geo.by_code.get(gcode)
+        # A city that is already a child of the parent is not added twice; it is the same claim
+        # arrived at two ways, and a duplicate here would read as a double-claim downstream.
+        if row is not None and gcode not in covered:
+            out.append((row, method))
+    return out
 
 
 def choose_scope(parent_name, districts, geo, crosswalk=None):
@@ -1104,6 +1346,7 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
 
     districts, memberships, reps = [], [], []
     unresolved, ambiguous, scope_unknown, skipped = [], [], [], []
+    independent_cities = []
     parsed_labels = set()
 
     # Group the registry by parent so scope can be chosen once per parent from all its members.
@@ -1143,6 +1386,20 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
                                   "districts": len(entries)})
             scope = {"parent_name": parent, "grain": "unknown", "parent_geo_code": None,
                      "region_code": None}
+
+        # Widen the province scope with the independent cities the page's own lead sentence says
+        # its districts represent. Done AFTER choose_scope on purpose: scope detection scores
+        # candidate readings by how many members resolve, and a widened scope would let a wrong
+        # reading borrow a city to win on. The reading is chosen on the province's own children;
+        # only then is the province's attested company added to it.
+        page = pages.get(parent)
+        ic_codes, ic_methods, ic_report = independent_city_scope(
+            parent, (page or {}).get("wikitext", ""), scope, geo)
+        if ic_codes:
+            scope = dict(scope)
+            scope["independent_citymun_codes"] = ic_codes
+            scope["independent_citymun_methods"] = ic_methods
+        independent_cities.extend(ic_report)
 
         for item, art, info, ordinal_label in entries:
             label = item["label"]
@@ -1187,17 +1444,31 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
                 members = []
             if not members and is_lone:
                 # A lone district lists no constituents because it covers the whole parent by
-                # definition. Recorded as `whole_parent`, never dressed up as a name match.
-                for row in whole_parent_members(scope, geo):
-                    pending.append((code, row, "whole_parent", source_ref, None))
+                # definition -- plus the independent cities that vote with the parent without
+                # being its children. See lone_district_rows for why the two are not one method.
+                for row, method in lone_district_rows(scope, geo, ic_methods):
+                    pending.append((code, row, method, source_ref, None))
                 continue
+            # Two passes, because whether a member naming a whole administrative district is a
+            # claim or a caption depends on what the REST of the district's list resolved to.
+            # See whole_citymun_member: Manila's 1st writes "Tondo" above barangays 1-146.
+            settled, deferred = [], []
             for member in members:
                 row, method = resolve_member(member, scope, geo, crosswalk)
                 if row is None:
-                    rec = {"district_code": code, "parent": parent, "member": member["name"],
-                           "link_target": member.get("link_target"), "reason": method}
-                    (ambiguous if method.startswith("ambiguous") else unresolved).append(rec)
+                    deferred.append((member, method))
+                else:
+                    settled.append((member, row, method))
+            enumerated_parents = enumerated_barangay_parents(settled)
+            for member, method in deferred:
+                row = whole_citymun_member(member, scope, geo, enumerated_parents)
+                if row is not None:
+                    settled.append((member, row, "whole_citymun"))
                     continue
+                rec = {"district_code": code, "parent": parent, "member": member["name"],
+                       "link_target": member.get("link_target"), "reason": method}
+                (ambiguous if method.startswith("ambiguous") else unresolved).append(rec)
+            for member, row, method in settled:
                 pending.append((code, row, method, source_ref, member["name"]))
 
         # Two different source names that land on the SAME dim_geo row are a source
@@ -1226,6 +1497,7 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
         "districts": districts, "memberships": memberships, "representatives": reps,
         "unresolved": unresolved, "ambiguous": ambiguous, "scope_unknown": scope_unknown,
         "skipped": skipped, "parsed_district_labels": sorted(parsed_labels),
+        "independent_cities": independent_cities,
     }
 
 
@@ -1625,7 +1897,7 @@ def validate(built, registry, geo, allow_single_source=False):
     # 6. Nothing resolved by a method that does not exist. Guards the ladder against a future
     #    edit quietly adding a fuzzy rung.
     allowed = {"exact", "disambiguated", "crosswalk", "manual_override", "public_correction",
-               "whole_parent"}
+               "whole_parent", "independent_city", "whole_citymun"}
     bad = sorted({m["match_method"] for m in memberships} - allowed)
     gate("match_methods_are_declared", not bad, {"unexpected": bad})
 
@@ -1683,23 +1955,63 @@ def analyse_gaps(built, geo):
 # Gaps whose cause has been established, so a reader is not left to re-derive it. Each is a
 # statement about the SOURCES, not about the build: no amount of parsing closes them.
 KNOWN_GAP_NOTES = [
-    ("Wikidata's roster is incomplete.", 
-     "It carries no district for Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa or Isabela "
-     "City -- all lone-district highly urbanised cities whose districts plainly exist. The "
-     "registry drives the page list, so these were never fetched. This is most of the gap between "
-     "the 250 districts built and the 254 the plan expects, and it is a finding about Wikidata "
-     "rather than a defect here: inventing the missing rows from dim_geo would be exactly the "
-     "fabrication this build refuses everywhere else."),
-    ("Davao City is described at a grain PSGC does not model.",
+    ("Six uncovered cities were a resolution failure here, not a hole in the sources. Closed.",
+     "Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa and Isabela City were read as six "
+     "lone districts missing from Wikidata's roster. They are not. None of the six has a "
+     "district of its own: each is a member of an existing district, named in that district's "
+     "own article -- Angeles in Pampanga's 1st, Olongapo in Zambales's 1st, Lucena in Quezon's "
+     "2nd, Tacloban in Leyte's 1st, Puerto Princesa in Palawan's 3rd, Isabela City in Basilan's "
+     "lone -- and an independently derived COMELEC-based mapping agrees with all six. The cause "
+     "was a fact about PSGC: a highly urbanised city gets its own province-level row in dim_geo, "
+     "so it is not among the children of the province it votes with and a province-scoped lookup "
+     "could not reach it. Resolved by the `independent_city` rung, which widens a province's "
+     "scope only with the cities that province's own page lead names, and only within its "
+     "region."),
+    ("Manila was 258 of 857 barangays mapped, and the count hid it. Mostly closed.",
+     "Its citymun-coverage shortfall read as 'nine uncovered rows', which sounds like nine small "
+     "gaps; it was four legislative districts holding no members at all. Manila's 1st and 2nd "
+     "enumerate numbered barangays and resolved (all in Tondo, hence the 258), while its 3rd to "
+     "6th name administrative districts -- 'Sampaloc', 'Santa Cruz', 'Port Area' -- which are not "
+     "barangays. PSGC does model these, as Manila's ten citymun children, so the `whole_citymun` "
+     "rung now matches them within the city's own scope and coverage is **813 of 857**. What is "
+     "left is reported, not forced: Paco is claimed by BOTH the 5th and the 6th, so neither gets "
+     "it (43 barangays, which COMELEC precinct returns settle exactly); six administrative "
+     "districts Wikipedia names have no dim_geo row at all (Binondo, Ermita, Intramuros, San "
+     "Andres, San Miguel, Santa Mesa); and nine barangay numbers the source lists -- 21-24, 27, "
+     "40, 113-115 -- exist nowhere in PSA's Manila, a source disagreement rather than a parse "
+     "failure. BARANGAY 202-A is enumerated by no district."),
+]
+
+RESIDUAL_GAP_NOTES = [
+    ("Davao City is described the same way as Manila, but at a grain PSGC does not model.",
      "Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', "
      "'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays "
-     "directly off the city with no intermediate level. Those 82 barangays cannot be placed from "
+     "directly off the city with no intermediate level -- which is exactly why the `whole_citymun` "
+     "rung closes Manila and cannot touch this. Those 84 barangays cannot be placed from "
      "this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in "
      "a barangay and names its own contest; this is the clearest single argument for the second "
      "source."),
     ("The BARMM Special Geographic Area is not covered by any district article.",
      "Its municipalities were transferred from Cotabato and the sources in this set have not "
      "caught up. Reported rather than assigned."),
+    ("23 members are named differently by Wikipedia and by PSA, and none is fuzzy-matched.",
+     "Mostly spelling: 'Impasugong' against dim_geo's IMPASUG-ONG, 'Bulakan' against BULACAN, "
+     "'Maayon' against MA-AYON, 'Sergio Osmena' against SERGIO OSMENA SR. Two look like "
+     "renamings instead -- Zamboanga del Norte's 'Leon B. Postigo' beside a BACUNGAN left "
+     "uncovered in that same province, Maguindanao del Sur's 'Datu Montawal' beside a PAGAGAWAN "
+     "-- and one is not a name question at all: 'Talitay' is listed under Maguindanao del Sur "
+     "while dim_geo files TALITAY under Maguindanao del Norte, which is a boundary disagreement "
+     "between the sources. Each is reported as unresolved_in_province and none is guessed at: "
+     "guardrail 1 makes an unresolved LGU a published finding and a wrongly-matched one an "
+     "invisible lie. Closing them needs the PSGC crosswalk (rung 3) or a committed override "
+     "carrying a reason apiece -- a decision per row, not a parser change."),
+    ("Eight `unresolved` entries are template syntax, not places.",
+     "Four district articles (Batangas's 1st, Cavite's 1st, 5th and 7th) write their collapsible "
+     "list with a long run of spaces before the "
+     "'=' (`| titlestyle              = font-weight:normal;...`), which the member parser does "
+     "not recognise as a parameter, so the parameter and the list's own 'LGU' title leak in as "
+     "member names. They resolve to nothing and are therefore harmless to the mapping, but they "
+     "are noise in a list D2.2 publishes."),
 ]
 
 
@@ -1770,6 +2082,46 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None, ge
     lines += md_table(["match_method", "rows"],
                       [[f"`{k}`", by_method[k]] for k in sorted(by_method)],
                       ["left", "right"])
+    # Every widened scope, published. An independent city added to a province's scope is a claim
+    # about who votes with whom, and it is the one rung whose evidence lives on a page other than
+    # the one the member came from -- so the receipt names both.
+    ics = [r for r in built.get("independent_cities", []) if r.get("resolved")]
+    if ics:
+        lines += [
+            "", "## Independent cities added to a province's scope", "",
+            "PSGC files a highly urbanised city under its own province-level row, so a city that "
+            "votes with a neighbouring province is not among that province's `dim_geo` children "
+            "and a province-scoped lookup cannot reach it. Each row below widened one province's "
+            "scope by one city. `page_lead` means the province's own districts page says so in "
+            "its lead sentence; `manual_override` means it does not and a person decided, with "
+            "the reason shown.", "",
+        ]
+        # A widened scope is not the same as a row: the scope is widened per province page, but a
+        # membership only follows if one of that province's districts actually names the city.
+        # South Cotabato's page names General Santos, yet the city has a district of its own and no
+        # South Cotabato district lists it -- so its scope widened and nothing came of it. Showing
+        # the row count keeps that visible instead of implying seven cities were reassigned.
+        # Counted against THIS province page's own districts, not against the geo_code globally:
+        # General Santos has a district of its own, so a global count would report 1 for the South
+        # Cotabato line and imply a reassignment that did not happen. District codes are
+        # district_slug(parent, ordinal), so the parent's slug stem selects exactly its districts.
+        used = defaultdict(int)
+        for row in m:
+            used[(row["geo_code"], row["district_code"])] += 1
+
+        def rows_for(entry):
+            stem = slug_normalise(entry["parent"]).replace(" ", "-") + "-"
+            return sum(n for (gc, dc), n in used.items()
+                       if gc == entry["resolved"] and dc.startswith(stem))
+        lines += md_table(
+            ["province page", "city", "geo_code", "resolved as", "rows", "attested by"],
+            [[r["parent"], r.get("geo_name") or r["name"], f"`{r['resolved']}`",
+              "`manual_override`" if r.get("source") == "manual_override" else "`independent_city`",
+              rows_for(r),
+              r.get("reason_note") or "page lead sentence"]
+             for r in sorted(ics, key=lambda x: (x["parent"], x["name"]))],
+            ["left", "left", "left", "left", "right", "left"])
+
     lines += ["", "## Validation gates", ""]
     gate_rows = []
     for g in gates:
@@ -1825,6 +2177,8 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None, ge
                           ["left", "right"])
         lines += ["", "### Causes already established", ""]
         for title, body in KNOWN_GAP_NOTES:
+            lines += [f"**{title}** {body}", ""]
+        for title, body in RESIDUAL_GAP_NOTES:
             lines += [f"**{title}** {body}", ""]
     lines += [
         "",
@@ -2045,6 +2399,159 @@ def selftest():
     assert lone_district_names_parent([{"name": "Canlalay"}], True, "Bi\u00f1an") is False
     assert lone_district_names_parent([{"name": "A"}, {"name": "B"}], True, "A") is False
 
+    # -- the independent-city rung ------------------------------------------------
+    # PSGC files a highly urbanised city under its OWN province-level row, so a city that votes
+    # with a neighbouring province is not among that province's dim_geo children and a
+    # province-scoped lookup cannot reach it. Five real cities failed exactly this way
+    # (Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa), each reported
+    # `unresolved_in_province` while its district article named it plainly.
+    geo_ic = GeoIndex([
+        {"geo_code": "P1", "geo_level": "province", "geo_name": "Fakeland", "province_code": "P1", "parent_code": "R1", "region_code": "R1"},
+        {"geo_code": "C1", "geo_level": "citymun", "geo_name": "Alpha", "province_code": "P1", "parent_code": "P1", "region_code": "R1"},
+        # The HUC: its own province-level row in the SAME region, with the city as its child.
+        {"geo_code": "H1", "geo_level": "province", "geo_name": "CITY OF HOTEL (HUC)", "province_code": "H1", "parent_code": "R1", "region_code": "R1"},
+        {"geo_code": "H1C", "geo_level": "citymun", "geo_name": "CITY OF HOTEL", "province_code": "H1", "parent_code": "H1", "region_code": "R1"},
+        {"geo_code": "H1B", "geo_level": "barangay", "geo_name": "Poblacion", "province_code": "H1", "parent_code": "H1C", "region_code": "R1"},
+        # A DIFFERENT city of the same name in another region. The region test is what keeps this
+        # one out; without it the lookup is national again, which is the mistake D1.3b removed.
+        {"geo_code": "X1", "geo_level": "province", "geo_name": "Farland", "province_code": "X1", "parent_code": "R2", "region_code": "R2"},
+        {"geo_code": "X1C", "geo_level": "citymun", "geo_name": "CITY OF HOTEL", "province_code": "X1", "parent_code": "X1", "region_code": "R2"},
+    ])
+    lead = (
+        "The '''legislative districts of Fakeland''' are the representations of the "
+        "[[Provinces of the Philippines|province]] of [[Fakeland]] and the "
+        "[[Cities of the Philippines#Independent cities|highly urbanized city]] of "
+        "[[Hotel City|Hotel]] in the [[List of legislatures of the Philippines|various national "
+        "legislatures]] of the [[Philippines]].\n\n== History ==\nFakeland, including the "
+        "[[Cities of the Philippines#Independent cities|highly urbanized city]] of "
+        "[[Ghost City|Ghost]], comprised a lone district from 1898 to 1972.\n"
+    )
+    found = independent_cities_in_lead(lead)
+    assert [c["name"] for c in found] == ["Hotel"], found
+    assert found[0]["link_target"] == "Hotel City", found
+    # The History section uses the same phrasing about an arrangement that ended in 1972. Reading
+    # the whole page would import it as current, so only the lead sentence is read.
+    assert all(c["name"] != "Ghost" for c in found), found
+
+    ic_scope = {"parent_name": "Fakeland", "province_code": "P1", "grain": "citymun"}
+    codes, methods, report = independent_city_scope("Fakeland", lead, ic_scope, geo_ic)
+    # Exactly the in-region city. X1C shares the name but sits in R2, and must not be reachable:
+    # dropping the region test makes this ambiguous and yields no code at all.
+    assert codes == {"hotel": "H1C"}, codes
+    assert methods == {"H1C": "independent_city"}, methods
+    assert any(r.get("source") == "page_lead" and r["resolved"] == "H1C" for r in report), report
+
+    scoped = dict(ic_scope, independent_citymun_codes=codes, independent_citymun_methods=methods)
+    row, meth = resolve_member({"name": "Hotel City", "link_target": "Hotel City"}, scoped, geo_ic)
+    assert (row["geo_code"], meth) == ("H1C", "independent_city"), (row, meth)
+    # Without the widened scope the same member is a published gap, not a silent one.
+    row, meth = resolve_member({"name": "Hotel City", "link_target": "Hotel City"}, ic_scope, geo_ic)
+    assert row is None and meth == "unresolved_in_province", (row, meth)
+
+    # A page naming a city that IS one of the province's own children changes nothing: it already
+    # resolves at rung 1, and it is reported rather than added a second way.
+    own = lead.replace("[[Hotel City|Hotel]]", "[[Alpha]]")
+    codes_own, methods_own, report_own = independent_city_scope("Fakeland", own, ic_scope, geo_ic)
+    assert codes_own == {} and methods_own == {}, (codes_own, methods_own)
+    assert report_own[0]["reason"] == "already_in_province", report_own
+
+    # A city page is barangay-grain: its lead names the city itself, which says nothing about
+    # which of its barangays belong where. The rung must not fire there at all.
+    assert independent_city_scope(
+        "Hotel", lead, {"parent_name": "Hotel", "grain": "barangay",
+                        "citymun_codes": {"H1C"}}, geo_ic) == ({}, {}, [])
+
+    # Rung 4 for the case the prose does not attest -- Isabela City votes with Basilan from
+    # another REGION, so the region test correctly refuses it and a person decides instead. The
+    # method says so: `manual_override`, never `independent_city`.
+    INDEPENDENT_CITY_OVERRIDES[("Fakeland", "X1C")] = "fixture: votes with Fakeland from R2"
+    try:
+        codes_o, methods_o, _ = independent_city_scope("Fakeland", lead, ic_scope, geo_ic)
+        assert codes_o["hotel"] == "H1C" and methods_o["X1C"] == "manual_override", (codes_o, methods_o)
+        # A lone district covers its whole parent AND the cities that vote with it, each keeping
+        # the method its own evidence earns.
+        rows = lone_district_rows(ic_scope, geo_ic, methods_o)
+        got = sorted((r["geo_code"], m) for r, m in rows)
+        assert got == [("C1", "whole_parent"), ("H1C", "independent_city"),
+                       ("X1C", "manual_override")], got
+    finally:
+        del INDEPENDENT_CITY_OVERRIDES[("Fakeland", "X1C")]
+
+    # A city already covered by the containment expansion is not added twice; a duplicate here
+    # would read downstream as a district double-claiming a municipality.
+    dup = lone_district_rows(ic_scope, geo_ic, {"C1": "independent_city"})
+    assert sorted(r["geo_code"] for r, _ in dup) == ["C1"], dup
+
+    # The new method has to be declared, or the ladder-guard gate fails it.
+    built_ic = {
+        "districts": [{"district_code": "d1", "district_name": "Fakeland's 1st congressional district"}],
+        "memberships": [{"district_code": "d1", "geo_code": "H1C", "geo_level": "citymun",
+                         "match_method": "independent_city", "corroboration": "corroborated"}],
+        "representatives": [], "unresolved": [], "ambiguous": [], "scope_unknown": [],
+        "parsed_district_labels": [],
+    }
+    g_ic = {g["gate"]: g for g in validate(built_ic, [], geo_ic)}
+    assert g_ic["match_methods_are_declared"]["ok"] is True, g_ic["match_methods_are_declared"]
+
+
+    # -- whole-citymun members: a district described by sub-city administrative unit ----------
+    # Manila's 3rd-6th name administrative districts ("Sampaloc", "Santa Cruz") rather than
+    # barangays. PSGC models those as Manila's citymun children, so they resolve -- but only if
+    # the resolver is willing to match a member against the scope's own citymun set, which it was
+    # not: all of them came back `unresolved_barangay` and four districts produced no rows at all.
+    geo_wc = GeoIndex([
+        {"geo_code": "M1", "geo_level": "province", "geo_name": "CITY OF METROPOLIS (HUC)", "province_code": "M1", "parent_code": "RM", "region_code": "RM"},
+        {"geo_code": "MA", "geo_level": "citymun", "geo_name": "ALPHA DISTRICT", "province_code": "M1", "parent_code": "M1", "region_code": "RM"},
+        {"geo_code": "MB", "geo_level": "citymun", "geo_name": "BETA DISTRICT", "province_code": "M1", "parent_code": "M1", "region_code": "RM"},
+        {"geo_code": "MA1", "geo_level": "barangay", "geo_name": "Barangay 1", "province_code": "M1", "parent_code": "MA", "region_code": "RM"},
+        {"geo_code": "MA2", "geo_level": "barangay", "geo_name": "Barangay 2", "province_code": "M1", "parent_code": "MA", "region_code": "RM"},
+        {"geo_code": "MB1", "geo_level": "barangay", "geo_name": "Uno", "province_code": "M1", "parent_code": "MB", "region_code": "RM"},
+        # A citymun of the same name OUTSIDE this city: the match is against the scope's own
+        # citymun set, never a national lookup, so this must stay unreachable.
+        {"geo_code": "ZZ", "geo_level": "province", "geo_name": "Faraway", "province_code": "ZZ", "parent_code": "RZ", "region_code": "RZ"},
+        {"geo_code": "ZZ1", "geo_level": "citymun", "geo_name": "BETA DISTRICT", "province_code": "ZZ", "parent_code": "ZZ", "region_code": "RZ"},
+    ])
+    city_scope = {"parent_name": "Metropolis", "grain": "barangay", "citymun_codes": {"MA", "MB"}}
+
+    # A district naming a whole administrative district it does not otherwise enumerate.
+    row = whole_citymun_member({"name": "Beta District"}, city_scope, geo_wc, set())
+    assert row is not None and row["geo_code"] == "MB", row
+
+    # THE CAPTION RULE. Manila's 1st writes "Tondo" as a heading above barangays 1-146; reading it
+    # as a member would hand the district the whole of Tondo and double-claim all 259 barangays.
+    # A citymun whose barangays this district already enumerates is a caption, not a claim.
+    settled = [({"name": "Barangay 1"}, geo_wc.by_code["MA1"], "exact"),
+               ({"name": "Barangay 2"}, geo_wc.by_code["MA2"], "exact")]
+    parents = enumerated_barangay_parents(settled)
+    assert parents == {"MA"}, parents
+    assert whole_citymun_member({"name": "Alpha District"}, city_scope, geo_wc, parents) is None
+    # ...and it is a claim for any OTHER district that does not enumerate inside it.
+    assert whole_citymun_member({"name": "Alpha District"}, city_scope, geo_wc, set())["geo_code"] == "MA"
+
+    # Never a national lookup: the same name outside this city's scope resolves nothing.
+    assert whole_citymun_member({"name": "Beta District"},
+                                {"parent_name": "X", "grain": "barangay", "citymun_codes": {"MA"}},
+                                geo_wc, set()) is None
+    # Never fires on a province-grain page, which has no citymun_codes to match against.
+    assert whole_citymun_member({"name": "Beta District"},
+                                {"parent_name": "P", "grain": "citymun", "province_code": "P1"},
+                                geo_wc, set()) is None
+    # Two citymuns of that name inside one scope is an ambiguity, not a match.
+    assert whole_citymun_member({"name": "Beta District"},
+                                dict(city_scope, citymun_codes={"MB", "ZZ1"}), geo_wc, set()) is None
+
+    # The method has to be declared, or the ladder-guard gate fails it.
+    built_wc = {
+        "districts": [{"district_code": "d1", "district_name": "Metropolis's 4th congressional district"}],
+        "memberships": [{"district_code": "d1", "geo_code": "MB", "geo_level": "citymun",
+                         "match_method": "whole_citymun", "corroboration": "corroborated"}],
+        "representatives": [], "unresolved": [], "ambiguous": [], "scope_unknown": [],
+        "parsed_district_labels": [],
+    }
+    g_wc = {g["gate"]: g for g in validate(built_wc, [], geo_wc)}
+    assert g_wc["match_methods_are_declared"]["ok"] is True, g_wc["match_methods_are_declared"]
+
+
     # -- COMELEC contest parsing --------------------------------------------------
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT") == (1, False)
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - 2ND DISTRICT") == (2, False)
@@ -2108,7 +2615,9 @@ def selftest():
     assert parse_ordinal_label("3rd District") == (3, False)
 
 
-    print("selftest OK: parsing, normalisation, ladder, scope detection, gates,\n             COMELEC corroboration and the validation-set diff all asserted")
+    print("selftest OK: parsing, normalisation, ladder, scope detection, gates,\n"
+          "             the independent-city and whole-citymun rungs, COMELEC corroboration\n"
+          "             and the validation-set diff all asserted")
 
 
 # --------------------------------------------------------------------------- #
@@ -2217,6 +2726,9 @@ def main():
         "unresolved": built["unresolved"],
         "ambiguous": built["ambiguous"],
         "scope_unknown": built["scope_unknown"],
+        # Published rather than merely used: an independent city added to a province's scope is a
+        # claim about who votes with whom, and D2.2 renders the per-row receipt for it.
+        "independent_cities": built.get("independent_cities", []),
     }
 
     failed = [g["gate"] for g in gates if not g["ok"]]
