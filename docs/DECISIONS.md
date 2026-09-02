@@ -8172,3 +8172,70 @@ complementary pass covers `agg_demographics`; `agg_honorarium`'s suppressed dist
 and `agg_bhw_by_uuc_status`'s `*_is_suppressed` sides are not yet run through it, and the UUC
 listed/other split has the same two-cell structure that makes differencing easy. And the public
 `/place` exposure above is unaddressed by design.
+
+## 2026-09-02 — Increment 5.6: output modes — chart, slide, deck
+
+The assistant had one output shape, plain text, while the repo already shipped Observable Plot
+specs, a presentation deck, server-side PNG rendering and a PPTX writer that it could not reach.
+
+**The chart's values never come from the prose.** `figureFromPayloads` reads the tool payload
+directly; nothing parses the answer text. The same inversion as the citations in 2.3 — a model
+cannot mis-plot data it was never handed. The model decides *whether* a chart is wanted (the
+route's `output`); this decides what is in it.
+
+**It only plots shapes that are unambiguously a labelled series** — `getDistribution`'s ranked
+children, and `getPeerContext`'s this/region/nation. A `queryDataset` result is deliberately not
+plotted: choosing which column is the label and which the measure would be a guess, and a chart
+with the wrong column as its measure is *worse* than no chart, because it survives every audit —
+all the numbers in it are real numbers. When nothing matches there is no figure and the answer
+stays prose.
+
+**Small-sample children are excluded from the chart and counted in a note**, matching
+`lib/db/insights.ts`, which refuses to crown a leader below `MIN_LEADER_N`. A 3-profile barangay at
+"100% accredited" rendered as the tallest bar is the misreading the threshold exists to prevent,
+and a bar chart makes it look authoritative in a way a sentence does not.
+
+**A one-bar peer chart is refused.** "Versus what?" is the entire purpose of that figure.
+
+**The chart renders through the dashboard's own `FigureCard` and `BarChartClient`,** so an
+assistant chart and an Explore chart of the same numbers are the same picture — the visual
+counterpart of `lib/ai/tools.ts`'s "the number in the answer matches the number on screen".
+
+**Slides needed no change to `components/present/`.** Slides register themselves and order by DOM
+position (`sortByDocumentOrder`), so wrapping each answer in a `PresentationSlide` makes a deck of
+a chat session in the order the answers were given. The `PresentationProvider` lives inside the
+client chat component rather than on the server page for one reason: `DeckMeta.areaName` tracks the
+live route, and the server page cannot know which place the current question resolved to. Slides
+are titled by the question they answered — an overview grid of "Answer 1, Answer 2" is not
+navigable in a briefing.
+
+**PPTX went from one slide to a deck** without changing its contract. `?indicator=` still yields a
+single slide, so every existing export link and the PNG/CSV/XLSX routes that share the schema are
+untouched; `?indicators=a,b,c` builds a deck for one geography from the same
+`getExportFigureData` call per slide, so nothing new is plumbed. The per-slide layout moved to
+`lib/exports/pptx-slide.ts`, and the "no naked numbers" benchmark block and source footer are
+applied to **every** slide: a deck whose later slides drop their provenance is worse than one slide
+that keeps it, because a figure is separated from its source the moment someone copies it into
+another deck.
+
+Slides render **sequentially** and are capped at six with `maxDuration = 60`. Both are budget, not
+taste: each slide rasterises its own PNG through resvg on the request path, and six concurrent
+renders on a small serverless instance runs out of memory rather than time. Some indicators missing
+yields a thinner deck; all of them missing is a 404.
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**1007 tests, up from 983**. `npx prettier --check` clean on every file touched. `next build`
+compiles and typechecks; its prerender step fails only in this sandbox, which has no database.
+No migration.
+
+**CI note, not a code finding.** GitHub Actions did not create a workflow run for `71532f3`
+(Increment 5.4), confirmed absent over a four-minute poll; the same happened for this branch's
+first commit. Both trees were verified locally against the identical commands CI runs
+(`lint`, `typecheck`, `test`). No empty commit was pushed to provoke a run — this increment's push
+covers the same tree plus 5.6.
+
+**Still open.** The figure is emitted only for the `chart` and `slide` output routes, so a reader
+who wants a chart must ask for one or flip the chip. `figureFromPayloads` returns the *first*
+plottable payload rather than judging between several — picking would be an editorial judgement it
+has no basis for. The deck export is per-geography across indicators; a deck across *places* for
+one indicator has no route yet.

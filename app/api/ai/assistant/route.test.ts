@@ -557,3 +557,83 @@ describe("POST /api/ai/assistant — follow-ups (Increment 5.2)", () => {
     expect(event.followUps).toEqual([]);
   });
 });
+
+/**
+ * Increment 5.6. The chart is built server-side from the tool payloads by a pure function; the
+ * model chooses whether a chart is wanted (via the route), never what is in it.
+ */
+describe("POST /api/ai/assistant — figures (Increment 5.6)", () => {
+  const distributionPayload = {
+    parent: { geoCode: "07", geoLevel: "region", geoName: "Region VII" },
+    indicator: { key: "pct_accredited", label: "% accredited", unit: "percent" },
+    counts: { children: 2, withValue: 2, missing: 0, smallSample: 0 },
+    highest: [
+      { geoName: "Cebu", value: 70, nTotal: 900, smallSample: false },
+      { geoName: "Bohol", value: 55, nTotal: 400, smallSample: false },
+    ],
+  };
+
+  beforeEach(() => {
+    runToolLoop.mockResolvedValue({
+      finalText: "Cebu leads.",
+      toolPayloads: [distributionPayload],
+      provider: "gemini",
+      allCapped: false,
+    });
+  });
+
+  it("emits a figure whose values come from the payload when a chart was asked for", async () => {
+    routeRequest.mockResolvedValue({
+      lane: "geographic",
+      scope: null,
+      output: "chart",
+      confidence: "matched",
+    });
+
+    const event = eventOfType(await eventsOf(await POST(ask())), "figure");
+    expect(event.figure).toMatchObject({
+      from: "getDistribution",
+      data: [
+        { label: "Cebu", value: 70 },
+        { label: "Bohol", value: 55 },
+      ],
+    });
+  });
+
+  // A chart under every two-line answer is noise, not a feature.
+  it("emits no figure for a plain answer", async () => {
+    const events = await eventsOf(await POST(ask()));
+    expect(events.some((e) => e.type === "figure")).toBe(false);
+  });
+
+  it("emits no figure when the payloads hold nothing plottable", async () => {
+    routeRequest.mockResolvedValue({
+      lane: "general",
+      scope: null,
+      output: "chart",
+      confidence: "matched",
+    });
+    runToolLoop.mockResolvedValue({
+      finalText: "Nothing to plot.",
+      toolPayloads: [
+        { table: "agg_poverty", grain: "one geography x SAE year", mode: "rows", rows: [] },
+      ],
+      provider: "gemini",
+      allCapped: false,
+    });
+
+    const events = await eventsOf(await POST(ask()));
+    expect(events.some((e) => e.type === "figure")).toBe(false);
+  });
+
+  it("sends the figure after the answer, so the prose settles first", async () => {
+    routeRequest.mockResolvedValue({
+      lane: "geographic",
+      scope: null,
+      output: "slide",
+      confidence: "matched",
+    });
+    const types = (await eventsOf(await POST(ask()))).map((e) => e.type);
+    expect(types.indexOf("message")).toBeLessThan(types.indexOf("figure"));
+  });
+});

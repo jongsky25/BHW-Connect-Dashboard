@@ -4,6 +4,7 @@ import { runToolLoop } from "@/lib/ai/agent-loop";
 import { auditNarrative } from "@/lib/ai/audit";
 import { auditCitations, collectCitations, type Citation } from "@/lib/ai/citations";
 import { createInternalTools } from "@/lib/ai/dataset-tools";
+import { figureFromPayloads, type AssistantFigure } from "@/lib/ai/figure-from-payload";
 import { suggestFollowUps } from "@/lib/ai/follow-ups";
 import { INTERNAL_SYSTEM_PROMPT } from "@/lib/ai/internal-system-prompt";
 import {
@@ -51,6 +52,9 @@ type AssistantStreamEvent =
   // not get to author its own citations, so it cannot mis-cite a passage it was never handed.
   // `droppedPages` names the pages a sentence claimed before the citation audit removed it.
   | { type: "citations"; citations: Citation[]; droppedPages: number[] }
+  // Increment 5.6. Built from the tool payloads, never from the answer text — the same inversion
+  // as the citations above: a model cannot mis-plot data it was never handed.
+  | { type: "figure"; figure: AssistantFigure }
   | { type: "capacity"; message: string }
   | { type: "error"; message: string };
 
@@ -200,6 +204,13 @@ export async function POST(request: Request) {
       // After the message, so the answer renders first and its sources settle beneath it.
       if (citations.length > 0 || droppedPages.length > 0) {
         send({ type: "citations", citations, droppedPages });
+      }
+
+      // Only when the reader asked for one. A chart is an answer to "show me", not a decoration
+      // on every reply, and an unasked-for figure below a two-line answer is noise.
+      if (route.output === "chart" || route.output === "slide") {
+        const figure = figureFromPayloads(result.toolPayloads);
+        if (figure) send({ type: "figure", figure });
       }
     } catch {
       send({ type: "error", message: "Something went wrong answering that — please try again." });

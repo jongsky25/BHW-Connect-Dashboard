@@ -1,83 +1,63 @@
 import PptxGenJS from "pptxgenjs";
 import { NextResponse } from "next/server";
-import { formatBenchmarkLine, getExportFigureData } from "@/lib/exports/figure-data";
-import { parseExportQuery, slugify } from "@/lib/exports/query";
-import { renderFigurePng, footerLines } from "@/lib/exports/render-png";
+import { getExportFigureData } from "@/lib/exports/figure-data";
+import { addFigureSlide } from "@/lib/exports/pptx-slide";
+import { parseExportDeckQuery, slugify } from "@/lib/exports/query";
 
 export const runtime = "nodejs";
+// Each slide rasterises its own PNG through resvg on the request path; a six-slide deck needs
+// more than the default budget. Same posture as app/api/export/uuc-phc/data.
+export const maxDuration = 60;
 
-/** PPTX export: one slide, native editable title/caption/source text boxes + the same PNG chart embedded. */
+/**
+ * PPTX export: one slide per requested indicator, each with native editable title/caption/source
+ * text boxes and the same PNG chart embedded.
+ *
+ * Increment 5.6 generalised this from exactly one slide to a deck. `?indicator=` is unchanged and
+ * still yields a single slide, so every existing export link keeps working; `?indicators=a,b,c`
+ * builds a deck for one geography. The per-slide layout, the "no naked numbers" benchmark block
+ * and the source footer moved to `lib/exports/pptx-slide.ts` and are applied to every slide — a
+ * deck whose later slides drop their provenance is worse than one slide that keeps it, because a
+ * figure gets separated from its source the moment someone copies it into another deck.
+ */
 export async function GET(request: Request) {
-  const parsed = parseExportQuery(request.url);
+  const parsed = parseExportDeckQuery(request.url);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid export parameters" }, { status: 400 });
   }
+  const { geoCode, geoLevel, indicators, dimension } = parsed.data;
 
-  const data = await getExportFigureData(parsed.data);
-  if (!data) {
+  // Sequential, not Promise.all: each slide rasterises a PNG, and running six resvg renders at
+  // once on a small serverless instance is how this route runs out of memory rather than time.
+  const figures = [];
+  for (const indicator of indicators) {
+    const data = await getExportFigureData({ geoCode, geoLevel, indicator, dimension });
+    if (data) figures.push(data);
+  }
+
+  // Every requested indicator missing means the place itself is not exportable; some missing is a
+  // thinner deck, which is the honest outcome rather than an error.
+  if (figures.length === 0) {
     return NextResponse.json({ error: "Place not found" }, { status: 404 });
   }
 
-  const pngBuffer = await renderFigurePng(data);
-
   const pres = new PptxGenJS();
   pres.author = "BHW Connect";
-  const slide = pres.addSlide();
-
-  slide.addText(`${data.title} — ${data.geoName}`, {
-    x: 0.4,
-    y: 0.3,
-    w: 9.2,
-    fontSize: 22,
-    bold: true,
-    color: "1A1D1E",
-  });
-  slide.addText(data.caption, { x: 0.4, y: 0.85, w: 9.2, fontSize: 11, color: "57616A" });
-  slide.addImage({
-    data: `image/png;base64,${pngBuffer.toString("base64")}`,
-    x: 0.4,
-    y: 1.3,
-    w: 9.2,
-    h: 4.2,
-    sizing: { type: "contain", w: 9.2, h: 4.2 },
-  });
-  slide.addText(data.headline, { x: 0.4, y: 5.7, w: 9.2, fontSize: 13, color: "1A1D1E" });
-
-  // "No naked numbers" block (Increment 5): the same joined benchmark line,
-  // peer-rank sentence, and adequacy note the on-screen FigureBenchmark slot
-  // renders — one text box between the headline and the source footer.
-  const benchmarkParagraphs = [
-    data.benchmark && data.benchmark.rows.some((r) => r.value !== null)
-      ? formatBenchmarkLine(data.benchmark)
-      : null,
-    data.benchmark?.peerLine ?? null,
-    data.adequacyNote || null,
-  ].filter((s): s is string => Boolean(s));
-  if (benchmarkParagraphs.length > 0) {
-    slide.addText(benchmarkParagraphs.join("\n"), {
-      x: 0.4,
-      y: 6.05,
-      w: 9.2,
-      h: 0.8,
-      fontSize: 10,
-      color: "57616A",
-    });
+  for (const data of figures) {
+    await addFigureSlide(pres, data);
   }
 
-  slide.addText(footerLines(data).join("  ·  "), {
-    x: 0.4,
-    y: 6.9,
-    w: 9.2,
-    fontSize: 8,
-    color: "57616A",
-  });
-
   const buffer = (await pres.write({ outputType: "nodebuffer" })) as Buffer;
+  const first = figures[0];
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "Content-Disposition": `attachment; filename="${slugify(data.title, data.geoName)}.pptx"`,
+      "Content-Disposition": `attachment; filename="${
+        figures.length === 1
+          ? slugify(first.title, first.geoName)
+          : slugify(first.geoName, "bhw-connect-deck")
+      }.pptx"`,
     },
   });
 }
