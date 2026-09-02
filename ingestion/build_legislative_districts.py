@@ -260,6 +260,9 @@ def link_text_and_target(fragment):
     return fragment.strip(), None
 
 
+NAMED_PARAM_RE = re.compile(r"^\s*[A-Za-z_][A-Za-z0-9_-]*\s*=")
+
+
 def extract_collapsible_members(cell):
     """Pull the member list out of a {{Collapsible list ...}} template.
 
@@ -286,7 +289,12 @@ def extract_collapsible_members(cell):
     members = []
     for part in split_top_level(body, "|"):
         part = part.strip()
-        if not part or "=" in part.split("[[")[0][:20]:   # named param like title=
+        # A named parameter (title=, titlestyle=, framestyle=) is not a member. Matched as a
+        # leading identifier before any wikilink rather than by looking for "=" in the first 20
+        # characters, which is what this did: four articles align the "=" with a long run of
+        # spaces (`| titlestyle              = font-weight:normal;...`), pushing it past
+        # character 20, and both the parameter and the list's own "LGU" title were read as places.
+        if not part or NAMED_PARAM_RE.match(part.split("[[")[0]):
             continue
         display, target = link_text_and_target(part)
         if display and display.lower() not in NON_PLACE_MEMBERS:
@@ -614,7 +622,7 @@ def parse_towns_field(value):
     members = []
     for part in split_top_level(body, "|"):
         part = part.strip()
-        if not part or "=" in part.split("[[")[0][:20]:      # titlestyle=, title=
+        if not part or NAMED_PARAM_RE.match(part.split("[[")[0]):   # titlestyle=, title=
             continue
         for piece in split_top_level(part, ","):
             piece = strip_markup(piece).strip()
@@ -913,6 +921,131 @@ def resolve_member(member, scope, geo, crosswalk=None):
 
 
 # --------------------------------------------------------------------------- #
+# 3b. Resolving a member from its own Wikipedia article                        #
+# --------------------------------------------------------------------------- #
+# 23 members were unresolved because Wikipedia and PSA spell the same place differently, and
+# guardrail 1 forbids closing that gap by similarity -- rightly, because three of the 23 are not
+# spellings at all but RENAMINGS, where the two names share nothing:
+#
+#     Wikipedia "Banguingui"      is PSA's TONGKIL
+#     Wikipedia "Datu Montawal"   is PSA's PAGAGAWAN
+#     Wikipedia "Leon B. Postigo" is PSA's BACUNGAN
+#
+# No name-based rule could ever resolve those, and a fuzzy one would have got them WRONG rather
+# than merely failed. So identity is established from the linked article's CONTENTS instead, two
+# ways, neither of which looks at the name:
+#
+#   1. `psgc_identifier` -- the article states a PSGC code, either in {{PH brgy table}} rows
+#      ({{PH brgy table lite|101305001|Bontongon|...}}, sometimes hyphenated as 03-49-17-001) or
+#      in a PSA citation URL (muncode=042123000). A code is an identifier; nothing is inferred.
+#   2. `barangay_roster` -- the article lists the place's barangays, and exactly one candidate in
+#      the scoped province has that barangay set. Two different municipalities of one province do
+#      not share their barangay names, so this is identity by contents, not by resemblance.
+#
+# Both are scoped to the province the district belongs to and both refuse rather than guess. The
+# live proof that refusing still works: "Talitay" scores 0.08 against the best candidate in
+# Maguindanao del Sur and is left unresolved -- correctly, because dim_geo files TALITAY under
+# Maguindanao del NORTE, so the right answer is not in scope and no threshold should invent one.
+PSGC_BRGY_TEMPLATE_RE = re.compile(r"\{\{\s*PH brgy table[^|}]*\|\s*([\d-]{9,14})\s*\|", re.I)
+PSA_MUNCODE_RE = re.compile(r"muncode=(\d{9})", re.I)
+
+# Accept a roster match only well clear of the runner-up. These are not knife-edge numbers: in the
+# real build every accepted match scores 0.81-1.00 against a runner-up of 0.00-0.33, and the one
+# case that must be refused scores 0.08. Any threshold in a wide band gives the same answer, which
+# is the difference between a measurement and a tuned constant.
+ROSTER_MIN_SCORE = 0.75
+ROSTER_MIN_MARGIN = 0.30
+
+
+def psgc_stem_to_dim_geo(code):
+    """A 9-digit PSGC (RR PP MM BBB) -> dim_geo's 7-char citymun key (RR PPP MM).
+
+    dim_geo carries a 3-digit province segment where the 9-digit PSGC uses 2, so the two differ by
+    one zero: 101305001 -> stem 101305 -> 1001305 (IMPASUG-ONG). Returns None for anything that is
+    not the expected shape rather than padding something unrecognised into a plausible key.
+    """
+    digits = re.sub(r"\D", "", code or "")
+    if len(digits) < 9:
+        return None
+    stem = digits[:6]
+    return stem[:2] + "0" + stem[2:]
+
+
+def article_psgc_citymun(wikitext):
+    """The citymun the article's own PSGC codes point at, or None if they do not agree on one."""
+    stems = {psgc_stem_to_dim_geo(c) for c in PSGC_BRGY_TEMPLATE_RE.findall(wikitext or "")}
+    stems |= {psgc_stem_to_dim_geo(m) for m in PSA_MUNCODE_RE.findall(wikitext or "")}
+    stems.discard(None)
+    return next(iter(stems)) if len(stems) == 1 else None
+
+
+def article_barangay_roster(wikitext):
+    """Normalised barangay names from a municipality article's Barangays section."""
+    seg = re.split(r"==+\s*Barangays?\s*==+", wikitext or "", flags=re.I)
+    if len(seg) < 2:
+        return set()
+    body = seg[1]
+    nxt = re.search(r"\n==[^=]", body)
+    if nxt:
+        body = body[:nxt.start()]
+    names = set()
+    for nm in re.findall(r"\{\{\s*PH brgy table[^|}]*\|\s*[\d-]{9,14}\s*\|\s*([^|}]+)",
+                         body, re.I):
+        n = strip_markup(nm).strip(" .,;")
+        if n:
+            names.add(normalise_name(n))
+    for line in body.splitlines():
+        m = re.match(r"^\*+\s*(.+?)$", line.strip())
+        if not m:
+            continue
+        n = strip_markup(re.sub(r"\{\{[^{}]*\}\}", " ", m.group(1)))
+        n = re.sub(r"\(.*?\)", " ", n)          # "Bacungan (Poblacion)" -> "Bacungan"
+        n = re.sub(r"\s+", " ", n).strip(" .,;'\"")
+        if n and len(n) < 40 and not re.match(r"^[\d,.%\s-]+$", n):
+            names.add(normalise_name(n))
+    return names
+
+
+def resolve_member_from_article(scope, geo, wikitext):
+    """(row, method) for a member whose own article identifies it, or (None, reason).
+
+    Tier 1 is the identifier and is tried first: a code beats a set comparison whenever both are
+    available. A code that resolves to nothing in dim_geo is REFUSED, not fallen back on blindly --
+    General Salipada K. Pendatun's article cites an ARMM-era `muncode` (region 15) for a place now
+    in the Bangsamoro, and quietly reinterpreting a stale identifier is how a confident wrong
+    answer gets made. The roster tier still gets its turn, on evidence rather than on the code.
+    """
+    prov = scope.get("province_code")
+    if not prov:
+        return None, "unresolved_in_province"
+
+    code = article_psgc_citymun(wikitext)
+    if code:
+        row = geo.by_code.get(code)
+        if row is not None and row.get("province_code") == prov:
+            return row, "psgc_identifier"
+
+    roster = article_barangay_roster(wikitext)
+    if not roster:
+        return None, "article_has_no_roster"
+    scored = []
+    for cm in geo.children.get(prov, []):
+        if cm["geo_level"] != "citymun":
+            continue
+        theirs = {normalise_name(b["geo_name"])
+                  for b in geo.children.get(cm["geo_code"], []) if b["geo_level"] == "barangay"}
+        if theirs:
+            scored.append((len(theirs & roster) / len(theirs), cm))
+    if not scored:
+        return None, "no_candidate_with_barangays"
+    scored.sort(key=lambda t: -t[0])
+    best, best_row = scored[0]
+    second = scored[1][0] if len(scored) > 1 else 0.0
+    if best >= ROSTER_MIN_SCORE and (best - second) >= ROSTER_MIN_MARGIN:
+        return best_row, "barangay_roster"
+    return None, "roster_inconclusive"
+
+# --------------------------------------------------------------------------- #
 # 4. Fetch + snapshot                                                          #
 # --------------------------------------------------------------------------- #
 def _http_json(url, accept="application/json"):
@@ -1002,6 +1135,46 @@ def fetch_pages_batch(titles):
             "wikitext": rev["slots"]["main"]["content"],
         }
     return out, missing, redirects
+
+
+def fetch_member_articles(snapshot_dir: Path, geo, crosswalk=None):
+    """Fetch the article of every member the build could not resolve in its province.
+
+    A second fetch pass, deliberately, and it cannot be folded into --fetch: which members need
+    their own article is not knowable until a build has run and reported what it could not place.
+    Fetching every member's article instead would be thousands of pages to answer a question about
+    twenty-three. So: build from the snapshot, take the unresolved list, fetch exactly those, and
+    write them back into the same snapshot so the next build is offline and reproducible.
+    """
+    idx, registry, pages, articles, city_lists, existing = load_snapshot(snapshot_dir)
+    built = build(idx, registry, pages, articles, geo, crosswalk,
+                  city_lists=city_lists, member_articles=existing)
+    wanted = sorted({(u.get("link_target") or u["member"])
+                     for u in built["unresolved"]
+                     if u["reason"] in ("unresolved_in_province", "article_has_no_roster",
+                                        "roster_inconclusive")
+                     and (u.get("link_target") or u["member"])})
+    out_dir = snapshot_dir / "member_articles"
+    out_dir.mkdir(exist_ok=True)
+    index = dict(idx.get("member_articles", {}))
+    todo = [t for t in wanted if t not in index]
+    print(f"  {len(wanted)} unresolved members, {len(todo)} to fetch", flush=True)
+    for i in range(0, len(todo), TITLES_PER_REQUEST):
+        chunk = todo[i:i + TITLES_PER_REQUEST]
+        fetched, _gone, redirects = fetch_pages_batch(chunk)
+        for asked in chunk:
+            page = fetched.get(redirects.get(asked, asked))
+            if page is None:
+                continue
+            fn = re.sub(r"[^A-Za-z0-9]+", "_", asked).strip("_")[:120] + ".json"
+            (out_dir / fn).write_text(json.dumps(
+                {"requested_title": asked, "title": page["title"], "revid": page["revid"],
+                 "wikitext": page["wikitext"]}, indent=1))
+            index[asked] = {"file": fn, "revid": page["revid"], "title": page["title"]}
+        time.sleep(THROTTLE_SECONDS)
+    idx["member_articles"] = index
+    (snapshot_dir / "index.json").write_text(json.dumps(idx, indent=1))
+    print(f"member articles in snapshot: {len(index)}")
 
 
 def do_fetch(snapshot_dir: Path):
@@ -1120,7 +1293,11 @@ def load_snapshot(snapshot_dir: Path):
     city_lists = {}
     for parent, meta in idx.get("city_lists", {}).items():
         city_lists[parent] = json.loads((snapshot_dir / "city_lists" / meta["file"]).read_text())
-    return idx, registry, pages, articles, city_lists
+    member_articles = {}
+    for target, meta in idx.get("member_articles", {}).items():
+        member_articles[target] = json.loads(
+            (snapshot_dir / "member_articles" / meta["file"]).read_text())
+    return idx, registry, pages, articles, city_lists, member_articles
 
 
 def load_dim_geo_csv(path):
@@ -1463,7 +1640,7 @@ def lone_district_names_parent(members, is_lone, parent):
 
 
 def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=2025,
-          city_lists=None):
+          city_lists=None, member_articles=None):
     """Parse + resolve every district into district / membership / representative rows.
 
     Composition comes from the per-district articles, not the province tables. Both are
@@ -1606,6 +1783,15 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
                 if row is not None:
                     settled.append((member, row, "whole_citymun"))
                     continue
+                # The member's OWN article, where a name disagreement between Wikipedia and PSA is
+                # settled by the article's PSGC code or its barangay roster -- never by spelling.
+                art = (member_articles or {}).get(member.get("link_target") or member["name"])
+                if art is not None and method == "unresolved_in_province":
+                    row, why = resolve_member_from_article(scope, geo, art["wikitext"])
+                    if row is not None:
+                        settled.append((member, row, why))
+                        continue
+                    method = why
                 rec = {"district_code": code, "parent": parent, "member": member["name"],
                        "link_target": member.get("link_target"), "reason": method}
                 (ambiguous if method.startswith("ambiguous") else unresolved).append(rec)
@@ -2213,7 +2399,8 @@ def validate(built, registry, geo, allow_single_source=False, population=None):
     # 6. Nothing resolved by a method that does not exist. Guards the ladder against a future
     #    edit quietly adding a fuzzy rung.
     allowed = {"exact", "disambiguated", "crosswalk", "manual_override", "public_correction",
-               "whole_parent", "independent_city", "whole_citymun"}
+               "whole_parent", "independent_city", "whole_citymun",
+               "psgc_identifier", "barangay_roster"}
     bad = sorted({m["match_method"] for m in memberships} - allowed)
     gate("match_methods_are_declared", not bad, {"unexpected": bad})
 
@@ -2354,24 +2541,17 @@ RESIDUAL_GAP_NOTES = [
     ("The BARMM Special Geographic Area is not covered by any district article.",
      "Its municipalities were transferred from Cotabato and the sources in this set have not "
      "caught up. Reported rather than assigned."),
-    ("23 members are named differently by Wikipedia and by PSA, and none is fuzzy-matched.",
-     "Mostly spelling: 'Impasugong' against dim_geo's IMPASUG-ONG, 'Bulakan' against BULACAN, "
-     "'Maayon' against MA-AYON, 'Sergio Osmena' against SERGIO OSMENA SR. Two look like "
-     "renamings instead -- Zamboanga del Norte's 'Leon B. Postigo' beside a BACUNGAN left "
-     "uncovered in that same province, Maguindanao del Sur's 'Datu Montawal' beside a PAGAGAWAN "
-     "-- and one is not a name question at all: 'Talitay' is listed under Maguindanao del Sur "
-     "while dim_geo files TALITAY under Maguindanao del Norte, which is a boundary disagreement "
-     "between the sources. Each is reported as unresolved_in_province and none is guessed at: "
-     "guardrail 1 makes an unresolved LGU a published finding and a wrongly-matched one an "
-     "invisible lie. Closing them needs the PSGC crosswalk (rung 3) or a committed override "
-     "carrying a reason apiece -- a decision per row, not a parser change."),
-    ("Eight `unresolved` entries are template syntax, not places.",
-     "Four district articles (Batangas's 1st, Cavite's 1st, 5th and 7th) write their collapsible "
-     "list with a long run of spaces before the "
-     "'=' (`| titlestyle              = font-weight:normal;...`), which the member parser does "
-     "not recognise as a parameter, so the parameter and the list's own 'LGU' title leak in as "
-     "member names. They resolve to nothing and are therefore harmless to the mapping, but they "
-     "are noise in a list D2.2 publishes."),
+    ("22 of the 23 Wikipedia/PSA name disagreements are closed -- from article contents, never "
+     "from spelling.",
+     "Three of them were not spellings at all but renamings, where the names share nothing: "
+     "'Banguingui' is PSA's TONGKIL, 'Datu Montawal' is PAGAGAWAN, 'Leon B. Postigo' is BACUNGAN. "
+     "No name rule resolves those and a fuzzy one gets them wrong. So the member's own article "
+     "settles it: `psgc_identifier` where the article states a PSGC code (5 rows), and "
+     "`barangay_roster` where its barangay list matches exactly one candidate in the scoped "
+     "province (17 rows). The one refusal is the proof the guards hold -- 'Talitay' scores 0.08 "
+     "and resolves to nothing, because dim_geo files TALITAY under Maguindanao del NORTE while "
+     "the article is scoped to del Sur, so the right answer is not among the candidates and no "
+     "threshold should invent one."),
 ]
 
 
@@ -3108,6 +3288,118 @@ def selftest():
         g["gate"] for g in validate(swapped, [], geo)}, "no export -> gate not run"
 
 
+    # -- resolving a member from its own article ----------------------------------
+    # Three of the 23 name disagreements are RENAMINGS, not spellings -- "Banguingui" is PSA's
+    # TONGKIL, "Datu Montawal" is PAGAGAWAN, "Leon B. Postigo" is BACUNGAN. No name rule resolves
+    # those and a fuzzy one gets them wrong. Identity comes from the article's contents instead.
+    assert psgc_stem_to_dim_geo("101305001") == "1001305"      # IMPASUG-ONG
+    assert psgc_stem_to_dim_geo("03-49-17-001") == "0304917"   # hyphenated in the wild
+    assert psgc_stem_to_dim_geo("12345") is None               # not a code, not padded into one
+    assert psgc_stem_to_dim_geo(None) is None
+
+    assert article_psgc_citymun("{{PH brgy table lite|101305001| Bontongon |1|2}}") == "1001305"
+    assert article_psgc_citymun("...muncode=042123000&regcode=04...") == "0402123"
+    # Codes that disagree resolve nothing rather than picking one.
+    assert article_psgc_citymun(
+        "{{PH brgy table lite|101305001|A|1|2}}{{PH brgy table lite|201305001|B|1|2}}") is None
+
+    roster_wt = ("== Barangays ==\n"
+                 "* Bacungan ([[Poblacion]])\n"
+                 "*Talinga\n"
+                 "* 12,345\n"                       # a number is not a barangay
+                 "{{PH brgy table lite|101305001| Bontongon |1|2}}\n"
+                 "\n== Climate ==\n* Not a barangay\n")
+    r = article_barangay_roster(roster_wt)
+    assert r == {"bacungan", "talinga", "bontongon"}, r
+
+    geo_art = GeoIndex([
+        {"geo_code": "SP", "geo_level": "province", "geo_name": "Scoped", "province_code": "SP", "parent_code": "R", "region_code": "R"},
+        {"geo_code": "S1", "geo_level": "citymun", "geo_name": "TONGKIL", "province_code": "SP", "parent_code": "SP", "region_code": "R"},
+        {"geo_code": "S2", "geo_level": "citymun", "geo_name": "ELSEWHERE", "province_code": "SP", "parent_code": "SP", "region_code": "R"},
+        {"geo_code": "S1a", "geo_level": "barangay", "geo_name": "Bakkaan", "province_code": "SP", "parent_code": "S1", "region_code": "R"},
+        {"geo_code": "S1b", "geo_level": "barangay", "geo_name": "Danao", "province_code": "SP", "parent_code": "S1", "region_code": "R"},
+        {"geo_code": "S1c", "geo_level": "barangay", "geo_name": "Tattalan", "province_code": "SP", "parent_code": "S1", "region_code": "R"},
+        {"geo_code": "S2a", "geo_level": "barangay", "geo_name": "Faraway", "province_code": "SP", "parent_code": "S2", "region_code": "R"},
+        {"geo_code": "S2b", "geo_level": "barangay", "geo_name": "Distant", "province_code": "SP", "parent_code": "S2", "region_code": "R"},
+        # A DIFFERENT province holding a citymun with the very same barangay roster. Scoping is
+        # what keeps it unreachable; scanning nationally would make the match a tie and the answer
+        # unknowable, which is why the mutation that widens this is caught rather than harmless.
+        {"geo_code": "XP", "geo_level": "province", "geo_name": "Other", "province_code": "XP", "parent_code": "XP", "region_code": "R"},
+        {"geo_code": "X1", "geo_level": "citymun", "geo_name": "TONGKIL", "province_code": "XP", "parent_code": "XP", "region_code": "R"},
+        {"geo_code": "X1a", "geo_level": "barangay", "geo_name": "Bakkaan", "province_code": "XP", "parent_code": "X1", "region_code": "R"},
+        {"geo_code": "X1b", "geo_level": "barangay", "geo_name": "Danao", "province_code": "XP", "parent_code": "X1", "region_code": "R"},
+        {"geo_code": "X1c", "geo_level": "barangay", "geo_name": "Tattalan", "province_code": "XP", "parent_code": "X1", "region_code": "R"},
+        # The row a stale ARMM-era muncode resolves to -- real, and in the wrong province.
+        {"geo_code": "1500381", "geo_level": "citymun", "geo_name": "STALE TARGET", "province_code": "XP", "parent_code": "XP", "region_code": "R"},
+    ])
+    art_scope = {"parent_name": "Scoped", "province_code": "SP", "grain": "citymun"}
+
+    # THE RENAMING CASE. The article is titled "Banguingui"; dim_geo says TONGKIL. Nothing in the
+    # names matches, and the barangay roster resolves it outright.
+    banguingui = "== Barangays ==\n* Bakkaan\n* Danao\n* Tattalan\n"
+    row, why = resolve_member_from_article(art_scope, geo_art, banguingui)
+    assert (row["geo_code"], why) == ("S1", "barangay_roster"), (row, why)
+
+    # The identifier tier wins when the article states a code, and is preferred over the roster.
+    coded = "{{PH brgy table lite|101305001|X|1|2}}\n== Barangays ==\n* Bakkaan\n"
+    geo_coded = GeoIndex([
+        {"geo_code": "P9", "geo_level": "province", "geo_name": "P9", "province_code": "P9", "parent_code": "R", "region_code": "R"},
+        {"geo_code": "1001305", "geo_level": "citymun", "geo_name": "IMPASUG-ONG", "province_code": "P9", "parent_code": "P9", "region_code": "R"}])
+    row, why = resolve_member_from_article({"parent_name": "P9", "province_code": "P9"}, geo_coded, coded)
+    assert (row["geo_code"], why) == ("1001305", "psgc_identifier"), (row, why)
+
+    # A code pointing OUTSIDE the scoped province is refused, not reinterpreted. Gen. S.K.
+    # Pendatun's article cites an ARMM-era muncode for a place now in the Bangsamoro; quietly
+    # accepting a stale identifier is how a confident wrong answer gets made.
+    stale = "...muncode=150381900...\n== Barangays ==\n* Bakkaan\n* Danao\n* Tattalan\n"
+    row, why = resolve_member_from_article(art_scope, geo_art, stale)
+    assert (row["geo_code"], why) == ("S1", "barangay_roster"), (row, why)
+
+    # An inconclusive roster resolves NOTHING. This is Talitay, whose true row is in a different
+    # province, so no candidate in scope can score -- and no threshold should invent one.
+    row, why = resolve_member_from_article(art_scope, geo_art, "== Barangays ==\n* Nowhere\n")
+    assert row is None and why == "roster_inconclusive", (row, why)
+    # A PARTIAL roster is refused too. One barangay of three scores 0.33 -- non-zero, and a
+    # threshold of "anything above nothing" would accept it. Overlapping a little is not identity.
+    row, why = resolve_member_from_article(art_scope, geo_art, "== Barangays ==\n* Bakkaan\n")
+    assert row is None and why == "roster_inconclusive", (row, why)
+    # A TIE is refused. A roster covering two candidates completely scores 1.00 against 1.00: the
+    # score alone is perfect and the answer is still unknowable, which is what the margin is for.
+    both = "== Barangays ==\n* Bakkaan\n* Danao\n* Tattalan\n* Faraway\n* Distant\n"
+    row, why = resolve_member_from_article(art_scope, geo_art, both)
+    assert row is None and why == "roster_inconclusive", (row, why)
+    # No article roster at all is its own reported reason, not a silent failure.
+    row, why = resolve_member_from_article(art_scope, geo_art, "== History ==\n* Nothing\n")
+    assert row is None and why == "article_has_no_roster", (row, why)
+    # An unscoped page resolves nothing here either.
+    assert resolve_member_from_article({"parent_name": "?"}, geo_art, banguingui)[0] is None
+
+    # Both new methods must be declared, or the ladder-guard gate fails them.
+    built_art = {
+        "districts": [{"district_code": "d1", "district_name": "d1"}],
+        "memberships": [
+            {"district_code": "d1", "geo_code": "S1", "geo_level": "citymun",
+             "match_method": "psgc_identifier", "corroboration": "corroborated"},
+            {"district_code": "d1", "geo_code": "S2", "geo_level": "citymun",
+             "match_method": "barangay_roster", "corroboration": "corroborated"}],
+        "representatives": [], "unresolved": [], "ambiguous": [], "scope_unknown": [],
+        "parsed_district_labels": [],
+    }
+    g_art = {g["gate"]: g for g in validate(built_art, [], geo_art)}
+    assert g_art["match_methods_are_declared"]["ok"] is True, g_art["match_methods_are_declared"]
+
+    # A named parameter is never a member, however the article aligns its "=".
+    assert NAMED_PARAM_RE.match("titlestyle              = font-weight:normal;")
+    assert NAMED_PARAM_RE.match("title = 3 ")
+    assert not NAMED_PARAM_RE.match("[[Angeles City]]")
+    assert not NAMED_PARAM_RE.match("Santa Rita")
+    leaky = ("{{Collapsible list | titlestyle              = font-weight:normal;text-align:left; "
+             "| title                  = 3 [[Local government in the Philippines|LGU]]s "
+             "| [[Angeles City]] | [[Mabalacat]] }}")
+    got = [m["name"] for m in parse_towns_field(leaky)]
+    assert got == ["Angeles City", "Mabalacat"], got
+
+
     # -- COMELEC contest parsing --------------------------------------------------
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT") == (1, False)
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - 2ND DISTRICT") == (2, False)
@@ -3215,7 +3507,8 @@ def selftest():
 
     print("selftest OK: parsing, normalisation, ladder, scope detection, gates,\n"
           "             the independent-city and whole-citymun rungs, per-city barangay lists,\n"
-          "             PSA population reconciliation, COMELEC corroboration\n"
+          "             article-based member identity, PSA population reconciliation,\n"
+          "             COMELEC corroboration\n"
           "             and the validation-set diff all asserted")
 
 
@@ -3239,6 +3532,9 @@ def main():
     ap.add_argument("--validation-set",
                     help="Third-party municipality->district JSON to compare against and report. "
                          "Compared only: never ingested, never committed, never overwrites a row.")
+    ap.add_argument("--fetch-member-articles", action="store_true",
+                    help="Second fetch pass: pull the article of each member the build could not "
+                         "resolve, into --from-snapshot. Needs --dim-geo-csv.")
     ap.add_argument("--population-csv",
                     help="citymun population export (census_year, geo_code, population) for the "
                          "PSA reconciliation gate; rebuilt from agg_population, not versioned")
@@ -3261,7 +3557,13 @@ def main():
     if not args.dim_geo_csv and not args.database_url:
         ap.error("--from-snapshot needs --dim-geo-csv or --database-url to resolve names")
 
-    idx, registry, pages, articles, city_lists = load_snapshot(Path(args.from_snapshot))
+    if args.fetch_member_articles:
+        rows = load_dim_geo_csv(args.dim_geo_csv)
+        fetch_member_articles(Path(args.from_snapshot), GeoIndex(rows))
+        return
+
+    idx, registry, pages, articles, city_lists, member_articles = load_snapshot(
+        Path(args.from_snapshot))
 
     if args.database_url:
         import psycopg2
@@ -3277,7 +3579,8 @@ def main():
         dim_geo_rows = load_dim_geo_csv(args.dim_geo_csv)
 
     geo = GeoIndex(dim_geo_rows)
-    built = build(idx, registry, pages, articles, geo, city_lists=city_lists)
+    built = build(idx, registry, pages, articles, geo, city_lists=city_lists,
+                  member_articles=member_articles)
 
     corroboration = None
     if args.comelec_snapshot:
