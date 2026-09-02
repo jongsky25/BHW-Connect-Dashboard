@@ -1703,6 +1703,34 @@ def apply_corroboration(built, comelec_by_geo, geo, source_ref):
     return counts, conflicts
 
 
+def withhold_conflicting_rows(built):
+    """Remove every membership the two sources disagree about, and return them as findings.
+
+    D1.5's gate reads: "Wikipedia and COMELEC agree on every shipped assignment. Disagreements are
+    written to the disagreement report and the LGU is left unresolved, never silently resolved in
+    favour of either." `apply_corroboration` marks such a row `conflict` -- but marking is not
+    withholding, and until this existed the row shipped anyway: the corroboration gate counted
+    only `single_source`, so a row where Wikipedia said 1st and COMELEC said 3rd passed it. That
+    is the exact failure guardrail 1 is about, arrived at from the other direction: not a name
+    matched wrongly, but two sources contradicting each other and one of them silently winning.
+
+    Withholding rather than merely failing the gate is deliberate. Against ~3,400 rows and two
+    genuinely independent sources some disagreement is close to certain, so a gate that fails the
+    whole build on one conflict would never pass -- and an un-passable gate is how a gate gets
+    relaxed, which is the outcome this repo keeps arguing against. Dropping the disputed row
+    instead leaves the LGU uncovered, where the coverage gate reports it as the gap it is. A
+    published gap beats a coin-flip dressed as a mapping.
+
+    Mutates built["memberships"]; returns the withheld rows.
+    """
+    kept, withheld = [], []
+    for m in built["memberships"]:
+        (withheld if m.get("corroboration") == "conflict" else kept).append(m)
+    built["memberships"] = kept
+    built["withheld_conflicts"] = withheld
+    return withheld
+
+
 # --------------------------------------------------------------------------- #
 # 5c. Validation set: a third opinion, checked against but never ingested     #
 # --------------------------------------------------------------------------- #
@@ -1904,12 +1932,34 @@ def validate(built, registry, geo, allow_single_source=False):
     # 7. The two-source rule (guardrail 2). Single-source rows may be built and inspected; they
     #    may not be written to the database without an explicit override.
     single = [m for m in memberships if m["corroboration"] == "single_source"]
+    corroborated = sum(1 for m in memberships if m["corroboration"] == "corroborated")
+    # The note has to track reality, not repeat a fixed excuse: once a snapshot IS supplied,
+    # "COMELEC is unreachable" is false, and the remaining single-source rows mean something
+    # different -- the snapshot did not cover them. A report that explains a number with a stale
+    # reason is worse than one that gives the number alone.
+    note = ("COMELEC returns unavailable in this environment (HTTP 403); pass "
+            "--allow-single-source to build anyway, which records the gap rather than hiding it."
+            if not corroborated else
+            "A COMELEC snapshot was read, but these rows are not covered by it; the gap is in the "
+            "snapshot's coverage, not in its availability.")
     gate("corroborated_by_two_sources",
          not single or allow_single_source,
-         {"single_source_rows": len(single),
-          "note": "COMELEC returns unavailable in this environment (HTTP 403); "
-                  "pass --allow-single-source to build anyway, which records the gap rather than hiding it.",
+         {"single_source_rows": len(single), "corroborated_rows": corroborated,
+          "note": note,
           "overridden": bool(single and allow_single_source)})
+
+    # 7b. Nothing the two sources DISAGREE about may ship. withhold_conflicting_rows removes
+    #     those rows, so this is a backstop against a future edit that stops calling it -- the
+    #     same job match_methods_are_declared does for the ladder. It is not redundant with gate
+    #     7: `single_source` means nobody corroborated the row, `conflict` means somebody
+    #     contradicted it, and gate 7 counts only the former, which is precisely how a
+    #     contradicted row used to pass.
+    conflicting = [m for m in memberships if m.get("corroboration") == "conflict"]
+    gate("no_conflicting_rows_shipped", not conflicting,
+         {"conflicting_rows": len(conflicting),
+          "sample": [{"district_code": m["district_code"], "geo_code": m["geo_code"]}
+                     for m in conflicting[:10]],
+          "withheld_before_gate": len(built.get("withheld_conflicts", []))})
 
     # 8. Unresolved members are reported, never dropped silently.
     gate("unresolved_reported",
@@ -2592,6 +2642,48 @@ def selftest():
     g2 = {g["gate"]: g for g in validate(built2, [], geo)}
     assert g2["corroborated_by_two_sources"]["ok"] is True, g2["corroborated_by_two_sources"]
 
+    # -- a contradicted row must not ship -----------------------------------------
+    # The defect this asserts against, stated plainly: apply_corroboration marks a row `conflict`,
+    # but the corroboration gate counts only `single_source`, so before withhold_conflicting_rows
+    # existed a row where Wikipedia said 1st and COMELEC said 3rd passed every gate and shipped.
+    built_cf = {
+        "districts": [
+            {"district_code": "fakeland-1st", "district_name": "Fakeland's 1st congressional district",
+             "ordinal": 1, "is_lone": False},
+            {"district_code": "fakeland-2nd", "district_name": "Fakeland's 2nd congressional district",
+             "ordinal": 2, "is_lone": False},
+        ],
+        "memberships": [
+            _membership("fakeland-1st", {"geo_code": "C1", "geo_level": "citymun"}, "exact", "w@1", "t"),
+            _membership("fakeland-2nd", {"geo_code": "C2", "geo_level": "citymun"}, "exact", "w@1", "t"),
+        ],
+        "representatives": [], "unresolved": [], "ambiguous": [], "scope_unknown": [],
+        "parsed_district_labels": [],
+    }
+    # C1 agrees; C2 is ours-2nd against COMELEC-1st, a real contradiction.
+    counts_cf, _ = apply_corroboration(built_cf, {"C1": (1, False), "C2": (1, False)}, geo, "comelec:t")
+    assert counts_cf["corroborated"] == 1 and counts_cf["conflict"] == 1, counts_cf
+
+    # Before withholding, the corroboration gate is satisfied even though a row is contradicted.
+    # This is the bug, asserted so it cannot come back by someone deleting the call below.
+    g_before = {g["gate"]: g for g in validate(built_cf, [], geo)}
+    assert g_before["corroborated_by_two_sources"]["ok"] is True, \
+        "gate 7 counts single_source only -- that is why gate 7b exists"
+    assert g_before["no_conflicting_rows_shipped"]["ok"] is False, \
+        "a contradicted row still in memberships must fail the backstop"
+
+    withheld = withhold_conflicting_rows(built_cf)
+    assert [m["geo_code"] for m in withheld] == ["C2"], withheld
+    assert [m["geo_code"] for m in built_cf["memberships"]] == ["C1"], built_cf["memberships"]
+    assert built_cf["withheld_conflicts"] == withheld
+    g_after = {g["gate"]: g for g in validate(built_cf, [], geo)}
+    assert g_after["no_conflicting_rows_shipped"]["ok"] is True, g_after["no_conflicting_rows_shipped"]
+    # The withheld LGU is now a published gap, not a silent omission: C2 is uncovered.
+    assert g_after["citymun_covered_exactly_once"]["ok"] is False
+    # A corroborated row is untouched -- withholding must not cost the rows that agree.
+    assert built_cf["memberships"][0]["corroboration"] == "corroborated"
+
+
     # -- validation set: compared, never applied ----------------------------------
     built3 = {
         "districts": [{"district_code": "fakeland-1st",
@@ -2683,6 +2775,9 @@ def main():
         by_geo, unresolved_facts = resolve_comelec_facts(facts, geo)
         ref = f"comelec:2025-national-local@{Path(args.comelec_snapshot).name}"
         counts, conflicts = apply_corroboration(built, by_geo, geo, ref)
+        # Marking a row `conflict` is not the same as withholding it, and until this call existed
+        # a contradicted row shipped: the corroboration gate counts only `single_source`.
+        withheld = withhold_conflicting_rows(built)
         corroboration = {
             "source_ref": ref,
             "barangay_facts_read": len(facts),
@@ -2694,6 +2789,9 @@ def main():
             "rows": counts,
             "conflicts": conflicts[:200],
             "conflict_count": len(conflicts),
+            # Published, because a withheld row is a finding rather than a silent omission: the
+            # LGU shows up in the coverage gate as uncovered and here as the reason why.
+            "rows_withheld_for_conflict": len(withheld),
         }
 
     validation = None
