@@ -9,28 +9,28 @@ Every membership row carries the source revision it came from, so any row on
 - Congress: **20th** (valid from 2025-06-30)
 - Snapshot retrieved: **2026-09-02T04:12:52Z**
 - Districts: **250**
-- Membership rows: **3207**
+- Membership rows: **3397**
 - Representatives: **194**
 
 ## How each membership row was resolved
 
 | match_method   | rows |
 | -------------- | ---: |
-| `exact`        | 2247 |
-| `whole_parent` |  960 |
+| `exact`        | 2350 |
+| `whole_parent` | 1047 |
 
 ## Validation gates
 
 | gate                                     | result   | detail                                                                                                                                                                                                                                                                                                       |
 | ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `registry_agreement`                     | pass     | {"in_wikidata_not_parsed": 6, "parsed_not_in_wikidata": 0, "sample_only_wikidata": ["Agusan del Norte's 1st congressional district", "Agusan del Norte's 2nd congressional district", "Albay's 4th congressional district", "Maguindanao's 1st congressional district", "Maguindanao's 2nd congressional ... |
-| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 61, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
-| `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 14, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "0403403": {"missing": 23, "extra": 0, "sample_missing": ["0403403002", "0403403003", "0403403004", "0403403005", "0403403006"]}, "1030500": {"missing": 1, "extra": 0, "... |
+| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 59, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
+| `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 12, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "1030500": {"missing": 1, "extra": 0, "sample_missing": ["1030500043"]}, "0730600": {"missing": 12, "extra": 0, "sample_missing": ["0730600013", "0730600016", "073060002... |
 | `no_barangay_in_two_districts`           | pass     | {"offenders": []}                                                                                                                                                                                                                                                                                            |
 | `no_partylist_seats`                     | pass     | {"count": 0}                                                                                                                                                                                                                                                                                                 |
 | `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
-| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3207, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
-| `unresolved_reported`                    | pass     | {"unresolved": 114, "ambiguous": 4, "scope_unknown_pages": []}                                                                                                                                                                                                                                               |
+| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3397, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
+| `unresolved_reported`                    | pass     | {"unresolved": 107, "ambiguous": 4, "scope_unknown_pages": []}                                                                                                                                                                                                                                               |
 
 ## Corroboration (guardrail 2)
 
@@ -49,10 +49,37 @@ Checking work against a third party needs no licence; republishing it would.
 | measure               | count |
 | --------------------- | ----: |
 | rows compared         |  2286 |
-| agree                 |  2012 |
+| agree                 |  2125 |
 | disagree              |     0 |
-| only in the other set |   274 |
-| only in ours          |  1195 |
+| only in the other set |   161 |
+| only in ours          |  1272 |
+
+## What is still uncovered, and why
+
+**59 municipalities/cities are not yet covered by any district.** Grouped by parent, so the shape of the gap is visible rather than just its size:
+
+| parent                        | uncovered |
+| ----------------------------- | --------: |
+| CITY OF MANILA (HUC)          |         9 |
+| SPECIAL GEOGRAPHIC AREA (SGA) |         8 |
+| SOUTH COTABATO                |         5 |
+| BATAAN                        |         4 |
+| BULACAN                       |         4 |
+| ZAMBOANGA DEL NORTE           |         3 |
+| CAPIZ                         |         2 |
+| MAGUINDANAO DEL SUR           |         2 |
+| NUEVA ECIJA                   |         1 |
+| PAMPANGA                      |         1 |
+| CITY OF ANGELES (HUC)         |         1 |
+| CITY OF OLONGAPO (HUC)        |         1 |
+
+### Causes already established
+
+**Wikidata's roster is incomplete.** It carries no district for Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa or Isabela City -- all lone-district highly urbanised cities whose districts plainly exist. The registry drives the page list, so these were never fetched. This is most of the gap between the 250 districts built and the 254 the plan expects, and it is a finding about Wikidata rather than a defect here: inventing the missing rows from dim_geo would be exactly the fabrication this build refuses everywhere else.
+
+**Davao City is described at a grain PSGC does not model.** Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', 'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays directly off the city with no intermediate level. Those 82 barangays cannot be placed from this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in a barangay and names its own contest; this is the clearest single argument for the second source.
+
+**The BARMM Special Geographic Area is not covered by any district article.** Its municipalities were transferred from Cotabato and the sources in this set have not caught up. Reported rather than assigned.
 
 ## Unresolved and disputed
 
@@ -60,7 +87,7 @@ Published rather than hidden, on the same reasoning `/data-quality` already take
 missing assignment reads as a known finding rather than a hidden one. An unresolved LGU
 is a visible gap; a wrongly-matched one would be a silent lie.
 
-- Unresolved members: **114**
+- Unresolved members: **107**
 - Ambiguous members: **4**
 
 The full lists are in `ingestion/_qa_report_legislative_districts.json`.

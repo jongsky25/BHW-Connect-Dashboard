@@ -7390,3 +7390,62 @@ corroboration ignore the ordinal.
 application code. `npx prettier --check` passes on the regenerated `docs/LEGISLATIVE_DISTRICTS.md`.
 BetterGov's file is **not** committed and not redistributed; it is read from a local checkout via
 `--validation-set`, and the generated doc names only its basename.
+
+## 2026-09-02 — D1.3c: closing what the coverage gates could reach
+
+Four parse fixes and a gap analysis. Membership rows **3,207 → 3,397**; rows agreeing with the
+independent COMELEC-derived mapping **2,012 → 2,125**, still with **zero disagreements**; uncovered
+citymuns **62 → 59**; cities with leftover barangays **14 → 10**. Two gates still fail and the build
+still refuses to write.
+
+**Four fixes, each a distinct failure of the same kind — a source shape the parser did not know.**
+
+1. **A range whose upper bound is a wikilink.** Caloocan's 2nd writes `Barangays 5–[[Barangay 76,
+Caloocan|76]]`. `link_text_and_target()` returns only the first link's display text and silently
+   discards everything around it, so the range became the single member `"76"` and **71 barangays
+   were lost**. Links are now flattened to their display text _before_ run detection.
+2. **Lettered ranges.** Davao City writes `Barangays 1-A–10-A`; dim_geo spells these
+   `BARANGAY 1-A (POB.)`. The range now walks the number and carries the letter. Bounds with
+   different letters are deliberately **not** expanded — a run that crosses suffixes is two runs,
+   and guessing across them stops being arithmetic.
+3. **A lone district naming its own parent.** Biñan's towns field reads simply `Biñan`, meaning
+   "all of it". This was worse than an empty list, because **Biñan has a barangay named BIÑAN**: the
+   name resolved cleanly and the district ended up with 1 of the city's 24 barangays. A clean match
+   at the wrong grain is the quiet kind of wrong, so it is now recognised by name.
+4. **Butuan's label variant.** Wikidata files it as "Legislative district of Butuan", which the
+   parent pattern cannot read; the page redirects to "Butuan's at-large congressional district",
+   which parses. The resolved title is now the fallback, recovering a district that was being
+   dropped for a naming variant.
+
+**The remaining gap is characterised rather than merely counted** (`analyse_gaps()`, published in
+the QA report and in `docs/LEGISLATIVE_DISTRICTS.md`). "59 uncovered municipalities" is a number;
+"9 of them are Manila's administrative districts and 8 are the BARMM Special Geographic Area" is
+something a reader can act on, and it is what D2.2 will publish rather than hide. Three causes are
+now established, and **none of them is a parsing defect** — each is a statement about the sources:
+
+- **Wikidata's roster is incomplete.** It carries no district for Angeles, Olongapo, Lucena,
+  Tacloban, Puerto Princesa or Isabela City — all lone-district HUCs whose districts plainly exist.
+  The registry drives the page list, so these were never fetched. **This is most of the 250-vs-254
+  gap.** Synthesising the missing rows from `dim_geo` would be exactly the fabrication this build
+  refuses everywhere else, so they are reported instead.
+- **Davao City is described at a grain PSGC does not model.** Its 3rd district lists administrative
+  districts — "Baguio (8 barangays)", "Calinan (19)", "Marilog (12)", "Toril (25)", "Tugbok (18)" —
+  while `dim_geo` hangs all 182 barangays directly off the city with no intermediate level. Those 82
+  barangays **cannot be placed from this source at all**. COMELEC precinct returns resolve it
+  exactly, because a precinct sits in a barangay and names its own contest. This is the clearest
+  single argument for the second source, and it is why the remaining coverage gap and the
+  corroboration gap are partly the same problem.
+- **The BARMM Special Geographic Area** is covered by no district article; its municipalities were
+  transferred from Cotabato and these sources have not caught up.
+
+**Testing.** All four fixes are asserted in `--selftest` — including that mismatched letter bounds
+do _not_ expand — and mutation-checked four ways, all caught: dropping the link flattening (the
+range collapses to `["76"]`), ignoring the letter on a lettered range, disabling the
+lone-names-parent rule, and removing lettered-range handling entirely. The rule in (3) was extracted
+into `lone_district_names_parent()` specifically so it could be tested directly rather than only
+through a full build. The generated doc now collapses blank-line runs, so adding a section cannot
+reintroduce the double blank that prettier would rewrite — a generated file that the formatter keeps
+rewriting is recurring diff noise.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated doc.
