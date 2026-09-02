@@ -16,23 +16,30 @@ turns a figure into a decision.
 
 ---
 
-## 0. Decisions the owner has to make before D1 starts
+## 0. Decisions — settled 2026-09-02
 
-1. **Vintage.** Ship the **20th Congress (2025–2028)** only, or model history from the 17th? The
-   schema below carries `congress_no` either way; the question is how much backfill to source.
-   Recommendation: 20th only, schema ready for more.
-2. **Correction posture.** Are public corrections _proposals for review_ (recommended) or does a
-   trusted-contributor role get direct write? Recommendation: proposals only, no exceptions —
-   §5.3 explains why the review queue is the whole product here.
-3. **Publishing the mapping as a download.** Do we add district CSV/XLSX to `/api/export`?
-   Recommendation: yes, but only after D2 ships, so what we publish is already correctable.
-4. **Named representatives.** Do we carry each district's sitting representative (name, party)?
-   It is what makes the page useful and it is also the part most likely to be stale or contested.
-   Recommendation: yes, but in a separate table with its own `as_of` date and its own correction
-   path, never as a column on the district row.
-5. **Boundary polygons.** Derive district polygons by dissolving the citymun boundaries we already
-   have (§6.2), or leave districts map-less at launch? Recommendation: derive, accept that
-   multi-district cities stay hatched, exactly as `docs/BOUNDARY_RECONCILIATION.md` already does.
+All five were put to the owner with a recommendation and all five recommendations were accepted.
+They are recorded here as decisions, not open questions; a change to any of them is a
+`docs/DECISIONS.md` entry, not an edit to this list.
+
+1. **Vintage — 20th Congress (2025–2028) only.** `congress_no` is in the schema from the start, so
+   backfilling the 17th–19th later is a load, not a migration. Nothing is sourced for them now.
+2. **Correction posture — proposals only, no exceptions.** No trusted-contributor role, no direct
+   write path. D2.3 explains why the review queue is the whole product here.
+3. **Publishing the mapping as a download — yes, after D2 ships.** District CSV/XLSX joins
+   `/api/export` only once the mapping is publicly correctable, so we never hand out a derived
+   grouping that has no route back to us when it is wrong.
+4. **Named representatives — yes, in their own table.** `district_representative`, with its own
+   `as_of` date and its own correction path. Never a column on `dim_legislative_district`: it is
+   the most useful field on the page and also the one most likely to be stale or contested, and
+   giving it a separate clock is what keeps a stale representative from ageing the district row.
+5. **Boundary polygons — derive by dissolving citymun boundaries.** Multi-district cities stay
+   hatched with the ranked-list fallback, exactly as `docs/BOUNDARY_RECONCILIATION.md` already
+   handles every other missing polygon (D3.2).
+
+One sequencing note carried from the same discussion: **D1.1 (ask BetterGov.PH) happens before any
+build work.** If their mapping is publishable it collapses the hardest increment into a load, and
+it costs half a day to find out.
 
 ---
 
@@ -94,7 +101,7 @@ mapping is derived, not official, and every surface must say so.
 
 ## 3. Schema
 
-Three tables and one enum-free design, following the conventions already load-bearing in this repo:
+Four tables and one enum-free design, following the conventions already load-bearing in this repo:
 RLS enabled in the same statement block as the `CREATE TABLE` (`docs/DECISIONS.md` 0.3 guardrail),
 `status` gating with `auto`/`approved`/`rejected` as in `dataset_registry`, and a provenance
 pointer that is `NOT NULL` as in `kb_node`.
@@ -144,6 +151,21 @@ create unique index geo_district_map_live_idx
   on geo_district_map (district_code, geo_code)
   where superseded_by is null;
 
+-- The sitting representative, on its own clock (decision 4). Separate from the district row so a
+-- stale or contested name never ages the district itself, and so it can be corrected on its own.
+create table district_representative (
+  id            bigint generated always as identity primary key,
+  district_code text not null references dim_legislative_district (district_code) on delete cascade,
+  congress_no   smallint not null,
+  full_name     text not null,
+  party         text,
+  as_of         date not null,
+  source_kind   text not null,
+  source_ref    text not null,
+  superseded_by bigint references district_representative (id),
+  status        text not null default 'auto' check (status in ('auto','approved','rejected'))
+);
+
 -- Public correction proposals. Public-insert-only, exactly like `feedback`.
 create table district_correction (
   id              bigint generated always as identity primary key,
@@ -184,7 +206,7 @@ Three properties worth being explicit about:
 File an issue on `bettergovph/open-data-visualization` asking whether the district mapping is
 publishable. If it is, D1.3 becomes a loader and this phase halves. Do not block on the answer.
 
-### D1.2 — Migration: the three tables (half a day)
+### D1.2 — Migration: the four tables (half a day)
 
 Schema above, applied via the Supabase MCP as `20260902xxxxxx_legislative_districts.sql`, with the
 per-table reasoning carried in comments as every other migration here does. No data.
