@@ -358,6 +358,20 @@ def parse_population(cell):
     return int(m.group(1).replace(",", "")) if m else None
 
 
+def parse_population_year(cell):
+    """The census year an infobox population is quoted for: '514,041 (2020)' -> 2020.
+
+    Load-bearing, and not obviously so. The district articles do NOT all quote the same census:
+    Sulu's 1st and Bohol's 1st carry 2015 figures, Cavite's 4th a 2024 one, Pampanga's 2nd a 2020
+    one. Reconciling a 2020 sum against a 2015 published total shows a 6-10% "discrepancy" that is
+    simply five years of population growth -- which would have produced dozens of confident,
+    entirely false findings. The year decides which census the sum is compared against, and a
+    district whose vintage we do not hold is skipped rather than compared to the nearest one.
+    """
+    m = re.search(r"\((1[89]\d{2}|20\d{2})\)", strip_markup(cell))
+    return int(m.group(1)) if m else None
+
+
 def parse_representative(cell):
     """First bolded wikilink in the representative cell: '''[[Arjo Atayde]]'''."""
     m = re.search(r"'''\s*\[\[([^\]\|]+)(?:\|([^\]]*))?\]\]\s*'''", cell)
@@ -644,6 +658,7 @@ def parse_district_article(wikitext):
         "region": link_text_and_target(f.get("region", ""))[0],
         "members": parse_towns_field(f.get("towns", "")) if f.get("towns") else [],
         "population": parse_population(f.get("population", "")),
+        "population_year": parse_population_year(f.get("population", "")),
         "year": year("year"),
         "abolished": year("abolished"),
     }
@@ -1541,6 +1556,9 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
                 "region_code": scope.get("region_code"),
                 "wikidata_qid": item["qid"],
                 "psa_population": info["population"] or item.get("population"),
+                # Which census the figure above is quoted for; None when the article does not say.
+                # The reconciliation gate compares like with like or not at all.
+                "psa_population_year": info.get("population_year"),
                 "valid_from": CONGRESS_VALID_FROM,
                 "valid_to": None,
                 "source_kind": "wikipedia",
@@ -2007,9 +2025,117 @@ def compare_against_validation_set(built, other_by_geo, geo, label="validation s
 
 
 # --------------------------------------------------------------------------- #
+# 5d. Population reconciliation against PSA (D1.5's fifth gate)                #
+# --------------------------------------------------------------------------- #
+# The plan named five validation gates and only four were ever built. This is the fifth, and the
+# plan is explicit about why it is the interesting one: "a municipality assigned to the wrong
+# district moves both districts' totals in opposite directions" -- so it catches a bad *match*,
+# which the coverage gates cannot, because a wrongly-assigned LGU is still covered exactly once.
+#
+# It also became the only independent check available. Guardrail 2 assumed COMELEC returns could
+# be fetched; by D1.3g they cannot be, by anyone. This is independent in the way that matters:
+# the member populations come from our own PSA load (agg_population) and the district total comes
+# from PSA's published district figures, so only the *composition* being tested is Wikipedia's.
+# A wrong composition breaks the arithmetic.
+#
+# It is weaker than a per-row second opinion and must not be sold as one: it is aggregate, so two
+# similar-sized municipalities swapped between two districts cancel out and pass.
+#
+# TOLERANCE_PCT is empirical, not principled. PSA's district totals ARE sums of member LGUs, so
+# the honest expectation is an exact match, and 148 of 155 checked districts do match exactly. The
+# tolerance exists only so that published-total noise does not fail a build. The margin is thin
+# and worth stating: the smallest real error found (Ilocos Norte's Carasi, 1,607 people) shows up
+# at 0.52%, and the largest apparent noise (Laguna's 3rd) at 0.38%. EVERY non-zero delta is
+# reported regardless of the tolerance, so nothing hides underneath it.
+POPULATION_TOLERANCE_PCT = 0.5
+
+
+def load_population_csv(path):
+    """{census_year: {geo_code: population}} from a citymun population export."""
+    out = defaultdict(dict)
+    with open(path, newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            try:
+                out[int(row["census_year"])][row["geo_code"]] = int(row["population"])
+            except (TypeError, ValueError):
+                continue
+    return dict(out)
+
+
+def reconcile_population(built, populations, geo):
+    """Compare each province-grain district's summed member populations to its published total.
+
+    Four kinds of district are skipped, each for a reason that would otherwise manufacture a false
+    finding rather than reveal a real one:
+
+      * **barangay grain** -- agg_population carries no barangay rows, so a multi-district city
+        cannot be summed at all.
+      * **a vintage we do not hold** -- and this one is the trap. The district articles do not all
+        quote the same census: 195 say 2020, 34 say 2015, 21 say 2024, 2 say 2025. Comparing a
+        2020 sum against a 2015 published total shows a 6-10% "discrepancy" that is five years of
+        population growth. Before the year was read, 35 of 42 apparent mismatches were this.
+      * **known incomplete** -- a district with an unresolved member is already reported by the
+        coverage gates; its total is short by construction and failing it twice is noise, not
+        signal.
+      * **a member with no population row** -- the sum would silently under-count.
+
+    Returns (checked records, summary dict).
+    """
+    by_district = defaultdict(list)
+    for m in built["memberships"]:
+        by_district[m["district_code"]].append(m)
+    districts = {d["district_code"]: d for d in built["districts"]}
+    incomplete = ({u.get("district_code") for u in built.get("unresolved", [])}
+                  | {a.get("district_code") for a in built.get("ambiguous", [])})
+
+    checked, skipped = [], defaultdict(int)
+    for code, members in sorted(by_district.items()):
+        d = districts.get(code)
+        if not d or not d.get("psa_population"):
+            skipped["no_published_total"] += 1
+            continue
+        year = d.get("psa_population_year")
+        if year not in populations:
+            skipped[f"census_{year}_not_held"] += 1
+            continue
+        if not all(m["geo_level"] == "citymun" for m in members):
+            skipped["barangay_grain"] += 1
+            continue
+        if code in incomplete:
+            skipped["known_incomplete"] += 1
+            continue
+        if any(m["geo_code"] not in populations[year] for m in members):
+            skipped["member_population_missing"] += 1
+            continue
+        total = sum(populations[year][m["geo_code"]] for m in members)
+        published = d["psa_population"]
+        delta = total - published
+        checked.append({
+            "district_code": code, "census_year": year, "members": len(members),
+            "summed": total, "published": published, "delta": delta,
+            "pct": round(delta / published * 100, 4) if published else None,
+        })
+
+    off = [c for c in checked if c["delta"] != 0]
+    beyond = [c for c in checked
+              if c["pct"] is not None and abs(c["pct"]) > POPULATION_TOLERANCE_PCT]
+    summary = {
+        "tolerance_pct": POPULATION_TOLERANCE_PCT,
+        "districts_checked": len(checked),
+        "exact": len(checked) - len(off),
+        "non_zero_delta": len(off),
+        "beyond_tolerance": len(beyond),
+        "skipped": dict(skipped),
+        # Published in full rather than sampled: each one is a district to look at, and there are
+        # few enough that truncating them would only hide work.
+        "discrepancies": sorted(off, key=lambda c: -abs(c["pct"] or 0)),
+    }
+    return checked, summary
+
+# --------------------------------------------------------------------------- #
 # 6. Validation gates (D1.5)                                                   #
 # --------------------------------------------------------------------------- #
-def validate(built, registry, geo, allow_single_source=False):
+def validate(built, registry, geo, allow_single_source=False, population=None):
     """Every gate the plan names, each reported as pass/fail with its evidence.
 
     These are checks the build is expected to *fail* on a first run against live sources -- that
@@ -2122,6 +2248,17 @@ def validate(built, registry, geo, allow_single_source=False):
           "sample": [{"district_code": m["district_code"], "geo_code": m["geo_code"]}
                      for m in conflicting[:10]],
           "withheld_before_gate": len(built.get("withheld_conflicts", []))})
+
+    # 7c. Population reconciliation against PSA (D1.5's fifth gate, never previously built).
+    #     The only gate that can catch a WRONG assignment rather than a missing one: a coverage
+    #     gate is satisfied by a municipality sitting in the wrong district, because it is still
+    #     covered exactly once. Skipped entirely when no population export was supplied, so the
+    #     build stays runnable without it rather than failing for a missing input.
+    if population:
+        _checked, pop_summary = reconcile_population(built, population, geo)
+        beyond = [c for c in pop_summary["discrepancies"]
+                  if c["pct"] is not None and abs(c["pct"]) > POPULATION_TOLERANCE_PCT]
+        gate("population_reconciles_with_psa", not beyond, pop_summary)
 
     # 8. Unresolved members are reported, never dropped silently.
     gate("unresolved_reported",
@@ -2267,7 +2404,14 @@ def md_table(headers, rows, aligns=None):
     widths = [max(3, max(len(c) for c in col)) for col in cols]
     def rule(w, a):
         return (("-" * (w - 1) + ":") if a == "right" else "-" * w)
-    out = ["| " + " | ".join(str(h).ljust(w) for h, w in zip(headers, widths)) + " |",
+    # The HEADER follows the column's alignment too, which prettier enforces and this did not:
+    # a right-aligned column with a header shorter than its widest cell was left-padded on the
+    # data rows and right-padded on the header, so `prettier --write` rewrote the table and the
+    # generated file stopped being a no-op for the formatter -- the exact churn this function's
+    # docstring exists to prevent. It went unnoticed while every right-aligned header happened to
+    # be as wide as its column.
+    out = ["| " + " | ".join(str(h).rjust(w) if a == "right" else str(h).ljust(w)
+                             for h, w, a in zip(headers, widths, aligns)) + " |",
            "| " + " | ".join(rule(w, a) for w, a in zip(widths, aligns)) + " |"]
     for r in rows:
         cells = []
@@ -2278,7 +2422,8 @@ def md_table(headers, rows, aligns=None):
     return out
 
 
-def write_doc_summary(built, gates, idx, corroboration=None, validation=None, geo=None):
+def write_doc_summary(built, gates, idx, corroboration=None, validation=None, geo=None,
+                      reconciliation=None):
     """The report IS the doc, as docs/PSGC_CROSSWALK.md and BOUNDARY_RECONCILIATION.md are."""
     d, m = built["districts"], built["memberships"]
     by_method = defaultdict(int)
@@ -2389,6 +2534,39 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None, ge
              ["only in the other set", validation["only_in_validation_set"]],
              ["only in ours", validation["only_in_ours"]]],
             ["left", "right"])
+    if reconciliation:
+        r = reconciliation
+        lines += [
+            "", "## Population reconciliation against PSA", "",
+            "For each province-grain district, the sum of its member city/municipality populations "
+            "against the district total PSA publishes. This is the only check here that can catch "
+            "a **wrong** assignment rather than a missing one: a municipality in the wrong "
+            "district is still covered exactly once, so no coverage gate sees it, but it moves two "
+            "district totals in opposite directions by its own population. Compared at the census "
+            "year each article quotes, or not at all -- the articles quote 2015, 2020, 2024 and "
+            "2025, and comparing across vintages reads population growth as error.", "",
+        ]
+        lines += md_table(["measure", "value"],
+                          [["districts checked", r["districts_checked"]],
+                           ["summed exactly to the published total", r["exact"]],
+                           ["non-zero delta", r["non_zero_delta"]],
+                           [f"beyond the {r['tolerance_pct']}% tolerance", r["beyond_tolerance"]]],
+                          ["left", "right"])
+        if r["discrepancies"]:
+            lines += ["", "Every non-zero delta, published in full -- the tolerance decides what "
+                          "fails the build, not what gets shown:", ""]
+            lines += md_table(
+                ["district", "census", "members", "summed", "PSA published", "delta", "%"],
+                [[f"`{c['district_code']}`", c["census_year"], c["members"], f"{c['summed']:,}",
+                  f"{c['published']:,}", f"{c['delta']:+,}", f"{c['pct']:+.2f}"]
+                 for c in r["discrepancies"]],
+                ["left", "right", "right", "right", "right", "right", "right"])
+        if r["skipped"]:
+            lines += ["", "Skipped, each for a reason that would otherwise manufacture a false "
+                          "finding: " +
+                      ", ".join(f"**{v}** {k.replace('_', ' ')}" for k, v in sorted(r["skipped"].items()))
+                      + ".", ""]
+
     gaps = analyse_gaps(built, geo) if geo is not None else None
     if gaps:
         lines += ["", "## What is still uncovered, and why", "",
@@ -2847,6 +3025,89 @@ def selftest():
     assert resolve_city_barangay("Nowhere At All", cms, geo_city)[0] is None
 
 
+    # -- population reconciliation against PSA (D1.5's fifth gate) ----------------
+    # The census year is what makes this gate usable at all. The district articles quote different
+    # censuses -- 195 say 2020, 34 say 2015, 21 say 2024 -- and comparing a 2020 sum against a 2015
+    # published total shows five years of growth as a 6-10% "error". 35 of the first run's 42
+    # apparent mismatches were exactly that.
+    assert parse_population_year("514,041 (2020){{PH census|2020}}") == 2020
+    assert parse_population_year("486,063 (2015)<ref name=psa>x</ref>") == 2015
+    assert parse_population_year("123,456") is None
+
+    pops = {2020: {"C1": 100_000, "C2": 50_000, "C4": 1_607},
+            2024: {"C1": 110_000}}
+    def _d(code, pop, year, ordinal=1):
+        return {"district_code": code, "district_name": code, "ordinal": ordinal,
+                "is_lone": False, "psa_population": pop, "psa_population_year": year}
+    # A district whose members sum to its published total exactly -- the normal case, and what
+    # 148 of 155 real districts do.
+    ok_built = {
+        "districts": [_d("f-1st", 150_000, 2020)],
+        "memberships": [
+            _membership("f-1st", {"geo_code": "C1", "geo_level": "citymun"}, "exact", "w@1", "t"),
+            _membership("f-1st", {"geo_code": "C2", "geo_level": "citymun"}, "exact", "w@1", "t")],
+        "unresolved": [], "ambiguous": [],
+    }
+    _c, s = reconcile_population(ok_built, pops, geo)
+    assert s["districts_checked"] == 1 and s["exact"] == 1 and s["non_zero_delta"] == 0, s
+
+    # THE CASE THE GATE EXISTS FOR: a municipality in the wrong district moves two totals in
+    # opposite directions by its own population, and neither coverage gate can see it because the
+    # place is still covered exactly once. This is Ilocos Norte's Carasi (1,607) in miniature.
+    swapped = {
+        "districts": [_d("f-1st", 100_000, 2020), _d("f-2nd", 51_607, 2020, 2)],
+        "memberships": [
+            _membership("f-1st", {"geo_code": "C1", "geo_level": "citymun"}, "exact", "w@1", "t"),
+            _membership("f-1st", {"geo_code": "C4", "geo_level": "citymun"}, "exact", "w@1", "t"),
+            _membership("f-2nd", {"geo_code": "C2", "geo_level": "citymun"}, "exact", "w@1", "t")],
+        "unresolved": [], "ambiguous": [],
+    }
+    _c, s2 = reconcile_population(swapped, pops, geo)
+    deltas = {d["district_code"]: d["delta"] for d in s2["discrepancies"]}
+    assert deltas == {"f-1st": 1_607, "f-2nd": -1_607}, deltas
+
+    # A vintage we do not hold is SKIPPED, never compared to the nearest one we do.
+    stale = {"districts": [_d("f-1st", 150_000, 2015)],
+             "memberships": ok_built["memberships"], "unresolved": [], "ambiguous": []}
+    _c, s3 = reconcile_population(stale, pops, geo)
+    assert s3["districts_checked"] == 0 and s3["skipped"].get("census_2015_not_held") == 1, s3
+
+    # A district already reported as incomplete is skipped: its total is short by construction, so
+    # failing it again here is noise rather than a second finding.
+    inc = {"districts": [_d("f-1st", 150_000, 2020)], "memberships": ok_built["memberships"],
+           "unresolved": [{"district_code": "f-1st", "member": "Somewhere"}], "ambiguous": []}
+    _c, s4 = reconcile_population(inc, pops, geo)
+    assert s4["districts_checked"] == 0 and s4["skipped"].get("known_incomplete") == 1, s4
+
+    # A member with no population row is skipped, NOT summed as zero. Treating a missing row as
+    # zero under-counts the district and reports a discrepancy that is an artefact of our own
+    # incomplete population load -- a false finding pointing at Wikipedia for our gap.
+    gap = {"districts": [_d("f-3rd", 100_000, 2020, 3)],
+           "memberships": [
+               _membership("f-3rd", {"geo_code": "C1", "geo_level": "citymun"}, "exact", "w@1", "t"),
+               _membership("f-3rd", {"geo_code": "C9", "geo_level": "citymun"}, "exact", "w@1", "t")],
+           "unresolved": [], "ambiguous": []}
+    _c, s6 = reconcile_population(gap, pops, geo)
+    assert s6["districts_checked"] == 0, s6
+    assert s6["skipped"].get("member_population_missing") == 1, s6
+
+    # Barangay-grain districts cannot be summed at all -- agg_population has no barangay rows.
+    brgy = {"districts": [_d("m-1st", 150_000, 2020)],
+            "memberships": [_membership("m-1st", {"geo_code": "B1", "geo_level": "barangay"},
+                                        "exact", "w@1", "t")],
+            "unresolved": [], "ambiguous": []}
+    _c, s5 = reconcile_population(brgy, pops, geo)
+    assert s5["districts_checked"] == 0 and s5["skipped"].get("barangay_grain") == 1, s5
+
+    # The gate fails on a delta beyond tolerance and passes without a population export at all,
+    # so the build stays runnable when the input is absent.
+    swapped.update({"representatives": [], "scope_unknown": [], "parsed_district_labels": []})
+    g_pop = {g["gate"]: g for g in validate(swapped, [], geo, population=pops)}
+    assert g_pop["population_reconciles_with_psa"]["ok"] is False, g_pop
+    assert "population_reconciles_with_psa" not in {
+        g["gate"] for g in validate(swapped, [], geo)}, "no export -> gate not run"
+
+
     # -- COMELEC contest parsing --------------------------------------------------
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT") == (1, False)
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - 2ND DISTRICT") == (2, False)
@@ -2954,7 +3215,7 @@ def selftest():
 
     print("selftest OK: parsing, normalisation, ladder, scope detection, gates,\n"
           "             the independent-city and whole-citymun rungs, per-city barangay lists,\n"
-          "             COMELEC corroboration\n"
+          "             PSA population reconciliation, COMELEC corroboration\n"
           "             and the validation-set diff all asserted")
 
 
@@ -2978,6 +3239,9 @@ def main():
     ap.add_argument("--validation-set",
                     help="Third-party municipality->district JSON to compare against and report. "
                          "Compared only: never ingested, never committed, never overwrites a row.")
+    ap.add_argument("--population-csv",
+                    help="citymun population export (census_year, geo_code, population) for the "
+                         "PSA reconciliation gate; rebuilt from agg_population, not versioned")
     ap.add_argument("--allow-single-source", action="store_true",
                     help="Build without COMELEC corroboration, recording the gap in the QA report")
     args = ap.parse_args()
@@ -3046,7 +3310,12 @@ def main():
         validation = compare_against_validation_set(built, other, geo, label=args.validation_set)
         validation["unresolved_in_validation_set"] = len(unresolved_other)
 
-    gates = validate(built, registry, geo, allow_single_source=args.allow_single_source)
+    population = load_population_csv(args.population_csv) if args.population_csv else None
+    reconciliation = None
+    if population:
+        _pop_checked, reconciliation = reconcile_population(built, population, geo)
+    gates = validate(built, registry, geo, allow_single_source=args.allow_single_source,
+                     population=population)
 
     qa = {
         "dataset_slug": DATASET_SLUG,
@@ -3066,6 +3335,7 @@ def main():
         "gates": gates,
         "gap_analysis": analyse_gaps(built, geo),
         "corroboration": corroboration,
+        "population_reconciliation": reconciliation,
         "validation_set": validation,
         "unresolved": built["unresolved"],
         "ambiguous": built["ambiguous"],
@@ -3087,7 +3357,8 @@ def main():
         qa["applied"] = "dry-run"
 
     if args.write_doc_summary:
-        qa["doc"] = str(write_doc_summary(built, gates, idx, corroboration, validation, geo))
+        qa["doc"] = str(write_doc_summary(built, gates, idx, corroboration, validation, geo,
+                                          reconciliation))
 
     QA_REPORT_PATH.write_text(json.dumps(qa, indent=2, default=str))
     summary = {k: qa[k] for k in ("counts", "match_methods", "gates_failed", "applied")}
