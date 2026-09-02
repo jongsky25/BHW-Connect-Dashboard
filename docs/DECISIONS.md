@@ -7081,3 +7081,63 @@ button ("Ask the data") in the same bottom-right stack with the same
 `rounded-full bg-accent px-4 py-3 text-sm` styling. It is now the only pill FAB on the page, so the
 two no longer match. It was left alone deliberately — it is text-only with no icon, so there is no
 mechanical icon-only equivalent, and picking one would be a design decision beyond this change.
+
+## 2026-09-02 — D1.1: BetterGov.PH investigated; COMELEC returns adopted as a second source
+
+`docs/LEGISLATIVE_DISTRICTS_PLAN.md` D1.1 asked whether BetterGov.PH's advertised district mapping
+(256 districts / 85 provinces / 22 cities / 7,418 barangays / 99.8% of members) is loadable, which
+would have collapsed D1.3 from 2–3 days into a loader. **It is not.** Full findings are in the plan
+at §4/D1.1; the parts that are decisions rather than findings are recorded here.
+
+**Correction to the plan's earlier research.** The plan's §2 said the file could not be located in
+BetterGov's 36 public repos. That was right about `open-congress-data` and wrong overall: the
+mapping is in `bettergovph/open-data-visualization`, a 34,654-file application repo that reads as
+an app rather than a dataset. The §2 row has been rewritten.
+
+**Decision 1 — do not load or depend on either BetterGov file.** Two independent reasons, either
+sufficient. (a) `static/data/districts.json`, the file that matches their "22 cities" claim, fails
+our own D1.5 gates: Quezon City's 1st and 3rd Districts hold the identical 115-barangay list with
+the other four sharing a 5-barangay placeholder (118 distinct barangays against QC's real 142), and
+Palo sits under Leyte's 4th District when it belongs to the 1st. Its own `metadata` describes it as
+derived from project-location caches and reports counts (162 districts, 26 provinces, 5 cities)
+that disagree with its own 115-entity payload. (b) Licensing: the repo has no `LICENSE` and its
+README scopes the work to "educational and research purposes", which cannot be republished under
+the CC BY 4.0 commitment in the plan's §8. (b) alone would have settled it even had (a) passed.
+
+**Decision 2 — adopt COMELEC 2025 precinct returns as a second source in D1.3/D1.4.** This is a
+deviation from the plan as written (Wikipedia for composition, Wikidata for the registry, PSA for
+validation, `jgngo/psgc-data` as a stale third opinion) and is the reason the half day was worth
+spending. BetterGov's other file, `static/data/districts_generated.json`, is sound — 86 provinces,
+1,627 municipality rows, 220 province-level districts, and correct barangay-grain splits for 12
+multi-district cities — because it is not really their data: `scripts/extract_districts_from_elections.py`
+derives it from precinct-level COMELEC returns by reading the
+`MEMBER, HOUSE OF REPRESENTATIVES - <DISTRICT>` contest each precinct voted in. Spot-checked
+against ground truth: Leyte's 1st (all 8 municipalities), Pampanga's 2nd (6) and 3rd (5), and
+Quezon City at 142 barangays with 37 in the 3rd District — the same 37 our own Wikipedia reading
+returned, from a wholly independent path.
+
+The district comes off the ballot, which makes it the best available answer to the multi-district
+city — the case the plan calls the hardest part of D1 and the one Wikipedia infoboxes serve worst.
+We crawl COMELEC ourselves rather than depending on `klescosia/ph-elections2025`, the upstream
+BetterGov used, because that repo also has no `LICENSE`.
+
+**Decision 3 — two sources or unresolved.** Added as D1.5 gate and guardrail 2 (renumbering the rest of §7): no district
+assignment ships unless Wikipedia and COMELEC agree; disagreements go to the disagreement report
+and the LGU stays unresolved. This is not a new principle so much as the existing two-way
+reconciliation discipline applied to a dimension that did not have a second source until now, and
+it is the gate that would have caught both BetterGov failures before they reached a page.
+
+**Not done, and deliberately.** No issue has been filed on `bettergovph/open-data-visualization`.
+The remaining ask is a licence question rather than a data question, it is off the critical path,
+and filing on a third party's repo is the owner's call. Draft text is committed at
+`docs/bettergov-district-mapping-issue.md`, including the two data problems above reported back to
+them, and the observation that their published "7,418 barangays" figure is `city_barangays_mapping.json`
+— a PSGC city→barangay roster carrying no district on any row — rather than mapped barangays, of
+which there are ~1,800.
+
+**Standards.** Documentation only: no migration, no schema, no application code, no dependency
+change, so `npm run lint` / `npm run typecheck` / `npm test` are unaffected and the suite is
+untouched at its current baseline. `npx prettier --check` passes on
+`docs/LEGISLATIVE_DISTRICTS_PLAN.md` and `docs/bettergov-district-mapping-issue.md`.
+`docs/DECISIONS.md` remains the pre-existing prettier failure it has been since July, left alone as
+every prior entry has left it; this entry's own text is prettier-clean.

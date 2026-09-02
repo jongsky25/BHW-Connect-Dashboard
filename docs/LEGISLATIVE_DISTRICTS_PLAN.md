@@ -41,6 +41,11 @@ One sequencing note carried from the same discussion: **D1.1 (ask BetterGov.PH) 
 build work.** If their mapping is publishable it collapses the hardest increment into a load, and
 it costs half a day to find out.
 
+**D1.1 is now done — see §4. The answer was no, and the half day paid for itself anyway:** their
+mapping is not loadable, but chasing it surfaced COMELEC precinct returns as a barangay-grain
+district source, which is a better answer to the multi-district-city problem than the one this
+plan was written around. No owner decision changes.
+
 ---
 
 ## 1. The modelling decision: a district is not a `geo_level`
@@ -84,18 +89,27 @@ column that is null exactly when the district spans more than one province-level
 
 Researched and verified against the live sources; the findings that constrain the design:
 
-| Source                                                                        | What it gives                                                                                         | Verified standing                                                                                                                                                                                                                                                                                                         |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PSA PSGC**                                                                  | Nothing.                                                                                              | The `district` level in PSGC is the **4 NCR districts of Manila only** — confirmed against the PSGC API (4 rows) and altcoder's "ProvDists" shapefile layer. There is no national legislative-district dimension in PSGC.                                                                                                 |
-| **Wikipedia** — `Legislative districts of <Province>` + per-district articles | Composition, at both grains.                                                                          | **Primary source.** Province pages carry a `{{Collapsible list}}` of constituent LGUs as _disambiguated_ wikilinks (`[[Palo, Leyte\|Palo]]`); district articles carry the barangay roster in the infobox `\|towns =` field (Quezon City's 3rd returned all 37). Fetchable via `action=parse&prop=wikitext`. CC BY-SA 4.0. |
-| **Wikidata**                                                                  | The district registry.                                                                                | 256 items of `wd:Q96020121` with stable QIDs, labels, populations. **Only 2 of 256 carry `P527` (has part)** — membership is not modelled, so it cannot supply the mapping. PH municipalities carry no PSGC property either, so it does not shortcut the join. CC0.                                                       |
-| **PSA 2020 CPH — "Highlights on the Population of Legislative Districts"**    | Official district roster + population per district (253, as of 31 Aug 2021).                          | **Validation set, not source.** PSA is Cloudflare-blocked from the build environment (403), same constraint `ingestion/build_psgc_crosswalk.py` already documents; download by hand into `ingestion/data/` like every other PSA file here.                                                                                |
-| **BetterGov.PH**                                                              | Claims exactly our target (256 districts, 85 provinces, 22 cities, 7,418 barangays, 416/417 members). | Could not locate the file in any of their 36 public repos — `open-congress-data` is TOML legislative entities (CC0, no geography). Worth one email/issue before D1 starts; it would collapse D1.3 into a load.                                                                                                            |
-| **`jgngo/psgc-data`**                                                         | `csv/muncity.csv` has a literal `district` column per city/mun.                                       | Stale (README: 81 provinces / 145 cities — pre-2022, against today's 82/149), 9-digit codes, no barangay grain, no stated licence. Useful only as a **third opinion** in the disagreement report.                                                                                                                         |
-| **OpenStreetMap**                                                             | Real district geometry (`boundary=political` + `political_division=congressional_district`).          | Coverage unverified — Overpass is unreachable from this environment (connection reset at the proxy, three mirrors). **ODbL share-alike conflicts with the CC BY 4.0 commitment** for published aggregates. Not recommended as a source.                                                                                   |
+| Source                                                                        | What it gives                                                                                     | Verified standing                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PSA PSGC**                                                                  | Nothing.                                                                                          | The `district` level in PSGC is the **4 NCR districts of Manila only** — confirmed against the PSGC API (4 rows) and altcoder's "ProvDists" shapefile layer. There is no national legislative-district dimension in PSGC.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **Wikipedia** — `Legislative districts of <Province>` + per-district articles | Composition, at both grains.                                                                      | **Primary source.** Province pages carry a `{{Collapsible list}}` of constituent LGUs as _disambiguated_ wikilinks (`[[Palo, Leyte\|Palo]]`); district articles carry the barangay roster in the infobox `\|towns =` field (Quezon City's 3rd returned all 37). Fetchable via `action=parse&prop=wikitext`. CC BY-SA 4.0.                                                                                                                                                                                                                                                                                                                                                       |
+| **Wikidata**                                                                  | The district registry.                                                                            | 256 items of `wd:Q96020121` with stable QIDs, labels, populations. **Only 2 of 256 carry `P527` (has part)** — membership is not modelled, so it cannot supply the mapping. PH municipalities carry no PSGC property either, so it does not shortcut the join. CC0.                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **PSA 2020 CPH — "Highlights on the Population of Legislative Districts"**    | Official district roster + population per district (253, as of 31 Aug 2021).                      | **Validation set, not source.** PSA is Cloudflare-blocked from the build environment (403), same constraint `ingestion/build_psgc_crosswalk.py` already documents; download by hand into `ingestion/data/` like every other PSA file here.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **BetterGov.PH**                                                              | Two files, not one, in `bettergovph/open-data-visualization`; neither is the advertised artifact. | **Investigated in full (D1.1) — do not load.** `static/data/districts.json` is derived from DPWH project caches and fails our own D1.5 gates (Quezon City's 1st and 3rd are identical 115-barangay lists; Palo is filed under Leyte's 4th, not its 1st). `static/data/districts_generated.json` is sound but is really a COMELEC derivative — see the row below. The "7,418 barangays" is a separate PSGC city→barangay roster carrying no district on any row. No LICENSE; README restricts to "educational and research purposes", which cannot be republished under our CC BY 4.0 commitment (§8).                                                                           |
+| **COMELEC 2025 precinct election returns**                                    | Barangay-grain district membership, from the ballot itself.                                       | **New primary-grade source, found via D1.1.** Each precinct return names the contest it voted in (`MEMBER, HOUSE OF REPRESENTATIVES - <DISTRICT>`), so the district is read off actual ballots rather than inferred from prose. BetterGov's `extract_districts_from_elections.py` demonstrates the technique against `klescosia/ph-elections2025`, yielding 1,627 municipalities, 220 province-level districts and correct barangay splits for 12 multi-district cities (Quezon City: 142 barangays, 3rd District = 37 — matching both the true count and our own Wikipedia reading). `ph-elections2025` has no LICENSE, so crawl COMELEC directly rather than depending on it. |
+| **`jgngo/psgc-data`**                                                         | `csv/muncity.csv` has a literal `district` column per city/mun.                                   | Stale (README: 81 provinces / 145 cities — pre-2022, against today's 82/149), 9-digit codes, no barangay grain, no stated licence. Useful only as a **third opinion** in the disagreement report.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **OpenStreetMap**                                                             | Real district geometry (`boundary=political` + `political_division=congressional_district`).      | Coverage unverified — Overpass is unreachable from this environment (connection reset at the proxy, three mirrors). **ODbL share-alike conflicts with the CC BY 4.0 commitment** for published aggregates. Not recommended as a source.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
-**Conclusion:** Wikidata for the registry, Wikipedia for the composition, PSA for validation. The
-mapping is derived, not official, and every surface must say so.
+**Conclusion:** Wikidata for the registry, Wikipedia for the composition, **COMELEC 2025 precinct
+returns as the second independent opinion at both grains**, PSA for validation. The mapping is
+derived, not official, and every surface must say so.
+
+The two-source rule that follows from D1.1: **no district assignment ships on one source alone.**
+Wikipedia and COMELEC are independent in the way that matters — one is edited prose, the other is
+the contest printed on a ballot — so where they agree the assignment is safe, and where they
+disagree it belongs in the disagreement report rather than in the mapping. The single worst
+outcome available here is a plausible mapping nobody cross-checked, which is exactly what
+BetterGov's `districts.json` turned out to be.
 
 ---
 
@@ -201,10 +215,70 @@ Three properties worth being explicit about:
 
 ## 4. Phase D1 — Ingestion
 
-### D1.1 — Ask BetterGov.PH first (half a day)
+### D1.1 — Ask BetterGov.PH first — **done 2026-09-02. Answer: no, but read on.**
 
-File an issue on `bettergovph/open-data-visualization` asking whether the district mapping is
-publishable. If it is, D1.3 becomes a loader and this phase halves. Do not block on the answer.
+The question was whether BetterGov.PH's advertised mapping (256 districts, 85 provinces, 22 cities,
+7,418 barangays, 416/417 members — 99.8%) is a file we could load instead of deriving one. It is
+not. The investigation is recorded here in full because the negative result is load-bearing: it is
+what justifies spending 2–3 days on D1.3 rather than half a day on a loader.
+
+**The advertised mapping is not one file, and it is not published as a dataset.** It lives as two
+JSON files inside `bettergovph/open-data-visualization` — a 34,000-file application repo, not a
+data repo — and the two have different provenance and sharply different quality. The earlier
+finding that it was absent from their 36 public repos was right about `open-congress-data`; this
+repo is the one that has it.
+
+**1. `static/data/districts.json` — looks like the advertised artifact, and must not be used.**
+It carries 22 cities, matching their "22 cities" claim exactly, which is what makes it the
+tempting one. Its own metadata says it is `"derived from combined public project caches"` — DPWH
+project locations, not a district roster — and `"Municipality and barangay lists reflect observed
+project locations"`. It fails our own D1.5 gates on inspection:
+
+- **Quezon City's 1st and 3rd Districts are the same 115-barangay list**, 100% overlap, and the
+  2nd, 4th, 5th and 6th are all the same 5-barangay placeholder. 118 distinct barangays against
+  QC's actual 142. This is guardrail #3's double-count trap already realised in the data.
+- **Palo is filed under Leyte's 4th District.** It is in Leyte's 1st, with Tacloban, Alangalang,
+  Babatngon, San Miguel, Santa Fe, Tanauan and Tolosa.
+- Its self-description is stale too: `total_districts: 162`, `"26 provinces"`, `"5 cities"`,
+  against a payload of 115 entities. A file whose own header disagrees with its body cannot be a
+  source for anything.
+
+**2. `static/data/districts_generated.json` — sound, and not really BetterGov's data at all.**
+86 provinces, 1,627 municipality rows, 220 province-level districts, plus correct barangay-grain
+splits for 12 multi-district cities (1,774 barangay rows). Every spot check passed: Leyte's 1st
+(all 8 municipalities), Pampanga's 2nd (6) and 3rd (5). **Quezon City comes out at 142 barangays
+with the 3rd District holding 37** — the true barangay count, and the same 37 our own Wikipedia
+reading returned.
+
+The reason it is good is the reason it is not a shortcut: `scripts/extract_districts_from_elections.py`
+builds it from **COMELEC 2025 precinct-level election returns**, reading the
+`MEMBER, HOUSE OF REPRESENTATIVES - <DISTRICT>` contest each precinct actually voted in. The
+district comes off the ballot. That is a source, not a mapping — and it is one we should use
+ourselves (§2, and D1.4 below).
+
+**3. The 99.8% figure is a conflation of two different files.** `city_barangays_mapping.json` is a
+plain PSGC city→barangay roster — exactly 136 cities and 7,418 barangays, matching the advertised
+number precisely — but **no row in it carries a district**. The barangays actually mapped to a
+district number 1,818 in the unusable file and 1,774 across 12 cities in the good one. Neither is
+7,418. The claim is not dishonest so much as two counts added together.
+
+**4. Licensing settles it independently.** `open-data-visualization` has no LICENSE file; its
+README states the project is `"for educational and research purposes"` and asks users to respect
+upstream terms. That is not an open licence, and §8 commits us to CC BY 4.0 for published
+aggregates. Upstream `klescosia/ph-elections2025` has no LICENSE either — which is why D1.4 crawls
+COMELEC directly rather than depending on it.
+
+**What this changes.** D1.3 stays a build, at its original estimate. What improves is D1.4: we now
+have a second, independent, barangay-grain source, current to 2025 and traceable to a ballot,
+where the plan previously had only Wikipedia infoboxes and a stale `jgngo/psgc-data` third
+opinion. The multi-district city — the hardest part of this phase — is the case COMELEC returns
+answer best, because a precinct's congressional contest is exactly the fact we are trying to
+recover. That is worth more than the loader we did not get.
+
+**The outstanding ask to BetterGov.PH is now a licence question, not a data question** — whether
+they will put `districts_generated.json` under CC0 or CC BY so it can serve as a citable
+corroboration source. Draft issue text: `docs/bettergov-district-mapping-issue.md`. It is not on
+the critical path; D1.2 onward proceed regardless.
 
 ### D1.2 — Migration: the four tables (half a day)
 
@@ -217,14 +291,20 @@ Modes mirroring `build_psgc_crosswalk.py` so it is operable the same way:
 
 ```
 --selftest                 # synthetic fixtures, no network, no DB
---fetch --snapshot-dir …   # pull wikitext + Wikidata, write raw snapshots to ingestion/data/
+--fetch --snapshot-dir …   # pull wikitext + Wikidata + COMELEC returns, snapshots to ingestion/data/
 --from-snapshot …          # build from snapshots (the reproducible path CI can run)
 --emit-sql-dir … | --database-url …
 --write-doc-summary        # refresh docs/LEGISLATIVE_DISTRICTS.md's reconciliation section
 ```
 
+Two sources are fetched, not one (D1.1): Wikipedia/Wikidata as before, and **COMELEC 2025
+precinct returns**, from which each precinct's `MEMBER, HOUSE OF REPRESENTATIVES - <DISTRICT>`
+contest gives a barangay→district fact directly. Roll the precinct facts up to barangay, then to
+municipality, and carry both grains. PSA remains validation only.
+
 **Snapshots are committed.** The raw wikitext for every page fetched goes to
-`ingestion/data/wikipedia_districts_<congress>/`, with its revid. The build must be reproducible
+`ingestion/data/wikipedia_districts_<congress>/`, with its revid; the COMELEC returns go to
+`ingestion/data/comelec_returns_2025/` alongside them. The build must be reproducible
 without the network, and it must be possible to diff _why_ a mapping changed between two runs —
 which is also what makes a public correction reviewable against the source we actually used.
 
@@ -257,6 +337,10 @@ Order of attempts, each recorded as `match_method`:
   district population. This is the check that actually catches a bad match — a municipality
   assigned to the wrong district moves both districts' totals in opposite directions.
 - Party-list seats are excluded by construction; assert the count of them is zero.
+- **Wikipedia and COMELEC agree on every shipped assignment.** Disagreements are written to the
+  disagreement report and the LGU is left unresolved, never silently resolved in favour of either.
+  This gate is the one that would have caught both of BetterGov's failures — Palo's district and
+  Quezon City's duplicated barangay lists — before they reached a page.
 
 Outputs `ingestion/_qa_report_legislative_districts.json` and generates
 `docs/LEGISLATIVE_DISTRICTS.md` — the same "the report is the doc" pattern as
@@ -404,14 +488,17 @@ question in this repo that neither the numeric layer nor the document layer can 
 
 1. **Never fuzzy-match a place name into a district.** Unresolved is a published finding; a wrong
    match is an invisible one.
-2. **Never roll up a multi-district city from its citymun row.** Assert the district sum equals the
+2. **Never ship a district assignment that only one source attests.** Two independent sources or it
+   is unresolved (D1.5). A mapping that looks complete because nobody cross-checked it is the
+   specific failure D1.1 found in the field.
+3. **Never roll up a multi-district city from its citymun row.** Assert the district sum equals the
    national total on every build.
-3. **Never render a district figure without its Congress.** The dimension is time-varying; a
-   figure without a vintage is undated.
-4. **Never let a correction write directly.** Proposals only; supersede, never overwrite.
-5. **Never present the mapping as official.** PSA and COMELEC do not publish it in this form. Every
+4. **Never render a district figure without its Congress.** The dimension is time-varying; a figure
+   without a vintage is undated.
+5. **Never let a correction write directly.** Proposals only; supersede, never overwrite.
+6. **Never present the mapping as official.** PSA and COMELEC do not publish it in this form. Every
    surface says so, including the export's header row and the dataset's `methodology_md`.
-6. **Never mix district provenance into `dim_geo`.** The line between PSA-sourced geography and
+7. **Never mix district provenance into `dim_geo`.** The line between PSA-sourced geography and
    derived, correctable grouping is the trust boundary this whole feature sits on.
 
 ---
