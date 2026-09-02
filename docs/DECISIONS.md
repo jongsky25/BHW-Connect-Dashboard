@@ -7556,3 +7556,89 @@ removed and all four tables confirmed back at zero. `npm run lint`, `npm run typ
 `npm test` clean — 835 tests, unchanged; this increment adds no application code. `npx prettier
 --check` passes on the regenerated `docs/LEGISLATIVE_DISTRICTS.md` and on this entry. `.sql` and
 `.py` have no prettier parser.
+
+## 2026-09-02 — D1.3e: Manila was 30% mapped, and the coverage count was hiding it
+
+`whole_citymun`, a rung for a district described by sub-city administrative unit, plus migration
+`20260902090000_district_whole_citymun.sql`. Manila's barangay coverage **258/857 → 813/857**;
+membership rows 3,403 → 3,411; uncovered citymuns 53 → **45**; unresolved members 102 → 92.
+
+**How this stayed invisible, which is the part worth keeping.** The gate said "9 uncovered rows
+under Manila". Nine rows sounds like nine small gaps. It was four legislative districts holding
+**no members at all** — 599 unmapped barangays, or 70% of the city — because the gate counts
+citymuns and Manila's shortfall is three orders of magnitude larger at barangay grain. D1.3c's
+gap analysis had grouped these nine under "Manila's administrative districts" and moved on. The
+lesson is not that the gate is wrong; it is that a count aggregated at the wrong grain can make a
+large failure look like a rounding error, and the fix was to go and look rather than to trust the
+grouping.
+
+**The cause: Manila is described at two grains and the resolver handled one.** Its 1st and 2nd
+districts enumerate numbered barangays (`Barangay 1` … `Barangay 267`), which resolve — and which
+all sit in Tondo, which is exactly why 258 looked like partial success rather than total failure
+elsewhere. Its 3rd–6th name **administrative districts** instead: Binondo, Quiapo, San Nicolas,
+Santa Cruz, Sampaloc, Malate, Port Area, Pandacan, Santa Ana. Those are not barangays, so a
+barangay-scoped lookup returned `unresolved_barangay` for every one.
+
+**Why this is resolvable where Davao's identical shape is not.** Davao City's 3rd is described the
+same way and cannot be fixed at all, because PSGC hangs all 182 of its barangays directly off the
+city with no intermediate level. Manila is the one place PSGC _does_ use a sub-city level: its
+province-level row (13806) has ten citymun children which are precisely those administrative
+districts. So nothing here is expanded, inferred or fabricated — the source name matches exactly
+one citymun already inside the page's own scope, and the row is emitted at that grain. That is
+what §3 means by membership "at whatever grain the district is actually defined at", and
+`geo_level` on the row is what records which grain was used.
+
+**Its own `match_method`, by the same argument as D1.3d's.** The set the name was matched against
+changed — the scope's citymun children rather than its barangays — and that is a property of the
+row rather than of a build log. A reader of `/districts/[code]` seeing one citymun row beside a
+sibling district's 146 barangay rows is owed the reason, and "we matched the whole of Sampaloc"
+is a different claim from "we matched this barangay", with a different way of being wrong.
+
+**The caption rule, recorded because it is where this could have gone silently wrong.** Manila's
+1st writes its towns field as `Tondo` followed by barangays 1–146, and the 2nd as `Tondo` followed
+by 147–267. `Tondo` there is a heading over the list, not a member. Read as a member it would hand
+each district the whole of Tondo and double-claim all 259 barangays — the same double-count trap
+D1.1 found in BetterGov's `districts.json`, reintroduced by our own fix. So resolution now runs in
+**two passes**: whatever resolves normally first, then a citymun name is a claim only if this
+district has not already enumerated barangays inside it. Against today's `dim_geo` the guard never
+fires, because `Tondo` does not normalise onto `TONDO I/II` — which is precisely why it is
+asserted in `--selftest` rather than left to depend on a spelling that could change.
+
+**What is deliberately left unresolved.** Four things, all reported and none forced:
+
+- **Paco is claimed by both the 5th and the 6th.** Claiming it for either invents a fact; claiming
+  it for both double-counts. The collision guard reports it and neither district gets it — 43
+  barangays that COMELEC precinct returns settle exactly and Wikipedia cannot.
+- **Six administrative districts Wikipedia names have no `dim_geo` row** — Binondo, Ermita,
+  Intramuros, San Andres, San Miguel, Santa Mesa. PSGC folds them into the ten it does carry.
+- **Nine barangay numbers the source lists exist nowhere in PSA's Manila** — 21–24, 27, 40,
+  113–115. Tondo's numbered rows run 1–267 with exactly those gaps. A source disagreement, not a
+  parse failure.
+- **`BARANGAY 202-A` is enumerated by no district**, which is the single leftover the
+  completeness gate reports for Tondo.
+
+**Testing.** `--selftest` asserts the rung on synthetic fixtures: a whole administrative district
+claimed, the caption rule in both directions (a citymun whose barangays this district enumerates
+is not a claim; the same citymun is a claim for a district that does not), that a same-named
+citymun outside the scope stays unreachable, that a province-grain page never triggers it, and
+that two same-named citymuns inside one scope are an ambiguity rather than a first-hit match.
+`enumerated_barangay_parents()` was extracted from `build()` for the same reason
+`lone_district_names_parent()` and `lone_district_rows()` were — so the rule can be asserted
+directly rather than only through a full build. Mutation-checked six ways, **all six caught**:
+dropping the caption rule, neutering `enumerated_barangay_parents`, matching nationally instead of
+in scope, firing on a province-grain page, resolving an ambiguous name to its first hit, and
+removing `whole_citymun` from the declared-method gate. D1.3d's six mutations were re-run against
+the refactored two-pass loop and all six still bite.
+
+**Standards.** The migration's constraint behaviour was verified against the live database rather
+than assumed — `whole_citymun` accepted, `approximate` rejected with a check violation, the probe
+rows removed and all four tables confirmed back at zero. `npm run lint`, `npm run typecheck` and
+`npm test` clean — 835 tests, unchanged; no application code. `npx prettier --check` passes on the
+regenerated `docs/LEGISLATIVE_DISTRICTS.md` and on this entry.
+
+**Still failing, and still refusing to write.** `corroborated_by_two_sources` (3,411 single-source
+rows, no COMELEC snapshot reachable here), `citymun_covered_exactly_once` (45 uncovered) and
+`multi_district_city_barangays_complete` (12 cities). Nothing has been loaded. The remaining
+coverage gap is now dominated by cases only the second source can close — Davao's 84, Manila's
+Paco 43 — which is the same conclusion D1.3c reached, arrived at with far less left in the "we
+have not looked yet" column.

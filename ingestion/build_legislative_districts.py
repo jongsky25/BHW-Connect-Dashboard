@@ -1189,6 +1189,58 @@ def whole_parent_members(scope, geo):
     return []
 
 
+def enumerated_barangay_parents(settled):
+    """The citymuns whose own barangays a district has already enumerated by name.
+
+    Extracted from build() so the caption rule in whole_citymun_member can be asserted directly
+    rather than only through a full build -- the same reason lone_district_names_parent() and
+    lone_district_rows() are functions. `settled` is [(member, row, method)].
+    """
+    return {row.get("parent_code") for _, row, _ in settled
+            if row.get("geo_level") == "barangay" and row.get("parent_code")}
+
+
+def whole_citymun_member(member, scope, geo, enumerated_parents):
+    """A member of a barangay-grain city that names a whole sub-city unit PSGC models as a citymun.
+
+    Manila is the case, and it is the one place PSGC uses a sub-city level at all (§2, GeoIndex):
+    the city's province-level row (13806) has ten citymun children which are its *administrative*
+    districts -- TONDO I/II, QUIAPO, SAMPALOC, MALATE -- and the barangays hang off those. Manila's
+    legislative districts are described at two grains and the parser only ever handled one:
+
+      * the 1st and 2nd enumerate numbered barangays ("Barangay 1" ... "Barangay 267"), which
+        resolve, and are all in Tondo;
+      * the 3rd to 6th name administrative districts instead ("Sampaloc", "Santa Cruz", "Port
+        Area"), which are not barangays, so every one came back `unresolved_barangay` and those
+        four districts produced no membership rows at all -- 599 of Manila's 857 barangays
+        unmapped, hidden behind a citymun-coverage count of nine.
+
+    Unlike Davao's administrative districts, which dim_geo does not model at any level, these ARE
+    dim_geo rows. So this is not an expansion or a guess: the name matches exactly one citymun
+    already inside the page's own scope, and the row is emitted at that grain -- which is what §3
+    means by membership "at whatever grain the district is actually defined at", and what
+    geo_level on the row records.
+
+    `enumerated_parents` is what keeps a caption from becoming a claim. Manila's 1st writes its
+    towns field as "Tondo" followed by barangays 1-146, and the 2nd as "Tondo" followed by 147-267:
+    "Tondo" there is a heading over the list, not a member, and reading it as one would hand each
+    district the whole of Tondo and double-claim all 259 barangays. So a citymun whose barangays
+    this district already enumerates is treated as the caption it is. (Against today's dim_geo the
+    guard is belt-and-braces -- "Tondo" does not normalise onto "TONDO I/II" -- which is exactly
+    why it is asserted in the selftest rather than left to a spelling.)
+
+    Returns a dim_geo row, or None.
+    """
+    if not scope.get("citymun_codes"):
+        return None
+    name = normalise_name(member["name"])
+    hits = [c for c in scope["citymun_codes"]
+            if normalise_name((geo.by_code.get(c) or {}).get("geo_name", "")) == name]
+    if len(hits) != 1 or hits[0] in enumerated_parents:
+        return None
+    return geo.by_code.get(hits[0])
+
+
 def lone_district_rows(scope, geo, independent_methods=None):
     """Every (row, match_method) a lone district covers when it lists no constituents.
 
@@ -1397,13 +1449,26 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
                 for row, method in lone_district_rows(scope, geo, ic_methods):
                     pending.append((code, row, method, source_ref, None))
                 continue
+            # Two passes, because whether a member naming a whole administrative district is a
+            # claim or a caption depends on what the REST of the district's list resolved to.
+            # See whole_citymun_member: Manila's 1st writes "Tondo" above barangays 1-146.
+            settled, deferred = [], []
             for member in members:
                 row, method = resolve_member(member, scope, geo, crosswalk)
                 if row is None:
-                    rec = {"district_code": code, "parent": parent, "member": member["name"],
-                           "link_target": member.get("link_target"), "reason": method}
-                    (ambiguous if method.startswith("ambiguous") else unresolved).append(rec)
+                    deferred.append((member, method))
+                else:
+                    settled.append((member, row, method))
+            enumerated_parents = enumerated_barangay_parents(settled)
+            for member, method in deferred:
+                row = whole_citymun_member(member, scope, geo, enumerated_parents)
+                if row is not None:
+                    settled.append((member, row, "whole_citymun"))
                     continue
+                rec = {"district_code": code, "parent": parent, "member": member["name"],
+                       "link_target": member.get("link_target"), "reason": method}
+                (ambiguous if method.startswith("ambiguous") else unresolved).append(rec)
+            for member, row, method in settled:
                 pending.append((code, row, method, source_ref, member["name"]))
 
         # Two different source names that land on the SAME dim_geo row are a source
@@ -1832,7 +1897,7 @@ def validate(built, registry, geo, allow_single_source=False):
     # 6. Nothing resolved by a method that does not exist. Guards the ladder against a future
     #    edit quietly adding a fuzzy rung.
     allowed = {"exact", "disambiguated", "crosswalk", "manual_override", "public_correction",
-               "whole_parent", "independent_city"}
+               "whole_parent", "independent_city", "whole_citymun"}
     bad = sorted({m["match_method"] for m in memberships} - allowed)
     gate("match_methods_are_declared", not bad, {"unexpected": bad})
 
@@ -1901,14 +1966,28 @@ KNOWN_GAP_NOTES = [
      "so it is not among the children of the province it votes with and a province-scoped lookup "
      "could not reach it. Resolved by the `independent_city` rung, which widens a province's "
      "scope only with the cities that province's own page lead names, and only within its "
-     "region.")
+     "region."),
+    ("Manila was 258 of 857 barangays mapped, and the count hid it. Mostly closed.",
+     "Its citymun-coverage shortfall read as 'nine uncovered rows', which sounds like nine small "
+     "gaps; it was four legislative districts holding no members at all. Manila's 1st and 2nd "
+     "enumerate numbered barangays and resolved (all in Tondo, hence the 258), while its 3rd to "
+     "6th name administrative districts -- 'Sampaloc', 'Santa Cruz', 'Port Area' -- which are not "
+     "barangays. PSGC does model these, as Manila's ten citymun children, so the `whole_citymun` "
+     "rung now matches them within the city's own scope and coverage is **813 of 857**. What is "
+     "left is reported, not forced: Paco is claimed by BOTH the 5th and the 6th, so neither gets "
+     "it (43 barangays, which COMELEC precinct returns settle exactly); six administrative "
+     "districts Wikipedia names have no dim_geo row at all (Binondo, Ermita, Intramuros, San "
+     "Andres, San Miguel, Santa Mesa); and nine barangay numbers the source lists -- 21-24, 27, "
+     "40, 113-115 -- exist nowhere in PSA's Manila, a source disagreement rather than a parse "
+     "failure. BARANGAY 202-A is enumerated by no district."),
 ]
 
 RESIDUAL_GAP_NOTES = [
-    ("Davao City is described at a grain PSGC does not model.",
+    ("Davao City is described the same way as Manila, but at a grain PSGC does not model.",
      "Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', "
      "'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays "
-     "directly off the city with no intermediate level. Those 82 barangays cannot be placed from "
+     "directly off the city with no intermediate level -- which is exactly why the `whole_citymun` "
+     "rung closes Manila and cannot touch this. Those 84 barangays cannot be placed from "
      "this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in "
      "a barangay and names its own contest; this is the clearest single argument for the second "
      "source."),
@@ -2415,6 +2494,64 @@ def selftest():
     assert g_ic["match_methods_are_declared"]["ok"] is True, g_ic["match_methods_are_declared"]
 
 
+    # -- whole-citymun members: a district described by sub-city administrative unit ----------
+    # Manila's 3rd-6th name administrative districts ("Sampaloc", "Santa Cruz") rather than
+    # barangays. PSGC models those as Manila's citymun children, so they resolve -- but only if
+    # the resolver is willing to match a member against the scope's own citymun set, which it was
+    # not: all of them came back `unresolved_barangay` and four districts produced no rows at all.
+    geo_wc = GeoIndex([
+        {"geo_code": "M1", "geo_level": "province", "geo_name": "CITY OF METROPOLIS (HUC)", "province_code": "M1", "parent_code": "RM", "region_code": "RM"},
+        {"geo_code": "MA", "geo_level": "citymun", "geo_name": "ALPHA DISTRICT", "province_code": "M1", "parent_code": "M1", "region_code": "RM"},
+        {"geo_code": "MB", "geo_level": "citymun", "geo_name": "BETA DISTRICT", "province_code": "M1", "parent_code": "M1", "region_code": "RM"},
+        {"geo_code": "MA1", "geo_level": "barangay", "geo_name": "Barangay 1", "province_code": "M1", "parent_code": "MA", "region_code": "RM"},
+        {"geo_code": "MA2", "geo_level": "barangay", "geo_name": "Barangay 2", "province_code": "M1", "parent_code": "MA", "region_code": "RM"},
+        {"geo_code": "MB1", "geo_level": "barangay", "geo_name": "Uno", "province_code": "M1", "parent_code": "MB", "region_code": "RM"},
+        # A citymun of the same name OUTSIDE this city: the match is against the scope's own
+        # citymun set, never a national lookup, so this must stay unreachable.
+        {"geo_code": "ZZ", "geo_level": "province", "geo_name": "Faraway", "province_code": "ZZ", "parent_code": "RZ", "region_code": "RZ"},
+        {"geo_code": "ZZ1", "geo_level": "citymun", "geo_name": "BETA DISTRICT", "province_code": "ZZ", "parent_code": "ZZ", "region_code": "RZ"},
+    ])
+    city_scope = {"parent_name": "Metropolis", "grain": "barangay", "citymun_codes": {"MA", "MB"}}
+
+    # A district naming a whole administrative district it does not otherwise enumerate.
+    row = whole_citymun_member({"name": "Beta District"}, city_scope, geo_wc, set())
+    assert row is not None and row["geo_code"] == "MB", row
+
+    # THE CAPTION RULE. Manila's 1st writes "Tondo" as a heading above barangays 1-146; reading it
+    # as a member would hand the district the whole of Tondo and double-claim all 259 barangays.
+    # A citymun whose barangays this district already enumerates is a caption, not a claim.
+    settled = [({"name": "Barangay 1"}, geo_wc.by_code["MA1"], "exact"),
+               ({"name": "Barangay 2"}, geo_wc.by_code["MA2"], "exact")]
+    parents = enumerated_barangay_parents(settled)
+    assert parents == {"MA"}, parents
+    assert whole_citymun_member({"name": "Alpha District"}, city_scope, geo_wc, parents) is None
+    # ...and it is a claim for any OTHER district that does not enumerate inside it.
+    assert whole_citymun_member({"name": "Alpha District"}, city_scope, geo_wc, set())["geo_code"] == "MA"
+
+    # Never a national lookup: the same name outside this city's scope resolves nothing.
+    assert whole_citymun_member({"name": "Beta District"},
+                                {"parent_name": "X", "grain": "barangay", "citymun_codes": {"MA"}},
+                                geo_wc, set()) is None
+    # Never fires on a province-grain page, which has no citymun_codes to match against.
+    assert whole_citymun_member({"name": "Beta District"},
+                                {"parent_name": "P", "grain": "citymun", "province_code": "P1"},
+                                geo_wc, set()) is None
+    # Two citymuns of that name inside one scope is an ambiguity, not a match.
+    assert whole_citymun_member({"name": "Beta District"},
+                                dict(city_scope, citymun_codes={"MB", "ZZ1"}), geo_wc, set()) is None
+
+    # The method has to be declared, or the ladder-guard gate fails it.
+    built_wc = {
+        "districts": [{"district_code": "d1", "district_name": "Metropolis's 4th congressional district"}],
+        "memberships": [{"district_code": "d1", "geo_code": "MB", "geo_level": "citymun",
+                         "match_method": "whole_citymun", "corroboration": "corroborated"}],
+        "representatives": [], "unresolved": [], "ambiguous": [], "scope_unknown": [],
+        "parsed_district_labels": [],
+    }
+    g_wc = {g["gate"]: g for g in validate(built_wc, [], geo_wc)}
+    assert g_wc["match_methods_are_declared"]["ok"] is True, g_wc["match_methods_are_declared"]
+
+
     # -- COMELEC contest parsing --------------------------------------------------
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT") == (1, False)
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - 2ND DISTRICT") == (2, False)
@@ -2479,8 +2616,8 @@ def selftest():
 
 
     print("selftest OK: parsing, normalisation, ladder, scope detection, gates,\n"
-          "             the independent-city rung, COMELEC corroboration and the\n"
-          "             validation-set diff all asserted")
+          "             the independent-city and whole-citymun rungs, COMELEC corroboration\n"
+          "             and the validation-set diff all asserted")
 
 
 # --------------------------------------------------------------------------- #

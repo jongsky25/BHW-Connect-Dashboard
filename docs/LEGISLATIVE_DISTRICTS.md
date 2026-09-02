@@ -9,7 +9,7 @@ Every membership row carries the source revision it came from, so any row on
 - Congress: **20th** (valid from 2025-06-30)
 - Snapshot retrieved: **2026-09-02T04:12:52Z**
 - Districts: **250**
-- Membership rows: **3403**
+- Membership rows: **3411**
 - Representatives: **194**
 
 ## How each membership row was resolved
@@ -19,6 +19,7 @@ Every membership row carries the source revision it came from, so any row on
 | `exact`            | 2350 |
 | `independent_city` |    5 |
 | `manual_override`  |    1 |
+| `whole_citymun`    |    8 |
 | `whole_parent`     | 1047 |
 
 ## Independent cities added to a province's scope
@@ -40,13 +41,13 @@ PSGC files a highly urbanised city under its own province-level row, so a city t
 | gate                                     | result   | detail                                                                                                                                                                                                                                                                                                       |
 | ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `registry_agreement`                     | pass     | {"in_wikidata_not_parsed": 6, "parsed_not_in_wikidata": 0, "sample_only_wikidata": ["Agusan del Norte's 1st congressional district", "Agusan del Norte's 2nd congressional district", "Albay's 4th congressional district", "Maguindanao's 1st congressional district", "Maguindanao's 2nd congressional ... |
-| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 53, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
+| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 45, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301405", "0301413", "0301423", "0304917", "0305421"], "sample_double_claimed": []}                                                                                          |
 | `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 12, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "1030500": {"missing": 1, "extra": 0, "sample_missing": ["1030500043"]}, "0730600": {"missing": 12, "extra": 0, "sample_missing": ["0730600013", "0730600016", "073060002... |
 | `no_barangay_in_two_districts`           | pass     | {"offenders": []}                                                                                                                                                                                                                                                                                            |
 | `no_partylist_seats`                     | pass     | {"count": 0}                                                                                                                                                                                                                                                                                                 |
 | `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
-| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3403, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
-| `unresolved_reported`                    | pass     | {"unresolved": 102, "ambiguous": 4, "scope_unknown_pages": []}                                                                                                                                                                                                                                               |
+| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3411, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                                            |
+| `unresolved_reported`                    | pass     | {"unresolved": 92, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
 
 ## Corroboration (guardrail 2)
 
@@ -68,15 +69,14 @@ Checking work against a third party needs no licence; republishing it would.
 | agree                 |  2130 |
 | disagree              |     0 |
 | only in the other set |   156 |
-| only in ours          |  1273 |
+| only in ours          |  1281 |
 
 ## What is still uncovered, and why
 
-**53 municipalities/cities are not yet covered by any district.** Grouped by parent, so the shape of the gap is visible rather than just its size:
+**45 municipalities/cities are not yet covered by any district.** Grouped by parent, so the shape of the gap is visible rather than just its size:
 
 | parent                        | uncovered |
 | ----------------------------- | --------: |
-| CITY OF MANILA (HUC)          |         9 |
 | SPECIAL GEOGRAPHIC AREA (SGA) |         8 |
 | SOUTH COTABATO                |         5 |
 | BATAAN                        |         4 |
@@ -88,12 +88,15 @@ Checking work against a third party needs no licence; republishing it would.
 | PAMPANGA                      |         1 |
 | BATANGAS                      |         1 |
 | CAVITE                        |         1 |
+| LAGUNA                        |         1 |
 
 ### Causes already established
 
 **Six uncovered cities were a resolution failure here, not a hole in the sources. Closed.** Angeles, Olongapo, Lucena, Tacloban, Puerto Princesa and Isabela City were read as six lone districts missing from Wikidata's roster. They are not. None of the six has a district of its own: each is a member of an existing district, named in that district's own article -- Angeles in Pampanga's 1st, Olongapo in Zambales's 1st, Lucena in Quezon's 2nd, Tacloban in Leyte's 1st, Puerto Princesa in Palawan's 3rd, Isabela City in Basilan's lone -- and an independently derived COMELEC-based mapping agrees with all six. The cause was a fact about PSGC: a highly urbanised city gets its own province-level row in dim_geo, so it is not among the children of the province it votes with and a province-scoped lookup could not reach it. Resolved by the `independent_city` rung, which widens a province's scope only with the cities that province's own page lead names, and only within its region.
 
-**Davao City is described at a grain PSGC does not model.** Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', 'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays directly off the city with no intermediate level. Those 82 barangays cannot be placed from this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in a barangay and names its own contest; this is the clearest single argument for the second source.
+**Manila was 258 of 857 barangays mapped, and the count hid it. Mostly closed.** Its citymun-coverage shortfall read as 'nine uncovered rows', which sounds like nine small gaps; it was four legislative districts holding no members at all. Manila's 1st and 2nd enumerate numbered barangays and resolved (all in Tondo, hence the 258), while its 3rd to 6th name administrative districts -- 'Sampaloc', 'Santa Cruz', 'Port Area' -- which are not barangays. PSGC does model these, as Manila's ten citymun children, so the `whole_citymun` rung now matches them within the city's own scope and coverage is **813 of 857**. What is left is reported, not forced: Paco is claimed by BOTH the 5th and the 6th, so neither gets it (43 barangays, which COMELEC precinct returns settle exactly); six administrative districts Wikipedia names have no dim_geo row at all (Binondo, Ermita, Intramuros, San Andres, San Miguel, Santa Mesa); and nine barangay numbers the source lists -- 21-24, 27, 40, 113-115 -- exist nowhere in PSA's Manila, a source disagreement rather than a parse failure. BARANGAY 202-A is enumerated by no district.
+
+**Davao City is described the same way as Manila, but at a grain PSGC does not model.** Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', 'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays directly off the city with no intermediate level -- which is exactly why the `whole_citymun` rung closes Manila and cannot touch this. Those 84 barangays cannot be placed from this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in a barangay and names its own contest; this is the clearest single argument for the second source.
 
 **The BARMM Special Geographic Area is not covered by any district article.** Its municipalities were transferred from Cotabato and the sources in this set have not caught up. Reported rather than assigned.
 
@@ -107,7 +110,7 @@ Published rather than hidden, on the same reasoning `/data-quality` already take
 missing assignment reads as a known finding rather than a hidden one. An unresolved LGU
 is a visible gap; a wrongly-matched one would be a silent lie.
 
-- Unresolved members: **102**
-- Ambiguous members: **4**
+- Unresolved members: **92**
+- Ambiguous members: **6**
 
 The full lists are in `ingestion/_qa_report_legislative_districts.json`.
