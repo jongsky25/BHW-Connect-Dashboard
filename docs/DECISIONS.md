@@ -8096,3 +8096,79 @@ No migration.
 still two calls or a `traverseGraph` walk. The correlation is Spearman over the children of one
 parent — it does not control for anything, and the prompt does not yet warn the model against
 reading it causally.
+
+## 2026-09-02 — Increment 5.4: the consolidated area profile, and a suppression finding
+
+Every dataset that covers one geography in one payload — and, just as deliberately, every dataset
+that does not, with the reason. `lib/db/area-profile.ts` assembles fourteen sources;
+`app/admin/(dashboard)/place/[geoLevel]/[geoCode]` renders it and `getAreaProfile` returns it to
+the assistant, from the same assembler, so a page and an answer about the same place cannot
+disagree.
+
+**The coverage map is the increment, not a courtesy.** Six datasets describe a geography and each
+stops somewhere different: training is not built at barangay (the barangay × topic cross-product is
+outside the free-tier disk budget), honorarium sufficiency is null there, `agg_peer_ranks` covers
+region/province/citymun only, poverty is a city/municipality-grain rate that is not rolled up.
+Returning `null` for all of those makes a *build decision* indistinguishable from *this place has
+no data* — and a reader, or a model, will report the first as the second. `SourceState`
+distinguishes `not-built-at-this-level` from `no-data` and every absence carries its reason;
+prompt rule 15 requires the model to preserve the distinction. Telling them apart is this
+module's main correctness requirement, and most of its test suite.
+
+### The suppression finding — this is the part to read
+
+Consolidation exposed a differencing path that per-dataset suppression does not close, and it is
+**not introduced by this increment**.
+
+`ingestion/build_aggregates.sql` suppresses per cell: a barangay demographic cell with `0 < n < 5`
+has `n` and `pct` nulled and `is_suppressed` set. Correct in isolation. But the group total is
+published, unsuppressed, in `agg_bhw_counts.n_total`. So for a barangay whose `sex` breakdown is
+Male 40 visible and Female 3 suppressed, against a total of 43:
+
+    Female = 43 − 40 = 3
+
+One subtraction. The rule is standard: a residual is unknowable only when **at least two** cells in
+the group are unknown, so a group with exactly one suppressed cell needs a complementary
+suppression — `lib/db/area-profile-suppression.ts` adds one, choosing the smallest visible positive
+cell, which loses the least information. `pct` is nulled alongside `n` for the same reason the
+ingestion pass does it: `pct × total` reconstructs `n` exactly. A visible **zero** is never chosen
+as the complement — hiding a known zero removes no ambiguity from the attacker's sum.
+
+Where nothing can be withheld (a single-category dimension, or every other cell a known zero) the
+pass says so via `unprotectable` rather than pretending it protected the group. Honesty over the
+appearance of protection: a guardrail that silently fails is worse than one that reports its limit.
+
+**Scope, stated plainly.** This protects *this payload*. **The same differencing path exists on the
+public `/place/[geoLevel]/[geoCode]` page**, which renders the demographics figure and the
+validated-profile total together — the exposure predates this increment and is not fixed by it.
+Consolidation is what made the path systematic and machine-readable, which is why the pass belongs
+here; whether to close it at the aggregate level, or on the public page, is an owner decision and
+is **not taken here**. Flagged rather than quietly handled.
+
+**Prompt rule 15's second half is a privacy rule, not a style one.** The profile withholds a
+complement so a cell cannot be recovered by subtraction; a model that helpfully performs that
+subtraction in prose undoes the guardrail. Rule 6 already forbids stating a suppressed value; rule
+15 names the specific arithmetic that produces one. Asserted by a test.
+
+**Admin-only is load-bearing** (§9.1, §12.5). The profile spans every dataset and surfaces internal
+document passages, and the differencing risk above is the second reason it must not reach a public
+surface. It sits inside `(dashboard)`, is not cached, and is never written to `ai_ask_cache`.
+
+**A mismatched geo level is rejected, not corrected.** Every aggregate is keyed on
+`(geo_code, geo_level)`, so asking for a citymun at `region` makes every section read "no data" — a
+wrong answer wearing the shape of a finding. Same check `app/uuc-phc/[geoLevel]/[geoCode]` makes.
+
+**One unavailable table costs one section.** Every source is caught individually; a throw degrades
+to the same shape as no data (§1).
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**983 tests, up from 951**. `npx prettier --check` clean on every file touched. `next build`
+compiles and typechecks; its prerender step fails only in this sandbox, which has no database.
+No migration: this increment adds no table and reads nothing that was not already readable.
+
+**Still open.** The admin page renders each section's payload verbatim rather than re-implementing
+fourteen figures, and links out to the built ones — adequate for staff, not a designed view. The
+complementary pass covers `agg_demographics`; `agg_honorarium`'s suppressed distribution columns
+and `agg_bhw_by_uuc_status`'s `*_is_suppressed` sides are not yet run through it, and the UUC
+listed/other split has the same two-cell structure that makes differencing easy. And the public
+`/place` exposure above is unaddressed by design.

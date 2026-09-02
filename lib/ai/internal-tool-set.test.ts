@@ -34,7 +34,12 @@ describe("the internal tool set", () => {
    * not say whether it was high or low. */
   it("carries the interpretation tools", () => {
     expect(internal).toEqual(
-      expect.arrayContaining(["getPeerContext", "getDistribution", "getInsightCards"]),
+      expect.arrayContaining([
+        "getPeerContext",
+        "getDistribution",
+        "getInsightCards",
+        "getAreaProfile",
+      ]),
     );
   });
 
@@ -68,6 +73,7 @@ describe("the internal system prompt", () => {
     "getPeerContext",
     "getDistribution",
     "getInsightCards",
+    "getAreaProfile",
   ])("tells the model when to reach for %s", (name) => {
     expect(INTERNAL_SYSTEM_PROMPT).toContain(name);
   });
@@ -94,6 +100,19 @@ describe("the internal system prompt", () => {
   it("forbids deriving a rank or an outlier the tools did not report", () => {
     expect(INTERNAL_SYSTEM_PROMPT).toContain("A bare figure is not an answer");
     expect(INTERNAL_SYSTEM_PROMPT).toContain("if a tool did not say it, you do not state it");
+  });
+
+  /**
+   * Increment 5.4. The profile applies complementary suppression so a withheld cell cannot be
+   * recovered by subtracting from its group total — and a model that helpfully does that
+   * subtraction in prose would undo the guardrail. Rule 6 forbids stating a suppressed value;
+   * this names the arithmetic that would produce one.
+   */
+  it("forbids reconstructing a suppressed cell by subtraction", () => {
+    expect(INTERNAL_SYSTEM_PROMPT).toContain("including by subtracting from a total");
+    expect(INTERNAL_SYSTEM_PROMPT).toContain(
+      'distinguishes "not built at this level" from "no data"',
+    );
   });
 
   it("scopes the route block's authority to tool choice, never to grounding", () => {

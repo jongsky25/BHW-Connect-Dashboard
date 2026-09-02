@@ -5,6 +5,7 @@ import { MAP_BASE_INDICATOR_META } from "@/lib/analysis/map-indicators";
 import { PEER_LEVEL_PLURAL, peerParentName } from "@/lib/analysis/peer-labels";
 import { regionalSpread } from "@/lib/analysis/regional-spread";
 import { MIN_LEADER_N } from "@/lib/analysis/thresholds";
+import { coverageOf, getAreaProfile } from "@/lib/db/area-profile";
 import { getBenchmarkContext } from "@/lib/db/benchmark-context";
 import { getChildGeos, getGeoByCode } from "@/lib/db/geo";
 import { getChildIndicators, type ChildIndicatorRow } from "@/lib/db/indicators";
@@ -348,6 +349,35 @@ const insightCardsTool: Tool = {
   },
 };
 
+const areaProfileTool: Tool = {
+  definition: {
+    name: "getAreaProfile",
+    description:
+      "Every dataset that covers one geography in a single call — BHW census overview and counts, demographics, training, honorarium and its sufficiency, 2026 profiling status, UUC for PHC listing, qualifying routes and BHW coverage, poverty, census population, peer ranks, and any ingested document passage that names the place — together with a coverage list naming every dataset that has NO figure for it and why. Use this to open a broad question about one place, and when reporting, say what is missing as well as what is there: 'not built at this level' is a property of how a dataset was built, not a gap in the data, and the two must not be described the same way.",
+    parameters: {
+      type: "object",
+      properties: {
+        geoCode: { type: "string", description: "Exact geo_code, or 'PH' for national." },
+        geoLevel: { type: "string", enum: [...GEO_LEVELS] },
+      },
+      required: ["geoCode", "geoLevel"],
+    },
+  },
+  async execute(args) {
+    const parsed = z
+      .object({ geoCode: z.string().min(1).max(20), geoLevel: geoLevelSchema })
+      .safeParse(args);
+    if (!parsed.success) return { error: "Invalid arguments for getAreaProfile." };
+
+    const profile = await getAreaProfile(parsed.data.geoCode, parsed.data.geoLevel);
+    if (!profile) return { error: `No geography found for geo_code ${parsed.data.geoCode}.` };
+
+    // The coverage summary rides alongside the sections rather than replacing them: the sections
+    // carry the figures, and this is what stops "absent" reading as "zero".
+    return { ...profile, coverage: coverageOf(profile) };
+  },
+};
+
 export function createAnalysisTools(): Tool[] {
-  return [peerContextTool, distributionTool, insightCardsTool];
+  return [peerContextTool, distributionTool, insightCardsTool, areaProfileTool];
 }
