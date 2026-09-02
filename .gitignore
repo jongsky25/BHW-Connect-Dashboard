@@ -72,3 +72,4 @@ ingestion/data/dim_geo.csv
 # editor
 .vscode/
 .idea/
+ingestion/data/agg_population_citymun.csv
