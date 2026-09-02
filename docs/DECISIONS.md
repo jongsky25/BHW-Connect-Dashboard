@@ -7722,3 +7722,88 @@ the ones Wikipedia cannot corroborate, so a COMELEC-created row is single-source
 and fails the very gate COMELEC was brought in to satisfy.** That needs an owner decision — its own
 `match_method` plus an explicit carve-out in the gate, or left unresolved and published — and is
 deliberately not decided here.
+
+## 2026-09-02 — D1.3g: COMELEC is gone, so Davao's 84 barangays came from a different Wikipedia page
+
+Membership rows **3,411 → 3,491**; Davao City **98/182 → 178/182** barangays placed; rows agreeing
+with the independently derived COMELEC-based mapping **2,130 → 2,209**, still **zero
+disagreements** and zero double-claims. Two gates still fail and the build still refuses to write.
+
+**First, the finding that forced this: the second source is not blocked, it is gone.** D1.3/D1.3b
+recorded COMELEC as unreachable _from this environment_, which implied a person on an ordinary
+connection could fetch it. That is no longer true — the project owner's own browser gets "Access
+Denied" too, ~16 months after the May 2025 election. Everything checked, so it is not re-checked:
+
+| route                                              | result                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------ |
+| `2025electionresults.comelec.gov.ph` (4 endpoints) | 403 here **and** for the owner                                           |
+| `comelec.gov.ph`, `psa.gov.ph`, `congress.gov.ph`  | 403 — every PH government host tried                                     |
+| Wayback Machine                                    | no capture of the JSON endpoints (archivers take pages, not a SPA's XHR) |
+| `klescosia/ph-elections2025` mirror                | unreachable, and no licence                                              |
+| `bettergovph/raw-philippine-data` (HuggingFace)    | real and **CC0-1.0**, but legislative documents and persons only         |
+| Figshare bulk precinct dataset                     | senate and party-list only (already established in D1.3b)                |
+
+The endpoint shapes are now recorded even though they cannot be called, because they cost real
+effort to recover: `/regions/local/{code}.json` to walk region → province → city → barangay, then
+`/regions/precinct/{prefix}/{barangay}.json` and `/data/er/{prefix}/{precinct}.json`. They came out
+of a sample error log inside the crawler README that BetterGov vendored, not from COMELEC.
+
+**Guardrail 2 was adopted in D1.1 assuming COMELEC was obtainable. It is not.** That is an owner
+decision to reopen, not something to quietly relax, so the two-source gate is untouched here and
+still fails on all 3,491 rows.
+
+**What this increment does instead: fix coverage from a source that does exist.** Davao City's
+district article names _administrative_ districts — "Baguio (8 barangays)", "Toril (25)" — which
+PSGC models at no level, so 84 of its 182 barangays were unplaceable from it. But Wikipedia carries
+the mapping on a different page. "Districts of Davao City" opens by saying it lists "the 182
+barangays of Davao City ... arranged according to the 3 legislative districts and 11 administrative
+districts", and tabulates every one. Same source family, same licence, at the grain the district
+article could not reach.
+
+**It is not a second source, and is not filed as one.** It is Wikipedia, like the district
+articles, so its rows stay `single_source` and stay subject to guardrail 2. What it fixes is
+coverage, not corroboration — a distinction worth keeping sharp, because the two failures have
+been running together in this phase and they are not the same problem.
+
+**Three parsing decisions, each of which had a wrong answer available.**
+
+1. **The district spans rows.** The table carries the legislative district in a bolded cell with
+   `rowspan`, so it must be carried forward until the next one. Read row-by-row, "Talomo Proper"
+   belongs to nothing — or worse, to the next district down.
+2. **Parsing stops at the table's `|}`.** The page's References section is also a bulleted list.
+   Without the stop it is read as barangays of whichever district was last seen; the first run did
+   exactly that and produced 185 "barangays" for a city with 182.
+3. **Two naming conventions are folded, and nothing else.** A bare `1-A` is PSA's
+   `BARANGAY 1-A (POB.)`, and `Toril Proper` is PSA's `TORIL (POB.)` — "Proper" and "(Pob.)" are
+   two spellings of _poblacion_, the same kind of convention `normalise_name` already folds for
+   "City of X". Both are exact rules over a whole word, never similarity.
+
+**The four it does not place, and why that is the point.** `Leon Garcia` against dim_geo's
+`LEON GARCIA, SR.`; `Tungkalan` against `TUNGAKALAN`; `Balenggaeng` against `BALENGAENG`;
+`Biao Guinga` against `BIAO GUIANGA`. Every one is a single-character or suffix difference and
+every one is left unresolved and named in the report. A one-letter miss is where a wrong match is
+_least_ visible, so guardrail 1 applies hardest there, not least.
+
+**The strongest evidence the parse is right is not internal.** The page yields exactly 182 rows for
+a city dim_geo gives 182 barangays, split 54 / 46 / 82 — and the independently derived COMELEC-based
+validation set splits Davao 54 / 46 / 82 as well. Across the build, agreement rose by 79 rows with
+**no new disagreement**. A parse that invented or misfiled barangays would not land on another
+source's district totals exactly.
+
+**Four other cities were deliberately left alone.** Cebu, Quezon City, Zamboanga City and
+Valenzuela each have a "List of barangays in X" page that mentions legislative districts, but none
+uses the bolded row-spanning cell this parser reads. The fetch keeps a page **only when the parser
+actually returns rows from it**, so they are skipped rather than half-read: an unparsed page is a
+visible gap, a mis-parsed one is a silent wrong answer. Cebu is now the largest single gap, at 12.
+
+**Testing.** `--selftest` asserts the rowspan carry-forward, that a References list after `|}` is
+not read as barangays, both naming conventions, and that a one-letter near miss stays unresolved.
+Mutation-checked five ways, **all five caught**: removing the `|}` stop, resetting the district per
+row, adding a substring fallback to the resolver, and dropping each naming convention. The three
+earlier suites were re-run against the changed loop — D1.3d/e's six and D1.3f's four all still bite.
+
+**Standards.** `npm run lint`, `npm run typecheck`, `npm test` clean — 835 tests, unchanged; no
+application code. `npx prettier --check` passes on the regenerated doc and this entry. No migration:
+the new rows use `exact`, and which page said so is already carried by `source_ref`. The snapshot
+grows by 12 KB (`ingestion/data/districts_20th/city_lists/`), committed for the same reason the
+other snapshots are — the build must be reproducible without the network.

@@ -650,6 +650,95 @@ def parse_district_article(wikitext):
 
 
 # --------------------------------------------------------------------------- #
+# 2b. Per-city barangay lists: the source that places a city PSGC splits       #
+#     differently from Wikipedia's district articles                          #
+# --------------------------------------------------------------------------- #
+# Davao City is why this exists. Its 3rd district's article names ADMINISTRATIVE
+# districts -- "Baguio (8 barangays)", "Toril (25)" -- which dim_geo does not model at any level,
+# so 84 of its 182 barangays could not be placed from that page at all (D1.3c). The COMELEC
+# returns that would resolve it are no longer reachable: comelec.gov.ph and
+# 2025electionresults.comelec.gov.ph now refuse this environment AND the project owner's own
+# browser, ~16 months after the election, and neither the Wayback Machine (no capture of the JSON
+# endpoints -- archivers take pages, not a SPA's XHR) nor any licensed mirror carries them.
+#
+# Wikipedia does carry it, on a different page: "Districts of Davao City" opens
+#
+#   "The following is the list of the 182 barangays of Davao City ... arranged according to the
+#    3 legislative districts and 11 administrative districts"
+#
+# and tabulates every barangay under its legislative district. That is the same source family and
+# licence already in use, at the grain the district article could not reach.
+#
+# It is NOT a second source in guardrail 2's sense -- it is Wikipedia, like the district articles,
+# so rows from it are still single_source and still need corroborating. What it fixes is coverage.
+CITY_LIST_TITLE_PATTERNS = (
+    "Districts of {}",
+    "List of barangays in {}",
+    "Barangays of {}",
+    "List of barangays of {}",
+)
+
+CITY_LIST_ORDINAL_RE = re.compile(
+    r"'''\s*\[*\s*([0-9]+(?:st|nd|rd|th)|lone|at.large)\s*\]*\s*'''", re.I)
+CITY_LIST_BULLET_RE = re.compile(r"^\*+\s*(.+?)\s*$")
+
+
+def parse_city_barangay_list(wikitext):
+    """[(ordinal_label, barangay name)] from a per-city 'barangays by legislative district' table.
+
+    The table carries the legislative district in a bolded, row-spanning cell and the barangays as
+    a bulleted list in the last column, so the district is *carried forward* across rows until the
+    next bolded ordinal -- which is exactly what `rowspan` means and cannot be recovered by reading
+    each row independently.
+
+    Parsing stops at the table's closing `|}`. Without that, the page's own References section --
+    which is also a bulleted list -- is read as barangays of whichever district was last seen.
+    """
+    end = wikitext.find("\n|}")
+    body = wikitext[:end] if end != -1 else wikitext
+    out, current = [], None
+    for line in body.splitlines():
+        s = line.strip()
+        if s.startswith("|") or s.startswith("!"):
+            m = CITY_LIST_ORDINAL_RE.search(s)
+            if m:
+                current = m.group(1).lower()
+        mb = CITY_LIST_BULLET_RE.match(s)
+        if mb and current:
+            name = strip_markup(re.sub(r"\{\{[^{}]*\}\}", " ", mb.group(1)))
+            name = re.sub(r"\s+", " ", name).strip(" .,;")
+            if name and normalise_name(name) not in NON_PLACE_MEMBERS:
+                out.append((current, name))
+    return out
+
+
+def resolve_city_barangay(name, citymun_codes, geo):
+    """Resolve one barangay name from a city list, with the two naming conventions PSA and
+    Wikipedia genuinely disagree on -- and nothing else.
+
+      * A bare "1-A" is PSA's "BARANGAY 1-A (POB.)". Davao's Poblacion district numbers its
+        barangays and Wikipedia lists the bare token.
+      * "Toril Proper" is PSA's "TORIL (POB.)". "Proper" and "(Pob.)" are two spellings of
+        poblacion -- the town centre -- not two places, the same kind of convention normalise_name
+        already folds for "City of X" / "X City".
+
+    Both are exact rules over a whole word, not similarity: "Biao Guinga" against dim_geo's
+    "BIAO GUIANGA", or "Tungkalan" against "TUNGAKALAN", stay unresolved and get reported.
+    Guardrail 1 does not bend because the near-miss is only one letter -- that is precisely the
+    case where a wrong match is least visible.
+    """
+    for candidate in (name, "Barangay " + name,
+                      name[:-len(" Proper")] if name.lower().endswith(" proper") else None):
+        if not candidate:
+            continue
+        hits = geo.find_barangay(normalise_name(candidate), citymun_codes)
+        if len(hits) == 1:
+            return hits[0], "exact"
+        if len(hits) > 1:
+            return None, "ambiguous_barangay"
+    return None, "unresolved_barangay"
+
+# --------------------------------------------------------------------------- #
 # 3. dim_geo index + the resolution ladder (D1.4)                              #
 # --------------------------------------------------------------------------- #
 class GeoIndex:
@@ -960,10 +1049,40 @@ def do_fetch(snapshot_dir: Path):
             art_index[asked] = {"file": fn, "revid": page["revid"], "title": page["title"]}
         time.sleep(THROTTLE_SECONDS)
 
+    # Per-city barangay lists (section 2b). Which title a city uses is not guessable -- Davao has
+    # "Districts of Davao City", Cebu "List of barangays in Cebu City" -- so every pattern is asked
+    # for and whichever exists is kept. Redirects mean several patterns can land on one page, so
+    # results are deduped by resolved title rather than by the title asked for.
+    lists_dir = snapshot_dir / "city_lists"
+    lists_dir.mkdir(exist_ok=True)
+    city_index = {}
+    cand = {pat.format(p): p for p in sorted(parents) for pat in CITY_LIST_TITLE_PATTERNS}
+    cand_titles = list(cand)
+    for i in range(0, len(cand_titles), TITLES_PER_REQUEST):
+        chunk = cand_titles[i:i + TITLES_PER_REQUEST]
+        print(f"  city-list batch {i // TITLES_PER_REQUEST + 1}: {len(chunk)} titles", flush=True)
+        fetched, _gone, redirects = fetch_pages_batch(chunk)
+        for asked in chunk:
+            page = fetched.get(redirects.get(asked, asked))
+            parent = cand[asked]
+            if page is None or parent in city_index:
+                continue
+            # Only keep a page that actually tabulates legislative districts; the bare
+            # "List of barangays in X" for some cities is a flat roster with no district at all.
+            if not parse_city_barangay_list(page["wikitext"]):
+                continue
+            fn = re.sub(r"[^A-Za-z0-9]+", "_", parent).strip("_")[:120] + ".json"
+            (lists_dir / fn).write_text(json.dumps(
+                {"parent": parent, "title": page["title"], "revid": page["revid"],
+                 "wikitext": page["wikitext"], "requested_title": asked}, indent=1))
+            city_index[parent] = {"file": fn, "revid": page["revid"], "title": page["title"]}
+        time.sleep(THROTTLE_SECONDS)
+
     (snapshot_dir / "index.json").write_text(json.dumps(
         {"retrieved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
          "pages": index, "missing": missing, "unparsed_labels": unparsed,
-         "articles": art_index, "articles_missing": art_missing},
+         "articles": art_index, "articles_missing": art_missing,
+         "city_lists": city_index},
         indent=1,
     ))
     print(f"snapshot written to {snapshot_dir} "
@@ -983,7 +1102,10 @@ def load_snapshot(snapshot_dir: Path):
     articles = {}
     for label, meta in idx.get("articles", {}).items():
         articles[label] = json.loads((snapshot_dir / "articles" / meta["file"]).read_text())
-    return idx, registry, pages, articles
+    city_lists = {}
+    for parent, meta in idx.get("city_lists", {}).items():
+        city_lists[parent] = json.loads((snapshot_dir / "city_lists" / meta["file"]).read_text())
+    return idx, registry, pages, articles, city_lists
 
 
 def load_dim_geo_csv(path):
@@ -1325,7 +1447,8 @@ def lone_district_names_parent(members, is_lone, parent):
                 and normalise_name(members[0]["name"]) == normalise_name(parent))
 
 
-def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=2025):
+def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=2025,
+          city_lists=None):
     """Parse + resolve every district into district / membership / representative rows.
 
     Composition comes from the per-district articles, not the province tables. Both are
@@ -1470,6 +1593,45 @@ def build(idx, registry, pages, articles, geo, crosswalk=None, congress_year=202
                 (ambiguous if method.startswith("ambiguous") else unresolved).append(rec)
             for member, row, method in settled:
                 pending.append((code, row, method, source_ref, member["name"]))
+
+        # The per-city barangay list (section 2b), for a city whose district articles describe it
+        # at a grain dim_geo does not model. Applied after the articles so the article's own
+        # reading is what a barangay gets when both name it; the list only reaches what the
+        # article could not. Rows are still Wikipedia and still single_source.
+        clist = (city_lists or {}).get(parent)
+        if clist and scope.get("citymun_codes"):
+            list_ref = f"wikipedia:{clist['title']}@{clist['revid']}"
+            known = {d["district_code"] for d in districts}
+            for ordinal_label, bname in parse_city_barangay_list(clist["wikitext"]):
+                ccode = district_slug(parent, ordinal_label)
+                if ccode not in known:
+                    # The list names a district this Congress does not have (an abolished one, or
+                    # a page ahead of the roster). Reported rather than invented.
+                    unresolved.append({"district_code": ccode, "parent": parent, "member": bname,
+                                       "link_target": None, "reason": "district_not_in_roster"})
+                    continue
+                row, method = resolve_city_barangay(bname, scope["citymun_codes"], geo)
+                if row is None:
+                    rec = {"district_code": ccode, "parent": parent, "member": bname,
+                           "link_target": None, "reason": method, "source": "city_list"}
+                    (ambiguous if method.startswith("ambiguous") else unresolved).append(rec)
+                    continue
+                pending.append((ccode, row, method, list_ref, bname))
+
+        # Where the district article and the city list name the SAME barangay for the SAME
+        # district, that is the two pages agreeing, not a collision -- and the collision guard
+        # below would otherwise see two member names on one geo_code and drop a row both sources
+        # support. Collapsed only across DIFFERENT source pages, so the within-one-page case the
+        # guard exists for (Zamboanga's two "Dulian"s) still reaches it untouched.
+        agreed, deduped = {}, []
+        for entry in pending:
+            key = (entry[0], entry[1]["geo_code"])
+            prev = agreed.get(key)
+            if prev is not None and prev[3] != entry[3]:
+                continue
+            agreed[key] = entry
+            deduped.append(entry)
+        pending = deduped
 
         # Two different source names that land on the SAME dim_geo row are a source
         # disagreement, not a match. Zamboanga City is the live example: Wikipedia lists
@@ -2033,14 +2195,25 @@ KNOWN_GAP_NOTES = [
 ]
 
 RESIDUAL_GAP_NOTES = [
-    ("Davao City is described the same way as Manila, but at a grain PSGC does not model.",
-     "Its 3rd district lists administrative districts -- 'Baguio (8 barangays)', 'Calinan (19)', "
-     "'Marilog (12)', 'Toril (25)', 'Tugbok (18)' -- while dim_geo hangs all 182 barangays "
-     "directly off the city with no intermediate level -- which is exactly why the `whole_citymun` "
-     "rung closes Manila and cannot touch this. Those 84 barangays cannot be placed from "
-     "this source at all. COMELEC precinct returns resolve it exactly, because a precinct sits in "
-     "a barangay and names its own contest; this is the clearest single argument for the second "
-     "source."),
+    ("Davao City: 84 unplaceable barangays, closed from a different Wikipedia page. 4 left.",
+     "Its 3rd district's article names administrative districts -- 'Baguio (8 barangays)', "
+     "'Toril (25)' -- which dim_geo does not model at any level, so those barangays could not be "
+     "placed from it at all, and the COMELEC returns that would resolve it are no longer "
+     "reachable by anyone (see the corroboration section). Wikipedia carries the mapping on "
+     "another page: 'Districts of Davao City' tabulates all 182 barangays under their legislative "
+     "district. Parsing it places 80 of the 84, taking the city to 178/182 -- and the result "
+     "agrees with the independently derived COMELEC-based mapping on 79 further rows with zero "
+     "disagreements, which is the strongest available evidence the parse is right. The remaining "
+     "four are name disagreements between Wikipedia and PSA, not parse failures: 'Leon Garcia' "
+     "against LEON GARCIA, SR.; 'Tungkalan' against TUNGAKALAN; 'Balenggaeng' against BALENGAENG; "
+     "'Biao Guinga' against BIAO GUIANGA. A one-letter miss is where a wrong match is least "
+     "visible, so guardrail 1 applies hardest there, not least."),
+    ("Cebu, Quezon City, Zamboanga City and Valenzuela have list pages this parser will not read.",
+     "Each has a 'List of barangays in X' page that mentions legislative districts, but none uses "
+     "the bolded row-spanning district cell that 'Districts of Davao City' does. The fetch keeps "
+     "a page only when the parser actually returns rows from it, so these are skipped rather than "
+     "half-read -- an unparsed page is a visible gap, a mis-parsed one is a silent wrong answer. "
+     "Cebu is now the largest single gap at 12 barangays."),
     ("The BARMM Special Geographic Area is not covered by any district article.",
      "Its municipalities were transferred from Cotabato and the sources in this set have not "
      "caught up. Reported rather than assigned."),
@@ -2602,6 +2775,78 @@ def selftest():
     assert g_wc["match_methods_are_declared"]["ok"] is True, g_wc["match_methods_are_declared"]
 
 
+    # -- per-city barangay lists (section 2b) -------------------------------------
+    # Davao City's district article names ADMINISTRATIVE districts, which dim_geo does not model,
+    # so 84 of its 182 barangays were unplaceable from it. "Districts of Davao City" tabulates
+    # every barangay under its legislative district instead. Two shapes in that table are what
+    # this parser is for, and both are load-bearing.
+    CITY_LIST_FIXTURE = """
+{| class="wikitable sortable"
+!Legislative District
+!Administrative District
+!Barangays
+|-
+| rowspan="2" |'''1st'''
+|Poblacion (2)
+|{{div col}}
+* 1-A
+* 2-A
+{{div col end}}
+|-
+|Talomo (1)
+|{{div col}}
+* Talomo Proper
+{{div col end}}
+|-
+| colspan="3" |
+|-
+|'''2nd'''
+|Agdao (2)
+|{{div col}}
+* Acacia
+*Wilfredo Aquino{{efn|name=X|a footnote}}
+{{div col end}}
+|}
+{{notelist}}
+
+==References==
+{{refbegin}}
+* [https://example.invalid/x Some Source]. Accessed on March 28, 2007.
+* Another citation entirely
+{{refend}}
+"""
+    parsed = parse_city_barangay_list(CITY_LIST_FIXTURE)
+    # The district spans rows: "Talomo Proper" belongs to the 1st, whose bolded cell is two rows
+    # up. Read row-by-row it would be attributed to nothing, or to the 2nd.
+    assert parsed == [("1st", "1-A"), ("1st", "2-A"), ("1st", "Talomo Proper"),
+                      ("2nd", "Acacia"), ("2nd", "Wilfredo Aquino")], parsed
+    # The References section is also a bulleted list. Parsing must stop at the table's `|}` or
+    # every citation is read as a barangay of whichever district was last seen -- which is exactly
+    # what happened on the real page before the stop existed.
+    assert all("Accessed on" not in n and "citation" not in n for _, n in parsed), parsed
+
+    geo_city = GeoIndex([
+        {"geo_code": "CC", "geo_level": "citymun", "geo_name": "CITY OF FAKE", "province_code": "CP", "parent_code": "CP", "region_code": "R"},
+        {"geo_code": "B1", "geo_level": "barangay", "geo_name": "BARANGAY 1-A (POB.)", "province_code": "CP", "parent_code": "CC", "region_code": "R"},
+        {"geo_code": "B2", "geo_level": "barangay", "geo_name": "TALOMO (POB.)", "province_code": "CP", "parent_code": "CC", "region_code": "R"},
+        {"geo_code": "B3", "geo_level": "barangay", "geo_name": "TALOMO RIVER", "province_code": "CP", "parent_code": "CC", "region_code": "R"},
+        {"geo_code": "B4", "geo_level": "barangay", "geo_name": "BIAO GUIANGA", "province_code": "CP", "parent_code": "CC", "region_code": "R"},
+    ])
+    cms = {"CC"}
+    # A bare numbered token is PSA's "BARANGAY <n> (POB.)".
+    assert resolve_city_barangay("1-A", cms, geo_city)[0]["geo_code"] == "B1"
+    # "Proper" and "(Pob.)" are two spellings of poblacion, not two places. Note TALOMO RIVER is
+    # present precisely so the rule cannot be passing by there being only one "Talomo"-ish row.
+    assert resolve_city_barangay("Talomo Proper", cms, geo_city)[0]["geo_code"] == "B2"
+    # ...and a one-letter difference is NOT a match. dim_geo says BIAO GUIANGA, Wikipedia says
+    # "Biao Guinga". Guardrail 1 does not bend for a near miss -- that is where a wrong match is
+    # least visible, not most excusable.
+    row, why = resolve_city_barangay("Biao Guinga", cms, geo_city)
+    assert row is None and why == "unresolved_barangay", (row, why)
+    # A name in no source at all is unresolved, never approximated.
+    assert resolve_city_barangay("Nowhere At All", cms, geo_city)[0] is None
+
+
     # -- COMELEC contest parsing --------------------------------------------------
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - FIRST DISTRICT") == (1, False)
     assert parse_contest_district("MEMBER, HOUSE OF REPRESENTATIVES - 2ND DISTRICT") == (2, False)
@@ -2708,7 +2953,8 @@ def selftest():
 
 
     print("selftest OK: parsing, normalisation, ladder, scope detection, gates,\n"
-          "             the independent-city and whole-citymun rungs, COMELEC corroboration\n"
+          "             the independent-city and whole-citymun rungs, per-city barangay lists,\n"
+          "             COMELEC corroboration\n"
           "             and the validation-set diff all asserted")
 
 
@@ -2751,7 +2997,7 @@ def main():
     if not args.dim_geo_csv and not args.database_url:
         ap.error("--from-snapshot needs --dim-geo-csv or --database-url to resolve names")
 
-    idx, registry, pages, articles = load_snapshot(Path(args.from_snapshot))
+    idx, registry, pages, articles, city_lists = load_snapshot(Path(args.from_snapshot))
 
     if args.database_url:
         import psycopg2
@@ -2767,7 +3013,7 @@ def main():
         dim_geo_rows = load_dim_geo_csv(args.dim_geo_csv)
 
     geo = GeoIndex(dim_geo_rows)
-    built = build(idx, registry, pages, articles, geo)
+    built = build(idx, registry, pages, articles, geo, city_lists=city_lists)
 
     corroboration = None
     if args.comelec_snapshot:
