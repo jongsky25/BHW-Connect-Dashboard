@@ -2116,6 +2116,7 @@ def reconcile_population(built, populations, geo):
             "pct": round(delta / published * 100, 4) if published else None,
         })
 
+    attributions = attribute_population_discrepancies(checked, built, populations, geo)
     off = [c for c in checked if c["delta"] != 0]
     beyond = [c for c in checked
               if c["pct"] is not None and abs(c["pct"]) > POPULATION_TOLERANCE_PCT]
@@ -2129,8 +2130,81 @@ def reconcile_population(built, populations, geo):
         # Published in full rather than sampled: each one is a district to look at, and there are
         # few enough that truncating them would only hide work.
         "discrepancies": sorted(off, key=lambda c: -abs(c["pct"] or 0)),
+        # An aggregate discrepancy that the arithmetic can pin on one municipality. Named, never
+        # moved -- see attribute_population_discrepancies.
+        "probable_misassignments": attributions,
     }
     return checked, summary
+
+def attribute_population_discrepancies(checked, built, populations, geo):
+    """Turn an aggregate population discrepancy into a named, row-level suspect.
+
+    `reconcile_population` says a district's total is wrong; it does not say WHICH member is
+    misfiled, and on its own that is a district to squint at rather than a finding to act on. But
+    the arithmetic often does say. When two districts of the same province are wrong by exactly
+    the same amount in opposite directions, the simplest explanation is one municipality on the
+    wrong side of the line -- and if exactly one member of the over-counted district has that
+    population, it is named.
+
+    Ilocos Norte is the case this was written from: the 1st is +1,607, the 2nd is -1,607, and the
+    municipality of CARASI has a 2020 population of 1,607. Wikipedia files Carasi in the 1st; PSA's
+    published totals put it in the 2nd.
+
+    Three constraints keep this from manufacturing coincidences:
+
+      * **Same province only.** Equal-and-opposite deltas between unrelated districts on opposite
+        ends of the country are a coincidence, not a swap. Pairs are formed within one parent.
+      * **Exactly one candidate.** If two members of the over-counted district share that
+        population, which one moved is unknowable from the total and neither is named.
+      * **It names, it never moves.** The mapping is untouched. A published total disagreeing with
+        a source is a disagreement between two sources, and D1.3f already settled what this build
+        does with those: report them and let a person decide. Auto-correcting on arithmetic would
+        be inventing a fact from a subtraction.
+    """
+    by_parent = defaultdict(list)
+    for c in checked:
+        if c["delta"] == 0:
+            continue
+        # District codes are district_slug(parent, ordinal); the stem groups a province's own.
+        by_parent[c["district_code"].rsplit("-", 1)[0]].append(c)
+
+    members_by_district = defaultdict(list)
+    for m in built["memberships"]:
+        members_by_district[m["district_code"]].append(m)
+
+    out = []
+    for stem, group in sorted(by_parent.items()):
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                if a["delta"] != -b["delta"] or a["census_year"] != b["census_year"]:
+                    continue
+                over, under = (a, b) if a["delta"] > 0 else (b, a)
+                amount = over["delta"]
+                pops = populations.get(over["census_year"], {})
+                hits = [m for m in members_by_district[over["district_code"]]
+                        if pops.get(m["geo_code"]) == amount]
+                entry = {
+                    "over_counted": over["district_code"],
+                    "under_counted": under["district_code"],
+                    "amount": amount,
+                    "census_year": over["census_year"],
+                }
+                if len(hits) == 1:
+                    row = geo.by_code.get(hits[0]["geo_code"]) or {}
+                    entry.update({
+                        "probable_member": row.get("geo_name"),
+                        "geo_code": hits[0]["geo_code"],
+                        "note": (f"{row.get('geo_name')} has a {over['census_year']} population of "
+                                 f"{amount:,}, exactly the amount {over['district_code']} is over "
+                                 f"and {under['district_code']} is under. Reported, not moved."),
+                    })
+                else:
+                    entry["note"] = (f"{len(hits)} members of {over['district_code']} have a "
+                                     f"population of {amount:,}; which one is misfiled cannot be "
+                                     f"read off the totals, so none is named.")
+                out.append(entry)
+    return out
+
 
 # --------------------------------------------------------------------------- #
 # 6. Validation gates (D1.5)                                                   #
@@ -2561,6 +2635,21 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None, ge
                   f"{c['published']:,}", f"{c['delta']:+,}", f"{c['pct']:+.2f}"]
                  for c in r["discrepancies"]],
                 ["left", "right", "right", "right", "right", "right", "right"])
+        if r.get("probable_misassignments"):
+            lines += [
+                "", "### Where the arithmetic names a municipality", "",
+                "Two districts of the same province wrong by the same amount in opposite "
+                "directions is what one misfiled municipality looks like. Where exactly one "
+                "member of the over-counted district has that population, it is named below. "
+                "**Named, never moved** -- a published total disagreeing with a source is a "
+                "disagreement between two sources, and this build reports those rather than "
+                "picking a winner.", "",
+            ]
+            for a in r["probable_misassignments"]:
+                lines += [f"- `{a['over_counted']}` (+{a['amount']:,}) against "
+                          f"`{a['under_counted']}` (-{a['amount']:,}): {a['note']}"]
+            lines += [""]
+
         if r["skipped"]:
             lines += ["", "Skipped, each for a reason that would otherwise manufacture a false "
                           "finding: " +
@@ -3106,6 +3195,62 @@ def selftest():
     assert g_pop["population_reconciles_with_psa"]["ok"] is False, g_pop
     assert "population_reconciles_with_psa" not in {
         g["gate"] for g in validate(swapped, [], geo)}, "no export -> gate not run"
+
+
+    # -- attributing an aggregate discrepancy to one municipality ------------------
+    # reconcile_population says a district's total is wrong; on its own that is a district to
+    # squint at. When two districts of the SAME province are wrong by the same amount in opposite
+    # directions and exactly one member of the over-counted side has that population, the
+    # arithmetic names the suspect. This is Ilocos Norte's Carasi (1,607) in miniature.
+    geo_att = GeoIndex([
+        {"geo_code": "AP", "geo_level": "province", "geo_name": "Alpha", "province_code": "AP", "parent_code": "R", "region_code": "R"},
+        {"geo_code": "A1", "geo_level": "citymun", "geo_name": "BIGTOWN", "province_code": "AP", "parent_code": "AP", "region_code": "R"},
+        {"geo_code": "A2", "geo_level": "citymun", "geo_name": "CARASI-LIKE", "province_code": "AP", "parent_code": "AP", "region_code": "R"},
+        {"geo_code": "A3", "geo_level": "citymun", "geo_name": "OTHERTOWN", "province_code": "AP", "parent_code": "AP", "region_code": "R"},
+    ])
+    att_pops = {2020: {"A1": 100_000, "A2": 1_607, "A3": 50_000}}
+    att_built = {"memberships": [
+        _membership("alpha-1st", {"geo_code": "A1", "geo_level": "citymun"}, "exact", "w@1", "t"),
+        _membership("alpha-1st", {"geo_code": "A2", "geo_level": "citymun"}, "exact", "w@1", "t"),
+        _membership("alpha-2nd", {"geo_code": "A3", "geo_level": "citymun"}, "exact", "w@1", "t")]}
+    checked = [
+        {"district_code": "alpha-1st", "census_year": 2020, "delta": 1_607},
+        {"district_code": "alpha-2nd", "census_year": 2020, "delta": -1_607},
+    ]
+    att = attribute_population_discrepancies(checked, att_built, att_pops, geo_att)
+    assert len(att) == 1, att
+    assert att[0]["over_counted"] == "alpha-1st" and att[0]["under_counted"] == "alpha-2nd", att
+    assert att[0]["probable_member"] == "CARASI-LIKE" and att[0]["geo_code"] == "A2", att
+
+    # THE COINCIDENCE GUARD. Two districts in DIFFERENT provinces that happen to be wrong by the
+    # same amount in opposite directions are not a swap -- nothing can move between them. Pairing
+    # them would name an innocent municipality with total confidence.
+    cross = [
+        {"district_code": "alpha-1st", "census_year": 2020, "delta": 1_607},
+        {"district_code": "beta-2nd", "census_year": 2020, "delta": -1_607},
+    ]
+    assert attribute_population_discrepancies(cross, att_built, att_pops, geo_att) == [], \
+        "districts of different provinces must never be paired"
+
+    # Different censuses are not comparable, so not a pair either.
+    mixed = [
+        {"district_code": "alpha-1st", "census_year": 2020, "delta": 1_607},
+        {"district_code": "alpha-2nd", "census_year": 2015, "delta": -1_607},
+    ]
+    assert attribute_population_discrepancies(mixed, att_built, att_pops, geo_att) == [], mixed
+
+    # Two members sharing the amount: the pair is still reported, but NO member is named, because
+    # which one moved cannot be read off a total.
+    tie_built = {"memberships": att_built["memberships"] + [
+        _membership("alpha-1st", {"geo_code": "A4", "geo_level": "citymun"}, "exact", "w@1", "t")]}
+    tie_pops = {2020: dict(att_pops[2020], A4=1_607)}
+    tie = attribute_population_discrepancies(checked, tie_built, tie_pops, geo_att)
+    assert len(tie) == 1 and "probable_member" not in tie[0], tie
+    assert "cannot be read off the totals" in tie[0]["note"], tie
+
+    # It reports; it never moves. The mapping must be untouched by an arithmetic inference.
+    assert [m["district_code"] for m in att_built["memberships"]] == \
+        ["alpha-1st", "alpha-1st", "alpha-2nd"], att_built["memberships"]
 
 
     # -- COMELEC contest parsing --------------------------------------------------
