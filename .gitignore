@@ -63,6 +63,11 @@ ingestion/_qa_report_poverty.json
 ingestion/_sql_batches_poverty/
 ingestion/dim_geo.json
 ingestion/data/dim_geo_nir.csv
+ingestion/_qa_report_legislative_districts.json
+ingestion/_sql_districts/
+# A local export of our own dim_geo, produced for --dim-geo-csv. Derived from the database, not a
+# source snapshot, so it is rebuilt rather than committed (same posture as dim_geo_nir.csv above).
+ingestion/data/dim_geo.csv
 
 # editor
 .vscode/
