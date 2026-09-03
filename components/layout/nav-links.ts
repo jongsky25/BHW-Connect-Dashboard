@@ -2,6 +2,7 @@ export const primaryNavLinks = [
   { href: "/bhw", label: "Home" },
   { href: "/explore", label: "Explore" },
   { href: "/compare", label: "Compare" },
+  { href: "/districts", label: "Districts" },
 ] as const;
 
 export const aboutNavLinks = [

@@ -42,6 +42,7 @@ const BHW_TRAILS: Record<string, Crumb[]> = {
   "/methodology": [BHW_CRUMB, { label: "Methodology" }],
   "/glossary": [BHW_CRUMB, { label: "Glossary" }],
   "/data-quality": [BHW_CRUMB, { label: "Data quality" }],
+  "/districts": [BHW_CRUMB, { label: "Districts" }],
   "/roadmap": [BHW_CRUMB, { label: "Roadmap" }],
   "/privacy": [BHW_CRUMB, { label: "Privacy" }],
   "/feedback": [BHW_CRUMB, { label: "Feedback" }],
