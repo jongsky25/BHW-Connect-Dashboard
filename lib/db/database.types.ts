@@ -2842,6 +2842,20 @@ export type Database = {
       };
     };
     Functions: {
+      district_index: {
+        Args: { p_dataset_id: number };
+        Returns: {
+          bhw_total: number;
+          district_code: string;
+          district_name: string;
+          is_lone: boolean;
+          match_quality: string;
+          member_count: number;
+          ordinal: number | null;
+          population: number | null;
+          region_code: string | null;
+        }[];
+      };
       map_psgc_to_dim_geo: {
         Args: { p_code: string; p_old_vintage?: string };
         Returns: string;
