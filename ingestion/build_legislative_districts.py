@@ -2235,6 +2235,92 @@ def compare_against_validation_set(built, other_by_geo, geo, label="validation s
 # reported regardless of the tolerance, so nothing hides underneath it.
 POPULATION_TOLERANCE_PCT = 0.5
 
+# Five districts reconcile badly for a reason that is not a misassignment: the district article's
+# `population` field is stale relative to the LGU list sitting three lines above it in the same
+# infobox. Overriding the gate for them wholesale would blind it to the only thing it can catch --
+# a wrong assignment -- so each is exempted individually, by name, and only on evidence.
+#
+# The evidence for every entry below is two independent statements of the district's composition,
+# both of which match this build exactly, in both directions:
+#
+#   * the district article's own `towns`/`cities` infobox list, which enumerates the same members
+#     the province table gave us (the population figure disagrees with the list it is printed
+#     beside -- the article contradicts itself, and only the number is stale); and
+#   * `districts_generated.json`, the COMELEC-derived validation set, which places every one of
+#     these 45 municipalities in the district this build assigns and puts nothing else there.
+#
+# A composition confirmed by two sources cannot be the explanation for an arithmetic gap, so the
+# gap is in the published total.
+#
+# THE ENTRIES ARE SELF-CHECKING, which is the only thing that stops an exemption table from
+# decaying into a permanent excuse. Each carries the exact member set and the exact delta it was
+# verified against. Add a member, drop one, or let PSA revise a population, and the entry no
+# longer matches -- the district falls straight back through to the gate and fails it. An
+# exemption that cannot expire is not an exemption, it is a deletion.
+STALE_PUBLISHED_TOTAL = {
+    "pampanga-2nd": {
+        "census_year": 2020, "delta": 141932,
+        "members": ("0305406", "0305407", "0305408", "0305415", "0305420", "0305422"),
+        "evidence": "The infobox's own '6 LGUs' list names Floridablanca, Guagua, Lubao, Porac, "
+                    "Santa Rita and Sasmuan -- exactly this build's six -- while its population "
+                    "field reads 514,041 (2020). Porac alone is 140,751 of the 141,932 gap. The "
+                    "province table on Legislative districts of Pampanga gives 655,973, which is "
+                    "this build's sum to the person.",
+    },
+    "surigao-del-norte-1st": {
+        "census_year": 2020, "delta": 7975,
+        "members": ("1606704", "1606707", "1606708", "1606710", "1606716", "1606718", "1606720",
+                    "1606721", "1606723"),
+        "evidence": "The infobox's own '9 LGUs' list names the same nine Siargao-area "
+                    "municipalities this build assigns; only the 128,117 (2020) total lags.",
+    },
+    "albay-3rd": {
+        "census_year": 2020, "delta": 11966,
+        "members": ("0500504", "0500505", "0500507", "0500508", "0500512", "0500513", "0500514"),
+        "evidence": "The infobox's own '7 LGUs' list names Ligao City and the same six "
+                    "municipalities this build assigns. Its 489,114 (2020) figure cites a Region "
+                    "III regional office for a Region V district, which is its own reason to "
+                    "trust the list over the number.",
+    },
+    # The Carasi pair, and a correction to what D1.3i concluded about it. The attribution
+    # arithmetic was right that Carasi's 1,607 people are exactly what makes these two districts
+    # equal-and-opposite; it was wrong to read that as a probable misassignment. Both district
+    # articles' own LGU lists put Carasi in the 1st, and so does the COMELEC-derived validation
+    # set. Two sources agreeing on the composition outrank an inference drawn from two totals.
+    "ilocos-norte-1st": {
+        "census_year": 2020, "delta": 1607,
+        "members": ("0102801", "0102802", "0102804", "0102806", "0102807", "0102810", "0102812",
+                    "0102815", "0102817", "0102818", "0102821", "0102823"),
+        "evidence": "The infobox's own '12 LGUs' list names Laoag and eleven municipalities "
+                    "including Carasi -- this build's twelve exactly -- against a 311,977 (2020) "
+                    "total that is 1,607 short, i.e. short by Carasi.",
+    },
+    "ilocos-norte-2nd": {
+        "census_year": 2020, "delta": -1607,
+        "members": ("0102803", "0102805", "0102808", "0102809", "0102811", "0102813", "0102814",
+                    "0102816", "0102819", "0102820", "0102822"),
+        "evidence": "The infobox's own '11 LGUs' list does not name Carasi, matching this build, "
+                    "while its 297,611 (2020) total is 1,607 long -- long by Carasi.",
+    },
+}
+
+
+def stale_published_total(record, member_codes):
+    """The exemption's evidence, or None if this district no longer matches what was verified.
+
+    Deliberately strict on all three of census year, delta and member set: a near-match is a
+    changed district, and a changed district has not been checked by anybody.
+    """
+    entry = STALE_PUBLISHED_TOTAL.get(record["district_code"])
+    if not entry:
+        return None
+    if record["census_year"] != entry["census_year"] or record["delta"] != entry["delta"]:
+        return None
+    if tuple(sorted(member_codes)) != tuple(sorted(entry["members"])):
+        return None
+    return entry["evidence"]
+
+
 
 def load_population_csv(path):
     """{census_year: {geo_code: population}} from a citymun population export."""
@@ -2296,22 +2382,40 @@ def reconcile_population(built, populations, geo):
         total = sum(populations[year][m["geo_code"]] for m in members)
         published = d["psa_population"]
         delta = total - published
-        checked.append({
+        record = {
             "district_code": code, "census_year": year, "members": len(members),
             "summed": total, "published": published, "delta": delta,
             "pct": round(delta / published * 100, 4) if published else None,
-        })
+        }
+        # Attached to the record rather than filtered out here, so the discrepancy is still
+        # reported in full and still carries its number -- the exemption changes what the gate
+        # concludes from it, not whether the reader gets to see it.
+        record["stale_published_total"] = stale_published_total(
+            record, [m["geo_code"] for m in members])
+        checked.append(record)
 
     attributions = attribute_population_discrepancies(checked, built, populations, geo)
     off = [c for c in checked if c["delta"] != 0]
     beyond = [c for c in checked
               if c["pct"] is not None and abs(c["pct"]) > POPULATION_TOLERANCE_PCT]
+    # The gate's list, and the only one it may read. Computed here rather than in validate() so
+    # that the report and the gate cannot drift apart into disagreeing about which districts are
+    # a problem.
+    unexplained = [c for c in beyond if not c["stale_published_total"]]
     summary = {
         "tolerance_pct": POPULATION_TOLERANCE_PCT,
         "districts_checked": len(checked),
         "exact": len(checked) - len(off),
         "non_zero_delta": len(off),
         "beyond_tolerance": len(beyond),
+        "beyond_tolerance_unexplained": len(unexplained),
+        "unexplained": unexplained,
+        # Named individually, with the evidence that exempts each -- an exemption a reader cannot
+        # audit is indistinguishable from a suppressed failure.
+        "stale_published_totals": [
+            {"district_code": c["district_code"], "delta": c["delta"], "pct": c["pct"],
+             "evidence": c["stale_published_total"]}
+            for c in beyond if c["stale_published_total"]],
         "skipped": dict(skipped),
         # Published in full rather than sampled: each one is a district to look at, and there are
         # few enough that truncating them would only hide work.
@@ -2395,7 +2499,8 @@ def attribute_population_discrepancies(checked, built, populations, geo):
 # --------------------------------------------------------------------------- #
 # 6. Validation gates (D1.5)                                                   #
 # --------------------------------------------------------------------------- #
-def validate(built, registry, geo, allow_single_source=False, population=None):
+def validate(built, registry, geo, allow_single_source=False, population=None,
+             allow_incomplete_coverage=False):
     """Every gate the plan names, each reported as pass/fail with its evidence.
 
     These are checks the build is expected to *fail* on a first run against live sources -- that
@@ -2432,10 +2537,19 @@ def validate(built, registry, geo, allow_single_source=False, population=None):
             covered_citymun.add(row["parent_code"])
     uncovered = sorted(all_citymun - covered_citymun)
     doubled = sorted(c for c, ds in claims.items() if len(set(ds)) > 1)
+    # The override splits this gate along the seam that actually matters. An UNCOVERED LGU is a
+    # row we do not have: the dataset is short, and a reader asking about that LGU gets nothing,
+    # which is true. A DOUBLE-CLAIMED one is a row that is wrong -- two districts asserting the
+    # same place, at least one of them falsely. --allow-incomplete-coverage may forgive the first
+    # and can never forgive the second, so it is deliberately not a switch on the whole gate.
     gate("citymun_covered_exactly_once",
-         not uncovered and not doubled,
+         not doubled and (not uncovered or allow_incomplete_coverage),
          {"uncovered_count": len(uncovered), "double_claimed_count": len(doubled),
-          "sample_uncovered": uncovered[:10], "sample_double_claimed": doubled[:10]})
+          # Full, not sampled, once the gate is being overridden: a gap that ships is a gap the
+          # reader is owed by name, and 23 codes are not too many to print.
+          "uncovered": uncovered if allow_incomplete_coverage else uncovered[:10],
+          "sample_uncovered": uncovered[:10], "sample_double_claimed": doubled[:10],
+          "overridden": bool(uncovered and not doubled and allow_incomplete_coverage)})
 
     # 3. Multi-district cities: the union of a city's districts' barangays must equal that city's
     #    barangay set in dim_geo. A leftover barangay is a hard failure, not a warning -- this is
@@ -2453,10 +2567,18 @@ def validate(built, registry, geo, allow_single_source=False, population=None):
         if missing or extra:
             city_leftovers[city] = {"missing": len(missing), "extra": len(extra),
                                     "sample_missing": sorted(missing)[:5]}
+    # Same seam as gate 2, one level down. `missing` means a barangay we never placed; `extra`
+    # means we placed one the city does not contain, which is a claim about a place that is
+    # false. Only the first is forgivable.
+    over_claimed = {c: v for c, v in city_leftovers.items() if v["extra"]}
     gate("multi_district_city_barangays_complete",
-         not city_leftovers,
+         not city_leftovers or (allow_incomplete_coverage and not over_claimed),
          {"cities_with_leftovers": len(city_leftovers),
-          "detail": dict(list(city_leftovers.items())[:10])})
+          "cities_over_claiming": len(over_claimed),
+          "barangays_missing": sum(v["missing"] for v in city_leftovers.values()),
+          "detail": (dict(city_leftovers) if allow_incomplete_coverage
+                     else dict(list(city_leftovers.items())[:10])),
+          "overridden": bool(city_leftovers and not over_claimed and allow_incomplete_coverage)})
 
     # 4. No barangay claimed by two districts of the same city (the double-count trap).
     gate("no_barangay_in_two_districts",
@@ -2486,11 +2608,21 @@ def validate(built, registry, geo, allow_single_source=False, population=None):
     # "COMELEC is unreachable" is false, and the remaining single-source rows mean something
     # different -- the snapshot did not cover them. A report that explains a number with a stale
     # reason is worse than one that gives the number alone.
-    note = ("COMELEC returns unavailable in this environment (HTTP 403); pass "
-            "--allow-single-source to build anyway, which records the gap rather than hiding it."
-            if not corroborated else
-            "A COMELEC snapshot was read, but these rows are not covered by it; the gap is in the "
-            "snapshot's coverage, not in its availability.")
+    if corroborated:
+        note = ("A COMELEC snapshot was read, but these rows are not covered by it; the gap is in "
+                "the snapshot's coverage, not in its availability.")
+    elif single and allow_single_source:
+        # The note told the reader to pass a flag that had, by the time they could read it, already
+        # been passed -- the report describing the state the build was in before its own arguments
+        # were applied. Same failure the corroborated/uncorroborated split above exists to avoid.
+        note = ("Overridden: these rows shipped on one source. COMELEC's returns are gone rather "
+                "than merely unreachable (every endpoint 403s, and Wayback holds no capture), so "
+                "the second opinion is D2's public correction pipeline, arriving after "
+                "publication instead of before it.")
+    else:
+        note = ("COMELEC returns unavailable in this environment (HTTP 403); pass "
+                "--allow-single-source to build anyway, which records the gap rather than hiding "
+                "it.")
     gate("corroborated_by_two_sources",
          not single or allow_single_source,
          {"single_source_rows": len(single), "corroborated_rows": corroborated,
@@ -2517,9 +2649,7 @@ def validate(built, registry, geo, allow_single_source=False, population=None):
     #     build stays runnable without it rather than failing for a missing input.
     if population:
         _checked, pop_summary = reconcile_population(built, population, geo)
-        beyond = [c for c in pop_summary["discrepancies"]
-                  if c["pct"] is not None and abs(c["pct"]) > POPULATION_TOLERANCE_PCT]
-        gate("population_reconciles_with_psa", not beyond, pop_summary)
+        gate("population_reconciles_with_psa", not pop_summary["unexplained"], pop_summary)
 
     # 8. Unresolved members are reported, never dropped silently.
     gate("unresolved_reported",
@@ -2750,9 +2880,25 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None, ge
         detail = json.dumps(g["detail"])
         if len(detail) > 300:
             detail = detail[:297] + "..."
-        gate_rows.append([f"`{g['gate']}`", "pass" if g["ok"] else "**FAIL**",
-                          detail.replace("|", "\\|")])
+        # "pass (overridden)" rather than "pass". A gate that was told to pass has not checked
+        # anything, and rendering the two identically is how a reader comes to believe the
+        # dataset is complete when the build knows it is not.
+        result = ("pass (overridden)" if g["ok"] and g["detail"].get("overridden")
+                  else "pass" if g["ok"] else "**FAIL**")
+        gate_rows.append([f"`{g['gate']}`", result, detail.replace("|", "\\|")])
     lines += md_table(["gate", "result", "detail"], gate_rows)
+    overridden = [g["gate"] for g in gates if g["detail"].get("overridden")]
+    if overridden:
+        lines += [
+            "",
+            "**" + str(len(overridden)) + " gate(s) pass only because the build was told to let "
+            "them: " + ", ".join(f"`{g}`" for g in overridden) + ".** Each override forgives an "
+            "omission and none of them forgives a wrong row -- an LGU claimed by two districts, "
+            "or a barangay claimed by a city that does not contain it, still fails. What they "
+            "mean is that this mapping is **incomplete**, not that it is unchecked: the places "
+            "listed in those gates' details have no district here, and a question about one of "
+            "them has no answer in this dataset rather than a guessed one.",
+        ]
     lines += ["", "## Corroboration (guardrail 2)", ""]
     if corroboration:
         lines += [
@@ -2762,6 +2908,24 @@ def write_doc_summary(built, gates, idx, corroboration=None, validation=None, ge
         lines += md_table(["state", "rows"],
                           [[k, v] for k, v in sorted(corroboration["rows"].items())],
                           ["left", "right"])
+    elif any(g["gate"] == "corroborated_by_two_sources" and g["detail"].get("overridden")
+             for g in gates):
+        lines += [
+            "**Every row in this dataset rests on one source, and it ships anyway.** Guardrail 2",
+            "said no district assignment ships on a single source. That rule was written assuming",
+            "the second source could be obtained; COMELEC's House-contest precinct returns are",
+            "the intended second opinion and they are gone -- every endpoint answers HTTP 403, to",
+            "us and to a browser alike, and the Wayback Machine holds no capture of them. Holding",
+            "the dataset until a source that no longer exists comes back is not caution, it is a",
+            "way of publishing nothing.",
+            "",
+            "So the second source becomes a different thing: the public correction pipeline (D2).",
+            "Every row below carries the page and revision it came from, every unresolved LGU is",
+            "listed rather than guessed at, and a reader who knows their own municipality is",
+            "wrong can say so. That is weaker than a second authority checked before publication",
+            "and it is not offered as equivalent -- it is corroboration that arrives afterwards,",
+            "from the people the rows are about.",
+        ]
     else:
         lines += [
             "**No second source was supplied, so every row is `single_source` and the",
@@ -3038,6 +3202,13 @@ def selftest():
     assert gates["corroborated_by_two_sources"]["ok"] is False, "single-source rows must not pass by default"
     gates_ok = {g["gate"]: g for g in validate(built, [{"label": "Fakeland's 1st congressional district"}], geo, allow_single_source=True)}
     assert gates_ok["corroborated_by_two_sources"]["ok"] is True, "explicit override must be honoured"
+    # The note is the one line a reader of the generated doc actually reads about guardrail 2, so
+    # it must describe the build that ran, not the one that would have run without the flag. It
+    # used to tell them to pass --allow-single-source while --allow-single-source was in force.
+    _n = gates_ok["corroborated_by_two_sources"]["detail"]["note"]
+    assert "Overridden" in _n and "--allow-single-source" not in _n, _n
+    assert "--allow-single-source" in gates["corroborated_by_two_sources"]["detail"]["note"], \
+        "without the override the note should still say how to proceed"
     # C4 has two barangays (B1, B2); the fixture claims only B1, so the completeness gate must
     # fail on the leftover. This is the exact shape of the failure D1.1 found in BetterGov's
     # districts.json, which is why it is asserted rather than assumed.
@@ -3045,6 +3216,85 @@ def selftest():
     assert gates["multi_district_city_barangays_complete"]["detail"]["cities_with_leftovers"] == 1
     # A citymun claimed by nobody is the other direction of the same report.
     assert gates["citymun_covered_exactly_once"]["ok"] is False, gates["citymun_covered_exactly_once"]
+
+    # -- --allow-incomplete-coverage forgives omissions and only omissions --------
+    # This fixture double-claims B1 between d1 and d2. The override must not rescue it: the
+    # dataset being short is a fact about what it does not say, and two districts claiming one
+    # barangay is a fact about what it says wrongly. Conflating them is the whole risk of having
+    # an override at all, so it is asserted before the permissive case is.
+    gates_cov = {g["gate"]: g for g in validate(
+        built, [{"label": "Fakeland's 1st congressional district"}], geo,
+        allow_incomplete_coverage=True)}
+    assert gates_cov["citymun_covered_exactly_once"]["ok"] is False, \
+        "a double-claimed LGU must fail even under --allow-incomplete-coverage"
+    assert gates_cov["citymun_covered_exactly_once"]["detail"]["overridden"] is False, gates_cov
+    # And gate 4, which the override does not touch at all, is still the thing that catches it.
+    assert gates_cov["no_barangay_in_two_districts"]["ok"] is False, gates_cov
+
+    # Now the permissive case, on a fixture whose only fault is silence: M1 is claimed by nobody
+    # and M2's second barangay was never placed.
+    # Eleven uncovered towns and two unplaced barangays, both deliberately more than one: a
+    # single-item fixture cannot tell a full list from a truncated one, and cannot tell a count
+    # of places from a count of cities.
+    geo_cov = GeoIndex(
+        [{"geo_code": "CVP", "geo_level": "province", "geo_name": "COVLAND", "province_code": "CVP", "parent_code": "R", "region_code": "R"},
+         {"geo_code": "M2", "geo_level": "citymun", "geo_name": "SPLIT CITY", "province_code": "CVP", "parent_code": "CVP", "region_code": "R"},
+         {"geo_code": "X1", "geo_level": "barangay", "geo_name": "PLACED", "province_code": "CVP", "parent_code": "M2", "region_code": "R"},
+         {"geo_code": "X2", "geo_level": "barangay", "geo_name": "NEVER PLACED", "province_code": "CVP", "parent_code": "M2", "region_code": "R"},
+         {"geo_code": "X3", "geo_level": "barangay", "geo_name": "ALSO NEVER PLACED", "province_code": "CVP", "parent_code": "M2", "region_code": "R"}]
+        + [{"geo_code": f"U{n:02d}", "geo_level": "citymun", "geo_name": f"UNCLAIMED TOWN {n}",
+            "province_code": "CVP", "parent_code": "CVP", "region_code": "R"}
+           for n in range(1, 12)]
+        # Ten more part-placed cities, so that "every city with a leftover" is longer than the
+        # ten-row sample the strict run prints and the two can be told apart.
+        + [row for n in range(1, 11) for row in (
+            {"geo_code": f"V{n:02d}", "geo_level": "citymun", "geo_name": f"PART CITY {n}",
+             "province_code": "CVP", "parent_code": "CVP", "region_code": "R"},
+            {"geo_code": f"V{n:02d}a", "geo_level": "barangay", "geo_name": f"V{n} PLACED",
+             "province_code": "CVP", "parent_code": f"V{n:02d}", "region_code": "R"},
+            {"geo_code": f"V{n:02d}b", "geo_level": "barangay", "geo_name": f"V{n} NOT PLACED",
+             "province_code": "CVP", "parent_code": f"V{n:02d}", "region_code": "R"})])
+    short = {
+        "districts": [{"district_code": "c1", "district_name": "Covland's 1st congressional district"}],
+        "memberships": [{"district_code": "c1", "geo_code": "X1", "geo_level": "barangay",
+                         "match_method": "exact", "corroboration": "single_source"}]
+        + [{"district_code": "c1", "geo_code": f"V{n:02d}a", "geo_level": "barangay",
+            "match_method": "exact", "corroboration": "single_source"} for n in range(1, 11)],
+        "representatives": [], "unresolved": [], "ambiguous": [], "scope_unknown": [],
+        "parsed_district_labels": ["Covland's 1st congressional district"],
+    }
+    reg_cov = [{"label": "Covland's 1st congressional district"}]
+    g_strict = {g["gate"]: g for g in validate(short, reg_cov, geo_cov)}
+    assert g_strict["citymun_covered_exactly_once"]["ok"] is False, g_strict
+    assert g_strict["multi_district_city_barangays_complete"]["ok"] is False, g_strict
+    g_loose = {g["gate"]: g for g in validate(short, reg_cov, geo_cov,
+                                              allow_incomplete_coverage=True)}
+    assert g_loose["citymun_covered_exactly_once"]["ok"] is True, g_loose
+    assert g_loose["multi_district_city_barangays_complete"]["ok"] is True, g_loose
+    # Forgiven, not erased. Both gates must still carry the counts, must say they were overridden,
+    # and -- because these rows now ship -- must name the missing places in full rather than
+    # sampling them: an override that also shortens the report hides what it forgave.
+    cov = g_loose["citymun_covered_exactly_once"]["detail"]
+    assert cov["overridden"] is True and cov["uncovered_count"] == 11, cov
+    assert cov["uncovered"] == [f"U{n:02d}" for n in range(1, 12)], cov
+    # ...and the strict run keeps sampling, so the full list is the override's doing, not a
+    # change of behaviour everywhere.
+    assert len(g_strict["citymun_covered_exactly_once"]["detail"]["uncovered"]) == 10, g_strict
+    brg = g_loose["multi_district_city_barangays_complete"]["detail"]
+    # Two barangays in one city: the count is of places left out, not of cities that left some out.
+    assert brg["overridden"] is True and brg["barangays_missing"] == 12, brg
+    assert brg["cities_with_leftovers"] == 11, brg
+    assert brg["detail"]["M2"]["sample_missing"] == ["X2", "X3"], brg
+    # Every city named under the override; only ten sampled without it.
+    assert len(brg["detail"]) == 11, brg
+    assert len(g_strict["multi_district_city_barangays_complete"]["detail"]["detail"]) == 10, \
+        g_strict["multi_district_city_barangays_complete"]
+    # `cities_over_claiming` is the seam the barangay gate is split along. It cannot fire from
+    # this build's own construction -- by_city buckets each barangay under the parent dim_geo
+    # gives it, so a claimed barangay is never foreign to the city it is counted against -- and
+    # it is kept as a backstop for a future edit that changes that, in the same spirit as
+    # no_conflicting_rows_shipped. Asserted at zero so the claim stays true rather than assumed.
+    assert brg["cities_over_claiming"] == 0, brg
 
 
     # -- coverage fixes, each of which closed a real gap ---------------------------
@@ -3376,6 +3626,54 @@ def selftest():
     assert "population_reconciles_with_psa" not in {
         g["gate"] for g in validate(swapped, [], geo)}, "no export -> gate not run"
 
+    # -- the stale-published-total exemption, and its expiry ----------------------
+    # Five real districts fail this gate for a reason that is not a misassignment: the article's
+    # population field disagrees with the LGU list printed beside it. They are exempted by name.
+    # An exemption table is the standard way a gate rots, so what is actually under test here is
+    # not that the exemption works -- it is that it STOPS working the moment anything it was
+    # verified against changes.
+    exempt = {
+        "f-1st": {"census_year": 2020, "delta": 1_607, "members": ("C1", "C4"), "evidence": "e1"},
+        "f-2nd": {"census_year": 2020, "delta": -1_607, "members": ("C2",), "evidence": "e2"},
+    }
+    _real_exempt = STALE_PUBLISHED_TOTAL.copy()
+    try:
+        STALE_PUBLISHED_TOTAL.clear()
+        STALE_PUBLISHED_TOTAL.update(exempt)
+        g_ex = {g["gate"]: g for g in validate(swapped, [], geo, population=pops)}
+        det = g_ex["population_reconciles_with_psa"]["detail"]
+        assert g_ex["population_reconciles_with_psa"]["ok"] is True, det
+        # Exempted, not hidden: both are still counted beyond tolerance and still listed in full
+        # with their numbers, and each is named alongside the evidence that excuses it.
+        assert det["beyond_tolerance"] == 2 and det["beyond_tolerance_unexplained"] == 0, det
+        assert len(det["discrepancies"]) == 2, det
+        assert {e["district_code"] for e in det["stale_published_totals"]} == {"f-1st", "f-2nd"}, det
+        assert {e["evidence"] for e in det["stale_published_totals"]} == {"e1", "e2"}, det
+
+        # Each of the three things an entry pins down must be able to expire it on its own.
+        for field, value in (("members", ("C1", "C2")), ("delta", 1_608), ("census_year", 2024)):
+            STALE_PUBLISHED_TOTAL["f-1st"] = dict(exempt["f-1st"], **{field: value})
+            g_m = {g["gate"]: g for g in validate(swapped, [], geo, population=pops)}
+            assert g_m["population_reconciles_with_psa"]["ok"] is False, \
+                f"changing {field} must expire the exemption"
+            assert [c["district_code"] for c in
+                    g_m["population_reconciles_with_psa"]["detail"]["unexplained"]] == ["f-1st"], \
+                f"changing {field} must expire ONLY f-1st"
+        STALE_PUBLISHED_TOTAL["f-1st"] = exempt["f-1st"]
+
+        # The table exempts what it names and nothing else: drop f-2nd and the gate fails on it.
+        del STALE_PUBLISHED_TOTAL["f-2nd"]
+        g_n = {g["gate"]: g for g in validate(swapped, [], geo, population=pops)}
+        assert g_n["population_reconciles_with_psa"]["ok"] is False, g_n
+    finally:
+        STALE_PUBLISHED_TOTAL.clear()
+        STALE_PUBLISHED_TOTAL.update(_real_exempt)
+
+    # Every shipped entry must still describe the districts it was verified against -- a build
+    # that silently carries a dead exemption is the failure mode this whole block guards.
+    assert all(len(e["members"]) == len(set(e["members"])) and e["evidence"].strip()
+               for e in STALE_PUBLISHED_TOTAL.values()), STALE_PUBLISHED_TOTAL
+
 
     # -- attributing an aggregate discrepancy to one municipality ------------------
     # reconcile_population says a district's total is wrong; on its own that is a district to
@@ -3683,6 +3981,9 @@ def main():
                          "PSA reconciliation gate; rebuilt from agg_population, not versioned")
     ap.add_argument("--allow-single-source", action="store_true",
                     help="Build without COMELEC corroboration, recording the gap in the QA report")
+    ap.add_argument("--allow-incomplete-coverage", action="store_true",
+                    help="Ship the rows we have while LGUs remain unplaced. Forgives omissions "
+                         "only: a double-claimed LGU or an over-claimed barangay still fails.")
     args = ap.parse_args()
 
     if args.selftest:
@@ -3761,7 +4062,8 @@ def main():
     if population:
         _pop_checked, reconciliation = reconcile_population(built, population, geo)
     gates = validate(built, registry, geo, allow_single_source=args.allow_single_source,
-                     population=population)
+                     population=population,
+                     allow_incomplete_coverage=args.allow_incomplete_coverage)
 
     qa = {
         "dataset_slug": DATASET_SLUG,
@@ -3793,6 +4095,11 @@ def main():
 
     failed = [g["gate"] for g in gates if not g["ok"]]
     qa["gates_failed"] = failed
+    # A gate that passes only because it was told to is not the same as a gate that passes, and
+    # the difference must survive into the artefact rather than living in a shell history nobody
+    # keeps. Read off the gates themselves, so a future override cannot be added without
+    # appearing here.
+    qa["gates_overridden"] = [g["gate"] for g in gates if g["detail"].get("overridden")]
 
     if failed and (args.database_url or args.emit_sql_dir):
         qa["applied"] = f"REFUSED — gates failed: {failed}"

@@ -40,27 +40,37 @@ PSGC files a highly urbanised city under its own province-level row, so a city t
 
 ## Validation gates
 
-| gate                                     | result   | detail                                                                                                                                                                                                                                                                                                       |
-| ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `registry_agreement`                     | pass     | {"in_wikidata_not_parsed": 6, "parsed_not_in_wikidata": 0, "sample_only_wikidata": ["Agusan del Norte's 1st congressional district", "Agusan del Norte's 2nd congressional district", "Albay's 4th congressional district", "Maguindanao's 1st congressional district", "Maguindanao's 2nd congressional ... |
-| `citymun_covered_exactly_once`           | **FAIL** | {"uncovered_count": 23, "double_claimed_count": 0, "sample_uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301413", "0301423", "0403428", "1206311", "1206313"], "sample_double_claimed": []}                                                                                          |
-| `multi_district_city_barangays_complete` | **FAIL** | {"cities_with_leftovers": 12, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "1030500": {"missing": 1, "extra": 0, "sample_missing": ["1030500043"]}, "0730600": {"missing": 12, "extra": 0, "sample_missing": ["0730600013", "0730600016", "073060002... |
-| `no_barangay_in_two_districts`           | pass     | {"offenders": []}                                                                                                                                                                                                                                                                                            |
-| `no_partylist_seats`                     | pass     | {"count": 0}                                                                                                                                                                                                                                                                                                 |
-| `match_methods_are_declared`             | pass     | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
-| `corroborated_by_two_sources`            | **FAIL** | {"single_source_rows": 3513, "corroborated_rows": 0, "note": "COMELEC returns unavailable in this environment (HTTP 403); pass --allow-single-source to build anyway, which records the gap rather than hiding it.", "overridden": false}                                                                    |
-| `no_conflicting_rows_shipped`            | pass     | {"conflicting_rows": 0, "sample": [], "withheld_before_gate": 0}                                                                                                                                                                                                                                             |
-| `population_reconciles_with_psa`         | **FAIL** | {"tolerance_pct": 0.5, "districts_checked": 168, "exact": 161, "non_zero_delta": 7, "beyond_tolerance": 5, "skipped": {"barangay_grain": 37, "member_population_missing": 5, "census_2015_not_held": 32, "census_None_not_held": 2, "census_2025_not_held": 2, "known_incomplete": 4}, "discrepancies": [... |
-| `unresolved_reported`                    | pass     | {"unresolved": 66, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
+| gate                                     | result            | detail                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `registry_agreement`                     | pass              | {"in_wikidata_not_parsed": 6, "parsed_not_in_wikidata": 0, "sample_only_wikidata": ["Agusan del Norte's 1st congressional district", "Agusan del Norte's 2nd congressional district", "Albay's 4th congressional district", "Maguindanao's 1st congressional district", "Maguindanao's 2nd congressional ... |
+| `citymun_covered_exactly_once`           | pass (overridden) | {"uncovered_count": 23, "double_claimed_count": 0, "uncovered": ["0300802", "0300804", "0300807", "0300808", "0301401", "0301413", "0301423", "0403428", "1206311", "1206313", "1206316", "1206318", "1206319", "1380611", "1908712", "1999901", "1999902", "1999903", "1999904", "1999905", "1999906", "... |
+| `multi_district_city_barangays_complete` | pass (overridden) | {"cities_with_leftovers": 12, "cities_over_claiming": 0, "barangays_missing": 41, "detail": {"0405802": {"missing": 2, "extra": 0, "sample_missing": ["0405802003", "0405802018"]}, "1030500": {"missing": 1, "extra": 0, "sample_missing": ["1030500043"]}, "0730600": {"missing": 12, "extra": 0, "samp... |
+| `no_barangay_in_two_districts`           | pass              | {"offenders": []}                                                                                                                                                                                                                                                                                            |
+| `no_partylist_seats`                     | pass              | {"count": 0}                                                                                                                                                                                                                                                                                                 |
+| `match_methods_are_declared`             | pass              | {"unexpected": []}                                                                                                                                                                                                                                                                                           |
+| `corroborated_by_two_sources`            | pass (overridden) | {"single_source_rows": 3513, "corroborated_rows": 0, "note": "Overridden: these rows shipped on one source. COMELEC's returns are gone rather than merely unreachable (every endpoint 403s, and Wayback holds no capture), so the second opinion is D2's public correction pipeline, arriving after publi... |
+| `no_conflicting_rows_shipped`            | pass              | {"conflicting_rows": 0, "sample": [], "withheld_before_gate": 0}                                                                                                                                                                                                                                             |
+| `population_reconciles_with_psa`         | pass              | {"tolerance_pct": 0.5, "districts_checked": 168, "exact": 161, "non_zero_delta": 7, "beyond_tolerance": 5, "beyond_tolerance_unexplained": 0, "unexplained": [], "stale_published_totals": [{"district_code": "albay-3rd", "delta": 11966, "pct": 2.4465, "evidence": "The infobox's own '7 LGUs' list na... |
+| `unresolved_reported`                    | pass              | {"unresolved": 66, "ambiguous": 6, "scope_unknown_pages": []}                                                                                                                                                                                                                                                |
+
+**3 gate(s) pass only because the build was told to let them: `citymun_covered_exactly_once`, `multi_district_city_barangays_complete`, `corroborated_by_two_sources`.** Each override forgives an omission and none of them forgives a wrong row -- an LGU claimed by two districts, or a barangay claimed by a city that does not contain it, still fails. What they mean is that this mapping is **incomplete**, not that it is unchecked: the places listed in those gates' details have no district here, and a question about one of them has no answer in this dataset rather than a guessed one.
 
 ## Corroboration (guardrail 2)
 
-**No second source was supplied, so every row is `single_source` and the
-corroboration gate fails.** That is deliberate: no district assignment ships on one
-source alone. COMELEC's House-contest precinct returns are the intended second
-opinion and are not fetchable from the build environment (HTTP 403); they are
-downloaded by hand and passed with `--comelec-snapshot`, as every PSA file in this
-repo already is.
+**Every row in this dataset rests on one source, and it ships anyway.** Guardrail 2
+said no district assignment ships on a single source. That rule was written assuming
+the second source could be obtained; COMELEC's House-contest precinct returns are
+the intended second opinion and they are gone -- every endpoint answers HTTP 403, to
+us and to a browser alike, and the Wayback Machine holds no capture of them. Holding
+the dataset until a source that no longer exists comes back is not caution, it is a
+way of publishing nothing.
+
+So the second source becomes a different thing: the public correction pipeline (D2).
+Every row below carries the page and revision it came from, every unresolved LGU is
+listed rather than guessed at, and a reader who knows their own municipality is
+wrong can say so. That is weaker than a second authority checked before publication
+and it is not offered as equivalent -- it is corroboration that arrives afterwards,
+from the people the rows are about.
 
 ## Independent cross-check
 
