@@ -8436,3 +8436,116 @@ later.
 `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean — **1020 tests, up
 from 1007**. `npx prettier --check` clean on every file touched. No migration, no provider change,
 no change to any existing code path.
+
+## 2026-09-03 — D1.6a: the mapping ships, single-source, and the gaps ship with it
+
+3,513 rows are in the database. They rest on one source, 23 municipalities have no row at all, and
+both of those facts are printed on every surface that shows the data. This entry is about why that
+is the right trade and what had to be built before it could be made honestly.
+
+### The decision the owner made
+
+Guardrail 2 said no district assignment ships on a single source. It was written in D1.1 assuming
+the second source could be obtained. By D1.3g it was established that it cannot: COMELEC's
+House-contest precinct returns answer HTTP 403 to this environment **and** to the owner's own
+browser, the Wayback Machine holds no capture of the JSON endpoints, psa.gov.ph and
+congress.gov.ph 403 as well, and the only mirror is unreachable and unlicensed. The source is gone,
+not busy.
+
+A rule whose precondition has failed is not satisfied by waiting. The owner's call was to ship
+single-source with **D2's public correction pipeline as the second source** — corroboration that
+arrives after publication, from the people the rows are about, instead of from a second authority
+before it. That is weaker, it is recorded as weaker, and it is not described anywhere as
+equivalent.
+
+### Three gates were failing. Only one of them was the ship decision
+
+`--allow-single-source` overrides the corroboration gate and nothing else, so the other two failures
+had to be dealt with on their own terms rather than swept along with it.
+
+**`population_reconciles_with_psa` was not a coverage problem — it was a wrong gate reading.** Five
+districts sat beyond the 0.5% tolerance. Every one of them turned out to be a stale figure in the
+source rather than a misassignment, and the evidence is unusually strong: for each, the district
+article's **own** infobox LGU list enumerates exactly the members this build assigns, while the
+population field three lines above it disagrees. Pampanga's 2nd names its six municipalities
+including Porac and then reports a total 141,932 short — Porac alone is 140,751 of that. The
+province table on _Legislative districts of Pampanga_ gives 655,973, which is this build's sum to
+the person.
+
+That is one source contradicting itself. The independent check settles it: `districts_generated.json`
+— the COMELEC-derived validation set — places **all 45** of those municipalities in the districts
+this build assigns, and puts nothing else in them. Composition confirmed twice, in both directions.
+
+So the five are exempted **by name**, in `STALE_PUBLISHED_TOTAL`, and the entries are
+**self-checking**: each carries the exact member set and the exact delta it was verified against.
+Add a member, drop one, or let PSA revise a population, and the entry stops matching and the
+district falls straight back through to the gate. An exemption that cannot expire is not an
+exemption, it is a deletion. Four mutations confirm it: removing the member-set check, the
+delta/year check, the gate's use of `unexplained`, and filtering exempted rows out of the published
+discrepancy list are each caught by `--selftest`.
+
+**A correction to D1.3i.** That increment named Carasi (1,607 people) as a probable misassignment
+because Ilocos Norte's 1st and 2nd are wrong by exactly its population in opposite directions. The
+arithmetic was right about which municipality explains the gap; the conclusion was wrong. Both
+district articles' own LGU lists put Carasi in the 1st, and so does the validation set. Two sources
+agreeing on the composition outrank an inference drawn from two totals. It is reported as a stale
+pair of published figures now, not as a suspected error in the mapping.
+
+**The two coverage gates were split along the seam that matters**, rather than switched off.
+`--allow-incomplete-coverage` forgives an LGU that has **no** row; it can never forgive one with a
+**wrong** row. A double-claimed LGU still fails `citymun_covered_exactly_once` with the flag in
+force, and `no_barangay_in_two_districts` is untouched by it entirely. The distinction is real:
+an uncovered place means a reader asking about it gets nothing, which is true; a double-claimed
+place means two districts assert it and at least one is lying.
+
+Both gates also print their gaps **in full** rather than a ten-row sample once overridden, because
+a gap that ships is a gap the reader is owed by name. The generated doc renders an overridden gate
+as `pass (overridden)`, never as `pass` — rendering the two identically is how a reader comes to
+believe a dataset is complete when the build knows it is not.
+
+### What is in the database
+
+| table                      |  rows | verified                          |
+| -------------------------- | ----: | --------------------------------- |
+| `dim_legislative_district` |   250 | md5 `f269ae82…` matches the build |
+| `geo_district_map`         | 3,513 | md5 `b6d5b310…` matches the build |
+| `district_representative`  |   194 | md5 `e7fa074f…` matches the build |
+
+Loaded through the Supabase MCP rather than `--database-url` (this environment holds no connection
+string), which meant hand-carrying SQL through tool calls. The rows were therefore emitted in a
+compressed encoding — per-district geo-code arrays with a shared prefix — and the **md5 of every
+row's `district_code`, `geo_code`, `geo_level`, `match_method` and `source_ref` was computed on both
+sides and compared**. Compression that is verified is not the same as compression that is trusted;
+the first attempt at it dropped every single-member group, because a prefix that swallows a code
+whole leaves `unnest('{}')` with nothing to emit.
+
+Re-checked against the live database rather than asserted from the build report: 0 geo codes absent
+from `dim_geo`, 0 `geo_level` mismatches against `dim_geo`, 0 places claimed by two districts, 0
+districts with no members, every row `single_source` and `auto`. 1,628 of 1,651 municipalities and
+cities are covered — 98.6%.
+
+### The 23 that are not covered, by name
+
+Eight are the BARMM Special Geographic Area (`1999901`–`1999908`), created after the district
+articles were written. Five are in South Cotabato, four in Bataan, three in Bulacan, plus Santa Rosa
+(Laguna), Talitay (Maguindanao del Norte), and Paco — one of Manila's ten administrative districts,
+which PSGC models as a citymun and no district article enumerates. 41 barangays across 12
+multi-district cities are likewise unplaced, Cebu City's 12 being the largest single block.
+
+None of them is guessed at. Guardrail 1 has no fuzzy rung and did not acquire one here.
+
+### Standards
+
+`--selftest` passes. Every new behaviour was mutation-checked: four mutations against the
+stale-published-total exemption, eight against the coverage override. Four of those eight concern
+how much of the gap list is printed, in both directions — truncating it under the override and
+never truncating it without one — and the first fixture caught neither, because with a single
+uncovered town and a single part-placed city a ten-row sample and the full list are the same
+thing. The fixture grew to eleven uncovered towns and eleven part-placed cities to fix that. Seven
+of the eight are caught; the one survivor is expected and documented: `cities_over_claiming` cannot fire from this build's own construction, since `by_city`
+buckets each barangay under the parent `dim_geo` gives it, so a claimed barangay is never foreign to
+the city it is counted against. It is kept as a backstop and asserted at zero so the claim stays
+true rather than assumed.
+
+`docs/LEGISLATIVE_DISTRICTS.md` regenerated. No migration — the tables, their RLS policies and the
+`corroboration` column all predate this increment.
