@@ -2,6 +2,14 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { PresentButton } from "@/components/present/present-button";
+import { PresentationProvider } from "@/components/present/presentation-context";
+import { PresentationSlide } from "@/components/present/presentation-slide";
+import { AnswerMarkdown } from "./answer-markdown";
+import { AssistantFigureView } from "./assistant-figure";
+import { RouteChips } from "./route-chips";
+import type { AssistantFigure } from "@/lib/ai/figure-from-payload";
+import type { AssistantRoute, PinnedRoute, RouteScope } from "@/lib/ai/route";
 
 type Turn = { role: "user" | "assistant" | "system"; content: string };
 type ToolCall = { name: string; args: Record<string, unknown> };
@@ -22,9 +30,11 @@ type Citation = {
 };
 
 type StreamEvent =
+  | { type: "route"; route: AssistantRoute }
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
-  | { type: "message"; content: string; provider: string | null }
+  | { type: "message"; content: string; provider: string | null; followUps: string[] }
   | { type: "citations"; citations: Citation[]; droppedPages: number[] }
+  | { type: "figure"; figure: AssistantFigure }
   | { type: "capacity"; message: string }
   | { type: "error"; message: string };
 
@@ -46,8 +56,48 @@ type StreamEvent =
  * so the model never authors them; a page it named but was not given is dropped upstream by
  * `auditCitations` and reported here rather than passing silently.
  */
+/**
+ * Increment 5.2. Five starters chosen to exercise a different lane each (§5.1's router), so the
+ * empty state teaches what this surface can do rather than only that it accepts text. The public
+ * launcher has had these since Phase 2; the admin chat opened on a paragraph of prose.
+ */
+const STARTER_QUESTIONS = [
+  "Which provinces are outliers on honorarium receipt?",
+  "Is DC No. 2025-0549 still the current UUC for PHC issuance?",
+  "Where does pct_accredited come from, and what built it?",
+  "Which fields have the largest gaps in the BHW census?",
+  "How does Basilan compare with its provincial peers on accreditation?",
+];
+
+/**
+ * A slide is named by the question it answered, not "Answer 3" — a deck opened in a briefing has
+ * to be navigable from the overview grid, where the question is the only useful label.
+ */
+function slideTitleFor(turns: Turn[], index: number): string {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    if (turns[i].role === "user") {
+      const q = turns[i].content.trim();
+      return q.length > 70 ? `${q.slice(0, 69)}…` : q;
+    }
+  }
+  return "Answer";
+}
+
 export function AssistantChat() {
   const [turns, setTurns] = useState<Turn[]>([]);
+  // Increment 5.1. Three separate pieces of state, because they have three different lifetimes.
+  // `route` is what the server decided for the last question and is replaced every turn.
+  // `pinned` is a lane/output override the reader chose and persists until they change it.
+  // `carriedScope` is the last resolved place, offered to the next question only as a fallback —
+  // pinning it instead would let a stale Basilan win over the Cebu a new question just named.
+  const [route, setRoute] = useState<AssistantRoute | null>(null);
+  const [pinned, setPinned] = useState<PinnedRoute>({});
+  const [carriedScope, setCarriedScope] = useState<RouteScope | null>(null);
+  // Increment 5.2. Derived server-side from the turn's tool payloads, so every offered question is
+  // about something that was actually returned.
+  const [followUps, setFollowUps] = useState<string[]>([]);
+  // Increment 5.5. Built server-side from the tool payloads; this holds values, never text.
+  const [figure, setFigure] = useState<AssistantFigure | null>(null);
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [citations, setCitations] = useState<Citation[]>([]);
   const [droppedPages, setDroppedPages] = useState<number[]>([]);
@@ -93,16 +143,52 @@ export function AssistantChat() {
     }
   }
 
-  async function send(question: string) {
+  /**
+   * Re-ask the last question with a chip changed. The turn is replayed rather than appended: the
+   * reader is correcting how the question was read, not asking a second one, so a new pair of
+   * bubbles would make the transcript claim they asked twice.
+   */
+  function repin(next: {
+    lane?: AssistantRoute["lane"];
+    output?: AssistantRoute["output"];
+    clearScope?: true;
+  }) {
+    if (!lastQuestion || status === "sending") return;
+    const { clearScope, ...pins } = next;
+    const mergedPins: PinnedRoute = { ...pinned, ...pins };
+    const nextCarried = clearScope ? null : carriedScope;
+    setPinned(mergedPins);
+    setCarriedScope(nextCarried);
+    const withoutLastAnswer = turns.slice(
+      0,
+      turns.findLastIndex((t) => t.role === "user"),
+    );
+    setTurns(withoutLastAnswer);
+    void send(lastQuestion.content, withoutLastAnswer, mergedPins, nextCarried);
+  }
+
+  async function send(
+    question: string,
+    baseTurns?: Turn[],
+    pinnedOverride?: PinnedRoute,
+    carriedOverride?: RouteScope | null,
+  ) {
     const text = question.trim();
     if (!text || status === "sending") return;
 
-    const history = [...turns, { role: "user" as const, content: text }];
+    // `repin` passes its own values: it calls this synchronously, before React has committed the
+    // state it just set, so reading `pinned`/`carriedScope` here would use the previous turn's.
+    const pinnedRoute = pinnedOverride ?? pinned;
+    const scope = carriedOverride === undefined ? carriedScope : carriedOverride;
+    const history = [...(baseTurns ?? turns), { role: "user" as const, content: text }];
     setTurns(history);
     setInput("");
     setToolCalls([]);
     setCitations([]);
     setDroppedPages([]);
+    setRoute(null);
+    setFollowUps([]);
+    setFigure(null);
     setProvider(null);
     setReport(null);
     setReportState("idle");
@@ -112,7 +198,13 @@ export function AssistantChat() {
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history.filter((t) => t.role !== "system") }),
+        body: JSON.stringify({
+          messages: history.filter((t) => t.role !== "system"),
+          // Omitted entirely when nothing is pinned, so the server's schema sees `undefined`
+          // rather than an empty object it would have to treat as cleared fields.
+          ...(Object.keys(pinnedRoute).length > 0 ? { pinnedRoute } : {}),
+          ...(scope ? { carriedScope: scope } : {}),
+        }),
       });
 
       if (res.status === 401) {
@@ -148,11 +240,20 @@ export function AssistantChat() {
         for (const line of lines) {
           if (!line.trim()) continue;
           const event: StreamEvent = JSON.parse(line);
-          if (event.type === "tool_call") {
+          if (event.type === "route") {
+            setRoute(event.route);
+            // Offer this turn's place to the next question. Lane and output are deliberately not
+            // carried: they describe *this* question, and applying them silently would misroute
+            // the next one.
+            setCarriedScope(event.route.scope);
+          } else if (event.type === "tool_call") {
             setToolCalls((prev) => [...prev, { name: event.name, args: event.args }]);
           } else if (event.type === "message") {
             setTurns((prev) => [...prev, { role: "assistant", content: event.content }]);
             setProvider(event.provider);
+            setFollowUps(event.followUps);
+          } else if (event.type === "figure") {
+            setFigure(event.figure);
           } else if (event.type === "citations") {
             setCitations(event.citations);
             setDroppedPages(event.droppedPages);
@@ -173,196 +274,267 @@ export function AssistantChat() {
     }
   }
 
+  /**
+   * Increment 5.5. The deck's header facts track the live route, which is why the provider lives
+   * inside this client component rather than on the server page: the page cannot know which place
+   * the current question resolved to.
+   */
+  const deckMeta = {
+    pageLabel: "Internal assistant",
+    areaName: route?.scope?.geoName ?? "Philippines",
+    filterChips: route ? [route.lane, route.output].filter((c) => c !== "answer") : [],
+    captionLine: "Grounded in tool results · figures pass the numeric audit · admin-only",
+    brandLabel: "BHW Connect",
+  };
+
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        ref={listRef}
-        className="flex max-h-[60vh] min-h-[16rem] flex-col gap-3 overflow-y-auto rounded-lg border border-border p-4"
-      >
-        {turns.length === 0 && (
-          <p className="text-sm text-muted">
-            Ask across every registered dataset, or about anything in the ingested documents.
-            Figures are grounded in tool results and pass the same numeric audit as the public chat;
-            document claims come back with the passage they were drawn from, which you can open and
-            read. Anything it cannot ground, it drops.
-          </p>
-        )}
+    <PresentationProvider meta={deckMeta}>
+      <div className="flex flex-col gap-3">
+        <div
+          ref={listRef}
+          className="flex max-h-[60vh] min-h-[16rem] flex-col gap-3 overflow-y-auto rounded-lg border border-border p-4"
+        >
+          {turns.length === 0 && (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted">
+                Ask across every registered dataset, or about anything in the ingested documents.
+                Figures are grounded in tool results and pass the same numeric audit as the public
+                chat; document claims come back with the passage they were drawn from, which you can
+                open and read. Anything it cannot ground, it drops.
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {STARTER_QUESTIONS.map((question) => (
+                  <li key={question}>
+                    <button
+                      type="button"
+                      onClick={() => void send(question)}
+                      className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-foreground"
+                    >
+                      {question}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        <ul className="flex flex-col gap-3">
-          {turns.map((turn, i) => (
-            <li
-              key={i}
-              className={
-                turn.role === "user"
-                  ? "ml-8 rounded-md bg-accent-subtle px-3 py-2 text-sm"
-                  : turn.role === "system"
-                    ? "rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted"
-                    : "mr-8 whitespace-pre-wrap rounded-md border border-border px-3 py-2 text-sm"
-              }
-            >
-              {turn.content}
-            </li>
-          ))}
-        </ul>
+          <ul className="flex flex-col gap-3">
+            {turns.map((turn, i) => (
+              <li
+                key={i}
+                className={
+                  turn.role === "user"
+                    ? "ml-8 whitespace-pre-wrap rounded-md bg-accent-subtle px-3 py-2 text-sm"
+                    : turn.role === "system"
+                      ? "rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted"
+                      : "mr-8 rounded-md border border-border px-3 py-2 text-sm"
+                }
+              >
+                {/* Only the assistant's own audited text is parsed. A user turn and a system notice
+                  stay literal — the reader's question should render as they typed it.
 
-        {toolCalls.length > 0 && (
-          <ul className="flex flex-col gap-1 rounded-md bg-surface p-3">
-            {toolCalls.map((call, i) => (
-              <li key={i} className="font-mono text-[11px] text-muted">
-                <span className="font-semibold">{call.name}</span>{" "}
-                {Object.keys(call.args).length > 0 && JSON.stringify(call.args)}
+                  An answer is also a slide (5.5): `components/present/` needs no change, because
+                  slides register themselves and order by DOM position, so a deck of a chat
+                  session is its answers in the order they were given. */}
+                {turn.role === "assistant" ? (
+                  <PresentationSlide id={`answer-${i}`} title={slideTitleFor(turns, i)}>
+                    <AnswerMarkdown text={turn.content} />
+                  </PresentationSlide>
+                ) : (
+                  turn.content
+                )}
               </li>
             ))}
           </ul>
-        )}
 
-        {droppedPages.length > 0 && (
-          <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted">
-            Dropped {droppedPages.length === 1 ? "a sentence citing slide" : "sentences citing slides"}{" "}
-            {droppedPages.join(", ")}: no document search this turn returned{" "}
-            {droppedPages.length === 1 ? "it" : "them"}, so the citation could not be checked.
-          </p>
-        )}
-
-        {citations.length > 0 && (
-          <div className="rounded-md border border-border p-3">
-            <p className="mb-2 text-xs font-medium">
-              {citations.length} source {citations.length === 1 ? "passage" : "passages"} retrieved
-              for this answer
-            </p>
-            <ol className="flex flex-col gap-2">
-              {citations.map((citation) => (
-                <li key={citation.chunkId} className="text-xs">
-                  <details>
-                    <summary className="cursor-pointer">
-                      <span className="font-medium">{citation.label}</span>
-                      {citation.heading && (
-                        <span className="text-muted"> — {citation.heading}</span>
-                      )}
-                      {citation.asOf && (
-                        <span className="text-muted"> · as of {citation.asOf}</span>
-                      )}
-                    </summary>
-                    {/* The passage itself, not a summary of it: a citation is only a check if the
-                        reader can compare the claim against the words it came from. */}
-                    <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded bg-surface p-2 text-[11px] leading-relaxed">
-                      {citation.text}
-                      {citation.truncated && "\n…(passage continues)"}
-                    </pre>
-                    <p className="mt-1 text-muted">
-                      <Link
-                        href={`/admin/assistant/source/${citation.chunkId}`}
-                        className="underline"
-                      >
-                        Open the stored chunk
-                      </Link>{" "}
-                      <span className="font-mono">
-                        #{citation.chunkId} · chars {citation.charStart.toLocaleString()}–
-                        {citation.charEnd.toLocaleString()}
-                      </span>
-                    </p>
-                  </details>
+          {toolCalls.length > 0 && (
+            <ul className="flex flex-col gap-1 rounded-md bg-surface p-3">
+              {toolCalls.map((call, i) => (
+                <li key={i} className="font-mono text-[11px] text-muted">
+                  <span className="font-semibold">{call.name}</span>{" "}
+                  {Object.keys(call.args).length > 0 && JSON.stringify(call.args)}
                 </li>
               ))}
-            </ol>
-          </div>
-        )}
+            </ul>
+          )}
 
-        {/*
+          {figure && (
+            <div className="mr-8">
+              <PresentationSlide id="assistant-figure" title={figure.title}>
+                <AssistantFigureView figure={figure} />
+              </PresentationSlide>
+            </div>
+          )}
+
+          {droppedPages.length > 0 && (
+            <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted">
+              Dropped{" "}
+              {droppedPages.length === 1 ? "a sentence citing slide" : "sentences citing slides"}{" "}
+              {droppedPages.join(", ")}: no document search this turn returned{" "}
+              {droppedPages.length === 1 ? "it" : "them"}, so the citation could not be checked.
+            </p>
+          )}
+
+          {citations.length > 0 && (
+            <div className="rounded-md border border-border p-3">
+              <p className="mb-2 text-xs font-medium">
+                {citations.length} source {citations.length === 1 ? "passage" : "passages"}{" "}
+                retrieved for this answer
+              </p>
+              <ol className="flex flex-col gap-2">
+                {citations.map((citation) => (
+                  <li key={citation.chunkId} className="text-xs">
+                    <details>
+                      <summary className="cursor-pointer">
+                        <span className="font-medium">{citation.label}</span>
+                        {citation.heading && (
+                          <span className="text-muted"> — {citation.heading}</span>
+                        )}
+                        {citation.asOf && (
+                          <span className="text-muted"> · as of {citation.asOf}</span>
+                        )}
+                      </summary>
+                      {/* The passage itself, not a summary of it: a citation is only a check if the
+                        reader can compare the claim against the words it came from. */}
+                      <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded bg-surface p-2 text-[11px] leading-relaxed">
+                        {citation.text}
+                        {citation.truncated && "\n…(passage continues)"}
+                      </pre>
+                      <p className="mt-1 text-muted">
+                        <Link
+                          href={`/admin/assistant/source/${citation.chunkId}`}
+                          className="underline"
+                        >
+                          Open the stored chunk
+                        </Link>{" "}
+                        <span className="font-mono">
+                          #{citation.chunkId} · chars {citation.charStart.toLocaleString()}–
+                          {citation.charEnd.toLocaleString()}
+                        </span>
+                      </p>
+                    </details>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/*
           Increment 2.4. Deliberately one click to open and one to file, with the note optional:
           §10's list only grows if reporting is cheaper than shrugging. A reader who knows an
           answer is wrong but not why should still be able to say so.
         */}
-        {lastAnswer && status === "idle" && (
-          <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
-            {reportState === "saved" ? (
-              <p className="text-xs text-muted">
-                Filed as a regression case. It will be re-run against later builds.
-              </p>
-            ) : report === null ? (
-              <div className="flex items-center gap-3">
+          {followUps.length > 0 && status === "idle" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted">Next:</span>
+              {followUps.map((question) => (
                 <button
+                  key={question}
                   type="button"
-                  onClick={() => setReport("")}
-                  className="text-xs underline text-muted hover:text-foreground"
+                  onClick={() => void send(question)}
+                  className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-foreground"
                 >
-                  This answer is wrong
+                  {question}
                 </button>
-                {reportState === "failed" && (
-                  <span className="text-xs text-muted">
-                    That wasn&apos;t recorded — nothing was saved. Try once more.
-                  </span>
-                )}
-              </div>
-            ) : (
-              <>
-                <label htmlFor="regression-note" className="text-xs font-medium">
-                  What should it have said? Optional — filing it without a note is still useful.
-                </label>
-                <textarea
-                  id="regression-note"
-                  value={report}
-                  onChange={(e) => setReport(e.target.value)}
-                  rows={3}
-                  maxLength={4000}
-                  placeholder="e.g. the honorarium figure is the Magna Carta proposal, not the current allocation"
-                  className="rounded-md border border-border bg-background px-3 py-2 text-xs"
-                />
-                <div className="flex items-center gap-2">
+              ))}
+            </div>
+          )}
+
+          {lastAnswer && status === "idle" && (
+            <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
+              {reportState === "saved" ? (
+                <p className="text-xs text-muted">
+                  Filed as a regression case. It will be re-run against later builds.
+                </p>
+              ) : report === null ? (
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={reportWrong}
-                    disabled={reportState === "saving"}
-                    className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground disabled:opacity-50"
+                    onClick={() => setReport("")}
+                    className="text-xs underline text-muted hover:text-foreground"
                   >
-                    {reportState === "saving" ? "Filing…" : "File it"}
+                    This answer is wrong
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setReport(null)}
-                    className="text-xs text-muted underline"
-                  >
-                    Cancel
-                  </button>
-                  <span className="text-xs text-muted">
-                    Stores the question, this answer, {toolCalls.length}{" "}
-                    {toolCalls.length === 1 ? "tool call" : "tool calls"} with their arguments
-                    {citations.length > 0 && `, ${citations.length} cited passages`} and the
-                    provider — enough to replay it.
-                  </span>
+                  {reportState === "failed" && (
+                    <span className="text-xs text-muted">
+                      That wasn&apos;t recorded — nothing was saved. Try once more.
+                    </span>
+                  )}
                 </div>
-              </>
-            )}
-          </div>
-        )}
+              ) : (
+                <>
+                  <label htmlFor="regression-note" className="text-xs font-medium">
+                    What should it have said? Optional — filing it without a note is still useful.
+                  </label>
+                  <textarea
+                    id="regression-note"
+                    value={report}
+                    onChange={(e) => setReport(e.target.value)}
+                    rows={3}
+                    maxLength={4000}
+                    placeholder="e.g. the honorarium figure is the Magna Carta proposal, not the current allocation"
+                    className="rounded-md border border-border bg-background px-3 py-2 text-xs"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={reportWrong}
+                      disabled={reportState === "saving"}
+                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground disabled:opacity-50"
+                    >
+                      {reportState === "saving" ? "Filing…" : "File it"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReport(null)}
+                      className="text-xs text-muted underline"
+                    >
+                      Cancel
+                    </button>
+                    <span className="text-xs text-muted">
+                      Stores the question, this answer, {toolCalls.length}{" "}
+                      {toolCalls.length === 1 ? "tool call" : "tool calls"} with their arguments
+                      {citations.length > 0 && `, ${citations.length} cited passages`} and the
+                      provider — enough to replay it.
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
-        {status === "sending" && <p className="text-xs text-muted">Working…</p>}
-      </div>
+          {status === "sending" && <p className="text-xs text-muted">Working…</p>}
+        </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(input);
-        }}
-        className="flex gap-2"
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. which provinces are outliers on honorarium receipt?"
-          maxLength={4000}
-          disabled={status === "sending"}
-          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={status === "sending" || input.trim().length === 0}
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
+        {route && <RouteChips route={route} disabled={status === "sending"} onChange={repin} />}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send(input);
+          }}
+          className="flex gap-2"
         >
-          Ask
-        </button>
-      </form>
-    </div>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="e.g. which provinces are outliers on honorarium receipt?"
+            maxLength={4000}
+            disabled={status === "sending"}
+            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={status === "sending" || input.trim().length === 0}
+            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
+          >
+            Ask
+          </button>
+          {/* Renders nothing until an answer has registered as a slide. */}
+          <PresentButton variant="secondary" />
+        </form>
+      </div>
+    </PresentationProvider>
   );
 }

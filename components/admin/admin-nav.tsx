@@ -9,6 +9,9 @@ const LINKS = [
   { href: "/admin/ai-quota", label: "AI quota" },
   { href: "/admin/answer-bank", label: "Answer bank" },
   { href: "/admin/assistant", label: "Assistant" },
+  // Increment 5.4. The profile itself is per-geography, so this points at the national one; the
+  // page carries a place search to get anywhere else.
+  { href: "/admin/place/national/PH", label: "Area profile" },
   { href: "/admin/kb-review", label: "KB review" },
   { href: "/admin/regressions", label: "Regressions" },
 ];

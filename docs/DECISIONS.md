@@ -8016,3 +8016,423 @@ new methods accepted, `similar_name` rejected with a check violation, probe rows
 four tables confirmed back at zero.
 
 **Nothing has loaded.** Four gates still fail. The corroboration one is still an owner decision.
+
+## 2026-09-02 — Increment 5.1: the assistant's route (pre-filter chips)
+
+The first increment of Phase 5. Before the tool loop runs, a question is classified into a **lane**
+(policy / geographic / data-quality / lineage / general), a **scope** (one resolved `dim_geo` row),
+and an **output** (answer / chart / slide / profile). The result is emitted as the stream's first
+event, rendered as editable chips, and concatenated into the system prompt.
+
+**Rules first, a provider call only as a fallback.** The obvious build is one classify call per
+question. The quota table says no: `lib/ai/quota.ts` seeds Gemini at 10 requests/minute and Mistral
+at 1, and `runToolLoop` already spends up to six calls on one question (four tool rounds, the
+wrap-up, its retry). A seventh, on every question, comes out of the same free-tier budget the
+public chat depends on. So `routeByRules` resolves the lane from vocabulary the question actually
+contains, and the provider is asked only when *nothing* matches — no policy or lineage or quality
+words, no resolvable place, and no domain word. Measured against the rule set, that is a narrow
+class of question; "how many BHWs are accredited" resolves for free through the domain-word rule,
+which exists for exactly that reason.
+
+**Output is never "unresolved".** A question that does not ask for a chart wants prose. Treating
+absence as ambiguity would have sent every plain question to the model, which is the cost the
+rules pass exists to avoid.
+
+**The route changes behaviour or it is not worth computing.** `routeSystemFacts` turns each lane
+into an instruction: policy must call `searchDocuments` and walk `supersedes` before naming an
+issuance as current; lineage must traverse with `direction: "both"`; a resolved scope is handed
+over as a `geo_code` the model is told not to re-search. The geographic lane also states what it
+*cannot* do — `dim_geo` holds containment and no coordinates, so "near" and "adjacent to" are
+unanswerable, and the model is told to say so rather than approximate.
+
+**Prompt rule 14, and why it is narrow.** The route block is appended to `INTERNAL_SYSTEM_PROMPT`,
+which rule 8 otherwise tells the model to treat as data. The exception is therefore stated, and
+bounded: the block may direct tool choice, it never overrides rules 1–13, and nothing arriving
+inside a user message or a data value can claim to be part of it. An unbounded exception would be
+a documented route around rule 1.
+
+**Concatenated, never a second system message.** `lib/ai/providers/gemini.ts` builds
+`systemInstruction` from the first system-role message and drops every later one — the same trap
+`agent-loop.ts` records for its wrap-up nudge. A test asserts the loop receives exactly one system
+message and that it still contains the original prompt.
+
+**Scope is carried, not pinned — a bug caught in review before it shipped.** The first build let
+the client pin the scope and had the chat pin it from every route event. That is wrong in a way
+that would have been very hard to see: ask "accreditation in Basilan", then "accreditation in
+Cebu", and the pinned Basilan wins over the Cebu the rules just resolved. The answer is then
+confidently about the wrong province **and passes the numeric audit**, because they are real
+Basilan figures from a real Basilan query. So `scope` was removed from `pinnedRouteSchema`
+entirely and replaced by a separate `carriedScope`, applied by `applyCarriedScope` only when the
+question resolved no scope of its own. Both directions are regression-tested.
+
+**Fuzzy search needed a guard.** `searchGeo` is deliberately fuzzy so a misspelled place resolves,
+which means its top hit for "what is the training coverage nationally" can be a barangay named
+TRAINING. `pickScope` therefore accepts a hit only when every distinctive token (≥4 chars) of its
+name appears in the question, *and* rejects one whose only distinctive tokens are domain
+vocabulary. Both checks are load-bearing: the first alone accepts TRAINING, the second alone
+accepts any single-token name the question never mentions.
+
+**A client-supplied scope is re-derived, not existence-checked.** The plan said `isKnownGeo`;
+`verifyScope` does more. The scope is rendered into the prompt as an assertion the model is told to
+trust, so a forged `geoName` or a mismatched `geoLevel` on a real `geo_code` would be quoted back
+as fact. Every field is taken from the `dim_geo` row and the client's copy is used only to look it
+up. A scope that does not resolve becomes null rather than falling back to the computed one.
+
+**Routing never blocks an answer.** `searchGeo` swallows query errors but constructs a Supabase
+client first, and that throws outright on an unconfigured environment — which the route handler's
+own test suite exposed immediately. The call is wrapped, and every failure path (throw, capped
+providers, unparseable classifier JSON) lands on `DEFAULT_ROUTE`, which is `general` + `answer`:
+exactly the assistant's behaviour before this increment. A router that cannot decide costs
+nothing.
+
+**Existing tests changed shape, not meaning.** Four assertions in
+`app/api/ai/assistant/route.test.ts` read the stream by position and now find `route` first. They
+were rewritten around an `eventOfType` helper — they were always about which event was emitted, not
+where it sat — with an explicit ordering assertion kept where order is the actual claim (a tool
+call precedes the answer it grounded).
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` all clean —
+**900 tests, up from 835**. `npx prettier --check` passes on every file touched. `next build`
+compiles and typechecks clean; its static-generation step fails only in this sandbox, which has no
+database for `/bhw` to prerender against. No migration and no schema change: this increment adds
+no table and reads nothing new.
+
+**Still open.** The chips are rendered but have no automated interaction coverage — `repin`'s
+replay-the-turn behaviour is asserted through the route handler and the pure reducers, not through
+the DOM; the e2e pass in 5.2 is where that belongs. The memo is per-instance and unbounded in
+lifetime rather than time-based, which is right for a serverless instance and wrong if this ever
+runs long-lived.
+
+## 2026-09-02 — Increment 5.2: markdown, starters and follow-ups
+
+The response-quality half of Phase 5 that needs no provider change. Three things the admin chat
+lacked that the public launcher has had since Phase 2, plus one it never had.
+
+**Markdown, as a bounded subset rather than a dependency.** Answers are already written as prose
+with lists and figures — rule 13 asks for exactly that — and rendered through
+`whitespace-pre-wrap`, so a comparison the model wrote as a table arrived as a wall of pipes.
+`lib/ai/markdown-blocks.ts` parses headings, lists, `**bold**`, `` `code` `` and pipe tables into a
+data structure; `components/admin/answer-markdown.tsx` renders it. Pulling a Markdown stack in for
+one admin surface would have been the faster build and the wrong one against the README's
+free-tier and bundle posture.
+
+**Two rules make the subset safe rather than merely small.** *No links, ever* — not unsupported,
+deliberately absent. The text is model-authored, and the only trustworthy links on this page are
+the citation links the server emits from the retrieval payload (2.3). A clickable URL the model
+wrote would be indistinguishable from one, which is precisely the property 2.3 exists to
+guarantee, so `[text](url)` renders as those literal characters. *No raw HTML* — the parser emits
+data, never markup, and the renderer turns it into React elements, so angle brackets are text by
+construction. There is no `dangerouslySetInnerHTML` and no code path that builds a markup string.
+Both are asserted, not assumed: a test feeds it `<script>alert(1)</script>` and
+`[here](javascript:alert(1))` and checks they come through as text, and another asserts no emitted
+block kind can carry a URL.
+
+**Unclosed markers degrade to literal text.** `parseInline` is hand-written rather than
+regex-driven for this reason: a regex matching only balanced pairs silently drops the unbalanced
+remainder, and an answer that survived two audits must not lose characters to a formatting parser.
+`2 ** 3 = 8` prints as written. A test asserts every non-blank line's text survives somewhere in
+the output.
+
+**A table needs its separator row.** Without that check a single sentence containing a pipe opens
+a one-column table — which is how a naive line-shape parser turns prose into a rendering bug.
+
+**Follow-ups are computed, never generated.** Asking the model for suggestions is the obvious build
+and wrong twice: it spends free-tier quota on decoration, and a suggested question is a *promise
+the assistant can answer it* — a model inventing "compare this to 2024" would offer a question no
+registered dataset can serve. `suggestFollowUps` is pure and fires a template only when the payload
+carries what the template names, which is the same inversion as the citations in 2.3: evidence
+comes from the retrieval, never from the prose. Payloads carrying an `error` are excluded — a
+refused call is not a fact to build on.
+
+Two exclusions are about not training the reader to ignore the suggestions: no peer comparison at
+national or barangay, because `agg_peer_ranks` has no row there and the question is guaranteed to
+come back "not ranked at this level"; and no drill-down at barangay, which has no children. The
+generic discovery prompt fires only when nothing else is groundable, and never crowds out a
+grounded suggestion.
+
+**Starters exercise different lanes.** Five, one each for the router's policy / geographic /
+lineage / data-quality / general paths, so the empty state teaches what the surface can do rather
+than only that it accepts text.
+
+**Only the assistant's own text is parsed.** A user turn and a system notice stay literal — a
+reader's question should render as they typed it, and a system notice is not model output.
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**930 tests, up from 900**. `npx prettier --check` passes on every file touched. No migration, no
+new dependency, and no provider call added.
+
+**Still open.** The renderer has no component-level test — its logic lives in `markdown-blocks.ts`,
+which is covered, but the React output itself is asserted only through typecheck. Nested lists,
+blockquotes and fenced code blocks are outside the subset and render as literal text; if answers
+start using them, extend `parseBlocks` rather than reaching for a dependency.
+
+## 2026-09-02 — Increment 5.3: interpretation tools
+
+The assistant could fetch "45.2%" and could not say whether that was good. Everything needed to
+answer that already existed and nothing exposed it: `agg_peer_ranks` carries the rank, percentile,
+sibling median and an outlier flag; `lib/analysis/` has spread and correlation; `lib/db/insights.ts`
+generates the same ranked cards `/bhw` and `/explore` render. Three tools —
+`getPeerContext`, `getDistribution`, `getInsightCards` — over code the dashboard already runs.
+
+**No schema, no query, no new data.** This is a tool surface, which is what keeps "the number in
+the answer matches the number on screen" (`lib/ai/tools.ts`) true for interpretation as well as for
+figures. It is the fourth *kind* of tool rather than a fourth retrieval path: §2's three paths —
+SQL for numbers, edges for provenance, documents for prose — can all fetch a figure and none can
+rank it.
+
+**`getPeerRank` now selects `median` and `mad`.** Both were already in `agg_peer_ranks` (E2.3) and
+neither was read. Additive — existing consumers destructure by name and are untouched — and it is
+what makes `isOutlier` explicable rather than magic. "Flagged an outlier" with no median and no
+deviation behind it is exactly the naked number this project's figure contract forbids; the
+dashboard gets the same two fields for free.
+
+**Every "nothing here" states why.** `agg_peer_ranks` has no national row (nothing to be a sibling
+of) and no barangay rows. A bare `{ranked: false}` reads to a model as *missing data*, which it
+then reports as a gap in the dataset rather than a property of the table — so `unrankedReason`
+returns the cause and the tool passes it through. Same for `getInsightCards` returning nothing
+(no card cleared the dashboard's thresholds) and `getDistribution` on a barangay (nothing is
+inside it). The reason is part of the answer.
+
+**Small samples are marked, not filtered.** `getDistribution` flags every child below
+`MIN_LEADER_N` (30) and warns in the payload, mirroring the floor `lib/db/insights.ts` already
+applies before crowning a leader — a 3-profile barangay at "100% accredited" is noise. Filtering
+them out silently would misstate the count; leaving them unmarked would let the model rank them.
+
+**Correlation passes `insufficient` straight through.** `describeCorrelation` refuses a
+coefficient below its own n floor, and the tool does not paper over that with a number nobody
+should quote.
+
+**`InsightCard.score` is dropped.** It is an editorial rank used to curate the grid and documented
+as not shown to users; handing it to the model invites it to quote a figure that means nothing
+outside the generator.
+
+**Prompt rule 14, and its last clause.** The rule tells the model to call `getPeerContext` before
+stating a figure for one place. What matters more is the closing constraint: it may quote a rank or
+an outlier flag a tool returned and may never derive one itself. `auditNarrative` strips sentences
+whose *numbers* are unsupported, so "Basilan looks like an outlier" passes it untouched — the
+sentence carries no number. The prompt is the only thing standing between a reported flag and an
+invented one, so the constraint is asserted by a test.
+
+**Indicator access is a lookup, not a switch.** `PICK_FROM_CHILD` and `PICK_FROM_BENCHMARK` are
+`Record<MapBaseIndicator, …>`, so a seventh indicator is a compile error rather than a silent null
+in an answer.
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**951 tests, up from 930**. `npx prettier --check` clean on every file touched. `next build`
+compiles and typechecks; its prerender step fails only in this sandbox, which has no database.
+No migration.
+
+**Still open.** `getDistribution` walks one level down only, so "every barangay in Region VII" is
+still two calls or a `traverseGraph` walk. The correlation is Spearman over the children of one
+parent — it does not control for anything, and the prompt does not yet warn the model against
+reading it causally.
+
+## 2026-09-02 — Increment 5.4: the consolidated area profile, and a suppression finding
+
+Every dataset that covers one geography in one payload — and, just as deliberately, every dataset
+that does not, with the reason. `lib/db/area-profile.ts` assembles fourteen sources;
+`app/admin/(dashboard)/place/[geoLevel]/[geoCode]` renders it and `getAreaProfile` returns it to
+the assistant, from the same assembler, so a page and an answer about the same place cannot
+disagree.
+
+**The coverage map is the increment, not a courtesy.** Six datasets describe a geography and each
+stops somewhere different: training is not built at barangay (the barangay × topic cross-product is
+outside the free-tier disk budget), honorarium sufficiency is null there, `agg_peer_ranks` covers
+region/province/citymun only, poverty is a city/municipality-grain rate that is not rolled up.
+Returning `null` for all of those makes a *build decision* indistinguishable from *this place has
+no data* — and a reader, or a model, will report the first as the second. `SourceState`
+distinguishes `not-built-at-this-level` from `no-data` and every absence carries its reason;
+prompt rule 15 requires the model to preserve the distinction. Telling them apart is this
+module's main correctness requirement, and most of its test suite.
+
+### The suppression finding — this is the part to read
+
+Consolidation exposed a differencing path that per-dataset suppression does not close, and it is
+**not introduced by this increment**.
+
+`ingestion/build_aggregates.sql` suppresses per cell: a barangay demographic cell with `0 < n < 5`
+has `n` and `pct` nulled and `is_suppressed` set. Correct in isolation. But the group total is
+published, unsuppressed, in `agg_bhw_counts.n_total`. So for a barangay whose `sex` breakdown is
+Male 40 visible and Female 3 suppressed, against a total of 43:
+
+    Female = 43 − 40 = 3
+
+One subtraction. The rule is standard: a residual is unknowable only when **at least two** cells in
+the group are unknown, so a group with exactly one suppressed cell needs a complementary
+suppression — `lib/db/area-profile-suppression.ts` adds one, choosing the smallest visible positive
+cell, which loses the least information. `pct` is nulled alongside `n` for the same reason the
+ingestion pass does it: `pct × total` reconstructs `n` exactly. A visible **zero** is never chosen
+as the complement — hiding a known zero removes no ambiguity from the attacker's sum.
+
+Where nothing can be withheld (a single-category dimension, or every other cell a known zero) the
+pass says so via `unprotectable` rather than pretending it protected the group. Honesty over the
+appearance of protection: a guardrail that silently fails is worse than one that reports its limit.
+
+**Scope, stated plainly.** This protects *this payload*. **The same differencing path exists on the
+public `/place/[geoLevel]/[geoCode]` page**, which renders the demographics figure and the
+validated-profile total together — the exposure predates this increment and is not fixed by it.
+Consolidation is what made the path systematic and machine-readable, which is why the pass belongs
+here; whether to close it at the aggregate level, or on the public page, is an owner decision and
+is **not taken here**. Flagged rather than quietly handled.
+
+**Prompt rule 15's second half is a privacy rule, not a style one.** The profile withholds a
+complement so a cell cannot be recovered by subtraction; a model that helpfully performs that
+subtraction in prose undoes the guardrail. Rule 6 already forbids stating a suppressed value; rule
+15 names the specific arithmetic that produces one. Asserted by a test.
+
+**Admin-only is load-bearing** (§9.1, §12.5). The profile spans every dataset and surfaces internal
+document passages, and the differencing risk above is the second reason it must not reach a public
+surface. It sits inside `(dashboard)`, is not cached, and is never written to `ai_ask_cache`.
+
+**A mismatched geo level is rejected, not corrected.** Every aggregate is keyed on
+`(geo_code, geo_level)`, so asking for a citymun at `region` makes every section read "no data" — a
+wrong answer wearing the shape of a finding. Same check `app/uuc-phc/[geoLevel]/[geoCode]` makes.
+
+**One unavailable table costs one section.** Every source is caught individually; a throw degrades
+to the same shape as no data (§1).
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**983 tests, up from 951**. `npx prettier --check` clean on every file touched. `next build`
+compiles and typechecks; its prerender step fails only in this sandbox, which has no database.
+No migration: this increment adds no table and reads nothing that was not already readable.
+
+**Still open.** The admin page renders each section's payload verbatim rather than re-implementing
+fourteen figures, and links out to the built ones — adequate for staff, not a designed view. The
+complementary pass covers `agg_demographics`; `agg_honorarium`'s suppressed distribution columns
+and `agg_bhw_by_uuc_status`'s `*_is_suppressed` sides are not yet run through it, and the UUC
+listed/other split has the same two-cell structure that makes differencing easy. And the public
+`/place` exposure above is unaddressed by design.
+
+## 2026-09-02 — Increment 5.5: output modes — chart, slide, deck
+
+The assistant had one output shape, plain text, while the repo already shipped Observable Plot
+specs, a presentation deck, server-side PNG rendering and a PPTX writer that it could not reach.
+
+**The chart's values never come from the prose.** `figureFromPayloads` reads the tool payload
+directly; nothing parses the answer text. The same inversion as the citations in 2.3 — a model
+cannot mis-plot data it was never handed. The model decides *whether* a chart is wanted (the
+route's `output`); this decides what is in it.
+
+**It only plots shapes that are unambiguously a labelled series** — `getDistribution`'s ranked
+children, and `getPeerContext`'s this/region/nation. A `queryDataset` result is deliberately not
+plotted: choosing which column is the label and which the measure would be a guess, and a chart
+with the wrong column as its measure is *worse* than no chart, because it survives every audit —
+all the numbers in it are real numbers. When nothing matches there is no figure and the answer
+stays prose.
+
+**Small-sample children are excluded from the chart and counted in a note**, matching
+`lib/db/insights.ts`, which refuses to crown a leader below `MIN_LEADER_N`. A 3-profile barangay at
+"100% accredited" rendered as the tallest bar is the misreading the threshold exists to prevent,
+and a bar chart makes it look authoritative in a way a sentence does not.
+
+**A one-bar peer chart is refused.** "Versus what?" is the entire purpose of that figure.
+
+**The chart renders through the dashboard's own `FigureCard` and `BarChartClient`,** so an
+assistant chart and an Explore chart of the same numbers are the same picture — the visual
+counterpart of `lib/ai/tools.ts`'s "the number in the answer matches the number on screen".
+
+**Slides needed no change to `components/present/`.** Slides register themselves and order by DOM
+position (`sortByDocumentOrder`), so wrapping each answer in a `PresentationSlide` makes a deck of
+a chat session in the order the answers were given. The `PresentationProvider` lives inside the
+client chat component rather than on the server page for one reason: `DeckMeta.areaName` tracks the
+live route, and the server page cannot know which place the current question resolved to. Slides
+are titled by the question they answered — an overview grid of "Answer 1, Answer 2" is not
+navigable in a briefing.
+
+**PPTX went from one slide to a deck** without changing its contract. `?indicator=` still yields a
+single slide, so every existing export link and the PNG/CSV/XLSX routes that share the schema are
+untouched; `?indicators=a,b,c` builds a deck for one geography from the same
+`getExportFigureData` call per slide, so nothing new is plumbed. The per-slide layout moved to
+`lib/exports/pptx-slide.ts`, and the "no naked numbers" benchmark block and source footer are
+applied to **every** slide: a deck whose later slides drop their provenance is worse than one slide
+that keeps it, because a figure is separated from its source the moment someone copies it into
+another deck.
+
+Slides render **sequentially** and are capped at six with `maxDuration = 60`. Both are budget, not
+taste: each slide rasterises its own PNG through resvg on the request path, and six concurrent
+renders on a small serverless instance runs out of memory rather than time. Some indicators missing
+yields a thinner deck; all of them missing is a 404.
+
+**Standards.** `npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean —
+**1007 tests, up from 983**. `npx prettier --check` clean on every file touched. `next build`
+compiles and typechecks; its prerender step fails only in this sandbox, which has no database.
+No migration.
+
+**Numbering correction.** This increment is **5.5** in the plan (output modes); 5.6 is
+sentence-level streaming, which is not built. The commit that introduced it says "5.6" in its
+message and cannot be corrected without rewriting pushed history — every code comment and this
+heading say 5.5, which is what the §8 cross-references follow.
+
+**CI note, not a code finding.** GitHub Actions did not create a workflow run for `71532f3`
+(Increment 5.4), confirmed absent over a four-minute poll; the same happened for this branch's
+first commit. Both trees were verified locally against the identical commands CI runs
+(`lint`, `typecheck`, `test`). No empty commit was pushed to provoke a run — this increment's push
+covers the same tree plus 5.6.
+
+**Still open.** The figure is emitted only for the `chart` and `slide` output routes, so a reader
+who wants a chart must ask for one or flip the chip. `figureFromPayloads` returns the *first*
+plottable payload rather than judging between several — picking would be an editorial judgement it
+has no basis for. The deck export is per-geography across indicators; a deck across *places* for
+one indicator has no route yet.
+
+## 2026-09-02 — Increment 5.6: the streaming primitive ships; streaming itself is blocked
+
+`lib/ai/stream-audit.ts` is built and proven. The feature it exists for is **not** built, because
+implementing it as planned would cost either free-tier quota or the grounding property, and neither
+is mine to spend. This entry records the finding rather than a half-measure.
+
+### What was built
+
+`createSentenceAuditor(citations, toolPayloads)` audits a model's output **one sentence at a time**,
+emitting a sentence only once it is complete and has passed `auditCitations` then `auditNarrative`
+— the same two audits in the same order the route runs them.
+
+The plan's premise holds exactly: `app/api/ai/chat/route.ts` rejected token streaming because the
+numeric audit must see the response before any of it is safe to show, and that reasoning is right.
+What it overlooked is that **both audits are already sentence-scoped** — neither looks across a
+sentence boundary — so a sentence can be audited the moment it completes, and an ungrounded number
+is never rendered because it is never sent.
+
+A property test asserts the streamed result equals the batch pipeline over six fixtures, and that
+the result is invariant to chunk boundaries (tested at 1, 3, 7 and 20 characters).
+
+**One divergence is asserted rather than hidden.** The plan claimed byte-identity in all cases;
+that is not quite true. When a kept sentence does not end in terminal punctuation, the batch
+pipeline's re-join makes its second pass read it as one sentence with the text that follows, pooling
+their numbers, so one bad number drops both. Per-sentence auditing drops only the offending
+fragment. That is stricter per sentence and never looser, and the invariant the route depends on —
+**every emitted sentence passed both audits on its own** — still holds. The claim is corrected here
+rather than restated.
+
+### Why the feature is blocked
+
+`runToolLoop` calls the provider **with tools on every round of the common path**
+(`agent-loop.ts:67`) and returns as soon as a round comes back with no tool calls. The tool-free
+calls at lines 96 and 119 are the wrap-up and its retry — the exceptional path, reached only when
+four tool rounds ran out. So in the ordinary case *there is no tool-free call to stream*, and the
+plan's "only the final, tool-free round streams" describes a round that does not exist.
+
+Three ways out, none of them free:
+
+1. **An extra tool-free call after the tools finish.** Clean, and it costs one more provider call on
+   every question — a seventh on the budget Increment 5.1 went to some length to protect, on a
+   Gemini window seeded at 10 requests/minute. This directly contradicts 5.1's own reasoning.
+2. **Stream the tools-enabled rounds.** Then text emitted before a tool call is shown to the reader
+   as if it were the answer, and audited against payloads that do not exist yet. Emitting
+   optimistically and retracting on a tool call is worse: the answer visibly flashes and vanishes.
+3. **Buffer until the round ends, then emit sentence by sentence.** Identical latency to today —
+   the appearance of streaming with none of the benefit.
+
+Option 1 trades quota for latency and option 2 trades the reader's trust for it. Which — if either —
+is worth it is an owner decision, so the primitive is committed and the wiring is not.
+
+**Nothing is wired, deliberately.** `stream-audit.ts` has no consumer today. It is committed rather
+than discarded because it is the exact artifact the decision turns on: whichever option is chosen,
+this is the module that makes it safe, and it is proven now rather than written under time pressure
+later.
+
+### Standards
+
+`npm run lint` (0 errors, 0 warnings), `npm run typecheck`, `npm test` clean — **1020 tests, up
+from 1007**. `npx prettier --check` clean on every file touched. No migration, no provider change,
+no change to any existing code path.
