@@ -115,8 +115,15 @@ function columnRows() {
       columnName: unquote(fields[1]) as string,
       ordinal: Number(fields[2]),
       dataType: unquote(fields[3]),
+      // Pipe-separated in the file and turned into a text[] by string_to_array on insert; split
+      // here so a test can compare a declared vocabulary against the check constraint that
+      // actually enforces it. Nothing read these three until D1.6 needed them, which is why an
+      // enum could drift from its constraint and a join key could name no target unnoticed.
+      allowedValues: unquote(fields[4])?.split("|"),
       meaning: unquote(fields[5]) as string,
       role: unquote(fields[7]),
+      isJoinKey: fields[8].trim() === "true",
+      joinsTo: unquote(fields[9]),
       isQueryable: fields[10].trim() === "true",
     }));
 }
@@ -499,5 +506,107 @@ describe("the UUC for PHC entries (plan U5)", () => {
         c.tableName === "agg_uuc_phc_counts" && ["n_listed", "n_barangays"].includes(c.columnName),
     );
     expect(counts.map((c) => c.role)).toEqual(["measure", "measure"]);
+  });
+});
+
+describe("the legislative district entries (plan D1.6)", () => {
+  const districts = registry.filter((r) => r.datasetSlug === "ph-legislative-districts");
+
+  it("registers all three relations, approved and public", () => {
+    // district_correction is deliberately absent: it is D2.3's submission queue, it holds a
+    // submitter_email column, and it has no rows and no settled semantics yet. Registering a
+    // table makes it queryable, so an unused PII-carrying table is exactly the one not to add
+    // ahead of the feature that fills it.
+    expect(districts.map((r) => r.tableName).sort()).toEqual([
+      "dim_legislative_district",
+      "district_representative",
+      "geo_district_map",
+    ]);
+    for (const row of districts) {
+      expect(row.status).toBe("approved");
+      expect(row.exposure).toBe("public");
+      expect(row.docPath).toBe("docs/LEGISLATIVE_DISTRICTS.md");
+    }
+  });
+
+  it("says on every relation that the mapping is derived and single-source", () => {
+    // The one thing a reader must not take away from these tables is that somebody official
+    // published them, or that anything corroborated them. The caveat has to sit on each relation
+    // rather than only on the dataset, because a note is what travels with the rows a query
+    // returned — the same reason U3's capping caveat sits on the column and not just the table.
+    for (const row of districts) {
+      expect(row.notesMd ?? "", row.tableName).toMatch(/derived|single.source|one source/i);
+    }
+    expect(districts.find((r) => r.tableName === "geo_district_map")?.notesMd).toMatch(
+      /single_source/,
+    );
+  });
+
+  it("warns on match_method that there is no fuzzy rung", () => {
+    // Guardrail 1 in the column a query actually returns. A model that reads the ladder as a
+    // confidence scale would report an unresolved LGU as a low-confidence match; the point is
+    // that no such row exists, because an unresolvable place was left out instead.
+    const method = columns.find(
+      (c) => c.tableName === "geo_district_map" && c.columnName === "match_method",
+    );
+    expect(method).toBeDefined();
+    expect(method?.meaning).toMatch(/no fuzzy/i);
+    // Every value the check constraint permits is declared, so a new rung cannot ship undescribed.
+    expect(method?.allowedValues?.sort()).toEqual([
+      "barangay_roster",
+      "crosswalk",
+      "disambiguated",
+      "exact",
+      "independent_city",
+      "manual_override",
+      "psgc_identifier",
+      "public_correction",
+      "whole_citymun",
+      "whole_parent",
+    ]);
+  });
+
+  it("warns that psa_population is not a roll-up of the member LGUs", () => {
+    // It is an independently published figure, which is the only reason it can check the sum.
+    // Presented as a roll-up it would be circular, and the five stale-figure districts would
+    // read as arithmetic errors in this repo rather than staleness in the source.
+    const pop = columns.find(
+      (c) => c.tableName === "dim_legislative_district" && c.columnName === "psa_population",
+    );
+    expect(pop?.meaning).toMatch(/not a roll-up/i);
+    expect(pop?.meaning).toMatch(/census year is not stored/i);
+  });
+
+  it("warns that a null party means unextracted, not unaffiliated", () => {
+    // Null on all 194 rows. Read as "independent" it would invent a political fact about a
+    // named living person, which is the worst failure available in this dataset.
+    const party = columns.find(
+      (c) => c.tableName === "district_representative" && c.columnName === "party",
+    );
+    expect(party?.meaning).toMatch(/null on every current row/i);
+    expect(party?.meaning).toMatch(/never independent/i);
+  });
+
+  it("warns that geo_district_map mixes two grains in one table", () => {
+    // A citymun-only filter silently drops every multi-district city, because a split city is
+    // present through its barangays and never as itself.
+    const level = columns.find(
+      (c) => c.tableName === "geo_district_map" && c.columnName === "geo_level",
+    );
+    expect(level?.allowedValues?.sort()).toEqual(["barangay", "citymun"]);
+    expect(level?.meaning).toMatch(/only through its barangays/i);
+  });
+
+  it("marks surrogate ids unqueryable and the review columns meta", () => {
+    for (const table of ["geo_district_map", "district_representative"]) {
+      const id = columns.find((c) => c.tableName === table && c.columnName === "id");
+      expect(id?.isQueryable, table).toBe(false);
+      expect(id?.role, table).toBe("meta");
+    }
+    const joins = columns.filter(
+      (c) => districts.some((r) => r.tableName === c.tableName) && c.isJoinKey,
+    );
+    expect(joins.length).toBeGreaterThan(0);
+    for (const c of joins) expect(c.joinsTo, `${c.tableName}.${c.columnName}`).toBeTruthy();
   });
 });
