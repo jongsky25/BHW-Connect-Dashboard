@@ -236,6 +236,10 @@ class Graph:
             {"src": src, "relation": relation, "dst": dst, "source_kind": source_kind, "source_ref": source_ref, "note": note},
         )
 
+    def references(self, key: str) -> bool:
+        """Is this node an endpoint of any edge? Asked before dropping a node as unearned."""
+        return any(key in (src, dst) for src, _, dst in self.edges)
+
 
 # The key prefix carries the kind — the emitted SQL derives `kb_node.kind` from it, so a directive
 # naming an endpoint by key is naming its kind too.
@@ -485,9 +489,17 @@ def read_ingestion(graph: Graph, known: set[str]) -> None:
                 for source in sorted(read - written):
                     graph.edge(f"table:{table}", "derived-from", f"table:{source}", "ingestion_script", ref)
 
-        if not wrote_any:
+        if not wrote_any and not graph.references(script_key):
             # A script that writes nothing this parse can see is still a real node (it may emit SQL
             # files, or reconcile without loading) — but it gets no edges it did not earn.
+            #
+            # The reference check is what makes `-- lineage:` usable from a Python file at all.
+            # A script whose writes go through a helper (`insert_statement(table, ...)`, table name
+            # a loop variable) has no `insert into <name>` for the parse to find, so wrote_any is
+            # false — and popping the node then orphaned the very edges the directive had just
+            # declared. The emitted SQL joins edges to nodes by key, so those edges did not fail
+            # loudly; they silently did not insert, which is the failure mode this generator is
+            # built to avoid. build_legislative_districts.py is the first script to hit it.
             graph.nodes.pop(f"script:{ref}", None)
 
 
@@ -608,6 +620,25 @@ def main() -> None:
     unbuilt = sorted(k for k, n in graph.nodes.items() if n["kind"] == "table" and k not in built)
     if unbuilt:
         print(f"tables with no built-by edge: {', '.join(unbuilt)}", file=sys.stderr)
+
+    # An edge whose endpoint this script never defines. The emitted SQL joins edges to nodes by
+    # key, so such an edge does not fail — it simply does not insert, and the graph quietly comes
+    # out smaller than the file claims. `issuance:` endpoints are the one legitimate case (they
+    # come from document extraction) and are reported separately below; anything else is a bug in
+    # this generator, and was one: a directive-declared `built-by` on a script whose node had been
+    # dropped as unearned. Nothing said so until the delta was counted by hand.
+    dangling = sorted(
+        {e for edge in graph.edges.values() for e in (edge["src"], edge["dst"])}
+        - set(graph.nodes)
+        - {k for k in {e for edge in graph.edges.values() for e in (edge["src"], edge["dst"])}
+           if k.startswith("issuance:")}
+    )
+    if dangling:
+        print(
+            "edges name endpoints this generator does not define, so they will not load: "
+            f"{', '.join(dangling)}",
+            file=sys.stderr,
+        )
 
     # A crossing edge (Increment 3.3) names an `issuance:` node this script does not define — the
     # node comes from document extraction, and the emitted seed joins to it by key. The join drops

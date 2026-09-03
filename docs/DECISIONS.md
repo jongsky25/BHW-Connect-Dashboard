@@ -8549,3 +8549,94 @@ true rather than assumed.
 
 `docs/LEGISLATIVE_DISTRICTS.md` regenerated. No migration — the tables, their RLS policies and the
 `corroboration` column all predate this increment.
+
+## 2026-09-03 — D1.6: the district mapping gets a passport, and the lineage generator gets a guard
+
+The rows have been in the database since D1.6a. Until now nothing declared what they were: no
+dataset, no dictionary, no lineage. A table with no approved dictionary is one `queryDataset`
+refuses outright, so the mapping was simultaneously public and unaskable.
+
+### What was registered
+
+One `dim_dataset` row (`ph-legislative-districts`), three `dataset_registry` rows, forty
+`dataset_column` rows, and 23 nodes / 37 edges of lineage. All verified live: the three relations
+are `public` and `approved`, every column is `approved`, and every edge D1.6 names is present —
+`built-by` its migration **and** its ingestion script, `derived-from` the dataset,
+`reconciled-in` `docs/LEGISLATIVE_DISTRICTS.md`, with `has-column` / `joins-on` for the six join
+keys.
+
+`district_correction` was deliberately left out. It is D2.3's submission queue: no rows, no settled
+semantics, and a `submitter_email` column. Registering a table is exactly what makes
+`queryDataset` willing to read it, so an unused table carrying an email address is the one not to
+open ahead of the feature that fills it. It gets its entry when D2.3 can say what its columns mean.
+
+### The notes are the deliverable, not the row count
+
+`queryDataset` refuses any relation without an approved dictionary, so this text is what a model
+reads before composing a query about who votes where. Three things would otherwise be got wrong
+in a way nothing downstream would catch, and each is now stated on the relation **and** on the
+column a query actually returns — a note is what travels with the rows, which is the same reason
+U3's capping caveat sits on `capped_indicators` rather than only on its table:
+
+- **Derived, not official, and single-source.** `corroboration` reads `single_source` on all
+  3,513 rows and its column note says never to describe one as verified.
+- **Absence means no answer, never no district.** The table is incomplete by design; 23
+  municipalities and 41 barangays have no row, and a place that resolved to nothing was left out
+  rather than approximated. `match_method` says outright that there is no fuzzy rung.
+- **`psa_population` is not a roll-up of the members.** It is the figure the district's own
+  article publishes, which is the only reason it can serve as a check against the summed members.
+  Presented as a roll-up it would be circular, and the five stale-figure districts would read as
+  arithmetic errors here rather than staleness in the source.
+
+Two more that only became visible while writing the dictionary against the live data:
+`district_representative.party` is null on all 194 rows because the source template is not parsed,
+so null means **not extracted, never independent** — read the other way it would invent a
+political fact about a named living person. And `geo_district_map` mixes two grains in one table,
+so a `citymun`-only filter silently drops every multi-district city, which is present through its
+barangays and never as itself.
+
+### The lineage generator had a silent hole, and now has a guard
+
+`ingestion/build_kb_lineage.py` finds a script's writes by looking for a literal
+`insert into <table>`. `build_legislative_districts.py` has none: the table name is a loop variable
+passed to `insert_statement`. So the graph would have shown three tables built by a migration and
+written by nobody.
+
+That is what the `-- lineage:` directive exists for, and the directives are now in the script,
+beside the loop anyone can check them against. But adding them exposed a real bug: `read_ingestion`
+pops a script node when it finds no writes, and the pop ran **after** the directive had already
+created edges pointing at that node. The emitted SQL joins edges to nodes by key, so those three
+edges did not fail — they silently did not insert.
+
+Two changes, and the second matters more than the first. The pop is now conditional on the node
+having no edges at all (`Graph.references`), which is what "it gets no edges it did not earn"
+should always have meant. And the generator now **reports any edge whose endpoint it does not
+define**, excluding the `issuance:` endpoints that legitimately come from extraction and are
+already reported separately. Reverting the first fix makes the second fire by name; that is how
+the guard was checked rather than assumed.
+
+The same class of silence nearly repeated in the delta itself.
+`doc:docs/LEGISLATIVE_DISTRICTS_PLAN.md` was an endpoint of four edges and did not exist in the
+live graph, so a delta built from "district-side nodes only" would have loaded 33 of 37 edges and
+said nothing. The delta now ships every endpoint of every edge it carries.
+
+### A test file that had never read three of its own columns
+
+`lib/db/dataset-registry-seed.test.ts` parses the committed seed, but its parser exposed neither
+`allowed_values` nor `is_join_key` nor `joins_to`. Nothing had ever checked that a declared
+vocabulary matches the constraint that enforces it, or that a join key names a target. The parser
+now reads all three, and the new D1.6 block asserts the ten `match_method` values against the
+check constraint, the two `geo_level` values, and that every join key on these three tables has a
+`joins_to`.
+
+Writing those assertions found a real gap rather than confirming what was already there:
+`district_representative`'s note did not carry the derived/single-source caveat at all. Seven
+mutations were run against the new block — dropping the no-fuzzy warning, removing a
+`match_method` value, softening the party note, making a surrogate id queryable, blanking a join
+target, pointing a relation at the wrong doc, dropping the mixed-grain warning — and all seven are
+caught.
+
+### Standards
+
+1,027 tests, up from 1,020. `--selftest`, lint, typecheck and prettier clean. The lineage
+generator prints nothing to stderr: no table without a `built-by` edge, and no dangling endpoint.

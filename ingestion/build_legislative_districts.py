@@ -2763,6 +2763,20 @@ RESIDUAL_GAP_NOTES = [
 # 7. Emit                                                                      #
 # --------------------------------------------------------------------------- #
 def emit_sql_files(built, out_dir: Path):
+    """Write the three tables as batched INSERTs.
+
+    The lineage directives below are load-bearing, not decoration.
+    `ingestion/build_kb_lineage.py` finds a script's writes by looking for a literal
+    `insert into <table>` — and there is not one anywhere in this file, because the table name is
+    a loop variable passed to `insert_statement`. So the graph would show all three tables built
+    by a migration and written by nobody, which is false and invisible. A directive names both
+    endpoints outright, which is what the mechanism is reserved for: provenance that is true but
+    structurally unreadable. Anyone can check it by reading the loop directly underneath.
+
+    -- lineage: table:dim_legislative_district built-by script:ingestion/build_legislative_districts.py
+    -- lineage: table:geo_district_map built-by script:ingestion/build_legislative_districts.py
+    -- lineage: table:district_representative built-by script:ingestion/build_legislative_districts.py
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     n = 0
     for table, cols, rows in (
