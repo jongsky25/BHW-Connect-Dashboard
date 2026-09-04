@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DistrictIndexRow, DistrictMatchQuality } from "@/lib/db/districts";
 import { MatchQualityBadge } from "./match-quality-badge";
+import { districtOrdinalLabel } from "./district-ordinal";
 
 const MATCH_QUALITY_FILTER_OPTIONS: { value: DistrictMatchQuality | "all"; label: string }[] = [
   { value: "all", label: "Any match quality" },
@@ -11,26 +13,6 @@ const MATCH_QUALITY_FILTER_OPTIONS: { value: DistrictMatchQuality | "all"; label
   { value: "has_overrides", label: "Has corrections" },
   { value: "has_unresolved", label: "Known gap" },
 ];
-
-function districtOrdinalLabel(row: DistrictIndexRow): string {
-  if (row.isLone) return "Lone district";
-  return row.ordinal ? `${row.ordinal}${ordinalSuffix(row.ordinal)} district` : "—";
-}
-
-function ordinalSuffix(n: number): string {
-  const rem100 = n % 100;
-  if (rem100 >= 11 && rem100 <= 13) return "th";
-  switch (n % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-}
 
 /**
  * The filterable index table (D2.1): region, free-text, and match-quality filters over the full
@@ -133,7 +115,11 @@ export function DistrictIndexTable({
           <tbody>
             {filtered.map((row) => (
               <tr key={row.districtCode} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-medium">{row.districtName}</td>
+                <td className="px-4 py-3 font-medium">
+                  <Link href={`/districts/${row.districtCode}`} className="underline hover:text-accent">
+                    {row.districtName}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-muted">{row.regionName ?? "—"}</td>
                 <td className="px-4 py-3 text-muted">{districtOrdinalLabel(row)}</td>
                 <td className="px-4 py-3 text-right">{row.memberCount.toLocaleString()}</td>
