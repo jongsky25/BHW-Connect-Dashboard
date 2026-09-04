@@ -1727,6 +1727,68 @@ export type Database = {
           },
         ];
       };
+      dim_legislative_district: {
+        Row: {
+          congress_no: number;
+          district_code: string;
+          district_name: string;
+          is_lone: boolean;
+          ordinal: number | null;
+          parent_geo_code: string | null;
+          psa_population: number | null;
+          region_code: string | null;
+          retrieved_at: string;
+          source_kind: string;
+          source_ref: string;
+          status: string;
+          valid_from: string;
+          valid_to: string | null;
+          wikidata_qid: string | null;
+        };
+        Insert: {
+          congress_no: number;
+          district_code: string;
+          district_name: string;
+          is_lone?: boolean;
+          ordinal?: number | null;
+          parent_geo_code?: string | null;
+          psa_population?: number | null;
+          region_code?: string | null;
+          retrieved_at: string;
+          source_kind: string;
+          source_ref: string;
+          status?: string;
+          valid_from: string;
+          valid_to?: string | null;
+          wikidata_qid?: string | null;
+        };
+        Update: {
+          congress_no?: number;
+          district_code?: string;
+          district_name?: string;
+          is_lone?: boolean;
+          ordinal?: number | null;
+          parent_geo_code?: string | null;
+          psa_population?: number | null;
+          region_code?: string | null;
+          retrieved_at?: string;
+          source_kind?: string;
+          source_ref?: string;
+          status?: string;
+          valid_from?: string;
+          valid_to?: string | null;
+          wikidata_qid?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "dim_legislative_district_parent_geo_code_fkey";
+            columns: ["parent_geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       dim_lgu_income_reclass: {
         Row: {
           converted: boolean;
@@ -1835,6 +1897,126 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "dim_geo";
             referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      district_correction: {
+        Row: {
+          action: string;
+          created_at: string;
+          district_code: string | null;
+          evidence_url: string | null;
+          geo_code: string | null;
+          id: number;
+          rationale: string;
+          review_note: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          session_id: string;
+          status: string;
+          submitter_email: string | null;
+          to_district_code: string | null;
+        };
+        Insert: {
+          action: string;
+          created_at?: string;
+          district_code?: string | null;
+          evidence_url?: string | null;
+          geo_code?: string | null;
+          id?: never;
+          rationale: string;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          session_id: string;
+          status?: string;
+          submitter_email?: string | null;
+          to_district_code?: string | null;
+        };
+        Update: {
+          action?: string;
+          created_at?: string;
+          district_code?: string | null;
+          evidence_url?: string | null;
+          geo_code?: string | null;
+          id?: never;
+          rationale?: string;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          session_id?: string;
+          status?: string;
+          submitter_email?: string | null;
+          to_district_code?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "district_correction_district_code_fkey";
+            columns: ["district_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_legislative_district";
+            referencedColumns: ["district_code"];
+          },
+          {
+            foreignKeyName: "district_correction_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      district_representative: {
+        Row: {
+          as_of: string;
+          congress_no: number;
+          district_code: string;
+          full_name: string;
+          id: number;
+          party: string | null;
+          source_kind: string;
+          source_ref: string;
+          status: string;
+          superseded_by: number | null;
+        };
+        Insert: {
+          as_of: string;
+          congress_no: number;
+          district_code: string;
+          full_name: string;
+          id?: never;
+          party?: string | null;
+          source_kind: string;
+          source_ref: string;
+          status?: string;
+          superseded_by?: number | null;
+        };
+        Update: {
+          as_of?: string;
+          congress_no?: number;
+          district_code?: string;
+          full_name?: string;
+          id?: never;
+          party?: string | null;
+          source_kind?: string;
+          source_ref?: string;
+          status?: string;
+          superseded_by?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "district_representative_district_code_fkey";
+            columns: ["district_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_legislative_district";
+            referencedColumns: ["district_code"];
+          },
+          {
+            foreignKeyName: "district_representative_superseded_by_fkey";
+            columns: ["superseded_by"];
+            isOneToOne: false;
+            referencedRelation: "district_representative";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -2355,6 +2537,82 @@ export type Database = {
         };
         Relationships: [];
       };
+      geo_district_map: {
+        Row: {
+          corroborating_source_ref: string | null;
+          corroboration: string;
+          district_code: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          match_method: string;
+          retrieved_at: string;
+          review_note: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          source_kind: string;
+          source_ref: string;
+          status: string;
+          superseded_by: number | null;
+        };
+        Insert: {
+          corroborating_source_ref?: string | null;
+          corroboration?: string;
+          district_code: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          match_method: string;
+          retrieved_at: string;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          source_kind: string;
+          source_ref: string;
+          status?: string;
+          superseded_by?: number | null;
+        };
+        Update: {
+          corroborating_source_ref?: string | null;
+          corroboration?: string;
+          district_code?: string;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          match_method?: string;
+          retrieved_at?: string;
+          review_note?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          source_kind?: string;
+          source_ref?: string;
+          status?: string;
+          superseded_by?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "geo_district_map_district_code_fkey";
+            columns: ["district_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_legislative_district";
+            referencedColumns: ["district_code"];
+          },
+          {
+            foreignKeyName: "geo_district_map_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+          {
+            foreignKeyName: "geo_district_map_superseded_by_fkey";
+            columns: ["superseded_by"];
+            isOneToOne: false;
+            referencedRelation: "geo_district_map";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       ingestion_batches: {
         Row: {
           batch_id: number;
@@ -2842,6 +3100,21 @@ export type Database = {
       };
     };
     Functions: {
+      district_dataset_gaps: {
+        Args: never;
+        Returns: {
+          uncovered_citymun_count: number;
+          unplaced_barangay_count: number;
+        }[];
+      };
+      district_gap_members: {
+        Args: { p_district_code: string };
+        Returns: {
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          geo_name: string;
+        }[];
+      };
       district_index: {
         Args: { p_dataset_id: number };
         Returns: {

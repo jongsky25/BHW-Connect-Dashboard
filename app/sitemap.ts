@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getAllGeosAtLevels } from "@/lib/db/geo";
 import { getProfilingStatusStaticParams } from "@/lib/db/profiling-status";
 import { getUucPhcStaticParams } from "@/lib/db/uuc-phc";
+import { getDistrictIndex } from "@/lib/db/districts";
 
 const BASE_URL = "https://bhw-connect-jongsky25s-projects.vercel.app";
 
@@ -18,6 +19,7 @@ const STATIC_PATHS = [
   "/roadmap",
   "/profiling-status",
   "/profiling-status/methodology",
+  "/districts",
   "/uuc-phc",
   // The section's own pages. The per-area routes under /criteria and /indicators are the same
   // drill-down as /uuc-phc/<level>/<code> below and are deliberately not enumerated a second and
@@ -37,12 +39,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Region + province + citymun is ~1,775 rows — past the platform's hard
   // 1,000-row-per-request cap (BUILD_PLAN.md pitfall P9), so this paginates
   // internally rather than a single query, which would silently truncate.
-  const [geos, profilingGeos, uucPhcGeos] = await Promise.all([
+  const [geos, profilingGeos, uucPhcGeos, districts] = await Promise.all([
     getAllGeosAtLevels(["region", "province", "citymun"]),
     // Only region/province profiling pages that actually have data (city/mun is ISR).
     getProfilingStatusStaticParams(),
     // Region + province UUC for PHC pages (city/mun is ISR, as above).
     getUucPhcStaticParams(),
+    // 250 legislative districts (D2.1/D2.2) — well under the 1,000-row page cap, one request.
+    getDistrictIndex(),
   ]);
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_PATHS.map((path) => ({
@@ -73,5 +77,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: geo.geoLevel === "region" ? 0.8 : 0.6,
   }));
 
-  return [...staticEntries, ...placeEntries, ...profilingEntries, ...uucPhcEntries];
+  const districtEntries: MetadataRoute.Sitemap = districts.map((d) => ({
+    url: `${BASE_URL}/districts/${d.districtCode}`,
+    changeFrequency: "monthly",
+    priority: 0.5,
+  }));
+
+  return [
+    ...staticEntries,
+    ...placeEntries,
+    ...profilingEntries,
+    ...uucPhcEntries,
+    ...districtEntries,
+  ];
 }
