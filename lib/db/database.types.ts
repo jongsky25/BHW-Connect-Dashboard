@@ -23,6 +23,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      agg_bhw_by_district: {
+        Row: {
+          any_honorarium_pct: number | null;
+          avg_active_years: number | null;
+          dataset_id: number;
+          district_code: string;
+          id: number;
+          n_accredited: number;
+          n_total: number;
+          pct_accredited: number | null;
+        };
+        Insert: {
+          any_honorarium_pct?: number | null;
+          avg_active_years?: number | null;
+          dataset_id: number;
+          district_code: string;
+          id?: never;
+          n_accredited: number;
+          n_total: number;
+          pct_accredited?: number | null;
+        };
+        Update: {
+          any_honorarium_pct?: number | null;
+          avg_active_years?: number | null;
+          dataset_id?: number;
+          district_code?: string;
+          id?: never;
+          n_accredited?: number;
+          n_total?: number;
+          pct_accredited?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_bhw_by_district_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_bhw_by_district_district_code_fkey";
+            columns: ["district_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_legislative_district";
+            referencedColumns: ["district_code"];
+          },
+        ];
+      };
       agg_bhw_by_uuc_status: {
         Row: {
           dataset_id: number;
