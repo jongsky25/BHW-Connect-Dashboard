@@ -34,14 +34,15 @@ export function Header() {
     setMobileOpen(false);
   }
 
-  // The Equity in Health portal ("/") and the 2026 BHW Profiling Status section
-  // ("/profiling-status/*") and the UUC for PHC section ("/uuc-phc/*") each supply their own
-  // slim chrome, so the census
-  // (BHW Connect) header is suppressed on both.
+  // The Equity in Health portal ("/"), the 2026 BHW Profiling Status section
+  // ("/profiling-status/*"), the UUC for PHC section ("/uuc-phc/*") and the health facilities
+  // section ("/facilities/*") each supply their own slim chrome, so the census (BHW Connect)
+  // header is suppressed on all of them.
   if (
     pathname === "/" ||
     pathname.startsWith("/profiling-status") ||
-    pathname.startsWith("/uuc-phc")
+    pathname.startsWith("/uuc-phc") ||
+    pathname.startsWith("/facilities")
   )
     return null;
 

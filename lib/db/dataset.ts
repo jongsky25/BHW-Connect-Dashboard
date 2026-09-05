@@ -86,6 +86,12 @@ export const DATASET_SLUGS = {
    * whose `last_updated_at` moves from inside the running site: an accepted public correction
    * bumps it (`lib/db/district-correction-changelog.ts`, plan D2.6). */
   legislativeDistricts: "ph-legislative-districts",
+  /** DOH National Health Facility Registry, September 2026 snapshot. A register of *places* —
+   * health infrastructure alongside the BHW workforce — read only by slug like the other
+   * companion datasets (see lib/db/nhfr.ts). NHFR is a live registry rather than a periodic
+   * publication, so the slug carries the snapshot month: a later export is a new dataset row,
+   * not an edit of this one. */
+  nhfr: "nhfr-2026-09",
 } as const;
 
 /**

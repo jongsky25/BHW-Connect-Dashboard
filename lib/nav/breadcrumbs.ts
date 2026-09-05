@@ -31,6 +31,7 @@ export const PROFILING_STATUS_CRUMB: Crumb = {
   href: "/profiling-status",
 };
 export const UUC_PHC_CRUMB: Crumb = { label: "2025 UUC for PHC", href: "/uuc-phc" };
+export const FACILITIES_CRUMB: Crumb = { label: "Health facilities", href: "/facilities" };
 
 const ADMIN_CRUMB: Crumb = { label: "Admin", href: "/admin" };
 
@@ -83,11 +84,17 @@ const UUC_PHC_TRAILS: Record<string, Crumb[]> = {
   "/uuc-phc/methodology": [UUC_PHC_CRUMB, { label: "Methodology" }],
 };
 
+const FACILITIES_TRAILS: Record<string, Crumb[]> = {
+  "/facilities": [FACILITIES_CRUMB],
+  "/facilities/methodology": [FACILITIES_CRUMB, { label: "Methodology" }],
+};
+
 const STATIC_TRAILS: Record<string, Crumb[]> = {
   ...BHW_TRAILS,
   ...ADMIN_TRAILS,
   ...PROFILING_STATUS_TRAILS,
   ...UUC_PHC_TRAILS,
+  ...FACILITIES_TRAILS,
 };
 
 /**
