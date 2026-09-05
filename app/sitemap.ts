@@ -20,6 +20,7 @@ const STATIC_PATHS = [
   "/profiling-status",
   "/profiling-status/methodology",
   "/districts",
+  "/districts/corrections",
   "/uuc-phc",
   // The section's own pages. The per-area routes under /criteria and /indicators are the same
   // drill-down as /uuc-phc/<level>/<code> below and are deliberately not enumerated a second and

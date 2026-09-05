@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDistrictIndex } from "@/lib/db/districts";
 import { DistrictIndexTable } from "@/components/districts/district-index-table";
 import { MatchQualityBadge, MATCH_QUALITY_DESCRIPTION } from "@/components/districts/match-quality-badge";
@@ -49,7 +50,12 @@ export default async function DistrictsPage() {
           is no longer reachable by anyone. Every row below carries the source page and revision it
           came from. If you know your own city, municipality, or barangay is placed wrong, open its
           district below and use the &ldquo;Propose a correction&rdquo; form there — that
-          correction is the second source this mapping is missing.
+          correction is the second source this mapping is missing. Every proposal, accepted or not,
+          is published with its reason on the{" "}
+          <Link href="/districts/corrections" className="underline hover:text-accent">
+            correction ledger
+          </Link>
+          .
         </p>
       </div>
 

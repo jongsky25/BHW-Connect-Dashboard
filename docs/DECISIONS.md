@@ -8640,3 +8640,99 @@ caught.
 
 1,027 tests, up from 1,020. `--selftest`, lint, typecheck and prettier clean. The lineage
 generator prints nothing to stderr: no table without a `built-by` edge, and no dangling endpoint.
+
+## 2026-09-05 — D2.5: the ledger publishes the ones that were turned down, too
+
+`/districts/corrections` is live: every proposal ever submitted to the district mapping, its
+status, and its review note, newest first, filterable by status and searchable over the submitted
+wording and the reviewer's alike.
+
+The plan calls this "the part that makes the correction mechanism credible rather than
+decorative". The reason is worth restating in the log, because it is the whole design brief: the
+mapping is single-source (Wikipedia/Wikidata; COMELEC's precinct returns, the intended second
+opinion, are gone — D1.3g), and **public corrections are the second source it is missing**. A
+submission box whose disposition nobody can see trains people to stop submitting, which costs us
+the source, not just the goodwill.
+
+### What the page publishes, and the two columns it does not
+
+The migration handed D2.5 a constraint rather than a gap (`20260902030000_legislative_districts.sql`;
+this log, 2026-09-02): `district_correction` has no public SELECT policy, because `submitter_email`
+sits on the table and any policy broad enough to serve this page serves anyone who wants that
+column. So the ledger reads with the service client and projects columns server-side —
+`PUBLIC_CORRECTION_COLUMNS`, a named constant precisely so a test can assert the negative, that no
+query behind the public page ever *asks* for the email. The service client bypasses RLS; the
+projection is the only thing standing where a policy would normally stand, so it is tested as such
+rather than trusted.
+
+`reviewed_by` is excluded on the same reasoning pointed the other way. The transparency promise
+here is about the *reasoning*, and honouring a promise made about submitters' addresses by
+publishing an admin's address instead would be an odd trade. The note is published verbatim; who
+wrote it is not.
+
+### `open` is a status, not a waiting room
+
+The plan says "every proposal ever submitted", and the ledger takes that literally: a proposal
+nobody has judged yet appears with an "Awaiting review" badge and its rationale in full. Holding
+proposals back until they have an outcome would reproduce, in miniature, exactly the black box the
+page exists to close — the submitter would still have no way to tell "not yet read" from "quietly
+dropped". Two tests cover this in the two places it could be lost: a status filter sneaking onto
+the query, and a filter sneaking into the render.
+
+### "Accepted ones link to the row they changed" — for two of the five actions
+
+`applyAcceptance` stamps `source_ref = 'district_correction:<id>'` on the `geo_district_map` rows
+it writes, which is the only link between the two tables and now has a second reader. `add` and
+`move` produce such a row, so those entries link the membership row by place name on the district
+page that carries it.
+
+The other three genuinely have no row to point at, and the ledger says so in words rather than
+rendering a dead "accepted" with nothing behind it: an accepted `remove` marks the existing row
+`rejected`, which the public-read policy (`status <> 'rejected'`) then hides; a `rename` edits
+`dim_legislative_district`; `other` writes nothing by design. Each still links the district pages
+the proposal named, so a reader can always check the current state against what was proposed.
+
+### The 1-hour window, closed at both ends
+
+`/districts/corrections` sits on the same 1-hour ISR window as the rest of the district pages, but
+the two events a reader cares about now expire it explicitly: the submission route revalidates the
+path after a successful insert (not after a honeypot trip or a failed one — asserted), and the
+admin's judge action revalidates it alongside `/districts` and the affected district pages. The
+form tells the submitter their proposal will appear on the ledger; an hour's lag would make that
+true only eventually, which is a smaller black box rather than none.
+
+### Two smaller calls
+
+**The rationale is now labelled public on the form itself**, under the textarea, before submission
+— the plan's privacy line asked for this and D2.3 shipped without it, because until this increment
+there was no public page to name. The email field's "never published" note was already there.
+
+**`describeCorrectionChange` moved out of the admin queue** into `components/districts/correction-change.ts`,
+shared by the queue and the ledger. The ledger is the public mirror of the queue; a reader checking
+what happened to their proposal should see the same sentence the reviewer acted on, not a second
+paraphrase free to drift from it.
+
+### Left undone, deliberately
+
+`district_correction` is still absent from `dataset_registry` — the 2026-09-03 entry deferred it to
+"when D2.3 can say what its columns mean", which is now true. Registering it is a live-database
+seeding job with its own exposure question (the assistant must never be able to query a column this
+page is careful not to publish), and it belongs with D2.6's changelog work rather than bolted onto
+the read-only page. Noted here so it is a scheduled debt and not a silent one.
+
+### Standards
+
+1,081 tests, up from 1,052. Lint and typecheck clean; `next build` compiles and type-checks, and
+the new page renders through static generation against an unreachable database — which is the
+degrade-to-empty path, exercised rather than asserted (the generated page carries its explanation
+and a truthful zero count). Twenty mutations were run against the new
+tests: publishing `submitter_email` in the column list, leaking it onto the mapped row, bucketing
+outcome rows without reading `source_ref`, looking up outcomes for unaccepted proposals, resolving
+names from the proposals only, never flagging a truncated list, hiding `open` rows at the query
+and at the render, dropping the
+review note, dropping the outcome links, swapping two outcome explanations, ignoring the status
+filter, narrowing the search away from the review note, making it case-sensitive, un-marking a
+stranger's evidence URL `nofollow`, and removing each revalidation (plus firing one on a honeypot
+trip). All are caught. Two survivors are equivalent mutants, not gaps: rewriting the list read's
+error guard as `data ?? []` (the outer `catch` returns the same empty ledger), and reordering the
+`case` clauses in `describeAcceptedOutcome`.

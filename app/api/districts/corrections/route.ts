@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/db/supabase";
 
@@ -59,6 +60,11 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: "Could not submit correction" }, { status: 500 });
   }
+
+  // The submitter is told their proposal appears on D2.5's public ledger. That page is on the same
+  // 1-hour window as the rest of the district pages, so without this it would be true only
+  // eventually — and "eventually" is exactly the black box the ledger exists to close.
+  revalidatePath("/districts/corrections");
 
   return NextResponse.json({ ok: true });
 }

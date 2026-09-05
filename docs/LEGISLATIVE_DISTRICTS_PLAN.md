@@ -404,7 +404,7 @@ reject / duplicate, with `reviewed_by`, `reviewed_at` and a mandatory `review_no
 writes the superseding `geo_district_map` row with `match_method = 'public_correction'` and
 `source_ref` pointing at the proposal id, then triggers §6.1's roll-up rebuild.
 
-### D2.5 — The public ledger (1 day)
+### D2.5 — The public ledger (1 day) — **done 2026-09-05.**
 
 `/districts/corrections`: every proposal ever submitted, its status, and its review note. Accepted
 ones link to the row they changed. **This is the part that makes the correction mechanism credible
@@ -413,6 +413,23 @@ submitting.
 
 Privacy: submitter email is never rendered; the rationale text is public and the form says so
 before submission.
+
+Built as specified. Four things worth recording here rather than only in `docs/DECISIONS.md`:
+
+- **`open` is a published status, not a waiting room.** The plan says "every proposal ever
+  submitted", and an unjudged proposal is exactly what a submitter checking on their own report
+  needs to see. Hiding it until it has an outcome would reproduce the black box in miniature.
+- **`reviewed_by` is not published, `review_note` is.** The constraint the ledger inherits is about
+  submitters' addresses; satisfying it by publishing an admin's address instead would be an odd
+  trade. The reasoning is the accountable part.
+- **"The row they changed" exists for two of the five actions.** `add` and `move` write a
+  `geo_district_map` row carrying `source_ref = 'district_correction:<id>'`, which is what the
+  ledger joins on. An accepted `remove` marks the existing row rejected (invisible to public reads
+  by policy) and a `rename` touches `dim_legislative_district`, so those say in words what changed
+  and link the district page instead of a row.
+- **Neither a submission nor a review waits out the 1-hour ISR window.** The submission route and
+  the admin's judge action both `revalidatePath('/districts/corrections')`. A ledger that is an
+  hour behind the promise made on the form is a smaller black box, not none.
 
 ### D2.6 — Changelog + cache invalidation (half a day)
 
