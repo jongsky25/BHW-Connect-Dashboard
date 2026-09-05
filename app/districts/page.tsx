@@ -47,11 +47,9 @@ export default async function DistrictsPage() {
           Wikidata — not published by PSA or COMELEC</strong>. It rests on a single source rather
           than the usual two, because the intended second opinion (COMELEC&apos;s precinct returns)
           is no longer reachable by anyone. Every row below carries the source page and revision it
-          came from. If you know your own city, municipality, or barangay is placed wrong, please{" "}
-          <a href="/feedback" className="underline hover:text-accent">
-            tell us
-          </a>{" "}
-          — that correction is the second source this mapping is missing.
+          came from. If you know your own city, municipality, or barangay is placed wrong, open its
+          district below and use the &ldquo;Propose a correction&rdquo; form there — that
+          correction is the second source this mapping is missing.
         </p>
       </div>
 
