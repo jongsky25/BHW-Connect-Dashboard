@@ -391,33 +391,74 @@ export type DistrictMappingRow = {
   retrievedAt: string;
 };
 
+/** Supabase/PostgREST's hard per-request row cap (BUILD_PLAN.md pitfall P9 — see
+ * `getAllGeosAtLevels` in `lib/db/geo.ts`, the precedent this follows). `geo_district_map` alone
+ * is ~3,500 rows, well past it, so both the member read and the `dim_geo` name lookup below page
+ * or chunk past it rather than silently truncating the mapping export. */
+const MAPPING_PAGE_SIZE = 1000;
+
+/** Every live `geo_district_map` member row, paginated past the 1,000-row cap. */
+async function getAllLiveDistrictMembers(): Promise<
+  {
+    district_code: string;
+    geo_code: string;
+    geo_level: "citymun" | "barangay";
+    match_method: string;
+    source_kind: string;
+    source_ref: string;
+    retrieved_at: string;
+  }[]
+> {
+  const supabase = createSupabaseServerClient();
+  const results: Awaited<ReturnType<typeof getAllLiveDistrictMembers>> = [];
+
+  for (let offset = 0; ; offset += MAPPING_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("geo_district_map")
+      .select("district_code, geo_code, geo_level, match_method, source_kind, source_ref, retrieved_at")
+      .is("superseded_by", null)
+      .neq("status", "rejected")
+      .order("id", { ascending: true })
+      .range(offset, offset + MAPPING_PAGE_SIZE - 1);
+
+    if (error || !data) break;
+    results.push(
+      ...(data as unknown as Awaited<ReturnType<typeof getAllLiveDistrictMembers>>),
+    );
+    if (data.length < MAPPING_PAGE_SIZE) break;
+  }
+
+  return results;
+}
+
 export const getDistrictMappingExport = cache(async (): Promise<DistrictMappingRow[]> => {
   const supabase = createSupabaseServerClient();
-  const [{ data: districts }, { data: members }, regions] = await Promise.all([
+  const [{ data: districts }, members, regions] = await Promise.all([
     supabase
       .from("dim_legislative_district")
       .select("district_code, district_name, congress_no, region_code")
       .neq("status", "rejected"),
-    supabase
-      .from("geo_district_map")
-      .select("district_code, geo_code, geo_level, match_method, source_kind, source_ref, retrieved_at")
-      .is("superseded_by", null)
-      .neq("status", "rejected"),
+    getAllLiveDistrictMembers(),
     getChildGeos(NATIONAL_GEO_CODE, "national"),
   ]);
 
-  if (!districts || !members) return [];
+  if (!districts) return [];
 
   const regionNameByCode = new Map(regions.map((r) => [r.geoCode, r.geoName]));
   const districtByCode = new Map(districts.map((d) => [d.district_code, d]));
 
+  // Chunked (not one `.in()` call): the member set is ~3,500 distinct codes, and a result set
+  // that large would hit the same 1,000-row cap regardless of how big the IN-list is — each chunk
+  // here stays comfortably under it.
   const geoCodes = Array.from(new Set(members.map((m) => m.geo_code)));
   const geoNameByCode = new Map<string, string>();
-  if (geoCodes.length > 0) {
+  const CHUNK_SIZE = 500;
+  for (let i = 0; i < geoCodes.length; i += CHUNK_SIZE) {
+    const chunk = geoCodes.slice(i, i + CHUNK_SIZE);
     const { data: geoRows } = await supabase
       .from("dim_geo")
       .select("geo_code, geo_name")
-      .in("geo_code", geoCodes);
+      .in("geo_code", chunk);
     for (const row of geoRows ?? []) geoNameByCode.set(row.geo_code, row.geo_name);
   }
 
