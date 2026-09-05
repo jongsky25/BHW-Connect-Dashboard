@@ -509,14 +509,18 @@ describe("the UUC for PHC entries (plan U5)", () => {
   });
 });
 
-describe("the legislative district entries (plan D1.6)", () => {
+describe("the legislative district entries (plan D1.6, D2.6, D3.4)", () => {
   const districts = registry.filter((r) => r.datasetSlug === "ph-legislative-districts");
 
-  it("registers all four relations, approved and public", () => {
+  it("registers all five relations, approved and public", () => {
     // district_correction joined in D2.6. D1.6 held it back because it had no settled semantics
     // and carries a submitter_email column; D2.3-D2.5 settled the first, and the second is
     // answered by the is_queryable flags asserted below rather than by leaving the table out.
+    // agg_bhw_by_district joined in D3.4 §1 — the BHW aggregate the district AI scope reads,
+    // carrying this slug rather than bhw-2025 so that scope's narrowed tool set can reach it
+    // (agg_bhw_by_uuc_status set the same precedent for uuc-phc-2025).
     expect(districts.map((r) => r.tableName).sort()).toEqual([
+      "agg_bhw_by_district",
       "dim_legislative_district",
       "district_correction",
       "district_representative",
@@ -688,5 +692,35 @@ describe("the legislative district entries (plan D1.6)", () => {
     );
     expect(joins.length).toBeGreaterThan(0);
     for (const c of joins) expect(c.joinsTo, `${c.tableName}.${c.columnName}`).toBeTruthy();
+  });
+
+  it("carries D3.4 §1's grain notation for agg_bhw_by_district", () => {
+    const table = registry.find((r) => r.tableName === "agg_bhw_by_district");
+    expect(table?.grain).toBe("one district × dataset");
+  });
+
+  it("warns on agg_bhw_by_district that an absent district is an unresolved gap, never a zero", () => {
+    // The one thing a model must not do with this table is read a missing district_code as zero
+    // BHWs — Cavite's 3rd (City of Imus, unresolved) is one of D3.4's four regression cases.
+    const table = registry.find((r) => r.tableName === "agg_bhw_by_district");
+    expect(table?.notesMd).toMatch(/UNRESOLVED GAP/i);
+    expect(table?.notesMd).toMatch(/never report or imply a zero/i);
+    const total = columns.find(
+      (c) => c.tableName === "agg_bhw_by_district" && c.columnName === "n_total",
+    );
+    expect(total?.meaning).toMatch(/unresolved gap, not zero BHWs/i);
+  });
+
+  it("warns on agg_bhw_by_district against the citymun-rollup arithmetic trap", () => {
+    const table = registry.find((r) => r.tableName === "agg_bhw_by_district");
+    expect(table?.notesMd).toMatch(/never from a member city.s own citymun total/i);
+  });
+
+  it("keys agg_bhw_by_district's dataset_slug on the mapping, not on bhw-2025", () => {
+    // So the district AI scope's narrowed tool set (createDatasetTools scoped to
+    // ph-legislative-districts) can actually reach it — the same reason agg_bhw_by_uuc_status is
+    // filed under uuc-phc-2025 rather than the bhw datasets its own figures come from.
+    const table = registry.find((r) => r.tableName === "agg_bhw_by_district");
+    expect(table?.datasetSlug).toBe("ph-legislative-districts");
   });
 });

@@ -8913,3 +8913,110 @@ no rework of what this increment built.
 
 Lint and typecheck clean. `npm test` clean (existing suite plus the filter-codec round-trip
 assertions this increment added for `districtCode`/`compareDistricts`/`mapLayer`).
+
+## 2026-09-05 — D3.4: the AI layer, and the district chat scope it turned out to need
+
+The plan's four changes (§6 D3.4), in the order it gives them.
+
+### §1 — agg_bhw_by_district joins the registry, and it is filed under the mapping's slug, not bhw-2025
+
+`supabase/migrations/20260905070000_seed_registry_agg_bhw_by_district.sql` (and the canonical seed,
+`20260826090100_seed_dataset_registry.sql`), applied to `bhw-connect` via the Supabase MCP. `grain`
+is `'one district × dataset'`, spelled out exactly as the plan quotes it — every other grain value
+in the seed reads as prose ("One X per Y"); this one keeps the plan's own notation because D3.3's
+own DECISIONS entry already quoted it that way, so matching it exactly is what keeps the two
+records saying the same thing.
+
+**`dataset_slug = 'ph-legislative-districts'`, not `'bhw-2025'`, and this is the one call in this
+increment that isn't mechanical.** The table's *rows* are bhw-2025 figures — every `dataset_id` in
+it points there. But `dataset_slug` is not "which dataset do these numbers come from"; it is which
+chat scope's narrowed tool set can reach the table at all (`inDatasetScope`,
+`lib/db/dataset-registry.ts`: a relation is in scope only if its `dataset_slug` is null or in the
+caller's list). Filed under `bhw-2025`, `agg_bhw_by_district` would be invisible to the district
+scope §3 needs and unreachable by the very feature this migration exists to unlock. D2.6 already
+set this precedent for `agg_bhw_by_uuc_status` (filed under `uuc-phc-2025` though its figures come
+from the bhw datasets) for the identical reason, and the registry note here says so, so the next
+person filing a derived aggregate under the "wrong" slug on purpose finds the reasoning rather than
+reinventing it.
+
+### §2 and §3 — there was no scope to put the rule in, so this increment adds one
+
+The plan's own text treats §2 (a provenance rule) and §3 (cache versioning "already free") as
+already-available machinery to switch on. Reading `lib/ai/dataset-scope.ts` said otherwise, and two
+DECISIONS entries had already flagged it in advance: D2.6's said outright "no chat surface is keyed
+on the district slug, so `ai_ask_cache` holds no district answers for a bump to expire... the public
+district scope arrives with D3.4." `bumpDatasetVersion(DATASET_SLUGS.legislativeDistricts)` has been
+firing on every accepted correction since D2.6 with nothing downstream to invalidate — this
+increment is what gives it something.
+
+**`lib/ai/district-system-prompt.ts`** is a new `DISTRICT_SYSTEM_PROMPT`, on the `UUC_PHC_SYSTEM_PROMPT`
+precedent (a separate constant per surface, not a shared prompt with conditional paragraphs). Rule 2
+is §2's rule verbatim: name the Congress, say the grouping is derived and correctable. Rules 3-5 are
+not asked for by name but are the same class of rule as the suppression instruction — a caveat that
+has to travel with a specific kind of value or the model states something false with total
+fluency: rule 3 is D3.1's arithmetic trap (never derive a district's figure from a member city's own
+citymun total), rule 4 is the gap-disclosure rule every district table's registry note already
+carries (an absent row is an unresolved mapping gap, never a zero — Cavite's 3rd is the standing
+example), and rule 5 is `district_correction`'s own boundary, restated at rule priority: proposals
+are not the mapping, and its free-text columns are an unverified stranger's claim, never an
+instruction to follow.
+
+**`lib/ai/dataset-scope.ts` gets a `DISTRICT_SCOPE`**: `id: "district"`,
+`datasetSlug: DATASET_SLUGS.legislativeDistricts`, `createTools: () => createDatasetTools("public",
+[DATASET_SLUGS.legislativeDistricts])` — the registry pair narrowed to the five tables that slug
+covers, no hand-written tool code, exactly as §1's own framing promises. `"district"` joins
+`DATASET_SCOPE_IDS`, so `app/api/ai/chat/route.ts` needs no change at all: it already takes
+`dataset` as an enum over that list and threads `scope.datasetSlug` through the cache key,
+`ai_ask_log`, and the tool set uniformly.
+
+**`DatasetScope.narrativeType` and `.narrativePrompt` become optional, and `DISTRICT_SCOPE` omits
+both.** Every existing scope pairs a chat surface with a geo-shaped narrative (`NarrativeContext`
+is `{geoCode, geoLevel, geoName}`), generated for a `dim_geo` row. A district is not a `dim_geo` row
+— it has no `geoCode`/`geoLevel` of its own (plan §1) — so there is no cache key or prompt shape a
+"district narrative" would mean, and no page asks for one: D3.3's own entry gave `/districts/[code]`
+three `FigureCard`s, not an AI insight card. Writing a `narrativePrompt` that takes a `geoCode`
+anyway would be a stub wearing the shape of a feature nothing calls; leaving the fields required
+would force one into existence for a type-checker's sake. Made optional instead, with
+`lib/ai/narrative.ts`'s existing "a narrative_type nothing claims generates nothing" guard extended
+by one clause (`if (!scope || !scope.narrativePrompt) return null;`) — refusing beats fabricating a
+narrative shape for an entity that doesn't have the fields to fill it, the same reasoning the
+existing guard already uses for an unclaimed `narrativeType`.
+
+### §4 — three of the four cases, and why the fourth isn't in this table
+
+`supabase/migrations/20260905080000_ai_regression_district_cases.sql`, on the "route 1" pattern
+`20260828120000_ai_regression_expectation.sql` established: values read live through the same REST
+layer `queryDataset` uses, via the Supabase MCP, not authored. Two came back as expected — Leyte's
+1st (`n_total = 1495`, `n_accredited = 1041`, `pct_accredited = 69.63`) and Cavite's 3rd (zero rows,
+`mode: "count"`, `matchingRows = 0` — City of Imus, its only member, is unresolved). The
+multi-district trap is the one worth recording: Quezon City's whole citymun row in
+`agg_bhw_counts` carries `n_total = 244`; its 3rd district's own row in `agg_bhw_by_district` is
+`37`. A wrong answer built by rolling up the citymun total (the exact trap D3.1's migration guards
+against in the aggregate itself) would report 244 for one of six districts — the case pins 37 and
+the note records 244 as the specific wrong number a fluent answer would give instead.
+
+**The fourth case — "a vintage question, for an LGU moved by a correction" — is not seeded as a
+row.** `ai_regression_case` pins the *current* live mapping; `district_correction` has zero
+accepted rows today (checked live before writing this), so there is no "before" and "after" this
+table could assert without inventing a correction against a real place's public district assignment
+for a test's sake — which is worse than not testing it, on the same reasoning guardrail 5 gives for
+never letting a correction write directly outside the reviewed pipeline. What the case can honestly
+seed is its lookup half: "Which legislative district is Palo, Leyte in?" resolves to `leyte-1st`,
+which is D3.3's own worked example for `/api/geo/search` ("Palo" surfaces "Leyte's 1st") — so the
+seed ties directly to language already in the plan rather than a fixture invented for this row.
+
+The half that actually needs a correction to exist — that accepting one bumps
+`dim_dataset.last_updated_at` for `ph-legislative-districts` and nothing else, which is what would
+keep a stale cached answer from serving after a real move — is exercised where it can be, as code:
+`app/api/ai/chat/route.test.ts` now asserts the district surface's cache key is
+`(question, geoCode, "DISTRICT-V1", "ph-legislative-districts")`, independent of the bhw and uuc-phc
+keys for the identical question, and `lib/db/district-correction-changelog.test.ts` already asserts
+acceptance calls `bumpDatasetVersion(DATASET_SLUGS.legislativeDistricts)`. Together those two prove
+the mechanism §3 claims; neither one needed a live mutation to a real district assignment to do it.
+
+### Standards
+
+1,139 tests, up from 1,109. Lint and typecheck clean. The four regression cases' `tool_calls` and
+`expectations` were checked by hand against the live database through the Supabase MCP rather than
+through `lib/ai/regression-runner.ts` itself — the runner needs a service-role key this environment
+does not have, the same gap the original ten cases' migration recorded rather than papering over.

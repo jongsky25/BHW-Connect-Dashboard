@@ -71,7 +71,7 @@ async function generateOrReadCache(
   // A narrative_type nothing claims has no prompt and no tool set to generate it with; refusing
   // beats generating one under the wrong scope, which is the defect this key change exists to fix.
   const scope = scopeForNarrativeType(narrativeType);
-  if (!scope) return null;
+  if (!scope || !scope.narrativePrompt) return null;
 
   const dataset = await getDatasetBySlug(scope.datasetSlug);
   const dataVersion = dataset?.lastUpdatedAt ?? "unknown";

@@ -2,6 +2,7 @@ import "server-only";
 import { DATASET_SLUGS } from "@/lib/db/dataset";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { createDatasetTools } from "./dataset-tools";
+import { DISTRICT_SYSTEM_PROMPT } from "./district-system-prompt";
 import { DATASET_SCOPE_IDS, type DatasetScopeId } from "./scope-id";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { TOOLS, type Tool } from "./tools";
@@ -42,8 +43,14 @@ export type DatasetScope = {
   systemPrompt: string;
   /** Built per call, not held: the registry tools read `dataset_registry` at execute time. */
   createTools: () => Tool[];
-  narrativeType: NarrativeType;
-  narrativePrompt: (context: NarrativeContext) => string;
+  /**
+   * Both omitted together for a scope with no geo-shaped narrative to generate. The district scope
+   * is the case: `NarrativeContext` is keyed on `(geoCode, geoLevel)`, and a district is neither —
+   * it has no `dim_geo` row of its own (plan §1) — so there is no cache key or prompt shape that
+   * would mean anything for one. Omitting both is the honest state, not a stub to fill in later.
+   */
+  narrativeType?: NarrativeType;
+  narrativePrompt?: (context: NarrativeContext) => string;
   /**
    * What the chat says when the audit left nothing standing. Scope-specific because it names the
    * subjects this surface can actually answer about, and naming the other dataset's subjects is
@@ -109,9 +116,36 @@ const UUC_PHC_SCOPE: DatasetScope = {
     "I couldn't find a fully grounded answer to that in this list — try asking which barangays in a place are on the 2025 list, or how many of them came in on each qualifying route. Whether a barangay should be on the list is the source office's to answer, not this dashboard's.",
 };
 
+/**
+ * The legislative-district scope (docs/LEGISLATIVE_DISTRICTS_PLAN.md §6 D3.4). The registry pair,
+ * narrowed to `ph-legislative-districts` — `agg_bhw_by_district`, `dim_legislative_district`,
+ * `geo_district_map`, `district_representative` and `district_correction` all carry that slug
+ * (D1.6, D2.6, D3.4 §1), so this is the whole tool set: no dataset-specific code, per §1's own
+ * framing of what the registry is for.
+ *
+ * **`datasetSlug` is what makes D3.4 §3 true.** `lib/db/district-correction-changelog.ts` has
+ * called `bumpDatasetVersion(DATASET_SLUGS.legislativeDistricts)` on every accepted correction
+ * since D2.6, with nothing to invalidate — no scope was keyed on this slug, so `ai_ask_cache` held
+ * no district answers for the bump to expire. This scope is that missing piece: from here on, an
+ * accepted correction changes `dim_dataset.last_updated_at` for this slug, which changes this
+ * scope's `dataVersion` and therefore every cache key `app/api/ai/chat/route.ts` builds for it —
+ * invalidating district answers and, because no other scope shares this slug, nothing else.
+ *
+ * No narrative type: see the field comment on `DatasetScope`.
+ */
+const DISTRICT_SCOPE: DatasetScope = {
+  id: "district",
+  datasetSlug: DATASET_SLUGS.legislativeDistricts,
+  systemPrompt: DISTRICT_SYSTEM_PROMPT,
+  createTools: () => createDatasetTools("public", [DATASET_SLUGS.legislativeDistricts]),
+  emptyAnswer:
+    "I couldn't find a fully grounded answer to that in the district mapping — try asking about a specific district by name, or which district a city, municipality or barangay belongs to.",
+};
+
 const SCOPES: Record<DatasetScopeId, DatasetScope> = {
   bhw: BHW_SCOPE,
   "uuc-phc": UUC_PHC_SCOPE,
+  district: DISTRICT_SCOPE,
 };
 
 export function datasetScope(id: DatasetScopeId): DatasetScope {
