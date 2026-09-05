@@ -517,13 +517,44 @@ Two things worth recording here rather than only in `docs/DECISIONS.md`:
   level (currently 0); this re-checks it at the barangay grain this table actually sums over, which
   is the grain a citymun/barangay overlap would actually double-count at.
 
-### D3.2 — Boundaries
+### D3.2 — Boundaries — **done 2026-09-05.**
 
 Derive district polygons by dissolving the citymun polygons already reconciled in
 `docs/BOUNDARY_RECONCILIATION.md`. Two known outcomes, both acceptable under the existing policy:
 multi-district cities have no barangay polygons in the source, so they render hatched with the
 ranked-list fallback; and NCR's four district polygons already exist in the source (they are the
 reason NCR provinces show as "missing" in the current report) and can be used directly.
+
+Built by `ingestion/build_district_boundaries.py`, writing `public/geo/districts.json` (189 of 250
+districts get a polygon) and `docs/DISTRICT_BOUNDARY_RECONCILIATION.md` — the same "the report is
+the doc" pattern `docs/BOUNDARY_RECONCILIATION.md` already established. For each district it reads
+`geo_district_map`'s live members: all-citymun-grain with every member's polygon on hand dissolves
+(`shapely.ops.unary_union`) into one feature keyed `geo_code = district_code`, matching the property
+`ChoroplethMap` already reads; anything else is left with no polygon, on purpose, for the frontend's
+existing hatched/grey + ranked-list convention to cover — nothing new to build there.
+
+**"Can be used directly" turned out to mean something narrower than it reads, and the narrower
+reading is the one that ships.** The four source polygons are not district polygons in the
+`dim_legislative_district` sense: fetching them (`municities-provdist-13039/13074/13075/13076`) and
+reading their constituent cities shows they are old PSA-style administrative groupings — the
+"Second District (Not a Province)" polygon, for instance, is one dissolved shape spanning
+Mandaluyong, Marikina, Pasig, Quezon City *and* San Juan, five whole cities that hold six separate
+congressional seats between them today. None of the 32 current NCR districts corresponds to one of
+these four polygons, and asserting a correspondence that isn't there is exactly the guessed match
+guardrail 1 (§7) rules out — so they are never assigned to a `district_code` as a stand-in shape.
+
+What "used directly" resolves to instead: those same four files are fetched *at their own citymun
+grain*, which is the one place a per-city polygon for NCR exists in the source at all (the region's
+17 real provinces have none — that is the fact `docs/BOUNDARY_RECONCILIATION.md` already recorded as
+"NCR provinces show as missing"). Pulled apart and exact-matched (case-insensitive, the same standing
+as D1.4's `exact` tier — not a fuzzy match) against `dim_geo`'s NCR citymun rows, they supply 16 of
+NCR's 17 whole-city polygons outright. That is exactly enough to resolve NCR's four whole-city,
+single-seat districts — Malabon, Mandaluyong, Navotas, San Juan — the same way any other
+citymun-grain district resolves elsewhere in the country. The 17th, Manila, has no whole-city row to
+match against: Manila's own PSGC children are its ten sub-city districts (Tondo, Quiapo, ...), none
+of which carries a source polygon at any grain, so Manila's own 3rd–6th districts stay hatched along
+with every other NCR district resolved at barangay grain (its 1st, 2nd, and every other city split
+into more than one seat).
 
 ### D3.3 — Surfaces
 
