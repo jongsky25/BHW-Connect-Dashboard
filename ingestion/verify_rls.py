@@ -41,7 +41,18 @@ PUBLIC_READ_TABLES = [
     "dim_legislative_district",
     "geo_district_map",
     "district_representative",
+    # Health facilities (NHFR, plan N1/N2). Public because /facilities publishes the register and
+    # its rollups. The fact table is public too, unlike fact_bhw_raw below: it is a register of
+    # *places*, and the personal contact columns the export carries are dropped at ingestion
+    # rather than loaded and hidden (see ingestion/clean_nhfr.py).
+    "fact_nhfr_facility",
+    "agg_nhfr_counts",
+    "agg_nhfr_by_type",
 ]
+
+# Known drift, not this increment's to fix: the UUC for PHC tables (fact_uuc_phc_barangay,
+# agg_uuc_phc_counts, fact_uuc_phc_indicators, agg_uuc_phc_criteria, …) are public-read and were
+# never added to the list above. They are checked by nothing here today.
 
 SERVICE_ROLE_ONLY_TABLES = [
     "fact_bhw_raw",
