@@ -8850,3 +8850,66 @@ stub was fixed. It survived the first run because the query-builder stub returne
 name whether the rename had been applied or not, so the test asserting "the *old* name reaches the
 changelog" passed either way. The stub now applies a `dim_legislative_district.district_name` update
 to its own rows, which is what makes that assertion mean anything.
+
+## 2026-09-05 — D3.3: Surfaces, with the figure set D3.1 actually built
+
+§6 D3.3 names five surfaces in one line each. The line for the profile pages says districts get
+"the same figure set as `/place/[geoLevel]/[geoCode]`" — demographics, training, certification,
+honorarium amount/distribution/sufficiency, completeness, households-per-BHW, insights, the whole
+place-page contract. That line was never buildable from what exists: D3.1's own text says it built
+"the first dataset only" — `agg_bhw_by_district` carries `n_total`, `n_accredited`, `pct_accredited`,
+`avg_active_years`, `any_honorarium_pct`, and nothing else, because every other place-page figure
+reads a *per-`geo_level`* aggregate keyed on `dim_geo`, and building the district-grain counterpart
+of demographics/training/honorarium-amount/completeness/etc. is exactly the "UUC-PHC and
+profiling-status counterparts are not yet built" follow-up D3.1 named, times six datasets instead of
+two. Reading D3.3 as "wire up parity the data can't support yet" would mean either fabricating
+figures from nothing or silently shipping a profile page thinner than its own promise with no note
+saying so. §0's own instruction is to record the discrepancy and choose the smallest deviation that
+preserves the plan's intent, so: the smallest deviation is the exact figure set D3.1 already
+proved out, published honestly as three figures rather than dressed up as nine.
+
+Concretely, "the same figure set as `/place`" becomes three `FigureCard`s on `/districts/[code]`
+(Accreditation, Average years of service, Honorarium), each benchmarked against the Philippines
+national row only — a district has no region/province ancestor chain the way a `dim_geo` row does
+(plan §1), so there is no vertical benchmark rung between "this district" and "the nation" the way
+`/place` has one for region. Peer-rank chips are omitted outright rather than approximated:
+`agg_peer_ranks` is keyed on `geo_level`, districts aren't one, and guessing a rank would be exactly
+the kind of fabricated figure the plan's own identity rule (§7 guardrail 6 and the wider "never state
+a number that wasn't computed" rule) forbids.
+
+The other four D3.3 bullets carry the same shape of decision, smaller each time:
+
+- **`/explore`'s map layer** is real, not degraded: `public/geo/districts.json` (D3.2) colors by
+  whichever of the 3 district figures is active, toggled at the national view only — a district
+  doesn't nest inside a region the way a child geo does, so there is no "drill from region into
+  district" rung to add, only a sibling layer to the existing region choropleth.
+- **`/explore`'s district filter dimension** turned out to mean "findable", not "a second parallel
+  indicator waterfall bolted onto the existing geo-scoped page": a district search result opens its
+  own (now fuller) `/districts/[code]` page rather than trying to make every `/explore` figure
+  understand a geography that isn't in `dim_geo`. Building a district-scoped clone of `/explore`'s
+  20-odd figures would just be the same three-figure ceiling reached by a longer road.
+- **`/compare`'s district-vs-district mode** reuses `CompareSummary`/`CompareMetricValues` as-is —
+  the three unavailable base indicators (households-per-BHW, coverage %, bhw-per-1,000) pass through
+  as `null` and the summary strip already has an honest "not enough data to compare X, Y, Z" path
+  for exactly this case, so no new degrade logic was needed, only a narrower per-district column
+  (`DistrictCompareColumn`) than the full `CompareColumn` a place gets.
+- **Exports and search** needed no scope cut: CSV/XLSX/PNG/PPTX for the 3 district figures reuse the
+  existing `/api/export/*` routes behind a `districtCode` param parsed by its own schema branch
+  (never mixed with `geoCode`/`geoLevel` — guardrail 7), the mapping-as-download is a new
+  `/api/export/districts/{csv,xlsx}` pair over `geo_district_map` directly, and
+  `/api/geo/search` gets a `search_district` DB function (district name + member LGU,
+  `word_similarity`, same style as `search_geo`) rather than any change to `search_geo` itself —
+  a district is never mixed into `dim_geo`/`agg_geo_summary` (guardrail 7), so it search-merges in
+  the API route instead of the query.
+
+None of this blocks D3.4. The registry entry D3.4 §1 describes — `agg_bhw_by_district` at
+`exposure = 'public'`, grain "one district × dataset" — is exactly the table this increment already
+reads from, three columns and all; the AI layer's provenance/vintage rule (D3.4 §2) applies to
+whatever figure set exists, not a specific count of them. The wider figure set, if it ships later,
+is additive: new district-grain aggregate tables, the same three-`FigureCard` section growing rows,
+no rework of what this increment built.
+
+### Standards
+
+Lint and typecheck clean. `npm test` clean (existing suite plus the filter-codec round-trip
+assertions this increment added for `districtCode`/`compareDistricts`/`mapLayer`).

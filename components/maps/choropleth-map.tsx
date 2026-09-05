@@ -4,7 +4,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { colorForValue, NO_DATA_COLOR, type ColorBin } from "@/lib/charts/color-scale";
 import { accent } from "@/lib/charts/palette";
-import type { GeoLevel } from "@/lib/filters/schema";
 
 export type ChoroplethDatum = {
   geoCode: string;
@@ -73,7 +72,11 @@ export function ChoroplethMap({
   onDrill,
 }: {
   geojsonUrl: string;
-  childLevel: GeoLevel;
+  /** Only used as the map (re)init effect's dependency key below — a `GeoLevel` for the geo
+   * choropleth, or `"district"` for the D3.3 district layer (never a `geo_level`, plan §1). Not
+   * read for any styling/logic decision, so a plain string is honest rather than widening
+   * `GeoLevel` itself to admit a value that isn't one. */
+  childLevel: string;
   data: ChoroplethDatum[];
   bins: ColorBin[];
   valueSuffix?: string;

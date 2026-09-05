@@ -13,6 +13,10 @@ describe("filter codec", () => {
       relY: "coverage_pct" as const,
       compareGeos: ["050400000", "137400000"],
       breakdowns: ["sex" as const, "age_band" as const],
+      districtCode: "leyte-1",
+      mapLayer: "district" as const,
+      districtMapIndicator: "avg_active_years" as const,
+      compareDistricts: ["leyte-1", "leyte-2"],
     };
 
     const url = serializeFilterState("/explore", original);
@@ -23,6 +27,11 @@ describe("filter codec", () => {
     // compareGeos reads/writes as ?geos= per BUILD_PLAN.md §7 1.7's URL spec.
     expect(params.has("geos")).toBe(true);
     expect(params.has("compareGeos")).toBe(false);
+    // districtCode/compareDistricts read/write as ?district=/?districts= (D3.3).
+    expect(params.has("district")).toBe(true);
+    expect(params.has("districtCode")).toBe(false);
+    expect(params.has("districts")).toBe(true);
+    expect(params.has("compareDistricts")).toBe(false);
 
     // Second pass: re-serializing the parsed state reproduces an equivalent URL.
     const roundTripUrl = serializeFilterState("/explore", parsed);
@@ -40,6 +49,10 @@ describe("filter codec", () => {
     expect(parsed.relY).toBe("pct_accredited");
     expect(parsed.compareGeos).toBeNull();
     expect(parsed.breakdowns).toBeNull();
+    expect(parsed.districtCode).toBeNull();
+    expect(parsed.mapLayer).toBe("geo");
+    expect(parsed.districtMapIndicator).toBe("pct_accredited");
+    expect(parsed.compareDistricts).toBeNull();
   });
 
   it("round-trips a per-topic training map indicator through the URL", () => {
@@ -90,6 +103,16 @@ describe("filter codec", () => {
     const parsed = loadFilterState(new URLSearchParams("compareGeos=04,05"));
     expect(parsed.compareGeos).toBeNull();
     expect(filterUrlKeys.compareGeos).toBe("geos");
+  });
+
+  it("ignores the compareDistricts/districtCode state keys when they leak into a URL as param names", () => {
+    const parsed = loadFilterState(
+      new URLSearchParams("compareDistricts=leyte-1&districtCode=leyte-1"),
+    );
+    expect(parsed.compareDistricts).toBeNull();
+    expect(parsed.districtCode).toBeNull();
+    expect(filterUrlKeys.compareDistricts).toBe("districts");
+    expect(filterUrlKeys.districtCode).toBe("district");
   });
 
   it("never throws on garbage input", () => {

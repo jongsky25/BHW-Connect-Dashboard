@@ -7,9 +7,11 @@
  */
 import {
   DEFAULT_MAP_INDICATOR,
+  DISTRICT_MAP_INDICATORS,
   MAP_BASE_INDICATORS,
   REL_AXIS_INDICATORS,
   mapIndicatorTopicSlug,
+  type DistrictMapIndicator,
   type MapBaseIndicator,
   type MapIndicator,
   type RelAxisIndicator,
@@ -81,6 +83,11 @@ export const MAP_BASE_INDICATOR_META: Record<MapBaseIndicator, MapIndicatorMeta>
 /** Ordered base-indicator options for the switcher. */
 export const MAP_BASE_INDICATOR_OPTIONS: Array<{ value: MapBaseIndicator; label: string }> =
   MAP_BASE_INDICATORS.map((value) => ({ value, label: MAP_BASE_INDICATOR_META[value].label }));
+
+/** Ordered indicator options for the D3.3 district map layer — a subset of the base indicators,
+ * limited to what `agg_bhw_by_district` actually carries (see the type's own comment). */
+export const DISTRICT_MAP_INDICATOR_OPTIONS: Array<{ value: DistrictMapIndicator; label: string }> =
+  DISTRICT_MAP_INDICATORS.map((value) => ({ value, label: MAP_BASE_INDICATOR_META[value].label }));
 
 /**
  * Presentation metadata for external (non-workforce) variables that appear only on the

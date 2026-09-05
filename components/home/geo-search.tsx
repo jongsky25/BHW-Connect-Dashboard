@@ -8,13 +8,43 @@ import { formatCount } from "@/lib/format";
 
 type GeoParentChain = { region?: string; province?: string; citymun?: string };
 
-type GeoSearchResult = {
+type GeoHit = {
+  kind: "geo";
   geoCode: string;
   geoLevel: string;
   geoName: string;
   nTotal: number | null;
   parentChain?: GeoParentChain;
 };
+
+/** D3.3 — a district hit from `/api/geo/search` (`search_district`). Never a `geo_level` (plan
+ * §1), so it's a separate variant rather than a `GeoHit` with a fake `geoLevel: "district"`. */
+type DistrictHit = {
+  kind: "district";
+  districtCode: string;
+  districtName: string;
+  matchedMemberName: string | null;
+  bhwTotal: number | null;
+};
+
+type GeoSearchResult = GeoHit | DistrictHit;
+
+/** Stable key + navigation code for either result kind. */
+function resultCode(result: GeoSearchResult): string {
+  return result.kind === "geo" ? result.geoCode : result.districtCode;
+}
+function resultName(result: GeoSearchResult): string {
+  return result.kind === "geo" ? result.geoName : result.districtName;
+}
+function resultLevelLabel(result: GeoSearchResult): string {
+  return result.kind === "geo" ? (GEO_LEVEL_LABEL[result.geoLevel] ?? result.geoLevel) : "District";
+}
+function resultSubtitle(result: GeoSearchResult): string {
+  return result.kind === "geo" ? parentLabel(result) : (result.matchedMemberName ?? "");
+}
+function resultData(result: GeoSearchResult): { text: string; hasData: boolean } {
+  return dataLabel(result.kind === "geo" ? result.nTotal : result.bhwTotal);
+}
 
 type Status = "idle" | "loading" | "done" | "error";
 
@@ -33,7 +63,9 @@ const EXAMPLE_QUERIES = ["Cebu", "CALABARZON", "Quezon City"];
 const RECENTS_KEY = "bhw:recent-places";
 const RECENTS_MAX = 5;
 
-type RecentPlace = { geoCode: string; geoLevel: string; geoName: string };
+/** `kind` defaults to `"geo"` when reading an older localStorage entry saved before D3.3 added
+ * district results — those entries never carried a `kind` at all. */
+type RecentPlace = { geoCode: string; geoLevel: string; geoName: string; kind?: "geo" | "district" };
 
 function loadRecents(): RecentPlace[] {
   try {
@@ -46,10 +78,19 @@ function loadRecents(): RecentPlace[] {
   }
 }
 
+function recentHref(recent: RecentPlace, mode: "place" | "explore" | "profiling"): string {
+  if (recent.kind === "district") return `/districts/${recent.geoCode}`;
+  return mode === "explore"
+    ? `/explore?geoLevel=${recent.geoLevel}&geoCode=${recent.geoCode}`
+    : mode === "profiling"
+      ? `/profiling-status/${recent.geoLevel}/${recent.geoCode}`
+      : `/place/${recent.geoLevel}/${recent.geoCode}`;
+}
+
 /** Most-specific-first ancestor label, e.g. "Carcar City, Cebu" for a barangay.
  * Skips any ancestor equal to the place's own name (a region row lists itself as
  * its own region parent) and caps at two levels to stay on one line. */
-function parentLabel(result: GeoSearchResult): string {
+function parentLabel(result: GeoHit): string {
   const chain = result.parentChain ?? {};
   const parts = [chain.citymun, chain.province, chain.region].filter(
     (p): p is string => Boolean(p) && p !== result.geoName,
@@ -75,12 +116,17 @@ export function GeoSearch({
   mode?: "place" | "explore" | "profiling";
 }) {
   const router = useRouter();
-  const hrefFor = (geoLevel: string, geoCode: string) =>
-    mode === "explore"
-      ? `/explore?geoLevel=${geoLevel}&geoCode=${geoCode}`
-      : mode === "profiling"
-        ? `/profiling-status/${geoLevel}/${geoCode}`
-        : `/place/${geoLevel}/${geoCode}`;
+  // D3.3 — a district result always opens its own `/districts/[code]` receipt page, the same
+  // destination regardless of `mode`: a district isn't a geo_level to filter/explore into (plan
+  // §1), and that page is already the fuller profile (D3.3's other change).
+  const hrefFor = (result: GeoSearchResult) =>
+    result.kind === "district"
+      ? `/districts/${result.districtCode}`
+      : mode === "explore"
+        ? `/explore?geoLevel=${result.geoLevel}&geoCode=${result.geoCode}`
+        : mode === "profiling"
+          ? `/profiling-status/${result.geoLevel}/${result.geoCode}`
+          : `/place/${result.geoLevel}/${result.geoCode}`;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeoSearchResult[]>([]);
   const [status, setStatus] = useState<Status>("idle");
@@ -102,11 +148,10 @@ export function GeoSearch({
   }, []);
 
   function rememberRecent(result: GeoSearchResult) {
-    const entry: RecentPlace = {
-      geoCode: result.geoCode,
-      geoLevel: result.geoLevel,
-      geoName: result.geoName,
-    };
+    const entry: RecentPlace =
+      result.kind === "district"
+        ? { geoCode: result.districtCode, geoLevel: "district", geoName: result.districtName, kind: "district" }
+        : { geoCode: result.geoCode, geoLevel: result.geoLevel, geoName: result.geoName, kind: "geo" };
     const next = [entry, ...recents.filter((r) => r.geoCode !== entry.geoCode)].slice(
       0,
       RECENTS_MAX,
@@ -180,7 +225,7 @@ export function GeoSearch({
   function navigateTo(result: GeoSearchResult) {
     rememberRecent(result);
     setOpen(false);
-    router.push(hrefFor(result.geoLevel, result.geoCode));
+    router.push(hrefFor(result));
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -286,17 +331,17 @@ export function GeoSearch({
           ) : (
             <ul id={listId} role="listbox" aria-label="Search results">
               {results.map((result, i) => {
-                const parents = parentLabel(result);
-                const data = dataLabel(result.nTotal);
+                const subtitle = resultSubtitle(result);
+                const data = resultData(result);
                 return (
                   <li
-                    key={result.geoCode}
+                    key={`${result.kind}-${resultCode(result)}`}
                     id={optionId(i)}
                     role="option"
                     aria-selected={i === activeIndex}
                   >
                     <Link
-                      href={hrefFor(result.geoLevel, result.geoCode)}
+                      href={hrefFor(result)}
                       onMouseEnter={() => setActiveIndex(i)}
                       onClick={() => {
                         rememberRecent(result);
@@ -307,9 +352,9 @@ export function GeoSearch({
                       }`}
                     >
                       <span className="min-w-0">
-                        <span className="block truncate font-medium">{result.geoName}</span>
-                        {parents && (
-                          <span className="block truncate text-xs text-muted">{parents}</span>
+                        <span className="block truncate font-medium">{resultName(result)}</span>
+                        {subtitle && (
+                          <span className="block truncate text-xs text-muted">{subtitle}</span>
                         )}
                         <span
                           className={`block text-xs ${data.hasData ? "text-muted" : "text-muted/70"}`}
@@ -318,7 +363,7 @@ export function GeoSearch({
                         </span>
                       </span>
                       <span className="shrink-0 pt-0.5 text-xs text-muted">
-                        {GEO_LEVEL_LABEL[result.geoLevel] ?? result.geoLevel}
+                        {resultLevelLabel(result)}
                       </span>
                     </Link>
                   </li>
@@ -338,13 +383,15 @@ export function GeoSearch({
                 {recents.map((recent) => (
                   <li key={recent.geoCode}>
                     <Link
-                      href={hrefFor(recent.geoLevel, recent.geoCode)}
+                      href={recentHref(recent, mode)}
                       onClick={() => setOpen(false)}
                       className="flex items-center justify-between gap-3 rounded px-1 py-1.5 text-sm hover:bg-surface"
                     >
                       <span className="truncate">{recent.geoName}</span>
                       <span className="shrink-0 text-xs text-muted">
-                        {GEO_LEVEL_LABEL[recent.geoLevel] ?? recent.geoLevel}
+                        {recent.kind === "district"
+                          ? "District"
+                          : (GEO_LEVEL_LABEL[recent.geoLevel] ?? recent.geoLevel)}
                       </span>
                     </Link>
                   </li>

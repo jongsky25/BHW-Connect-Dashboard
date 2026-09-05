@@ -1,6 +1,6 @@
 import PptxGenJS from "pptxgenjs";
 import { NextResponse } from "next/server";
-import { getExportFigureData } from "@/lib/exports/figure-data";
+import { getDistrictExportFigureData, getExportFigureData } from "@/lib/exports/figure-data";
 import { addFigureSlide } from "@/lib/exports/pptx-slide";
 import { parseExportDeckQuery, slugify } from "@/lib/exports/query";
 
@@ -25,14 +25,22 @@ export async function GET(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid export parameters" }, { status: 400 });
   }
-  const { geoCode, geoLevel, indicators, dimension } = parsed.data;
 
   // Sequential, not Promise.all: each slide rasterises a PNG, and running six resvg renders at
   // once on a small serverless instance is how this route runs out of memory rather than time.
   const figures = [];
-  for (const indicator of indicators) {
-    const data = await getExportFigureData({ geoCode, geoLevel, indicator, dimension });
-    if (data) figures.push(data);
+  if (parsed.data.kind === "district") {
+    const { districtCode, indicators } = parsed.data;
+    for (const indicator of indicators) {
+      const data = await getDistrictExportFigureData({ districtCode, indicator });
+      if (data) figures.push(data);
+    }
+  } else {
+    const { geoCode, geoLevel, indicators, dimension } = parsed.data;
+    for (const indicator of indicators) {
+      const data = await getExportFigureData({ geoCode, geoLevel, indicator, dimension });
+      if (data) figures.push(data);
+    }
   }
 
   // Every requested indicator missing means the place itself is not exportable; some missing is a
