@@ -474,7 +474,7 @@ recording here rather than only in `docs/DECISIONS.md`:
 
 ## 6. Phase D3 — Using the data
 
-### D3.1 — Aggregates: roll up from the finest grain, never from citymun totals
+### D3.1 — Aggregates: roll up from the finest grain, never from citymun totals — **done 2026-09-05.**
 
 `agg_bhw_by_district`, keyed `(dataset_id, district_code)`, plus the same for the UUC-PHC and
 profiling-status datasets once the first one is proven.
@@ -493,6 +493,29 @@ average ~1,200 BHWs. Where it does, the existing `is_suppressed` path handles it
 sum of member populations — `agg_population` stops at citymun (no barangay population), so a
 multi-district city cannot be split. Where PSA's district population is missing, the figure is
 withheld rather than approximated.
+
+Built for the first dataset only, per the plan's own "once the first one is proven": `agg_bhw_by_district`
+carries the profiled census (`bhw-2025`), 249 districts, 267,561 BHWs. The UUC-PHC and
+profiling-status counterparts are not yet built — a follow-up increment, not a gap in this one.
+
+Two things worth recording here rather than only in `docs/DECISIONS.md`:
+
+- **"Assert the sum over all districts equals the national total" needed a residual term, and the
+  honest fix is the same one `agg_bhw_by_uuc_status` already made.** The district mapping does not
+  cover the country yet (`docs/LEGISLATIVE_DISTRICTS.md`: 23 uncovered LGUs, 41 unplaced barangays),
+  which is 3,356 profiled BHWs that resolve to no district at all — City of Imus (Cavite's 3rd's
+  only member) among them, at zero rows because `agg_bhw_counts` itself has none for it. Asserting
+  `sum(n_total) = 270,917` outright would either fail on real, already-published gaps or have to
+  silently exclude them from the check. The migration instead asserts `sum(n_total) + gap = national
+  total`, where `gap` is counted the same way `district_dataset_gaps()` reports its two figures — live,
+  not copied — so the assertion still catches a real double-count (which would inflate the sum without
+  shrinking the gap) while staying true about incomplete coverage.
+- **The leaf-set resolution is materialized once and reused for both the population and the
+  guardrail check**, rather than joining `geo_district_map` to `dim_geo` twice and risking the two
+  copies drifting apart. The guardrail itself — no barangay resolves to more than one district — is
+  the same invariant the D1.5 QA report's `double_claimed_count` already asserts at the source-table
+  level (currently 0); this re-checks it at the barangay grain this table actually sums over, which
+  is the grain a citymun/barangay overlap would actually double-count at.
 
 ### D3.2 — Boundaries
 
