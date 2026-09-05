@@ -1,4 +1,5 @@
 import "server-only";
+import { publishAcceptedCorrection } from "@/lib/db/district-correction-changelog";
 import { createSupabaseServiceClient } from "@/lib/db/service-client";
 
 /**
@@ -519,6 +520,10 @@ async function applyAcceptance(
  * On `accepted`, the mapping mutation runs first; the `district_correction` row is only closed out
  * if that mutation succeeds, so a failed accept leaves the proposal open for the admin to retry
  * rather than recording an acceptance that changed nothing.
+ *
+ * D2.6 adds a third step after both: `publishAcceptedCorrection` writes the changelog entry and
+ * bumps the district dataset's version. It runs last and cannot fail the judgement — see that
+ * module for why a record of a change that already happened must not be able to reverse it.
  */
 export async function judgeDistrictCorrection(
   id: number,
@@ -538,6 +543,12 @@ export async function judgeDistrictCorrection(
     if (!correction) return "Correction not found";
     if (correction.status !== "open") return "This correction has already been judged";
 
+    // Read the names *before* applying anything. An accepted `rename` overwrites
+    // `dim_legislative_district.district_name`, so a lookup afterwards would print the new name as
+    // the old one too and the changelog line would say a district was renamed to what it already
+    // was called. Only on the accept path: the other two outcomes publish nothing.
+    const names = decision === "accepted" ? await nameLookups([correction]) : null;
+
     if (decision === "accepted") {
       const mutationError = await applyAcceptance(correction, reviewedBy, note, newDistrictName);
       if (mutationError) return mutationError;
@@ -552,7 +563,23 @@ export async function judgeDistrictCorrection(
         review_note: note,
       })
       .eq("id", id);
-    return error ? error.message : null;
+    if (error) return error.message;
+
+    if (decision === "accepted" && names) {
+      const fields = toFields(correction, names);
+      await publishAcceptedCorrection({
+        id: fields.id,
+        action: fields.action,
+        districtCode: fields.districtCode,
+        districtName: fields.districtName,
+        toDistrictCode: fields.toDistrictCode,
+        toDistrictName: fields.toDistrictName,
+        geoCode: fields.geoCode,
+        geoName: fields.geoName,
+        newDistrictName,
+      });
+    }
+    return null;
   } catch (cause) {
     return cause instanceof Error ? cause.message : "the update did not complete";
   }

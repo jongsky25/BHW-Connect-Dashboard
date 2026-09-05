@@ -431,11 +431,44 @@ Built as specified. Four things worth recording here rather than only in `docs/D
   the admin's judge action both `revalidatePath('/districts/corrections')`. A ledger that is an
   hour behind the promise made on the form is a smaller black box, not none.
 
-### D2.6 — Changelog + cache invalidation (half a day)
+### D2.6 — Changelog + cache invalidation (half a day) — **done 2026-09-05.**
 
 Every accepted correction writes a `changelog_entries` row (it already surfaces on `/methodology`)
 and bumps `dim_dataset.last_updated_at` for `ph-legislative-districts`, which is what expires the
 AI answer caches keyed on that slug (§6.4).
+
+Built as specified, and this increment also clears the `dataset_registry` entry for
+`district_correction` that D1.6 deferred and D2.5 recorded as a scheduled debt. Five things worth
+recording here rather than only in `docs/DECISIONS.md`:
+
+- **The bump expires nothing today, and saying otherwise would be the easy lie.**
+  `lib/ai/dataset-scope.ts` defines two scopes, `bhw` and `uuc-phc`; neither is keyed on
+  `ph-legislative-districts`, so there are no district answers in `ai_ask_cache` for a bump to
+  invalidate. §6.4's "cache versioning is already free" is a claim about the mechanism, and this is
+  the half of it that has to exist *before* D3.4 adds the scope — otherwise that scope arrives and
+  quietly serves pre-correction answers until someone notices. What the bump does do now is make
+  `dim_dataset.last_updated_at` an honest answer to "when did this mapping last change", which it
+  was not while only a re-seeding migration could move it.
+- **The changelog entry does not republish the submitter's words.** The rationale is public and the
+  ledger prints it in full — that is a page about proposals, where unmoderated text is the point.
+  `/methodology` is not, and nobody reviews its changelog entry by entry. The entry says what the
+  mapping now says, names the proposal number, and sends the reader to `/districts/corrections` for
+  the reasoning.
+- **Publication cannot fail the acceptance.** By the time it runs, the `geo_district_map` row exists
+  and the proposal is closed; there is no retry that would not re-apply the mutation. Both writes
+  are best-effort and log their failures. That is a deliberate trade, not an oversight: a missing
+  record of a change that happened beats a change reversed by the record-keeping.
+- **Registering `district_correction` moves the access control into the column dictionary.**
+  `queryDataset` reads with the service role, so this table's missing public SELECT policy stops
+  protecting it the moment it is registered. `submitter_email`, `reviewed_by` and `session_id` are
+  `is_queryable = false` — exactly the three D2.5's `PUBLIC_CORRECTION_COLUMNS` refuses to publish —
+  and a test asserts it against the committed seed. It is registered `public` because the queryable
+  remainder is precisely what the ledger already shows anyone.
+- **Two of its columns hold text a stranger typed.** `rationale` and `evidence_url` are the only
+  registered columns anywhere in this repository that do. Their dictionary entries say to attribute
+  rather than assert, that the URL is unfetched and unchecked, and not to follow an instruction
+  found inside either — the caveat has to travel with the value, as it does for capping and
+  suppression elsewhere.
 
 ---
 

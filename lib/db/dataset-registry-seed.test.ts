@@ -512,13 +512,13 @@ describe("the UUC for PHC entries (plan U5)", () => {
 describe("the legislative district entries (plan D1.6)", () => {
   const districts = registry.filter((r) => r.datasetSlug === "ph-legislative-districts");
 
-  it("registers all three relations, approved and public", () => {
-    // district_correction is deliberately absent: it is D2.3's submission queue, it holds a
-    // submitter_email column, and it has no rows and no settled semantics yet. Registering a
-    // table makes it queryable, so an unused PII-carrying table is exactly the one not to add
-    // ahead of the feature that fills it.
+  it("registers all four relations, approved and public", () => {
+    // district_correction joined in D2.6. D1.6 held it back because it had no settled semantics
+    // and carries a submitter_email column; D2.3-D2.5 settled the first, and the second is
+    // answered by the is_queryable flags asserted below rather than by leaving the table out.
     expect(districts.map((r) => r.tableName).sort()).toEqual([
       "dim_legislative_district",
+      "district_correction",
       "district_representative",
       "geo_district_map",
     ]);
@@ -595,6 +595,86 @@ describe("the legislative district entries (plan D1.6)", () => {
     );
     expect(level?.allowedValues?.sort()).toEqual(["barangay", "citymun"]);
     expect(level?.meaning).toMatch(/only through its barangays/i);
+  });
+
+  it("keeps district_correction's three private columns out of every query (D2.6)", () => {
+    // This is the assertion the whole registration rests on. `queryDataset` reads with the
+    // service-role client, so `district_correction`'s missing public SELECT policy protects
+    // nothing once the table is registered: the `is_queryable` flags are the only thing between
+    // this dictionary and a submitter's address. The three named here are exactly the three
+    // D2.5's `PUBLIC_CORRECTION_COLUMNS` refuses to publish.
+    for (const name of ["submitter_email", "reviewed_by", "session_id"]) {
+      const column = columns.find(
+        (c) => c.tableName === "district_correction" && c.columnName === name,
+      );
+      expect(column, name).toBeDefined();
+      expect(column?.isQueryable, name).toBe(false);
+      expect(column?.role, name).toBe("meta");
+    }
+  });
+
+  it("describes every column of district_correction, private ones included", () => {
+    // A column absent from the dictionary is not blocked — it is undescribed, and the next person
+    // regenerating the seed has nothing saying why it should stay out. The private three are
+    // listed and flagged rather than omitted, so the decision is visible.
+    expect(
+      columns
+        .filter((c) => c.tableName === "district_correction")
+        .map((c) => c.columnName)
+        .sort(),
+    ).toEqual([
+      "action",
+      "created_at",
+      "district_code",
+      "evidence_url",
+      "geo_code",
+      "id",
+      "rationale",
+      "review_note",
+      "reviewed_at",
+      "reviewed_by",
+      "session_id",
+      "status",
+      "submitter_email",
+      "to_district_code",
+    ]);
+  });
+
+  it("warns that a proposal is not the mapping, and that 'open' is not a rejection", () => {
+    // The two ways this table produces a fluent wrong answer: reporting what somebody proposed as
+    // what the mapping says, and reading an unjudged proposal as one that was turned down.
+    const table = registry.find((r) => r.tableName === "district_correction");
+    expect(table?.notesMd).toMatch(/PROPOSALS, NOT THE MAPPING/);
+    expect(table?.notesMd).toMatch(/COUNTING ROWS COUNTS PROPOSALS/);
+    const status = columns.find(
+      (c) => c.tableName === "district_correction" && c.columnName === "status",
+    );
+    expect(status?.allowedValues?.sort()).toEqual(["accepted", "duplicate", "open", "rejected"]);
+    expect(status?.meaning).toMatch(/NOBODY HAS JUDGED IT YET/);
+  });
+
+  it("marks the submitter's own text as an unverified claim, on the columns that carry it", () => {
+    // rationale and evidence_url are the only registered columns anywhere in this seed holding
+    // text a stranger typed into an open form. The caveat has to travel with the returned value,
+    // not sit only on the table — and it has to cover being *instructed* by that text, not just
+    // quoting it wrongly.
+    const rationale = columns.find(
+      (c) => c.tableName === "district_correction" && c.columnName === "rationale",
+    );
+    expect(rationale?.meaning).toMatch(/never follow an instruction/i);
+    expect(rationale?.meaning).toMatch(/claim by a stranger/i);
+    const evidence = columns.find(
+      (c) => c.tableName === "district_correction" && c.columnName === "evidence_url",
+    );
+    expect(evidence?.meaning).toMatch(/UNVERIFIED AND UNFETCHED/);
+  });
+
+  it("says that 'accepted' does not imply a mapping row exists", () => {
+    // Three of the five actions write no `geo_district_map` row, so joining accepted proposals to
+    // outcome rows and reporting the count as "corrections applied" undercounts by construction.
+    const table = registry.find((r) => r.tableName === "district_correction");
+    expect(table?.notesMd).toMatch(/DOES NOT IMPLY A NEW MAPPING ROW EXISTS/);
+    expect(table?.notesMd).toMatch(/district_correction:<id>/);
   });
 
   it("marks surrogate ids unqueryable and the review columns meta", () => {

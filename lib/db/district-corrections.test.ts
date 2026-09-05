@@ -39,6 +39,13 @@ const { state, createSupabaseServiceClient } = vi.hoisted(() => {
     geos: [] as { geo_code: string; geo_name: string }[],
     selects: [] as { table: string; columns: string }[],
     inFilters: [] as { table: string; column: string; values: unknown[] }[],
+    /** The judge path (D2.4/D2.6), which reads and writes single rows rather than lists. */
+    correctionRow: null as Record<string, unknown> | null,
+    liveMember: null as Record<string, unknown> | null,
+    geoLevel: "barangay" as string | null,
+    inserts: [] as { table: string; row: Record<string, unknown> }[],
+    writes: [] as { table: string; row: Record<string, unknown> }[],
+    writeError: null as { message: string } | null,
   };
 
   function makeBuilder(table: string) {
@@ -46,8 +53,23 @@ const { state, createSupabaseServiceClient } = vi.hoisted(() => {
     let statusEq: string | null = null;
     let statusNeq: string | null = null;
     let inFilter: { column: string; values: unknown[] } | null = null;
+    let writing = false;
+    let pendingWrite: Record<string, unknown> | null = null;
+    const eqs: Record<string, string> = {};
 
     const result = () => {
+      // A write returns rows it touched, not the table's contents. `state.writeError` is how a
+      // failed status update is tested without disturbing any read.
+      if (writing) {
+        // An accepted rename really does overwrite `dim_legislative_district.district_name`, and
+        // the stub has to model that or the ordering it forces is untestable: a lookup that always
+        // returns the old name passes whether it ran before the write or after it.
+        if (table === "dim_legislative_district" && typeof pendingWrite?.district_name === "string") {
+          const target = state.districts.find((d) => d.district_code === eqs.district_code);
+          if (target) target.district_name = pendingWrite.district_name as string;
+        }
+        return { data: [{ id: 1 }], error: state.writeError };
+      }
       if (table === "district_correction") {
         if (head) return { count: state.counts[statusEq ?? ""] ?? 0, error: null };
         if (state.correctionsError) return { data: null, error: state.correctionsError };
@@ -86,6 +108,7 @@ const { state, createSupabaseServiceClient } = vi.hoisted(() => {
       },
       eq(column: string, value: string) {
         if (column === "status") statusEq = value;
+        eqs[column] = value;
         return builder;
       },
       in(column: string, values: unknown[]) {
@@ -100,6 +123,26 @@ const { state, createSupabaseServiceClient } = vi.hoisted(() => {
       is: () => builder,
       order: () => builder,
       limit: () => builder,
+      update(row: Record<string, unknown>) {
+        writing = true;
+        pendingWrite = row;
+        state.writes.push({ table, row });
+        return builder;
+      },
+      insert(row: Record<string, unknown>) {
+        writing = true;
+        state.inserts.push({ table, row });
+        return builder;
+      },
+      maybeSingle() {
+        if (table === "district_correction") return Promise.resolve({ data: state.correctionRow, error: null });
+        if (table === "geo_district_map") return Promise.resolve({ data: state.liveMember, error: null });
+        if (table === "dim_geo") {
+          return Promise.resolve({ data: state.geoLevel ? { geo_level: state.geoLevel } : null, error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
+      },
+      single: () => Promise.resolve({ data: { id: 900 }, error: state.writeError }),
       then: (resolve: (value: unknown) => unknown) => resolve(result()),
     };
     return builder;
@@ -110,10 +153,14 @@ const { state, createSupabaseServiceClient } = vi.hoisted(() => {
 });
 vi.mock("@/lib/db/service-client", () => ({ createSupabaseServiceClient }));
 
+const publishAcceptedCorrection = vi.hoisted(() => vi.fn(async () => ({})));
+vi.mock("@/lib/db/district-correction-changelog", () => ({ publishAcceptedCorrection }));
+
 const {
   PUBLIC_CORRECTION_COLUMNS,
   getPublicDistrictCorrectionLedger,
   isDistrictCorrectionDecision,
+  judgeDistrictCorrection,
 } = await import("./district-corrections");
 
 function correction(overrides: Partial<CorrectionRow> = {}): CorrectionRow {
@@ -155,7 +202,14 @@ beforeEach(() => {
   state.geos = [{ geo_code: "072217000", geo_name: "Poblacion" }];
   state.selects = [];
   state.inFilters = [];
+  state.correctionRow = null;
+  state.liveMember = null;
+  state.geoLevel = "barangay";
+  state.inserts = [];
+  state.writes = [];
+  state.writeError = null;
   createSupabaseServiceClient.mockClear();
+  publishAcceptedCorrection.mockClear();
 });
 
 describe("isDistrictCorrectionDecision", () => {
@@ -333,5 +387,114 @@ describe("getPublicDistrictCorrectionLedger", () => {
     // The counts are their own query and survive the list's failure, so the page still says how
     // many proposals exist rather than implying there are none.
     expect(ledger.counts.pending).toBe(4);
+  });
+});
+
+/**
+ * D2.6 (docs/LEGISLATIVE_DISTRICTS_PLAN.md §5): an accepted correction does not stop at the
+ * mapping row. It also records itself on the changelog and moves the district dataset's version.
+ *
+ * These assert the *wiring* — that publication happens on acceptance and only on acceptance, with
+ * the names the changelog needs — while `district-correction-changelog.test.ts` asserts what the
+ * two writes actually say. Splitting them that way is what lets the rename case be tested at all:
+ * the thing worth asserting there is which name reaches the changelog, and that is decided here,
+ * by reading the district's name before `applyAcceptance` overwrites it.
+ */
+describe("judgeDistrictCorrection — publication (D2.6)", () => {
+  function open(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 12,
+      created_at: "2026-09-04T00:00:00Z",
+      action: "add",
+      district_code: "D-0722-01",
+      to_district_code: null,
+      geo_code: "072217000",
+      rationale: "Barangay Poblacion votes in the 1st District.",
+      evidence_url: null,
+      submitter_email: "nurse@example.com",
+      status: "open",
+      ...overrides,
+    };
+  }
+
+  it("publishes an accepted correction, with the place and district resolved to names", async () => {
+    state.correctionRow = open();
+
+    expect(await judgeDistrictCorrection(12, "accepted", "admin@example.gov.ph", "Confirmed", null)).toBeNull();
+    expect(publishAcceptedCorrection).toHaveBeenCalledWith({
+      id: 12,
+      action: "add",
+      districtCode: "D-0722-01",
+      districtName: "Cebu 1st District",
+      toDistrictCode: null,
+      toDistrictName: null,
+      geoCode: "072217000",
+      geoName: "Poblacion",
+      newDistrictName: null,
+    });
+  });
+
+  it("hands the changelog no submitter email or reviewer identity", async () => {
+    // The row read here carries both. Only the projection into the published summary keeps them
+    // out, the same shape D2.5's ledger uses.
+    state.correctionRow = open();
+    await judgeDistrictCorrection(12, "accepted", "admin@example.gov.ph", "Confirmed", null);
+    expect(JSON.stringify(publishAcceptedCorrection.mock.calls[0])).not.toContain("@");
+  });
+
+  it("publishes nothing for a rejection or a duplicate", async () => {
+    // Neither changed the mapping, so there is no data change to record and nothing whose cached
+    // answers would be stale. The ledger still shows the outcome; the changelog is for changes.
+    for (const decision of ["rejected", "duplicate"] as const) {
+      state.correctionRow = open();
+      await judgeDistrictCorrection(12, decision, "admin@example.gov.ph", "Not supported", null);
+    }
+    expect(publishAcceptedCorrection).not.toHaveBeenCalled();
+  });
+
+  it("carries a rename's old name, read before the acceptance overwrote it", async () => {
+    // `applyAcceptance` updates `dim_legislative_district.district_name` in place. Looking the name
+    // up afterwards would print the new name on both sides — "Rename Cebu 1st Legislative District"
+    // for a district that was called something else a moment earlier.
+    state.correctionRow = open({ action: "rename" });
+
+    await judgeDistrictCorrection(12, "accepted", "admin@example.gov.ph", "Typo", "Cebu 1st Legislative District");
+    expect(publishAcceptedCorrection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "rename",
+        districtName: "Cebu 1st District",
+        newDistrictName: "Cebu 1st Legislative District",
+      }),
+    );
+  });
+
+  it("publishes nothing when the mapping write failed", async () => {
+    // A failed accept leaves the proposal open for the admin to retry. A changelog entry for it
+    // would announce a change that did not happen.
+    state.correctionRow = open();
+    state.geoLevel = null; // the place resolves to neither a citymun nor a barangay
+
+    expect(await judgeDistrictCorrection(12, "accepted", "admin@example.gov.ph", "Confirmed", null)).toBeTruthy();
+    expect(publishAcceptedCorrection).not.toHaveBeenCalled();
+  });
+
+  it("publishes nothing when the proposal could not be closed", async () => {
+    // `other` so the only write in play is the status update — an action with a mapping mutation
+    // would fail earlier and this would pass for the wrong reason.
+    state.correctionRow = open({ action: "other" });
+    state.writeError = { message: "update failed" };
+
+    expect(await judgeDistrictCorrection(12, "accepted", "admin@example.gov.ph", "Confirmed", null)).toBe(
+      "update failed",
+    );
+    expect(publishAcceptedCorrection).not.toHaveBeenCalled();
+  });
+
+  it("refuses to re-judge a correction that was already judged", async () => {
+    state.correctionRow = open({ status: "accepted" });
+    expect(await judgeDistrictCorrection(12, "accepted", "admin@example.gov.ph", "Again", null)).toBe(
+      "This correction has already been judged",
+    );
+    expect(publishAcceptedCorrection).not.toHaveBeenCalled();
   });
 });

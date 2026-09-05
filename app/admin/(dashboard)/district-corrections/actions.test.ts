@@ -152,4 +152,19 @@ describe("district corrections actions", () => {
     const paths = mocks.revalidatePath.mock.calls.map((c) => c[0]);
     expect(paths).toEqual(["/admin/district-corrections", "/districts", "/districts/corrections"]);
   });
+
+  it("revalidates /methodology on an acceptance, which is what writes the changelog entry", async () => {
+    // D2.6: the entry is written inside `judgeDistrictCorrection`, so without this the changelog
+    // line sits behind the same ISR window the ledger was already exempted from.
+    await judgeCorrection(form({ correctionId: "7", decision: "accepted", note: "confirmed" }));
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/methodology");
+  });
+
+  it("leaves /methodology alone for a rejection or a duplicate — neither changes the data", async () => {
+    for (const decision of ["rejected", "duplicate"]) {
+      await judgeCorrection(form({ correctionId: "7", decision, note: "not supported" }));
+    }
+    const paths = mocks.revalidatePath.mock.calls.map((c) => c[0]);
+    expect(paths).not.toContain("/methodology");
+  });
 });
