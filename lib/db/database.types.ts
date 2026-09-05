@@ -1036,6 +1036,120 @@ export type Database = {
           },
         ];
       };
+      agg_nhfr_by_type: {
+        Row: {
+          dataset_id: number;
+          facility_type: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          n_facilities: number;
+          n_government: number;
+          n_private: number;
+        };
+        Insert: {
+          dataset_id: number;
+          facility_type: string;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_facilities: number;
+          n_government?: number;
+          n_private?: number;
+        };
+        Update: {
+          dataset_id?: number;
+          facility_type?: string;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_facilities?: number;
+          n_government?: number;
+          n_private?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_nhfr_by_type_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_nhfr_by_type_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
+      agg_nhfr_counts: {
+        Row: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id: number;
+          n_barangay_health_station: number;
+          n_barangays: number;
+          n_barangays_with_facility: number;
+          n_birthing_home: number;
+          n_facilities: number;
+          n_government: number;
+          n_hospital: number;
+          n_private: number;
+          n_rural_health_unit: number;
+          total_bed_capacity: number;
+        };
+        Insert: {
+          dataset_id: number;
+          geo_code: string;
+          geo_level: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_barangay_health_station?: number;
+          n_barangays?: number;
+          n_barangays_with_facility?: number;
+          n_birthing_home?: number;
+          n_facilities?: number;
+          n_government?: number;
+          n_hospital?: number;
+          n_private?: number;
+          n_rural_health_unit?: number;
+          total_bed_capacity?: number;
+        };
+        Update: {
+          dataset_id?: number;
+          geo_code?: string;
+          geo_level?: Database["public"]["Enums"]["geo_level_enum"];
+          id?: never;
+          n_barangay_health_station?: number;
+          n_barangays?: number;
+          n_barangays_with_facility?: number;
+          n_birthing_home?: number;
+          n_facilities?: number;
+          n_government?: number;
+          n_hospital?: number;
+          n_private?: number;
+          n_rural_health_unit?: number;
+          total_bed_capacity?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "agg_nhfr_counts_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "agg_nhfr_counts_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+        ];
+      };
       agg_uuc_phc_counts: {
         Row: {
           dataset_id: number;
@@ -2387,6 +2501,106 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "fact_bhw_raw";
             referencedColumns: ["bhw_id"];
+          },
+        ];
+      };
+      fact_nhfr_facility: {
+        Row: {
+          barangay_geo_code: string | null;
+          bed_capacity: number;
+          dataset_id: number;
+          facility_code: string;
+          facility_code_short: string | null;
+          facility_major_type: string;
+          facility_name: string;
+          facility_type: string;
+          geo_code: string;
+          id: number;
+          license_validity_date: string | null;
+          licensing_status: string | null;
+          ownership_major: string;
+          ownership_sub: string | null;
+          service_capability: string | null;
+          source_barangay_name: string | null;
+          source_barangay_psgc: string | null;
+          source_citymun_name: string | null;
+          source_citymun_psgc: string | null;
+          source_province_name: string | null;
+          source_province_psgc: string | null;
+          source_region_name: string | null;
+          source_region_psgc: string | null;
+        };
+        Insert: {
+          barangay_geo_code?: string | null;
+          bed_capacity?: number;
+          dataset_id: number;
+          facility_code: string;
+          facility_code_short?: string | null;
+          facility_major_type: string;
+          facility_name: string;
+          facility_type: string;
+          geo_code: string;
+          id?: never;
+          license_validity_date?: string | null;
+          licensing_status?: string | null;
+          ownership_major: string;
+          ownership_sub?: string | null;
+          service_capability?: string | null;
+          source_barangay_name?: string | null;
+          source_barangay_psgc?: string | null;
+          source_citymun_name?: string | null;
+          source_citymun_psgc?: string | null;
+          source_province_name?: string | null;
+          source_province_psgc?: string | null;
+          source_region_name?: string | null;
+          source_region_psgc?: string | null;
+        };
+        Update: {
+          barangay_geo_code?: string | null;
+          bed_capacity?: number;
+          dataset_id?: number;
+          facility_code?: string;
+          facility_code_short?: string | null;
+          facility_major_type?: string;
+          facility_name?: string;
+          facility_type?: string;
+          geo_code?: string;
+          id?: never;
+          license_validity_date?: string | null;
+          licensing_status?: string | null;
+          ownership_major?: string;
+          ownership_sub?: string | null;
+          service_capability?: string | null;
+          source_barangay_name?: string | null;
+          source_barangay_psgc?: string | null;
+          source_citymun_name?: string | null;
+          source_citymun_psgc?: string | null;
+          source_province_name?: string | null;
+          source_province_psgc?: string | null;
+          source_region_name?: string | null;
+          source_region_psgc?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_nhfr_facility_barangay_geo_code_fkey";
+            columns: ["barangay_geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
+          },
+          {
+            foreignKeyName: "fact_nhfr_facility_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "dim_dataset";
+            referencedColumns: ["dataset_id"];
+          },
+          {
+            foreignKeyName: "fact_nhfr_facility_geo_code_fkey";
+            columns: ["geo_code"];
+            isOneToOne: false;
+            referencedRelation: "dim_geo";
+            referencedColumns: ["geo_code"];
           },
         ];
       };

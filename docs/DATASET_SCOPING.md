@@ -41,23 +41,48 @@ work?).
   (`agg_population` or folded into `agg_geo_summary`), and one new field on every relevant figure
   ("X per 1,000 residents") rather than a whole new page.
 
-### 2. DOH National Health Facility Registry (NHFR)
+### 2. DOH National Health Facility Registry (NHFR) — **BUILT** (slug `nhfr-2026-09`)
+
+**Status as of 2026-09-05: this candidate is no longer a proposal.** The September 2026 export is
+loaded and published at `/facilities`. See `docs/NHFR_2026_PLAN.md` for the build. Everything
+below is the assessment as it stands *after* seeing the actual data — the original entry's two
+open questions are both answered, and one of them was answered the other way from what it feared.
 
 - **What it adds:** the master list of health facilities (hospitals, RHUs, barangay health
-  stations) with type, level, and location — would let BHW Connect show local health
-  infrastructure alongside the BHW workforce that staffs it.
-- **License:** unclear. The public NHFR site (`nhfr.doh.gov.ph`) exposes a facility list and lets
-  an anonymous visitor filter and export to Excel, but nothing found in this pass states a formal
-  reuse/redistribution license the way PSA's OpenSTAT does — would need a direct written
-  confirmation from DOH (or an FOI request, as several other agencies' datasets on `foi.gov.ph`
-  already require) before publishing derived aggregates under CC BY.
-- **Geo-join:** facilities carry a location, but it's not confirmed whether that's already a clean
-  PSGC code or a free-text address needing geocoding — a real risk of repeating 1.6's boundary-
-  vintage crosswalk problem, this time on facility addresses instead of polygons.
-- **Update cadence:** NHFR is a live, continuously-updated registry (not a periodic publication),
-  so staying current means either a recurring scrape/export or a formal data-sharing arrangement —
-  meaningfully more ongoing effort than a census load.
-- **Verdict:** promising content, but blocked on a license answer before any ingestion work starts.
+  stations) with type, ownership, and location — health infrastructure alongside the BHW workforce
+  that staffs it. **44,799 facilities across all 18 regions**, of which barangay health stations
+  are 27,186.
+- **License — settled, and it was already settled here before this load.** The owner decision
+  recorded at `docs/EXPLORE_ENHANCEMENT_PLAN.md:19` — *"NHFR/FHSIS: use whatever is publicly
+  available online, with citation — no formal license conversation required before use; cite
+  source + retrieval date in `/methodology` and `dim_dataset`"* — supersedes this section's
+  original "blocked pending written DOH confirmation" verdict, which had gone stale. The owner
+  further confirmed (2026-09-05) that the public export is covered by the FOI law. Source and
+  retrieval date are carried in `dim_dataset.source_name` and on the section's methodology page.
+- **Geo-join — the feared problem does not exist.** The original entry warned that facility
+  locations might be free-text addresses needing geocoding, "a real risk of repeating 1.6's
+  boundary-vintage crosswalk problem". They are not: every facility carries clean 10-digit PSGC
+  codes for region, province, city/municipality and barangay. Verified against the file — all four
+  columns truncate losslessly to `dim_geo`'s widths, and every barangay code sits inside its own
+  city/municipality (0 exceptions in 44,691). **Barangay coverage is 99.76%**; the 108 facilities
+  without one join at city/municipality, which every facility has.
+- **Two real geo caveats, neither a blocker.** *Sulu* is filed inconsistently by the source — all
+  177 of its facilities are named under Region IX while 152 carry BARMM-vintage codes and 25 carry
+  Region IX ones; both resolve onto `dim_geo`'s BARMM placement through the crosswalk rows
+  `20260826121200_crosswalk_sulu_region_ix.sql` already seeded, so **no new crosswalk was needed**.
+  Separately, `dim_geo` is built from the bhw-2025 parquet alone, so places with facilities but no
+  profiled BHW have no row — four districts of Manila (Binondo, San Miguel, Ermita, Intramuros;
+  127 facilities) among them. `ingestion/patch_dim_geo_nhfr_gap.py` adds them, following the
+  StepZero gap patch.
+- **A privacy finding the original entry could not have anticipated.** The export carries contact
+  columns, and **18,413 of its 20,194 email addresses are free webmail** — personal addresses of
+  individual midwives and proprietors, not institutional contacts. None of the contact or
+  street-address columns are ingested. Anything reusing this source should make the same call:
+  publishing them would put ~18,000 people's personal contact details into an open dataset.
+- **Update cadence — as feared, this is the real ongoing cost.** NHFR is live and continuously
+  updated, so what is published is a *snapshot*: the slug carries its month, and refreshing means
+  re-exporting and re-running the loader. This remains the most expensive thing about the dataset,
+  and it is the reason the slug is dated rather than versioned in place.
 
 ### 3. DOH FHSIS (Field Health Services Information System)
 
@@ -89,9 +114,19 @@ a PSGC join that should require no new crosswalk work, it's a one-time load rath
 sync, and "per-capita" framing is a genuine, frequently-requested gap in the current dashboard —
 not a speculative nice-to-have. Suggested `dim_dataset` slug: `psa-population-2020`.
 
-NHFR and FHSIS both stay on the roadmap as higher-value, higher-effort follow-ups once DOH access/
-licensing questions are resolved — worth raising together, since both would go through the same
-relationship.
+~~NHFR and FHSIS both stay on the roadmap as higher-value, higher-effort follow-ups once DOH
+access/licensing questions are resolved.~~ **Superseded: NHFR shipped 2026-09-05** as
+`nhfr-2026-09` (§2 above), on the public-with-citation basis
+`docs/EXPLORE_ENHANCEMENT_PLAN.md:19` had already established. FHSIS remains open, and the reason
+this document gave for bundling the two — that both need the same DOH relationship — turned out
+not to apply to NHFR, whose export is simply public. FHSIS may well be the same; it is worth
+re-checking on its own terms rather than inheriting NHFR's old blocked verdict.
+
+**A lesson worth keeping.** This section carried "blocked on a license answer before any ingestion
+work starts" for months after an owner decision elsewhere in the docs had unblocked it, and
+carried a geo-join risk that thirty minutes with the actual file disproved. A scoping verdict is
+only as current as the last time someone checked it against both the other decisions in the repo
+and the data itself.
 
 ## Also deferred (documented, not built) — per §8 2.6
 

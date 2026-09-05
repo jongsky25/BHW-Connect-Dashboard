@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getActiveDataset } from "@/lib/db/dataset";
 import { getChangelogEntries } from "@/lib/db/changelog";
 import { GlossaryTerm } from "@/components/glossary/glossary-term";
@@ -182,6 +183,22 @@ export default async function MethodologyPage() {
             population. City/municipality is the finest census grain, so barangay-level figures use
             the city/municipality count. Full source-matching and reconciliation notes are in{" "}
             <code>docs/POPULATION_RECONCILIATION.md</code>.
+          </li>
+          <li>
+            <strong>Health facilities.</strong> Counts of health facilities come from the DOH{" "}
+            <strong>National Health Facility Registry</strong> (
+            <a href="https://nhfr.doh.gov.ph" className="underline hover:text-accent">
+              nhfr.doh.gov.ph
+            </a>
+            ), public export, snapshot as of September 2026, retrieved 5 September 2026 — 44,799
+            facilities nationally. They are a separate universe from the BHW figures on this page
+            and are never combined into a single rate with them. Contact details carried in the
+            source are not published here. See the{" "}
+            <Link href="/facilities/methodology" className="underline hover:text-accent">
+              facilities methodology
+            </Link>{" "}
+            for what the registry does and does not record — in particular, why no
+            &quot;percent licensed&quot; figure is published.
           </li>
           <li>
             <strong>Accreditation, two sources.</strong> The StepZero quick-count reports an

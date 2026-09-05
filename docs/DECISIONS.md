@@ -9106,3 +9106,148 @@ fresh sweep no longer files it). `AI_ASSISTANT_PLAN.md` §4.2 is explicit that c
 reviewer's call, by rejection rather than deletion — "a rejection records that a subset is not the
 same measure" — and this entry does not make that call. They are stale-but-pending, exactly as
 predicted, and remain in `/admin`'s review queue until a reviewer rejects them.
+
+
+## 2026-09-05 — NHFR: the DOH National Health Facility Registry as dataset #6 (plan N1–N4)
+
+Loaded the September 2026 snapshot of the DOH National Health Facility Registry — 44,799
+facilities across all 18 regions — as `nhfr-2026-09`, and built `/facilities` on it. Plan:
+`docs/NHFR_2026_PLAN.md`.
+
+**The licence question was already answered, in a different document.** `DATASET_SCOPING.md` §2
+carried "blocked on a license answer before any ingestion work starts", while
+`EXPLORE_ENHANCEMENT_PLAN.md:19` carried an owner decision that unblocked it — *"NHFR/FHSIS: use
+whatever is publicly available online, with citation"* — and `EXPLORE_ENHANCEMENT_PLAN.md:351`
+(E4.5) had already specced the increment. The owner confirmed on 2026-09-05 that the public export
+is FOI-covered. The scoping doc is rewritten rather than left to contradict the plan it sits
+beside. **The general lesson is recorded there too:** a scoping verdict is only as current as the
+last time someone checked it against the other decisions in the repo.
+
+**The geo-join risk that motivated the block does not exist.** The scoping entry feared free-text
+addresses needing geocoding, "a real risk of repeating 1.6's boundary-vintage crosswalk problem".
+The export carries clean 10-digit PSGC codes on all four levels; all truncate losslessly to
+`dim_geo`'s widths, and every one of the 44,691 barangay codes sits inside its own
+city/municipality. No new crosswalk was needed at all — including for Sulu, below.
+
+**Decisions taken, and why:**
+
+1. **Slug carries the snapshot month (`nhfr-2026-09`), status `published`.** NHFR is a live
+   registry, not a periodic publication, so a later export is a new version rather than a
+   correction — unlike `uuc-phc-2025`, whose year names an actual annual publication. `published`
+   not `active`: seeding a second `active` row blanked the site once (E4.3, #44).
+
+2. **Contact and street-address columns are not ingested.** Of the export's 20,194 email
+   addresses, **18,413 (91%) are free webmail** — gmail/yahoo/hotmail/outlook — i.e. the personal
+   addresses of individual midwives and proprietors, not institutional contacts. These tables are
+   anon-readable over PostgREST and their derivatives publish under CC BY 4.0, so loading them
+   would republish roughly eighteen thousand people's personal contact details as open data.
+   BUILD_PLAN pitfall **P16** sets the precedent (the free-text training column "never leaves raw
+   tables"). Nothing on any planned page needed them. Verified: the committed extract contains
+   zero email addresses. **Anyone reusing this source should make the same call.**
+
+2a. **The committed copy of the source workbook is redacted too, and that was a correction.**
+   Decision 2 kept the contact columns out of the *database*, but the raw export was committed to
+   `ingestion/data/` following the repo's practice of committing sources — and this repository is
+   public, so that put 18,413 personal email addresses into a public git history for the ~30
+   minutes between the first push and this fix. `ingestion/redact_nhfr_source.py` blanks the six
+   contact columns (landline ×2, fax, email, alternate email, website — 34,645 values), the
+   branch history was rewritten so no commit on it ever carried the unredacted blob, and the
+   branch was force-pushed. Verified: 0 email matches in the workbook XML of every commit on the
+   branch, against 16,580 in the original, and `clean_nhfr.py` produces a byte-identical extract
+   from the redacted copy. **The general rule this sets: "we don't load it" is not the same as
+   "we don't publish it" when the raw source is committed. Check the source file too.**
+
+3. **`geo_code` is city/municipality grain and NOT NULL; `barangay_geo_code` is nullable.** 108 of
+   44,799 facilities carry no barangay code. Making barangay the required key would mean dropping
+   those 108 or inventing codes for them; every facility has a city/municipality, so every
+   facility keeps a rollup path. Both resolve in SQL through `map_psgc_to_dim_geo()` so an
+   unresolvable code fails the insert rather than silently dropping a facility.
+
+4. **Sulu: honour the code, not the name — the mirror image of the UUC case.** The export names
+   all 177 Sulu facilities under Region IX while 152 carry BARMM-vintage `19066…` codes and 25
+   carry Region IX `09066…` ones. (`UUC_PHC_2025_PLAN.md` §4 had the reverse: names said BARMM,
+   codes said Region IX.) Both resolve onto `dim_geo`'s BARMM placement — the 152 directly, the 25
+   through the crosswalk `20260826121200_crosswalk_sulu_region_ix.sql` already seeded for all 430
+   Sulu geos. So the rollups file Sulu under BARMM while the source's region column says Region
+   IX, and the methodology page says so rather than papering over it.
+
+5. **`dim_geo` needed patching, and this is now the second dataset to find that.** `dim_geo` is
+   built purely from the bhw-2025 parquet, so it holds only places with at least one profiled BHW.
+   Four districts of the City of Manila — **Binondo, San Miguel, Ermita (95 facilities alone) and
+   Intramuros**, 127 facilities between them — have no row. `ingestion/patch_dim_geo_nhfr_gap.py`
+   computes the gap against the live `dim_geo` at run time rather than asserting a number that
+   could go stale, and tags new rows `nhfr_only_v1` so the gap stays visible in the data.
+   `patch_dim_geo_stepzero_gap.py` did the same in July for 12 citymuns and 2,682 barangays.
+   **Worth noting as a pattern:** every dataset that reaches places the BHW census did not will
+   hit this, and the fix is always a tagged patch, never a silent `dim_geo` edit.
+
+6. **Two source inconsistencies reconciled by rule, not silently, on P15's precedent.** 15
+   facilities carry *both* a government and a private ownership sub-classification (e.g. "RIZAL
+   RURAL HEALTH UNIT" is Government/LGU and also "Single Proprietorship"); `ownership_major` is
+   authoritative and the contradicting value is discarded, with all 15 named in the cleaning
+   report. 6 hospitals write bed capacity with thousands separators ("1,200"), which is formatting
+   rather than a different value.
+
+7. **No `n<5` suppression.** This counts *places*; BUILD_PLAN §4.1 exempts counts of totals, and
+   `agg_uuc_phc_counts` is the direct precedent. The personal columns were dropped at ingestion
+   rather than aggregated away, which is a stronger guarantee than suppression would have been.
+
+8. **No "% licensed" figure at any level, and a blank never renders as "unlicensed".** 28,247 of
+   44,799 facilities carry no licensing status, overwhelmingly barangay health stations, which are
+   not a licensed facility type. The denominator a compliance rate needs — which facilities are
+   *supposed* to hold a licence — is not knowable from this export. A unit test pins the label so
+   a future edit cannot quietly turn absence into an accusation against thousands of functioning
+   facilities.
+
+9. **No committed seed migration.** 44,799 rows is ~10 MB of SQL. `ingest_uuc_phc.py` commits a
+   seed because 5,987 rows fit in a migration; this follows `ingest_stepzero.py` instead — live
+   load in one transaction with an `ingestion_batches` QA row, or batched `.sql` files offline.
+   The reproducible committed artefact is the cleaned CSV.
+
+10. **Child breakdowns sort by coverage ascending, not by facility count.** Ranking by count
+    re-ranks areas by how large they are. The question this dataset answers is where there is
+    nothing: nationally 28,490 of 41,958 barangays have a facility, so roughly 13,470 have none,
+    and the coverage bar labels its unfilled remainder rather than leaving it as empty track.
+
+**Known debt, deliberately not paid here** (the owner scoped this to the core dataset + section):
+`dataset_registry` / `dataset_column` rows are not written, so NHFR is unreachable from the AI
+chat — `queryDataset` refuses a table with no approved dictionary. Present mode, the PNG
+one-pager, dataset-aware feedback routing and an AI insight slot are likewise not built. This is
+the same debt the UUC build had to pay back in U5, recorded up front this time rather than
+discovered later. A facility **point map** is also deferred: the source carries no coordinates,
+only PSGC codes, so points would sit at barangay centroids — a different claim than a facility
+location.
+
+**Two things the local end-to-end run caught that review had not.** The migrations, the loader
+and both aggregates were run against a throwaway PostgreSQL 16 instance with a `dim_geo` derived
+from the extract's own geography (Sulu deliberately held on the BARMM vintage, plus one synthetic
+facility-less barangay per city so coverage is never trivially 100%). It found:
+
+- **`agg_nhfr_by_type` failed outright** with "ON CONFLICT DO UPDATE command cannot affect row a
+  second time". The cause is a real property of the source: `facility_major_type` looks like an
+  attribute of `facility_type` but is not. **13 of the 45 types appear under both 'Health
+  Facility' and 'Health Related Facility'**, and lopsidedly — Rural Health Unit 2,744 against 1,
+  Birthing Home 3,562 against 3, Clinical Laboratory 4,346 against 3. Grouping by it split one
+  type across two rows with the same key. The column is dropped from the aggregate (it stays on
+  the fact table, where it describes the facility), and the "health-related" badge the type
+  breakdown rendered is gone with it — it would have labelled a whole type from what is
+  per-facility encoding noise.
+
+- **"Barangays with a facility" is 28,490, not 28,511.** The export prints 28,511 distinct
+  barangay codes, but **21 Sulu barangays are listed under both code vintages** and resolve to one
+  barangay each. Every figure quoting the coverage numerator is corrected; the loader's
+  pre-load check still expects 28,511 because it checks the extract, not the load. The facilities
+  are not duplicated — each carries its own registry code.
+
+The run also confirmed what was designed rather than assumed: 44,799 rows loaded with 0
+unresolved `geo_code`, 108 null `barangay_geo_code`, all 177 Sulu facilities filed under BARMM
+(including the 25 that arrive on `09066…` codes and can only get there through the crosswalk),
+and national = Σ regions = Σ provinces = Σ citymuns = 44,799. Sulu's move shows up exactly where
+it should: Region IX 1,523 and BARMM 1,327.
+
+**Not yet run against the live project.** The migrations and the load are operator steps: this
+session had no `DATABASE_URL`, and 44,799 rows cannot be pushed through the Supabase MCP tool. The
+order is `patch_dim_geo_nhfr_gap.py` → `ingest_nhfr.py` → the two aggregate migrations (which
+recompute on every run). `verify_rls.py` gained the three new tables; the UUC and district tables
+are still missing from its lists, which is pre-existing drift noted in the file rather than fixed
+here.
