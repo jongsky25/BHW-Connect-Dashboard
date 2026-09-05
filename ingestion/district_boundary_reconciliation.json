@@ -1,0 +1,362 @@
+{
+  "resolved": [
+    "abra-at-large",
+    "agusan-del-norte-at-large",
+    "agusan-del-sur-1st",
+    "agusan-del-sur-2nd",
+    "aklan-1st",
+    "aklan-2nd",
+    "albay-1st",
+    "albay-2nd",
+    "albay-3rd",
+    "antique-at-large",
+    "apayao-at-large",
+    "aurora-at-large",
+    "basilan-at-large",
+    "bataan-1st",
+    "bataan-2nd",
+    "batanes-at-large",
+    "batangas-1st",
+    "batangas-2nd",
+    "batangas-3rd",
+    "batangas-4th",
+    "batangas-5th",
+    "batangas-6th",
+    "benguet-at-large",
+    "biliran-at-large",
+    "bohol-1st",
+    "bohol-2nd",
+    "bohol-3rd",
+    "bukidnon-1st",
+    "bukidnon-2nd",
+    "bukidnon-3rd",
+    "bukidnon-4th",
+    "bulacan-1st",
+    "bulacan-2nd",
+    "bulacan-3rd",
+    "bulacan-4th",
+    "bulacan-5th",
+    "cagayan-1st",
+    "cagayan-2nd",
+    "cagayan-3rd",
+    "camarines-norte-1st",
+    "camarines-norte-2nd",
+    "camarines-sur-1st",
+    "camarines-sur-2nd",
+    "camarines-sur-3rd",
+    "camarines-sur-4th",
+    "camarines-sur-5th",
+    "camiguin-at-large",
+    "capiz-1st",
+    "capiz-2nd",
+    "catanduanes-at-large",
+    "cavite-1st",
+    "cavite-2nd",
+    "cavite-3rd",
+    "cavite-4th",
+    "cavite-5th",
+    "cavite-6th",
+    "cavite-7th",
+    "cavite-8th",
+    "cebu-1st",
+    "cebu-2nd",
+    "cebu-3rd",
+    "cebu-4th",
+    "cebu-5th",
+    "cebu-6th",
+    "cebu-7th",
+    "cotabato-2nd",
+    "cotabato-3rd",
+    "davao-de-oro-1st",
+    "davao-de-oro-2nd",
+    "davao-del-norte-1st",
+    "davao-del-norte-2nd",
+    "davao-del-sur-at-large",
+    "davao-occidental-at-large",
+    "davao-oriental-1st",
+    "davao-oriental-2nd",
+    "dinagat-islands-at-large",
+    "eastern-samar-at-large",
+    "guimaras-at-large",
+    "ifugao-at-large",
+    "ilocos-norte-1st",
+    "ilocos-norte-2nd",
+    "ilocos-sur-1st",
+    "ilocos-sur-2nd",
+    "iloilo-1st",
+    "iloilo-2nd",
+    "iloilo-3rd",
+    "iloilo-4th",
+    "iloilo-5th",
+    "isabela-1st",
+    "isabela-2nd",
+    "isabela-3rd",
+    "isabela-4th",
+    "isabela-5th",
+    "isabela-6th",
+    "kalinga-at-large",
+    "la-union-1st",
+    "la-union-2nd",
+    "laguna-2nd",
+    "laguna-3rd",
+    "laguna-4th",
+    "lanao-del-norte-1st",
+    "lanao-del-norte-2nd",
+    "lanao-del-sur-1st",
+    "lanao-del-sur-2nd",
+    "leyte-2nd",
+    "leyte-3rd",
+    "leyte-4th",
+    "leyte-5th",
+    "maguindanao-del-norte-at-large",
+    "maguindanao-del-sur-at-large",
+    "malabon-at-large",
+    "mandaluyong-at-large",
+    "marinduque-at-large",
+    "masbate-1st",
+    "masbate-2nd",
+    "masbate-3rd",
+    "misamis-occidental-1st",
+    "misamis-occidental-2nd",
+    "misamis-oriental-1st",
+    "misamis-oriental-2nd",
+    "mountain-province-at-large",
+    "navotas-at-large",
+    "negros-occidental-1st",
+    "negros-occidental-2nd",
+    "negros-occidental-3rd",
+    "negros-occidental-4th",
+    "negros-occidental-5th",
+    "negros-occidental-6th",
+    "negros-oriental-1st",
+    "negros-oriental-2nd",
+    "negros-oriental-3rd",
+    "northern-samar-1st",
+    "northern-samar-2nd",
+    "nueva-ecija-1st",
+    "nueva-ecija-2nd",
+    "nueva-ecija-3rd",
+    "nueva-ecija-4th",
+    "nueva-vizcaya-at-large",
+    "occidental-mindoro-at-large",
+    "oriental-mindoro-1st",
+    "oriental-mindoro-2nd",
+    "palawan-2nd",
+    "pampanga-2nd",
+    "pampanga-3rd",
+    "pampanga-4th",
+    "pangasinan-1st",
+    "pangasinan-2nd",
+    "pangasinan-3rd",
+    "pangasinan-4th",
+    "pangasinan-5th",
+    "pangasinan-6th",
+    "quezon-1st",
+    "quezon-3rd",
+    "quezon-4th",
+    "quirino-at-large",
+    "rizal-1st",
+    "rizal-3rd",
+    "rizal-4th",
+    "romblon-at-large",
+    "samar-1st",
+    "samar-2nd",
+    "san-juan-at-large",
+    "sarangani-at-large",
+    "siquijor-at-large",
+    "sorsogon-1st",
+    "sorsogon-2nd",
+    "south-cotabato-1st",
+    "south-cotabato-2nd",
+    "southern-leyte-2nd",
+    "sultan-kudarat-1st",
+    "sultan-kudarat-2nd",
+    "sulu-1st",
+    "sulu-2nd",
+    "surigao-del-norte-1st",
+    "surigao-del-norte-2nd",
+    "surigao-del-sur-1st",
+    "surigao-del-sur-2nd",
+    "tarlac-1st",
+    "tarlac-2nd",
+    "tarlac-3rd",
+    "tawi-tawi-at-large",
+    "zambales-2nd",
+    "zamboanga-del-norte-1st",
+    "zamboanga-del-norte-2nd",
+    "zamboanga-del-norte-3rd",
+    "zamboanga-del-sur-1st",
+    "zamboanga-del-sur-2nd",
+    "zamboanga-sibugay-1st",
+    "zamboanga-sibugay-2nd"
+  ],
+  "barangay_grain": [
+    "antipolo-1st",
+    "antipolo-2nd",
+    "bacolod-at-large",
+    "baguio-at-large",
+    "binan-at-large",
+    "cagayan-de-oro-1st",
+    "cagayan-de-oro-2nd",
+    "calamba-at-large",
+    "caloocan-1st",
+    "caloocan-2nd",
+    "caloocan-3rd",
+    "cebu-city-1st",
+    "cebu-city-2nd",
+    "davao-city-1st",
+    "davao-city-2nd",
+    "davao-city-3rd",
+    "iloilo-city-at-large",
+    "las-pinas-at-large",
+    "makati-1st",
+    "makati-2nd",
+    "manila-1st",
+    "manila-2nd",
+    "marikina-1st",
+    "marikina-2nd",
+    "muntinlupa-at-large",
+    "paranaque-1st",
+    "paranaque-2nd",
+    "pasay-at-large",
+    "pasig-at-large",
+    "quezon-city-1st",
+    "quezon-city-2nd",
+    "quezon-city-3rd",
+    "quezon-city-4th",
+    "quezon-city-5th",
+    "quezon-city-6th",
+    "san-jose-del-monte-at-large",
+    "taguig-pateros-1st",
+    "taguig-pateros-2nd",
+    "valenzuela-1st",
+    "valenzuela-2nd",
+    "zamboanga-city-1st",
+    "zamboanga-city-2nd"
+  ],
+  "missing_citymun_source": [
+    {
+      "district_code": "butuan-at-large",
+      "missing_geo_codes": [
+        "1630400"
+      ]
+    },
+    {
+      "district_code": "cotabato-1st",
+      "missing_geo_codes": [
+        "1204712"
+      ]
+    },
+    {
+      "district_code": "general-santos-at-large",
+      "missing_geo_codes": [
+        "1230800"
+      ]
+    },
+    {
+      "district_code": "iligan-at-large",
+      "missing_geo_codes": [
+        "1030900"
+      ]
+    },
+    {
+      "district_code": "laguna-1st",
+      "missing_geo_codes": [
+        "0403425"
+      ]
+    },
+    {
+      "district_code": "lapu-lapu-at-large",
+      "missing_geo_codes": [
+        "0731100"
+      ]
+    },
+    {
+      "district_code": "leyte-1st",
+      "missing_geo_codes": [
+        "0831600"
+      ]
+    },
+    {
+      "district_code": "mandaue-at-large",
+      "missing_geo_codes": [
+        "0731300"
+      ]
+    },
+    {
+      "district_code": "manila-3rd",
+      "missing_geo_codes": [
+        "1380603",
+        "1380604",
+        "1380605"
+      ]
+    },
+    {
+      "district_code": "manila-4th",
+      "missing_geo_codes": [
+        "1380606"
+      ]
+    },
+    {
+      "district_code": "manila-5th",
+      "missing_geo_codes": [
+        "1380610",
+        "1380613"
+      ]
+    },
+    {
+      "district_code": "manila-6th",
+      "missing_geo_codes": [
+        "1380612",
+        "1380614"
+      ]
+    },
+    {
+      "district_code": "palawan-1st",
+      "missing_geo_codes": [
+        "1705321"
+      ]
+    },
+    {
+      "district_code": "palawan-3rd",
+      "missing_geo_codes": [
+        "1731500"
+      ]
+    },
+    {
+      "district_code": "pampanga-1st",
+      "missing_geo_codes": [
+        "0330100"
+      ]
+    },
+    {
+      "district_code": "quezon-2nd",
+      "missing_geo_codes": [
+        "0431200"
+      ]
+    },
+    {
+      "district_code": "rizal-2nd",
+      "missing_geo_codes": [
+        "0405807"
+      ]
+    },
+    {
+      "district_code": "southern-leyte-1st",
+      "missing_geo_codes": [
+        "0806419"
+      ]
+    },
+    {
+      "district_code": "zambales-1st",
+      "missing_geo_codes": [
+        "0331400"
+      ]
+    }
+  ],
+  "no_members": [],
+  "ncr_city_matches": 16,
+  "ncr_unmatched_source_names": [
+    "City of Manila"
+  ]
+}
