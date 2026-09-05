@@ -9067,6 +9067,47 @@ rather than writing a first row cold. **What it does not close.** `fact_honorari
 still need a reviewer's judgment before the assistant can query them, and the `bhw_id` role/borrow
 mismatch is still `profile_dataset()`'s to fix, not a reviewer's to work around.
 
+## 2026-09-05 — The contradiction sweep, re-run: the corroboration fix confirmed live, and sixteen rows now stale
+
+Two things this increment's own entries left open. First, whether
+`20260828210000_sweep_corroboration_suppression.sql` — "committed but not applied," per that entry
+and `AI_ASSISTANT_PLAN.md` §4.2 — had actually reached the live database since. Second, whether
+`sweep_contradictions()` had been re-run against it: the table still held the same **22 rows, all
+`auto`**, that the 2026-08-28 entry recorded.
+
+**The fix is live.** `pg_get_functiondef('sweep_contradictions'::regproc)` shows `v_corroborated`
+read after the candidate loop, exactly as the migration writes it — not the pre-fix version that
+files a disagreement anyway when a perfect fit is probed second. No migration was applied by this
+entry; this only confirms one already was, at some point between 2026-08-28 and today, uncredited
+in any entry since.
+
+**The sweep was re-run live**, via the Supabase MCP: `select * from sweep_contradictions();`.
+
+- **6 rows returned**, all pre-existing: slide 161's cell and level total
+  (`agg_bhw_by_uuc_status.n_listed_no_bhw`), and the three `277767`/`29409`-vs-`fact_bhw_raw`
+  scalar-magnitude rows on slides 8, 26 and 151. Their `last_swept_at` moved to today — the
+  function's own upsert refreshing rows it re-derives, not new findings.
+- **16 rows were not returned** — every row on slides 37 and 141, both `n_barangays_listed` and
+  `n_health_evaluable` — and their `last_swept_at` stayed at 2026-08-28. This is the corroboration
+  fix doing exactly what it is for: `agg_bhw_by_uuc_status.n_barangays_listed` now fits every cell
+  on both slides at 1.0 (the UUC final-list alignment's own doing), so the whole distribution is
+  accounted for and nothing — including the `n_health_evaluable` fallback that used to win once
+  `n_barangays_listed` stopped being a perfect fit — gets filed against it. **16 findings become 6**,
+  exactly as the 2026-08-28 entry predicted from a read-only reproduction, now confirmed by the real
+  function against live data.
+- **Nothing new was found.** No slide added since 2026-08-28, and no new `dataset_registry` measure
+  column changed which distributions Pass 1 can probe in a way that surfaced a fresh disagreement —
+  the district-mapping work landed no new slide deck for Pass 2 to read either.
+
+**What this does not do.** The 16 rows on slides 37/141 are still sitting in `kb_contradiction` at
+`status = 'auto'`, carrying stale `data_value`s from before the alignment (e.g. contradiction 109:
+`doc_value = 5987`, `data_value = 5991`, when the live table now reads 5987 — the very reason the
+fresh sweep no longer files it). `AI_ASSISTANT_PLAN.md` §4.2 is explicit that clearing them is a
+reviewer's call, by rejection rather than deletion — "a rejection records that a subset is not the
+same measure" — and this entry does not make that call. They are stale-but-pending, exactly as
+predicted, and remain in `/admin`'s review queue until a reviewer rejects them.
+
+
 ## 2026-09-05 — NHFR: the DOH National Health Facility Registry as dataset #6 (plan N1–N4)
 
 Loaded the September 2026 snapshot of the DOH National Health Facility Registry — 44,799
