@@ -41,6 +41,7 @@ import { coverageForDisplay } from "@/lib/db/stepzero";
 import { getPeerRank, getPeerRanks } from "@/lib/db/peer-ranks";
 import { getInsights } from "@/lib/db/insights";
 import { getUucPhcCounts } from "@/lib/db/uuc-phc";
+import { getAllDistrictBhwFigures } from "@/lib/db/districts";
 import {
   getBenchmarkContext,
   benchmarkRowsFor,
@@ -57,6 +58,8 @@ import { DenominatorExplainer } from "@/components/home/denominator-explainer";
 import { BenchmarkBars } from "@/components/place/benchmark";
 import { FigureTabs } from "@/components/ui/figure-tabs";
 import { DemographicsFigure } from "@/components/explore/demographics-figure";
+import { DistrictMapFigure } from "@/components/explore/district-map-figure";
+import { MapLayerToggle } from "@/components/explore/map-layer-toggle";
 import { AccreditationSourcesFigure } from "@/components/explore/accreditation-sources-figure";
 import { CertificationFigure } from "@/components/explore/certification-figure";
 import { TrainingFigure } from "@/components/explore/training-figure";
@@ -234,6 +237,7 @@ export default async function ExplorePage({
     certificationRegion,
     certificationNational,
     uucPhcCounts,
+    districtMapFigures,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
     // Benchmark context (E1.2): this place vs. its region and the nation, so
@@ -306,6 +310,9 @@ export default async function ExplorePage({
     // extra row from an aggregate that already exists, in the same round trip as the rest — it
     // returns null at barangay grain, where `agg_uuc_phc_counts` has no rows.
     getUucPhcCounts(geo.geoCode, geo.geoLevel),
+    // D3.3 map layer — districts partition the whole country the way regions do, so the layer
+    // toggle only makes sense at the national view; every other level fetches nothing.
+    geo.geoLevel === "national" ? getAllDistrictBhwFigures() : Promise.resolve([]),
   ]);
 
   const overview = benchmarkCtx.self.overview;
@@ -726,35 +733,55 @@ export default async function ExplorePage({
             </div>
           )}
 
+          {/* D3.3 map layer — districts partition the whole country the way regions do, so the
+            toggle only shows at the national view; switching it never changes geoLevel/geoCode,
+            just which choropleth renders below. */}
+          {geo.geoLevel === "national" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted">Map layer</span>
+              <MapLayerToggle active={filters.mapLayer} />
+            </div>
+          )}
+
           {/* Comparison figure (E1.2 hero) — the indicator switcher is the page's
             centerpiece. Full choropleth at national/region/province; list-only
             (no boundary file) at citymun, under the stub above. */}
-          {compareChildLevel && (
-            <PresentationSlide id="geo-comparison" title={`Map: ${mapMeta.label}`}>
-              <GeoComparisonFigure
-                key={geo.geoCode}
-                geojsonUrl={mapGeojsonUrl}
-                childLevel={compareChildLevel}
-                childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
-                items={mapItems}
-                adjustedItems={adjustedMapItems}
+          {compareChildLevel && geo.geoLevel === "national" && filters.mapLayer === "district" ? (
+            <PresentationSlide id="geo-comparison" title="Map: legislative districts">
+              <DistrictMapFigure
+                items={districtMapFigures}
                 caption={caption}
-                activeIndicator={activeMapIndicator}
-                meta={mapMeta}
-                trainingTopics={trainingTopics}
-              />
-              {/* Peer-standing chip (E2.3): how this geo ranks among its siblings
-                on the active indicator — moved inside this slide (E1.5/E4.2) so
-                it presents alongside the map instead of floating outside any
-                slide's coverage. */}
-              <PeerRankChip
-                rank={peerRank}
-                geoName={geo.geoName}
-                parentName={peerParentName(geo.geoLevel, ancestors)}
-                siblingPlural={PEER_LEVEL_PLURAL[geo.geoLevel] ?? ""}
-                indicatorLabel={mapMeta.label}
+                activeIndicator={filters.districtMapIndicator}
               />
             </PresentationSlide>
+          ) : (
+            compareChildLevel && (
+              <PresentationSlide id="geo-comparison" title={`Map: ${mapMeta.label}`}>
+                <GeoComparisonFigure
+                  key={geo.geoCode}
+                  geojsonUrl={mapGeojsonUrl}
+                  childLevel={compareChildLevel}
+                  childLevelLabel={CHILD_LEVEL_LABEL[geo.geoLevel]}
+                  items={mapItems}
+                  adjustedItems={adjustedMapItems}
+                  caption={caption}
+                  activeIndicator={activeMapIndicator}
+                  meta={mapMeta}
+                  trainingTopics={trainingTopics}
+                />
+                {/* Peer-standing chip (E2.3): how this geo ranks among its siblings
+                  on the active indicator — moved inside this slide (E1.5/E4.2) so
+                  it presents alongside the map instead of floating outside any
+                  slide's coverage. */}
+                <PeerRankChip
+                  rank={peerRank}
+                  geoName={geo.geoName}
+                  parentName={peerParentName(geo.geoLevel, ancestors)}
+                  siblingPlural={PEER_LEVEL_PLURAL[geo.geoLevel] ?? ""}
+                  indicatorLabel={mapMeta.label}
+                />
+              </PresentationSlide>
+            )
           )}
 
           {/* Distribution view (E1.3) — spread of the active indicator across

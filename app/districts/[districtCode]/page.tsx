@@ -1,11 +1,21 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getDistrictDetail, getDistrictDatasetGaps, getDistrictIndex } from "@/lib/db/districts";
+import {
+  getDistrictDetail,
+  getDistrictDatasetGaps,
+  getDistrictIndex,
+  getDistrictBhwFigures,
+} from "@/lib/db/districts";
+import { getBhwCounts } from "@/lib/db/indicators";
+import { NATIONAL_GEO_CODE } from "@/lib/filters/schema";
 import { districtOrdinalLabel } from "@/components/districts/district-ordinal";
 import { DistrictMemberTable } from "@/components/districts/district-member-table";
 import { SourceRefLink } from "@/components/districts/source-ref-link";
 import { CorrectionForm } from "@/components/districts/correction-form";
+import { DistrictExportMenu } from "@/components/districts/district-export-menu";
+import { FigureCard } from "@/components/narrative/figure-card";
+import { BenchmarkBars } from "@/components/place/benchmark";
 
 export const revalidate = 3_600; // matches /districts — a snapshot rebuilt by ingestion
 
@@ -28,13 +38,17 @@ export default async function DistrictDetailPage({
   params: Promise<DistrictParams>;
 }) {
   const { districtCode } = await params;
-  const [detail, datasetGaps, districtIndex] = await Promise.all([
+  const [detail, datasetGaps, districtIndex, figures, nationalCounts] = await Promise.all([
     getDistrictDetail(districtCode),
     getDistrictDatasetGaps(),
     getDistrictIndex(),
+    getDistrictBhwFigures(districtCode),
+    getBhwCounts(NATIONAL_GEO_CODE, "national"),
   ]);
 
   if (!detail) notFound();
+
+  const figureCaption = `N = ${figures?.nTotal?.toLocaleString() ?? "—"} BHWs · ${detail.districtName} · 2025 snapshot`;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6">
@@ -84,6 +98,103 @@ export default async function DistrictDetailPage({
           </div>
         )}
       </div>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">BHW figures</h2>
+        <p className="text-sm text-muted">
+          Rolled up from the leaf grain (barangay), never from a member city/municipality&apos;s own
+          row — the one arithmetic trap a multi-district city creates. A narrower figure set than a
+          place page&apos;s (
+          <a href="/methodology" className="underline hover:text-accent">
+            see /methodology
+          </a>
+          ): districts carry accreditation, service years, and any-honorarium % only, for now.
+        </p>
+        {figures === null ? (
+          <p className="text-muted">No profiled BHWs resolve to this district yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <FigureCard
+              title="Accreditation"
+              caption={figureCaption}
+              exportMenu={
+                <DistrictExportMenu districtCode={detail.districtCode} indicator="accreditation" />
+              }
+              headline={
+                figures.pctAccredited !== null
+                  ? `About ${Math.round(figures.pctAccredited)}% of BHWs here are accredited.`
+                  : "No accreditation data available."
+              }
+              benchmark={
+                <BenchmarkBars
+                  rows={[
+                    { label: detail.districtName, value: figures.pctAccredited, isPrimary: true },
+                    { label: "Philippines", value: nationalCounts?.pctAccredited ?? null },
+                  ]}
+                  format="percent"
+                />
+              }
+            >
+              <p className="text-4xl font-semibold tracking-tight">
+                {figures.pctAccredited !== null ? `${figures.pctAccredited}%` : "—"}
+              </p>
+            </FigureCard>
+
+            <FigureCard
+              title="Average years of service"
+              caption={figureCaption}
+              exportMenu={
+                <DistrictExportMenu districtCode={detail.districtCode} indicator="service_years" />
+              }
+              headline={
+                figures.avgActiveYears !== null
+                  ? `BHWs here have served an average of ${figures.avgActiveYears} years.`
+                  : "No service-year data available."
+              }
+              benchmark={
+                <BenchmarkBars
+                  rows={[
+                    { label: detail.districtName, value: figures.avgActiveYears, isPrimary: true },
+                    { label: "Philippines", value: nationalCounts?.avgActiveYears ?? null },
+                  ]}
+                  format="count"
+                  unitSuffix="yrs"
+                />
+              }
+            >
+              <p className="text-4xl font-semibold tracking-tight">
+                {figures.avgActiveYears ?? "—"}
+              </p>
+            </FigureCard>
+
+            <FigureCard
+              title="Honorarium"
+              caption={figureCaption}
+              exportMenu={
+                <DistrictExportMenu districtCode={detail.districtCode} indicator="honorarium" />
+              }
+              headline={
+                figures.anyHonorariumPct !== null
+                  ? `About ${Math.round(figures.anyHonorariumPct)}% of BHWs here receive some honorarium.`
+                  : "No honorarium data available."
+              }
+              benchmark={
+                <BenchmarkBars
+                  rows={[
+                    { label: detail.districtName, value: figures.anyHonorariumPct, isPrimary: true },
+                    { label: "Philippines", value: nationalCounts?.anyHonorariumPct ?? null },
+                  ]}
+                  format="percent"
+                />
+              }
+            >
+              <p className="text-4xl font-semibold tracking-tight">
+                {figures.anyHonorariumPct !== null ? `${figures.anyHonorariumPct}%` : "—"}
+              </p>
+            </FigureCard>
+          </div>
+        )}
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">Members</h2>

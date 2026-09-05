@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/indicators";
 import { getGeoByCode } from "@/lib/db/geo";
 import { getActiveDataset } from "@/lib/db/dataset";
+import { getDistrictBhwFigures, getDistrictDetail } from "@/lib/db/districts";
 import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
 import {
   getBenchmarkContext,
@@ -579,6 +580,120 @@ export async function getExportFigureData(params: {
             : ""),
         benchmark,
         adequacyNote: adequacyNoteFor(sufficiency.nTotal),
+      };
+    }
+  }
+}
+
+/** The 3 figures `agg_bhw_by_district` (D3.1) carries — a subset of `Indicator` (the type this
+ * codebase already uses for the geo export contract), not a new enum, so a district export link
+ * and a place export link share one `indicator` vocabulary. */
+export const DISTRICT_EXPORT_INDICATORS = ["accreditation", "service_years", "honorarium"] as const;
+export type DistrictExportIndicator = (typeof DISTRICT_EXPORT_INDICATORS)[number];
+
+/**
+ * D3.3 — "Exports: district CSV/XLSX/PNG/PPTX through the existing /api/export routes." A parallel,
+ * narrower builder to `getExportFigureData`: same `ExportFigureData` output contract (so every
+ * export route/format renders it identically), but sourced from `agg_bhw_by_district` instead of
+ * the per-`geo_level` aggregates — the figure set a district actually has (see that table's own
+ * comment for why it stops at 3). Benchmark is "this district vs. Philippines" only — a district
+ * has no region/province ancestor chain the way a geo does (plan §1), so there's no vertical row
+ * between the two.
+ */
+export async function getDistrictExportFigureData(params: {
+  districtCode: string;
+  indicator: DistrictExportIndicator;
+}): Promise<ExportFigureData | null> {
+  const [detail, figures, nationalCounts, dataset] = await Promise.all([
+    getDistrictDetail(params.districtCode),
+    getDistrictBhwFigures(params.districtCode),
+    getBhwCounts(NATIONAL_GEO_CODE, "national"),
+    getActiveDataset(),
+  ]);
+  if (!detail) return null;
+  const districtName = detail.districtName;
+
+  const shared = {
+    geoName: detail.districtName,
+    caption: `N = ${figures?.nTotal?.toLocaleString() ?? "—"} BHWs · ${detail.districtName} · 2025 snapshot`,
+    sourceName: dataset?.sourceName ?? "Official DOH BHW registration/accreditation dataset",
+    license: dataset?.license ?? "CC BY 4.0",
+    asOfDate: dataset?.asOfDate ?? null,
+    adequacyNote: adequacyNoteFor(figures?.nTotal ?? null),
+  };
+
+  function benchmarkFor(
+    value: number | null,
+    nationalValue: number | null,
+    suffix: string,
+  ): ExportBenchmark | null {
+    return toExportBenchmark(
+      [
+        { label: districtName, value },
+        { label: "Philippines", value: nationalValue },
+      ],
+      suffix,
+      // Districts aren't in `agg_peer_ranks` (that table is keyed on dim_geo geo_level) — never faked.
+      null,
+    );
+  }
+
+  switch (params.indicator) {
+    case "accreditation": {
+      const pct = figures?.pctAccredited ?? null;
+      return {
+        ...shared,
+        title: "Accreditation",
+        headline:
+          pct !== null ? `About ${Math.round(pct)}% of BHWs here are accredited.` : "No data.",
+        rows:
+          pct !== null
+            ? [
+                { label: "Accredited", value: pct },
+                { label: "Not accredited", value: Math.round((100 - pct) * 100) / 100 },
+              ]
+            : [],
+        xLabel: "% of BHWs",
+        yLabel: "Accreditation status",
+        valueSuffix: "%",
+        isSuppressed: false,
+        technicalNote: `${figures?.nAccredited?.toLocaleString() ?? "—"} of ${figures?.nTotal?.toLocaleString() ?? "—"} BHWs are accredited, rolled up from the district's leaf (barangay) grain.`,
+        benchmark: benchmarkFor(pct, nationalCounts?.pctAccredited ?? null, "%"),
+      };
+    }
+    case "service_years": {
+      const avg = figures?.avgActiveYears ?? null;
+      return {
+        ...shared,
+        title: "Average years of service",
+        headline:
+          avg !== null ? `BHWs here have served an average of ${avg} years.` : "No data.",
+        rows: avg !== null ? [{ label: "Average years", value: avg }] : [],
+        xLabel: "Years of service",
+        yLabel: "Metric",
+        valueSuffix: "",
+        isSuppressed: false,
+        technicalNote: "Computed from each BHW's recorded active-service years.",
+        benchmark: benchmarkFor(avg, nationalCounts?.avgActiveYears ?? null, " yrs"),
+      };
+    }
+    case "honorarium": {
+      const pct = figures?.anyHonorariumPct ?? null;
+      return {
+        ...shared,
+        title: "Honorarium",
+        headline:
+          pct !== null
+            ? `About ${Math.round(pct)}% of BHWs here receive some honorarium.`
+            : "No data.",
+        rows: pct !== null ? [{ label: "Receives any honorarium", value: pct }] : [],
+        xLabel: "% of BHWs",
+        yLabel: "Honorarium status",
+        valueSuffix: "%",
+        isSuppressed: false,
+        technicalNote:
+          "Share of this district's BHWs with at least one recorded honorarium payment, from any paying level. District figures aren't broken out by paying level (that breakdown is built at the geo_level grain only).",
+        benchmark: benchmarkFor(pct, nationalCounts?.anyHonorariumPct ?? null, "%"),
       };
     }
   }

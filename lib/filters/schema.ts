@@ -39,6 +39,26 @@ export type MapIndicator = MapBaseIndicator | `training:${string}`;
 export const DEFAULT_MAP_INDICATOR: MapBaseIndicator = "pct_accredited";
 
 /**
+ * D3.3 — the national-level map's layer choice: children by region (the existing E1.1 map,
+ * unchanged) or by legislative district (`public/geo/districts.json`, D3.2's boundary derivation).
+ * Only meaningful at `geoLevel === "national"` — districts don't nest inside a region/province the
+ * way children do, so the layer has no "drill into a district" analog at other levels.
+ */
+export const MAP_LAYERS = ["geo", "district"] as const;
+export type MapLayer = (typeof MAP_LAYERS)[number];
+export const DEFAULT_MAP_LAYER: MapLayer = "geo";
+
+/** The 3 figures `agg_bhw_by_district` (D3.1) actually carries — the district map layer's
+ * indicator choice is a subset of `MAP_BASE_INDICATORS` for that reason (no households-per-BHW,
+ * coverage, or bhw-per-1000 at district grain). */
+export const DISTRICT_MAP_INDICATORS = [
+  "pct_accredited",
+  "avg_active_years",
+  "any_honorarium_pct",
+] as const;
+export type DistrictMapIndicator = (typeof DISTRICT_MAP_INDICATORS)[number];
+
+/**
  * External (non-workforce) variables selectable only on the Relationships axes (E4.4) —
  * never on the map, which stays BHW-workforce indicators (identity rule, owner Q1). Each has
  * data only at city/municipality grain (a province view); elsewhere the axis is offered

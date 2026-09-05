@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getExportFigureData } from "@/lib/exports/figure-data";
+import { getDistrictExportFigureData, getExportFigureData } from "@/lib/exports/figure-data";
 import { parseExportQuery, slugify } from "@/lib/exports/query";
 import { renderFigurePng } from "@/lib/exports/render-png";
 
@@ -12,7 +12,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid export parameters" }, { status: 400 });
   }
 
-  const data = await getExportFigureData(parsed.data);
+  const data =
+    parsed.data.kind === "district"
+      ? await getDistrictExportFigureData(parsed.data)
+      : await getExportFigureData(parsed.data);
   if (!data) {
     return NextResponse.json({ error: "Place not found" }, { status: 404 });
   }

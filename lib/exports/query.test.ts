@@ -55,6 +55,46 @@ describe("parseExportDeckQuery", () => {
   });
 });
 
+/** D3.3 — a `districtCode` request never carries geoCode/geoLevel and is limited to the 3
+ * indicators `agg_bhw_by_district` actually has. */
+describe("district export requests (D3.3)", () => {
+  it("parses a single-figure district request", () => {
+    const parsed = parseExportQuery(url("districtCode=leyte-1&indicator=accreditation"));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.kind).toBe("district");
+      expect(parsed.data).toMatchObject({ districtCode: "leyte-1", indicator: "accreditation" });
+    }
+  });
+
+  it("refuses an indicator outside the district figure set, even though it's a valid place indicator", () => {
+    expect(parseExportQuery(url("districtCode=leyte-1&indicator=training")).success).toBe(false);
+  });
+
+  it("refuses a district request missing an indicator", () => {
+    expect(parseExportQuery(url("districtCode=leyte-1")).success).toBe(false);
+  });
+
+  it("parses a district deck request", () => {
+    const parsed = parseExportDeckQuery(
+      url("districtCode=leyte-1&indicators=accreditation,service_years,honorarium"),
+    );
+    expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.kind === "district") {
+      expect(parsed.data.districtCode).toBe("leyte-1");
+      expect(parsed.data.indicators).toEqual(["accreditation", "service_years", "honorarium"]);
+    }
+  });
+
+  it("never mixes districtCode with geoCode/geoLevel — presence of districtCode always selects the district schema", () => {
+    const parsed = parseExportQuery(
+      url("districtCode=leyte-1&indicator=accreditation&geoCode=PH&geoLevel=national"),
+    );
+    expect(parsed.success && parsed.data.kind).toBe("district");
+    expect(parsed.success && "geoCode" in parsed.data).toBe(false);
+  });
+});
+
 describe("slugify", () => {
   it("makes a filename-safe slug", () => {
     expect(slugify("% Accredited", "Zamboanga del Sur")).toBe("accredited-zamboanga-del-sur");

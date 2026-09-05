@@ -8,11 +8,14 @@ import {
 } from "nuqs/server";
 import {
   DEFAULT_MAP_INDICATOR,
+  DEFAULT_MAP_LAYER,
   DEFAULT_REL_X,
   DEFAULT_REL_Y,
   DEMOGRAPHIC_DIMENSIONS,
+  DISTRICT_MAP_INDICATORS,
   GEO_LEVELS,
   INDICATORS,
+  MAP_LAYERS,
   REL_AXIS_INDICATORS,
   NATIONAL_GEO_CODE,
   normalizeMapIndicator,
@@ -45,6 +48,16 @@ export const filterParsers = {
   relY: parseAsStringEnum([...REL_AXIS_INDICATORS]).withDefault(DEFAULT_REL_Y),
   compareGeos: parseAsArrayOf(parseAsString),
   breakdowns: parseAsArrayOf(parseAsStringEnum([...DEMOGRAPHIC_DIMENSIONS])),
+  // D3.3 — a district selected on /explore (its own filter dimension, separate from geoLevel/geoCode
+  // since a district isn't a geo_level — plan §1) and the national map's layer toggle.
+  districtCode: parseAsString,
+  mapLayer: parseAsStringEnum([...MAP_LAYERS]).withDefault(DEFAULT_MAP_LAYER),
+  districtMapIndicator: parseAsStringEnum([...DISTRICT_MAP_INDICATORS]).withDefault(
+    "pct_accredited",
+  ),
+  // D3.3 — /compare district-vs-district mode, parallel to compareGeos but never mixed with it
+  // (a district code isn't a dim_geo code — guardrail 7).
+  compareDistricts: parseAsArrayOf(parseAsString),
 };
 
 /**
@@ -56,7 +69,11 @@ export const filterParsers = {
  * which the server never sees — that exact mismatch silently broke every
  * interactive control on /compare while permalinks kept working.
  */
-export const filterUrlKeys = { compareGeos: "geos" } as const;
+export const filterUrlKeys = {
+  compareGeos: "geos",
+  districtCode: "district",
+  compareDistricts: "districts",
+} as const;
 
 /** Server-side: parse a `URLSearchParams`/`Request`/plain record into typed filter state. */
 export const loadFilterState = createLoader(filterParsers, { urlKeys: filterUrlKeys });

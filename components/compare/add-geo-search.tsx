@@ -3,12 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useFilterState } from "@/lib/filters/use-filter-state";
 
-type GeoSearchResult = { geoCode: string; geoLevel: string; geoName: string; nTotal: number | null };
+type GeoHit = { kind: "geo"; geoCode: string; geoLevel: string; geoName: string; nTotal: number | null };
+/** D3.3 — a district hit from `/api/geo/search`, addable to the district-vs-district compare set
+ * (`?districts=`) — never mixed with `?geos=` (a district isn't a `dim_geo` row, guardrail 7). */
+type DistrictHit = {
+  kind: "district";
+  districtCode: string;
+  districtName: string;
+  bhwTotal: number | null;
+};
+type GeoSearchResult = GeoHit | DistrictHit;
 
 /**
- * Same debounced search as the home page's "find my barangay" box, but
- * selecting a result appends it to the compare set (?geos=) instead of
- * navigating to a place page.
+ * Same debounced search as the home page's "find my barangay" box, but selecting a result appends
+ * it to the compare set instead of navigating away — `?geos=` for a place, `?districts=` for a
+ * district (D3.3). Adding one kind clears the other: the two never mix on one comparison (a
+ * district isn't a `dim_geo` row to compare against a place, guardrail 7), mirroring how mismatched
+ * geo levels are already disallowed on this page.
  */
 export function AddGeoSearch({ disabled }: { disabled?: boolean }) {
   const [filters, setFilters] = useFilterState();
@@ -42,10 +53,16 @@ export function AddGeoSearch({ disabled }: { disabled?: boolean }) {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  function addGeo(geoCode: string) {
-    const current = filters.compareGeos ?? [];
-    if (current.includes(geoCode) || current.length >= 4) return;
-    setFilters({ compareGeos: [...current, geoCode] });
+  function addResult(result: GeoSearchResult) {
+    if (result.kind === "district") {
+      const current = filters.compareDistricts ?? [];
+      if (current.includes(result.districtCode) || current.length >= 4) return;
+      setFilters({ compareDistricts: [...current, result.districtCode], compareGeos: null });
+    } else {
+      const current = filters.compareGeos ?? [];
+      if (current.includes(result.geoCode) || current.length >= 4) return;
+      setFilters({ compareGeos: [...current, result.geoCode], compareDistricts: null });
+    }
     setQuery("");
     setResults([]);
     setHasSearched(false);
@@ -72,14 +89,16 @@ export function AddGeoSearch({ disabled }: { disabled?: boolean }) {
             <li className="px-3 py-2 text-sm text-muted">No matching places found.</li>
           ) : (
             results.map((r) => (
-              <li key={r.geoCode}>
+              <li key={r.kind === "district" ? r.districtCode : r.geoCode}>
                 <button
                   type="button"
-                  onClick={() => addGeo(r.geoCode)}
+                  onClick={() => addResult(r)}
                   className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-surface"
                 >
-                  <span>{r.geoName}</span>
-                  <span className="shrink-0 text-xs text-muted">{r.geoLevel}</span>
+                  <span>{r.kind === "district" ? r.districtName : r.geoName}</span>
+                  <span className="shrink-0 text-xs text-muted">
+                    {r.kind === "district" ? "District" : r.geoLevel}
+                  </span>
                 </button>
               </li>
             ))

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { loadFilterState } from "@/lib/filters/codec";
 import { DEFAULT_BREAKDOWNS, NATIONAL_GEO_CODE, type GeoLevel } from "@/lib/filters/schema";
 import { getChildGeos, getGeoAncestors, getGeoByCode, type GeoOption } from "@/lib/db/geo";
@@ -12,12 +13,18 @@ import {
 import { getBhwOverview, coverageForDisplay } from "@/lib/db/stepzero";
 import { getHonorariumSufficiency } from "@/lib/db/derived-figures";
 import { getPeerRanks } from "@/lib/db/peer-ranks";
+import { getDistrictIndex, getDistrictBhwFigures } from "@/lib/db/districts";
 import type { CompareMetricValues } from "@/lib/analysis/compare-metrics";
 import { AddGeoSearch } from "@/components/compare/add-geo-search";
 import { IndicatorPicker } from "@/components/compare/indicator-picker";
 import { CompareColumn, type CompareColumnData } from "@/components/compare/compare-column";
 import { CompareSummary, type CompareSummaryPlace } from "@/components/compare/compare-summary";
 import { SelectedGeoChips } from "@/components/compare/selected-geo-chips";
+import { SelectedDistrictChips } from "@/components/compare/selected-district-chips";
+import {
+  DistrictCompareColumn,
+  type DistrictCompareColumnData,
+} from "@/components/compare/district-compare-column";
 import { QuickAddChips, type QuickAddSuggestion } from "@/components/compare/quick-add-chips";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
@@ -83,6 +90,16 @@ export default async function ComparePage({
 }) {
   const rawParams = await searchParams;
   const filters = loadFilterState(rawParams);
+
+  // D3.3 — "/compare: district vs district." A district isn't a `dim_geo` row (plan §1), so it
+  // gets its own compare mode entirely rather than being squeezed into the geo-comparison path
+  // below: `?districts=` never mixes with `?geos=` (guardrail 7 — `addResult` in `AddGeoSearch`
+  // clears one when the other is set), so whichever is present decides the mode outright.
+  const requestedDistrictCodes = [...new Set(filters.compareDistricts ?? [])].slice(0, 4);
+  if (requestedDistrictCodes.length > 0) {
+    return <DistrictComparePage requestedCodes={requestedDistrictCodes} />;
+  }
+
   const requestedCodes = [...new Set(filters.compareGeos ?? [])].slice(0, 4);
 
   const resolved = await Promise.all(requestedCodes.map((code) => getGeoByCode(code)));
@@ -332,6 +349,150 @@ export default async function ComparePage({
             <div className="flex flex-col gap-6 sm:flex-row sm:gap-4 sm:overflow-x-auto sm:pb-4">
               {columns.map((col) => (
                 <CompareColumn key={col.geoCode} data={col} indicator={filters.indicator} />
+              ))}
+            </div>
+          </PresentationSlide>
+        )}
+      </div>
+    </PresentationProvider>
+  );
+}
+
+/**
+ * D3.3 — "/compare: district vs district, which is the comparison a legislative office actually
+ * wants." A parallel, much thinner mode than `ComparePage`'s geo path: a district only carries the
+ * 3 figures `agg_bhw_by_district` (D3.1) has (`DistrictCompareColumn`'s own comment says why), so
+ * this reuses `CompareSummary`/`CompareMetricValues` (the other 3 base indicators pass through as
+ * null and correctly render as "not enough data" — the same honest degrade the summary strip
+ * already gives a real place with missing figures) rather than the full `CompareColumn` contract,
+ * which needs data no district aggregate carries.
+ */
+async function DistrictComparePage({ requestedCodes }: { requestedCodes: string[] }) {
+  const [index, nationalCounts, figuresByCode] = await Promise.all([
+    getDistrictIndex(),
+    getBhwCounts(NATIONAL_GEO_CODE, "national"),
+    Promise.all(requestedCodes.map((code) => getDistrictBhwFigures(code))).then(
+      (rows) => new Map(requestedCodes.map((code, i) => [code, rows[i]])),
+    ),
+  ]);
+
+  const indexByCode = new Map(index.map((d) => [d.districtCode, d]));
+  const valid = requestedCodes
+    .map((code) => indexByCode.get(code))
+    .filter((d): d is NonNullable<typeof d> => d !== undefined);
+  const notFoundCount = requestedCodes.length - valid.length;
+  const canCompare = valid.length >= 2;
+
+  const metricValues = (code: string): CompareMetricValues => {
+    const figures = figuresByCode.get(code);
+    return {
+      pct_accredited: figures?.pctAccredited ?? null,
+      any_honorarium_pct: figures?.anyHonorariumPct ?? null,
+      avg_active_years: figures?.avgActiveYears ?? null,
+      households_per_bhw: null,
+      coverage_pct: null,
+      bhw_per_1000: null,
+    };
+  };
+
+  const summaryPlaces: CompareSummaryPlace[] = valid.map((d) => ({
+    geoCode: d.districtCode,
+    geoName: d.districtName,
+    nTotal: figuresByCode.get(d.districtCode)?.nTotal ?? null,
+    values: metricValues(d.districtCode),
+  }));
+
+  const reference = {
+    label: "Philippines",
+    values: {
+      pct_accredited: nationalCounts?.pctAccredited ?? null,
+      any_honorarium_pct: nationalCounts?.anyHonorariumPct ?? null,
+      avg_active_years: nationalCounts?.avgActiveYears ?? null,
+      households_per_bhw: null,
+      coverage_pct: null,
+      bhw_per_1000: null,
+    } satisfies CompareMetricValues,
+  };
+
+  const columns: DistrictCompareColumnData[] = valid.map((d) => {
+    const figures = figuresByCode.get(d.districtCode);
+    return {
+      districtCode: d.districtCode,
+      districtName: d.districtName,
+      regionName: d.regionName,
+      ordinal: d.ordinal,
+      isLone: d.isLone,
+      memberCount: d.memberCount,
+      population: d.population,
+      pctAccredited: figures?.pctAccredited ?? null,
+      avgActiveYears: figures?.avgActiveYears ?? null,
+      anyHonorariumPct: figures?.anyHonorariumPct ?? null,
+      nTotal: figures?.nTotal ?? null,
+    };
+  });
+
+  const summaryCaption = canCompare
+    ? `Total BHWs: ${summaryPlaces.map((p) => `${p.geoName} ${p.nTotal?.toLocaleString() ?? "—"}`).join(" · ")} · 2025 snapshot`
+    : "";
+
+  const deckMeta = {
+    pageLabel: "Compare districts",
+    areaName: canCompare ? valid.map((d) => d.districtName).join(" vs ") : "Compare districts",
+    filterChips: canCompare ? valid.map(() => "District") : [],
+    captionLine: "Side-by-side district comparison · 2025 snapshot",
+  };
+
+  return (
+    <PresentationProvider meta={deckMeta}>
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Compare legislative districts</h1>
+        <p className="max-w-3xl text-sm text-muted">
+          Districts carry a narrower figure set than places (accreditation, service years, and
+          any-honorarium % only — see{" "}
+          <Link href="/districts" className="underline hover:text-accent">
+            /districts
+          </Link>{" "}
+          for the full derived mapping and its known gaps).
+        </p>
+
+        <div className="flex flex-wrap items-end gap-4">
+          <AddGeoSearch disabled={valid.length >= 4} />
+          {canCompare && <PresentButton variant="secondary" />}
+        </div>
+
+        <SelectedDistrictChips
+          districts={valid.map((d) => ({ districtCode: d.districtCode, districtName: d.districtName }))}
+        />
+
+        {notFoundCount > 0 && (
+          <p className="rounded-md bg-surface px-4 py-2 text-sm text-muted">
+            {notFoundCount} of the requested district{notFoundCount === 1 ? "" : "s"} in this link
+            couldn&apos;t be found and {notFoundCount === 1 ? "was" : "were"} skipped.
+          </p>
+        )}
+
+        {valid.length < 2 && (
+          <div className="flex flex-col items-center gap-2 py-8 text-center text-muted">
+            <p>Add at least two districts to compare them side by side.</p>
+            {valid.length === 1 && (
+              <p className="text-sm">
+                {valid[0].districtName} is added — search above to add one more (up to 4 total).
+              </p>
+            )}
+          </div>
+        )}
+
+        {canCompare && (
+          <PresentationSlide id="head-to-head" title="Head to head">
+            <CompareSummary places={summaryPlaces} reference={reference} caption={summaryCaption} />
+          </PresentationSlide>
+        )}
+
+        {canCompare && (
+          <PresentationSlide id="comparison" title={valid.map((d) => d.districtName).join(" vs ")}>
+            <div className="flex flex-col gap-6 sm:flex-row sm:gap-4 sm:overflow-x-auto sm:pb-4">
+              {columns.map((col) => (
+                <DistrictCompareColumn key={col.districtCode} data={col} />
               ))}
             </div>
           </PresentationSlide>

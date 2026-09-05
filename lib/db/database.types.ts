@@ -3197,6 +3197,15 @@ export type Database = {
           score: number;
         }[];
       };
+      search_district: {
+        Args: { result_limit?: number; search_query: string };
+        Returns: {
+          district_code: string;
+          district_name: string;
+          match_rank: number;
+          matched_member_name: string | null;
+        }[];
+      };
       search_documents: {
         Args: {
           p_doc_key?: string;

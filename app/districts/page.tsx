@@ -88,6 +88,18 @@ export default async function DistrictsPage() {
 
           <DistrictIndexTable rows={rows} regionOptions={regionOptions} />
 
+          <p className="text-sm text-muted">
+            Download the mapping itself:{" "}
+            <a href="/api/export/districts/csv" className="underline hover:text-accent">
+              CSV
+            </a>{" "}
+            ·{" "}
+            <a href="/api/export/districts/xlsx" className="underline hover:text-accent">
+              XLSX
+            </a>{" "}
+            — every live member LGU with its source page, revision, and match method.
+          </p>
+
           <section className="flex flex-col gap-2 text-sm">
             <h2 className="text-base font-semibold">What the match-quality badge means</h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
