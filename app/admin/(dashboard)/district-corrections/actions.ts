@@ -40,6 +40,10 @@ export async function judgeCorrection(formData: FormData) {
 
   revalidatePath("/admin/district-corrections");
   revalidatePath("/districts");
+  // D2.5's public ledger renders this decision and its note. It is on the same 1-hour window as
+  // the rest of the district pages, and a reader who was told their proposal would be published
+  // should not have to wait that window out to see it judged.
+  revalidatePath("/districts/corrections");
   // A move touches two district pages; every other action leaves one of these hidden fields blank.
   const districtCode = String(formData.get("districtCode") ?? "");
   const toDistrictCode = String(formData.get("toDistrictCode") ?? "");

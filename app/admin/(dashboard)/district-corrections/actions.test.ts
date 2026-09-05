@@ -128,6 +128,11 @@ describe("district corrections actions", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/districts");
   });
 
+  it("revalidates D2.5's public ledger, which publishes this decision and its note", async () => {
+    await judgeCorrection(form({ correctionId: "7", decision: "rejected", note: "not this district" }));
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/districts/corrections");
+  });
+
   it("revalidates the named district page(s) carried on the hidden form fields", async () => {
     await judgeCorrection(
       form({
@@ -145,6 +150,6 @@ describe("district corrections actions", () => {
   it("does not revalidate a district page when no district code was carried", async () => {
     await judgeCorrection(form({ correctionId: "7", decision: "rejected", note: "no source for this" }));
     const paths = mocks.revalidatePath.mock.calls.map((c) => c[0]);
-    expect(paths).toEqual(["/admin/district-corrections", "/districts"]);
+    expect(paths).toEqual(["/admin/district-corrections", "/districts", "/districts/corrections"]);
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { logEvent } from "@/lib/usage/log-client";
 import { getSessionId } from "@/lib/feedback/session";
@@ -81,7 +82,12 @@ export function CorrectionForm({
     return (
       <p className="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm">
         Thanks — your correction has been recorded for review. It carries no promise of being
-        right by itself; an admin checks it against the source before anything changes.
+        right by itself; an admin checks it against the source before anything changes. You can
+        follow it on the{" "}
+        <Link href="/districts/corrections" className="underline hover:text-accent">
+          correction ledger
+        </Link>
+        , where it is published with the reason it was accepted or not.
       </p>
     );
   }
@@ -199,6 +205,15 @@ export function CorrectionForm({
           onChange={(e) => setRationale(e.target.value)}
           className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
+        {/* Said before submission, not after: D2.5 publishes this text verbatim on the ledger, so
+            the person writing it has to know that while they are still writing it. */}
+        <p className="mt-1 text-xs text-muted">
+          Published as written on the{" "}
+          <Link href="/districts/corrections" className="underline hover:text-accent">
+            public correction ledger
+          </Link>
+          , along with the reviewer&apos;s decision. Please don&apos;t include anything personal.
+        </p>
       </div>
 
       <div>

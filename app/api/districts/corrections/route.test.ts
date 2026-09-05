@@ -16,6 +16,12 @@ const { insertMock, insertResult, createSupabaseServerClient } = vi.hoisted(() =
 });
 vi.mock("@/lib/db/supabase", () => ({ createSupabaseServerClient }));
 
+// D2.5 — a submission is published on the public ledger, which is on a 1-hour window like every
+// other district page. The route expires it so the promise made to the submitter is true now
+// rather than eventually.
+const { revalidatePath } = vi.hoisted(() => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath }));
+
 const { POST } = await import("./route");
 
 const SESSION_ID = "3f8a1c2e-5b6d-4e7f-8a9b-0c1d2e3f4a5b";
@@ -38,6 +44,7 @@ const baseAddBody = {
 
 beforeEach(() => {
   insertMock.mockClear();
+  revalidatePath.mockClear();
   insertResult.current = { error: null };
 });
 
@@ -136,5 +143,18 @@ describe("POST /api/districts/corrections", () => {
     insertResult.current = { error: { message: "boom" } };
     const res = await POST(post(baseAddBody));
     expect(res.status).toBe(500);
+  });
+
+  it("expires the public ledger so a new proposal shows up there immediately", async () => {
+    await POST(post(baseAddBody));
+    expect(revalidatePath).toHaveBeenCalledWith("/districts/corrections");
+  });
+
+  it("expires nothing when there was no submission to publish", async () => {
+    await POST(post({ ...baseAddBody, website: "http://spam.example" }));
+    await POST(post({ ...baseAddBody, rationale: "" }));
+    insertResult.current = { error: { message: "boom" } };
+    await POST(post(baseAddBody));
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

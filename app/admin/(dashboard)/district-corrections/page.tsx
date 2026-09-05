@@ -1,20 +1,16 @@
+import Link from "next/link";
 import {
   getDistrictCorrectionCounts,
   listPendingDistrictCorrections,
   listRecentlyJudgedDistrictCorrections,
-  type DistrictCorrectionAction,
   type JudgedDistrictCorrection,
   type PendingDistrictCorrection,
 } from "@/lib/db/district-corrections";
+import {
+  CORRECTION_ACTION_LABEL,
+  describeCorrectionChange,
+} from "@/components/districts/correction-change";
 import { judgeCorrection } from "./actions";
-
-const ACTION_LABEL: Record<DistrictCorrectionAction, string> = {
-  add: "Add a place",
-  remove: "Remove a place",
-  move: "Move a place",
-  rename: "Rename district",
-  other: "Something else",
-};
 
 /**
  * D2.4 — the admin review queue for D2.3's structured proposals, modelled on `kb-review`: the
@@ -50,6 +46,20 @@ export default async function AdminDistrictCorrectionsPage() {
           row (or, for a rename, updates the district name directly) and closes the proposal; the
           review note is published on the correction&apos;s own record and is mandatory for every
           outcome, including acceptance.
+        </p>
+        <p className="text-xs text-muted">
+          Write the note for the submitter, not for this screen: it is published verbatim, next to
+          the proposal it judges, on the public{" "}
+          <Link
+            href="/districts/corrections"
+            target="_blank"
+            rel="noopener"
+            className="underline hover:text-accent"
+          >
+            correction ledger
+          </Link>{" "}
+          (D2.5). Your own identity is not — the reasoning is what gets published, not who wrote
+          it.
         </p>
       </section>
 
@@ -92,34 +102,14 @@ function Stat({ label, value, hint }: { label: string; value: number; hint: stri
   );
 }
 
-/** What this proposal, if accepted, would change — read before the rationale, the way a diff's
- *  header is read before its body. */
-function describeChange(row: PendingDistrictCorrection | JudgedDistrictCorrection): string {
-  const place = row.geoName ?? row.geoCode ?? "(place not specified)";
-  const district = row.districtName ?? row.districtCode ?? "(district not specified)";
-  const toDistrict = row.toDistrictName ?? row.toDistrictCode ?? "(destination not specified)";
-  switch (row.action) {
-    case "add":
-      return `Add ${place} to ${district}`;
-    case "remove":
-      return `Remove ${place} from ${district}`;
-    case "move":
-      return `Move ${place} from ${district} to ${toDistrict}`;
-    case "rename":
-      return `Rename ${district}`;
-    case "other":
-      return `Something else about ${district}`;
-  }
-}
-
 function CorrectionCard({ row }: { row: PendingDistrictCorrection }) {
   return (
     <li className="rounded-lg border border-border p-4">
       <div className="flex flex-wrap items-baseline gap-2">
         <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">
-          {ACTION_LABEL[row.action]}
+          {CORRECTION_ACTION_LABEL[row.action]}
         </span>
-        <span className="text-sm font-medium">{describeChange(row)}</span>
+        <span className="text-sm font-medium">{describeCorrectionChange(row)}</span>
         <span className="text-xs text-muted">{new Date(row.createdAt).toLocaleDateString()}</span>
       </div>
 
@@ -209,7 +199,7 @@ function JudgedCard({ row }: { row: JudgedDistrictCorrection }) {
       >
         {STATUS_LABEL[row.status]}
       </span>
-      <span className="min-w-0 flex-1 truncate text-xs">{describeChange(row)}</span>
+      <span className="min-w-0 flex-1 truncate text-xs">{describeCorrectionChange(row)}</span>
       <span className="text-xs text-muted">
         {row.reviewedBy ?? "unrecorded"}
         {row.reviewedAt ? ` · ${row.reviewedAt.slice(0, 10)}` : ""}

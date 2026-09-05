@@ -210,7 +210,12 @@ export default async function DistrictDetailPage({
         <p className="text-sm text-muted">
           A structured proposal, not a message — it is reviewed against the source above and, once
           accepted, supersedes the row it corrects rather than overwriting it (the correction
-          history section above is where that history shows up).
+          history section above is where that history shows up). Every proposal is then published
+          on the{" "}
+          <Link href="/districts/corrections" className="underline hover:text-accent">
+            correction ledger
+          </Link>{" "}
+          with the reason it was accepted or not — including the ones that weren&apos;t.
         </p>
         <CorrectionForm
           districtCode={detail.districtCode}

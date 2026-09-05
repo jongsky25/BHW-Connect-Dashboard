@@ -83,9 +83,17 @@ type RawCorrectionRow = {
   submitter_email: string | null;
 };
 
+/** Anything carrying the three codes that need a display name — a correction row, or one of the
+ *  `geo_district_map` rows an accepted correction produced (D2.5). */
+type CodeBearingRow = {
+  district_code?: string | null;
+  to_district_code?: string | null;
+  geo_code?: string | null;
+};
+
 /** District and geo names for a batch of correction rows, one round trip each rather than one per
  *  row — the queue reads a handful of rows at a time, never a whole table. */
-async function nameLookups(rows: RawCorrectionRow[]) {
+async function nameLookups(rows: CodeBearingRow[]) {
   const supabase = createSupabaseServiceClient();
   const districtCodes = Array.from(
     new Set(rows.flatMap((r) => [r.district_code, r.to_district_code]).filter((c): c is string => Boolean(c))),
@@ -161,6 +169,198 @@ export async function listRecentlyJudgedDistrictCorrections(limit = 20): Promise
     reviewedBy: row.reviewed_by,
     reviewNote: row.review_note,
   }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* D2.5 — the public ledger                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Every column `/districts/corrections` publishes, and **only** those. Two columns of
+ * `district_correction` are deliberately not here:
+ *
+ *   - `submitter_email`, which the form promises is never published. This is the constraint the
+ *     migration handed D2.5 (20260902030000_legislative_districts.sql, and docs/DECISIONS.md
+ *     2026-09-02): the table has no public SELECT policy precisely because a policy broad enough
+ *     to serve this page would also serve anyone who wants the email column. Projecting the
+ *     columns server-side is the fix; relaxing the policy is not.
+ *   - `reviewed_by`, an admin's email or user id. The plan asks the ledger to publish the review
+ *     *note* — the reasoning — not the reviewer's identity, and publishing an admin's address to
+ *     satisfy a transparency promise made about submitters' addresses would be an odd trade.
+ *
+ * `session_id` is likewise absent: it is a spam-defence handle, not a fact about the proposal.
+ *
+ * Keeping the list as a named constant rather than inline is what lets a test assert the negative
+ * — that no query behind the public page ever asks for those columns.
+ */
+export const PUBLIC_CORRECTION_COLUMNS =
+  "id, created_at, action, district_code, to_district_code, geo_code, rationale, evidence_url, status, reviewed_at, review_note";
+
+/** Newest-first cap on one ledger render. The table holds a handful of rows today and would have
+ *  to grow ~100× before this bites; the summary counts above the list are exact regardless, so a
+ *  truncated list under-reports the rows shown and never the totals. */
+export const PUBLIC_LEDGER_LIMIT = 500;
+
+/** `open` is a status on the ledger the way the three decisions are: a proposal nobody has judged
+ *  yet is exactly what a reader checking whether their submission went anywhere needs to see. */
+export type PublicDistrictCorrectionStatus = "open" | DistrictCorrectionDecision;
+
+/** A `geo_district_map` row an accepted correction created, and the district page it now shows on
+ *  — "the row it changed", made a link rather than a claim. */
+export type CorrectionOutcomeRow = {
+  id: number;
+  districtCode: string;
+  districtName: string | null;
+  geoCode: string;
+  geoName: string | null;
+};
+
+export type PublicDistrictCorrection = {
+  id: number;
+  createdAt: string;
+  action: DistrictCorrectionAction;
+  districtCode: string | null;
+  districtName: string | null;
+  toDistrictCode: string | null;
+  toDistrictName: string | null;
+  geoCode: string | null;
+  geoName: string | null;
+  rationale: string;
+  evidenceUrl: string | null;
+  status: PublicDistrictCorrectionStatus;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  outcomeRows: CorrectionOutcomeRow[];
+};
+
+export type PublicDistrictCorrectionLedger = {
+  corrections: PublicDistrictCorrection[];
+  counts: DistrictCorrectionCounts;
+  /** True when there are more proposals than `PUBLIC_LEDGER_LIMIT`, so the page can say so rather
+   *  than quietly showing a prefix of a list it promised was complete. */
+  truncated: boolean;
+};
+
+type RawPublicCorrectionRow = {
+  id: number;
+  created_at: string;
+  action: string;
+  district_code: string | null;
+  to_district_code: string | null;
+  geo_code: string | null;
+  rationale: string;
+  evidence_url: string | null;
+  status: string;
+  reviewed_at: string | null;
+  review_note: string | null;
+};
+
+type RawOutcomeRow = {
+  id: number;
+  district_code: string;
+  geo_code: string;
+  source_ref: string | null;
+};
+
+function toPublicStatus(status: string): PublicDistrictCorrectionStatus {
+  return isDistrictCorrectionDecision(status) ? status : "open";
+}
+
+/**
+ * The `geo_district_map` rows accepted corrections wrote, keyed by the correction that wrote them
+ * — matched on the `source_ref` `applyAcceptance` stamps (`district_correction:<id>`), which is the
+ * only link between the two tables and the reason that stamp exists.
+ *
+ * Only `add` and `move` produce such a row. An accepted `remove` marks the existing row rejected
+ * (no new row, and the rejected one is invisible to public reads by policy), a `rename` touches
+ * `dim_legislative_district` instead, and `other` writes nothing at all — so the absence of an
+ * outcome row here is normal, not a failure, and the page says what changed in words for those.
+ */
+async function outcomeRowsByCorrection(
+  ids: number[],
+): Promise<{ rows: Map<number, RawOutcomeRow[]>; all: RawOutcomeRow[] }> {
+  const empty = { rows: new Map<number, RawOutcomeRow[]>(), all: [] as RawOutcomeRow[] };
+  if (ids.length === 0) return empty;
+
+  const supabase = createSupabaseServiceClient();
+  const { data, error } = await supabase
+    .from("geo_district_map")
+    .select("id, district_code, geo_code, source_ref")
+    .in(
+      "source_ref",
+      ids.map((id) => `district_correction:${id}`),
+    );
+  if (error || !data) return empty;
+
+  const rows = new Map<number, RawOutcomeRow[]>();
+  for (const row of data as RawOutcomeRow[]) {
+    const id = Number(row.source_ref?.slice("district_correction:".length));
+    if (!Number.isInteger(id)) continue;
+    const bucket = rows.get(id);
+    if (bucket) bucket.push(row);
+    else rows.set(id, [row]);
+  }
+  return { rows, all: data as RawOutcomeRow[] };
+}
+
+/**
+ * D2.5 — every proposal ever submitted, with its status, its review note, and (for the accepted
+ * ones) the mapping rows it produced. Read with the service client and projected here rather than
+ * served from the client, because `district_correction` has no public SELECT policy by design.
+ *
+ * Degrades to an empty ledger rather than throwing, like every other read in this module: a page
+ * whose point is "the correction mechanism is not a black box" is better rendering an empty list
+ * with its explanation intact than a 500.
+ */
+export async function getPublicDistrictCorrectionLedger(): Promise<PublicDistrictCorrectionLedger> {
+  const counts = await getDistrictCorrectionCounts();
+  const empty: PublicDistrictCorrectionLedger = { corrections: [], counts, truncated: false };
+
+  try {
+    const supabase = createSupabaseServiceClient();
+    const { data, error } = await supabase
+      .from("district_correction")
+      .select(PUBLIC_CORRECTION_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(PUBLIC_LEDGER_LIMIT);
+    if (error || !data) return empty;
+
+    const rows = data as RawPublicCorrectionRow[];
+    const accepted = rows.filter((r) => r.status === "accepted").map((r) => r.id);
+    const outcomes = await outcomeRowsByCorrection(accepted);
+    // One name lookup over the proposals and their outcome rows together — the outcome of a `move`
+    // names a district the proposal itself does not.
+    const names = await nameLookups([...rows, ...outcomes.all]);
+
+    const corrections = rows.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      action: row.action as DistrictCorrectionAction,
+      districtCode: row.district_code,
+      districtName: row.district_code ? (names.districtName.get(row.district_code) ?? null) : null,
+      toDistrictCode: row.to_district_code,
+      toDistrictName: row.to_district_code ? (names.districtName.get(row.to_district_code) ?? null) : null,
+      geoCode: row.geo_code,
+      geoName: row.geo_code ? (names.geoName.get(row.geo_code) ?? null) : null,
+      rationale: row.rationale,
+      evidenceUrl: row.evidence_url,
+      status: toPublicStatus(row.status),
+      reviewedAt: row.reviewed_at,
+      reviewNote: row.review_note,
+      outcomeRows: (outcomes.rows.get(row.id) ?? []).map((o) => ({
+        id: o.id,
+        districtCode: o.district_code,
+        districtName: names.districtName.get(o.district_code) ?? null,
+        geoCode: o.geo_code,
+        geoName: names.geoName.get(o.geo_code) ?? null,
+      })),
+    }));
+
+    const total = counts.pending + counts.accepted + counts.rejected + counts.duplicate;
+    return { corrections, counts, truncated: total > corrections.length };
+  } catch {
+    return empty;
+  }
 }
 
 export async function getDistrictCorrectionCounts(): Promise<DistrictCorrectionCounts> {
