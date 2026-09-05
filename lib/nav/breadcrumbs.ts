@@ -60,6 +60,7 @@ const ADMIN_TRAILS: Record<string, Crumb[]> = {
   "/admin/answer-bank": [BHW_CRUMB, ADMIN_CRUMB, { label: "Answer bank" }],
   "/admin/assistant": [BHW_CRUMB, ADMIN_CRUMB, { label: "Assistant" }],
   "/admin/kb-review": [BHW_CRUMB, ADMIN_CRUMB, { label: "KB review" }],
+  "/admin/district-corrections": [BHW_CRUMB, ADMIN_CRUMB, { label: "District corrections" }],
   "/admin/regressions": [BHW_CRUMB, ADMIN_CRUMB, { label: "Regressions" }],
 };
 

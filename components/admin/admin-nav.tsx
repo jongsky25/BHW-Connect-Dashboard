@@ -13,6 +13,7 @@ const LINKS = [
   // page carries a place search to get anywhere else.
   { href: "/admin/place/national/PH", label: "Area profile" },
   { href: "/admin/kb-review", label: "KB review" },
+  { href: "/admin/district-corrections", label: "District corrections" },
   { href: "/admin/regressions", label: "Regressions" },
 ];
 
