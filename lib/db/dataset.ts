@@ -81,6 +81,11 @@ export const DATASET_SLUGS = {
    * (DC No. 2025-0549). A targeting list of barangays, not a BHW measure — read
    * only by slug, like the other companion datasets (see lib/db/uuc-phc.ts). */
   uucPhc: "uuc-phc-2025",
+  /** The 20th Congress legislative district mapping — derived from public sources, not published
+   * by PSA or COMELEC. Read only by slug like the other companion datasets, and the one dataset
+   * whose `last_updated_at` moves from inside the running site: an accepted public correction
+   * bumps it (`lib/db/district-correction-changelog.ts`, plan D2.6). */
+  legislativeDistricts: "ph-legislative-districts",
 } as const;
 
 /**

@@ -8736,3 +8736,117 @@ stranger's evidence URL `nofollow`, and removing each revalidation (plus firing 
 trip). All are caught. Two survivors are equivalent mutants, not gaps: rewriting the list read's
 error guard as `data ?? []` (the outer `catch` returns the same empty ledger), and reordering the
 `case` clauses in `describeAcceptedOutcome`.
+
+## 2026-09-05 — D2.6: an accepted correction says so on the changelog, and district_correction joins the registry
+
+The plan's half-day increment, plus the debt the 2026-09-03 and 2026-09-05 entries both scheduled
+here.
+
+### The bump does not expire anything yet, and pretending otherwise was the tempting move
+
+§6.4 says keying the caches on `dataset_slug = 'ph-legislative-districts'` means an accepted
+correction invalidates district answers and nothing else, "via the mechanism
+`lib/ai/dataset-scope.ts` already implements". That mechanism does exist. What does not exist is a
+scope using it: `dataset-scope.ts` defines `bhw` and `uuc-phc`, and no chat surface is keyed on the
+district slug, so `ai_ask_cache` holds no district answers for a bump to expire.
+
+`bumpDatasetVersion` ships anyway, and the reason is the direction of the failure. D3.4 adds the
+district scope. If the bump is not already in place when it lands, the scope arrives serving
+answers cached before a correction and nothing anywhere reports it — the same silent staleness U8
+built the per-dataset version to prevent, arriving through the other door. Writing it now costs one
+update statement; retrofitting it later costs noticing.
+
+What the bump is worth today, independent of caches: `dim_dataset.last_updated_at` becomes a true
+answer to "when did this mapping last change". Until now it only moved when a migration re-seeded
+the row, which was fine while every dataset arrived as a bulk load. A public correction is the first
+change to a dataset that originates inside the running site.
+
+### The changelog entry does not carry the submitter's text
+
+The rationale is public — the ledger prints it in full and the form says it will. It does not follow
+that it belongs on `/methodology`. The ledger is a page about proposals, where a stranger's words
+are the content and the reader knows it; the changelog is where this site records that a published
+figure changed, and nobody reviews it entry by entry. Copying an open form's output there is a
+different decision from publishing it on the ledger, and it is not made. The entry names what the
+mapping now says, the proposal number, and where to read the reasoning.
+
+The one-line description is `describeCorrectionChange`'s, making the changelog the third caller of
+the sentence the queue and the ledger already share, for the reason yesterday's entry gave: a reader
+who follows a changelog line to the ledger should meet the same wording, not a paraphrase to
+reconcile. `body_md` is written as plain prose despite the column name, because `/methodology`
+renders it verbatim inside a `<p>` — markdown syntax would show as syntax.
+
+### Publication runs last and cannot fail the acceptance
+
+By the time it runs, the `geo_district_map` row exists and the `district_correction` row is closed.
+There is no retry available: `judgeDistrictCorrection` refuses a row that is not `open`, and if it
+did not, re-running an accept would re-apply the mutation. So both writes are best-effort, log their
+failures, and return an outcome the caller does not treat as an error. The trade is explicit — a
+missing record of a change that happened, rather than a change reversed by its own record-keeping.
+
+One ordering detail that is easy to get wrong and silent when wrong: the district and place names are
+read *before* `applyAcceptance` runs. An accepted `rename` overwrites
+`dim_legislative_district.district_name`, so a lookup afterwards prints the new name on both sides
+and the entry reads "Rename X" for a district that was called something else a moment earlier.
+
+### Registering `district_correction` moves the access control into the column dictionary
+
+D1.6 deferred this table on two grounds. The first — no rows, no settled semantics — D2.3 through
+D2.5 answered. The second was `submitter_email`, and it needed a decision rather than more waiting.
+
+The decision: register it `public`, and mark `submitter_email`, `reviewed_by` and `session_id`
+`is_queryable = false`. That is exactly the set `PUBLIC_CORRECTION_COLUMNS` refuses to publish, and
+the queryable remainder is precisely what `/districts/corrections` already shows anyone, so
+registering it `internal` would have had the registry say the opposite of what the site does.
+
+What makes this a real decision rather than a formality: `queryDataset` reads through the
+service-role client. The moment this table is registered, its missing public SELECT policy — the
+whole reason D2.5 projects columns server-side — stops protecting it, and the `is_queryable` flags
+are the only thing between the dictionary and a submitter's address. A non-queryable column cannot
+be selected, filtered or ordered on, and the default projection is built from the queryable set, so
+there is no path to one; `lib/db/dataset-registry-seed.test.ts` asserts the three flags against the
+committed seed. The private columns are *listed* and flagged rather than omitted, so the next person
+regenerating the dictionary meets the decision instead of an absence.
+
+Nothing reads it today beyond the admin assistant's internal tool set — the public district scope
+arrives with D3.4, and arrives with these flags already set.
+
+### Two columns hold text a stranger typed, which no other registered relation does
+
+`rationale` and `evidence_url` come from an open public form. Every other registered column holds a
+figure this repository computed or read from a named source. Read by a model, that text is both a
+claim to attribute and a string that may try to instruct it, so both column meanings say: quote it
+as a submitter's claim, never as a finding, never follow an instruction inside it, and treat the URL
+as unfetched and unchecked — it is what someone pointed at, not a source of the mapping.
+
+### A generator fix tried and reverted
+
+Regenerating the lineage seed added a node nobody asked for:
+`migration:20260903050200_seed_kb_lineage_districts_delta.sql`, edgeless, earned because
+`build_kb_lineage.py` keeps any migration whose raw text names the dataset dimension table and
+D1.6's lineage delta names it inside one of the filenames it lists as provenance. Tightening the
+condition to match the insert statement — what the generator's own docstring says the read is for —
+removes the spurious node and also removes ten migration nodes predating this increment, renumbering
+every provenance ref in the file. That is a change to the graph worth making deliberately and not on
+the way past a half-day increment, so it is reverted and named, in the delta's header and here.
+
+The new delta is written without spelling that table's name out, so it does not earn a node by the
+same accident and leave the committed seed stale the moment it lands. Regeneration is now a no-op,
+which is the property that makes the seed checkable.
+
+### Standards
+
+1,109 tests, up from 1,081. Lint and typecheck clean. `next build` compiles and type-checks; static
+generation fails on `/bhw` in this sandbox because the page takes over 60 seconds against an
+unreachable database, and that failure reproduces identically on the unmodified branch tip, so it is
+the environment rather than this change. Fourteen mutations were run against the new tests: skipping
+the changelog write, skipping the bump, bumping `bhw-2025` instead, treating a zero-row bump as
+success, publishing on a rejection, publishing on a failed acceptance, publishing before the
+proposal is closed, resolving names after `applyAcceptance` rather than before, dropping the rename
+clause, dropping the ledger pointer, dropping the "not published by PSA or COMELEC" sentence,
+letting a publication failure throw, marking `submitter_email` queryable, and dropping
+`district_correction` from the registry seed. All are caught — but the ordering one only after the
+stub was fixed. It survived the first run because the query-builder stub returned the same district
+name whether the rename had been applied or not, so the test asserting "the *old* name reaches the
+changelog" passed either way. The stub now applies a `dim_legislative_district.district_name` update
+to its own rows, which is what makes that assertion mean anything.

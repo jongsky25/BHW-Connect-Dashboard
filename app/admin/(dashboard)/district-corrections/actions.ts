@@ -44,6 +44,10 @@ export async function judgeCorrection(formData: FormData) {
   // the rest of the district pages, and a reader who was told their proposal would be published
   // should not have to wait that window out to see it judged.
   revalidatePath("/districts/corrections");
+  // D2.6: an accepted correction writes a changelog entry, which `/methodology` renders. Only an
+  // acceptance writes one, so only an acceptance needs this — a rejected proposal changes nothing
+  // that page shows.
+  if (decision === "accepted") revalidatePath("/methodology");
   // A move touches two district pages; every other action leaves one of these hidden fields blank.
   const districtCode = String(formData.get("districtCode") ?? "");
   const toDistrictCode = String(formData.get("toDistrictCode") ?? "");
