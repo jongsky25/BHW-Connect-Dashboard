@@ -103,7 +103,8 @@ beforeEach(() => {
   lookupAskCacheNearMatch.mockResolvedValue(null);
   isChatRateLimited.mockResolvedValue(false);
   getDatasetBySlug.mockImplementation(async (slug: string) => ({
-    lastUpdatedAt: slug === "uuc-phc-2025" ? "UUC-V1" : "BHW-V1",
+    lastUpdatedAt:
+      slug === "uuc-phc-2025" ? "UUC-V1" : slug === "ph-legislative-districts" ? "DISTRICT-V1" : "BHW-V1",
   }));
   runToolLoop.mockResolvedValue({
     finalText: "There are 5,987 listed barangays.",
@@ -127,6 +128,20 @@ describe("dataset scoping", () => {
     expect(toolNames(runToolLoop.mock.calls[0])).toEqual(["listDatasets", "queryDataset"]);
   });
 
+  // D3.4 §1/§3: the district surface is the registry tools narrowed to ph-legislative-districts,
+  // and it versions its own cache — an accepted correction bumps this slug and nothing else.
+  it("runs the district surface on the registry tools and its own prompt", async () => {
+    await eventsOf(await POST(question("which district is Palo in", "district")));
+    expect(runToolLoop.mock.calls[0][0][0].content).toContain("You are the BHW Connect district data assistant");
+    expect(toolNames(runToolLoop.mock.calls[0])).toEqual(["listDatasets", "queryDataset"]);
+    expect(lookupAskCache).toHaveBeenCalledWith(
+      "which district is palo in",
+      null,
+      "DISTRICT-V1",
+      "ph-legislative-districts",
+    );
+  });
+
   // The defect the whole increment opens with: identical words, same geography, one cache row.
   it("looks the same question up under a different key on each surface", async () => {
     await eventsOf(
@@ -145,6 +160,19 @@ describe("dataset scoping", () => {
 
     expect(lookupAskCache.mock.calls[0]).toEqual(["how many are there", "07", "BHW-V1", "bhw-2025"]);
     expect(lookupAskCache.mock.calls[1]).toEqual(["how many are there", "07", "UUC-V1", "uuc-phc-2025"]);
+  });
+
+  // D3.4 §3's own claim, exercised through the route rather than only through dataset-scope.test.ts:
+  // a correction bumps ph-legislative-districts and nothing else, so the district surface's cache
+  // key must move independently of the other two even for the identical question.
+  it("keys the district surface's cache on ph-legislative-districts, independent of the other two", async () => {
+    await eventsOf(await POST(question("how many are there", "district")));
+    expect(lookupAskCache).toHaveBeenCalledWith(
+      "how many are there",
+      null,
+      "DISTRICT-V1",
+      "ph-legislative-districts",
+    );
   });
 
   it("stores the answer under the asking surface's dataset", async () => {
