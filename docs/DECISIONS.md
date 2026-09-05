@@ -9020,3 +9020,49 @@ the mechanism §3 claims; neither one needed a live mutation to a real district 
 `expectations` were checked by hand against the live database through the Supabase MCP rather than
 through `lib/ai/regression-runner.ts` itself — the runner needs a service-role key this environment
 does not have, the same gap the original ten cases' migration recorded rather than papering over.
+
+## 2026-09-05 — `fact_honorarium` profiled live: the 2026-08-28 prediction, run for real
+
+The 2026-08-28 entry ("Increment 4.1's leftover") ran `ingest.py`'s new profiling hook end to end
+against a **local** database and stated outright what it could not establish: *"the first live row
+it writes will be for `fact_honorarium`... That is a prediction, not a result."* Nothing since has
+applied it — `dataset_registry` confirmed before this entry that `fact_honorarium` still had no row
+at all, while `dim_geo` and `fact_bhw_raw` were both `approved`. No code change was needed;
+`profile_dataset()` has existed, unrun against production, since 4.1. This is the run, via the
+Supabase MCP:
+
+```sql
+select * from profile_dataset('fact_honorarium');
+```
+
+**The prediction held, on both counts it named.** `registry_id 45`, `status = 'auto'`,
+`row_estimate = 577,069`, `exposure = 'internal'` — invisible to every tool until a reviewer
+approves it, exactly as designed. And the two defects the local run flagged in advance reproduced
+live, for the reason already on record rather than a new one:
+
+- **`bhw_id` profiled `role = 'measure'`.** Distinct/row ratio 233,491/577,069 = 0.40, below the
+  0.9 identity cutoff — the child-side-of-a-join gap `profile_dataset_role()` still has.
+- **`bhw_id` borrowed its `meaning` from `fact_bhw_raw.bhw_id`** ("Surrogate row identifier...
+  never report or join on it") while staying typed a measure with `joins_to` null — the borrow
+  route carries `meaning`/`unit` only, never `role`/`is_join_key`/`joins_to`, so the sentence and
+  the type disagree on the same column. Both are `profile_dataset()`'s rules, not this run's to
+  fix, and both are already recorded above and in `ingest.py`'s header.
+
+The other seven columns landed as the function's own rules say they would: `id` borrowed its
+meaning the same way `bhw_id` did; the five domain columns (`payer_level`, `receives`, `amount`,
+`frequency`, `normalized_monthly_amount`, `source_note`) got the visible `(needs review)`
+placeholder, because nothing approved anywhere describes a same-name-and-type column for any of
+them. No join was proposed to `fact_bhw_raw` — the registry still names only two approved join
+targets, unchanged since 4.1.
+
+No migration file added or applied — the call is exactly the one an operator runs by hand per
+`ingest.py`'s own comment, and it writes nothing DDL. `dim_geo` and `fact_bhw_raw` were left alone:
+both are already `approved`, so `profile_dataset()` refused them without `p_force`, which is the
+correct outcome — re-profiling either would return their dictionaries to the review queue.
+
+**What this closes.** The live database now matches what `ingest.py`'s hook has profiled every
+table it will touch on the next real load; a future `fact_bhw_raw`/`fact_honorarium` ingest run
+will find `fact_honorarium` already registered and skip straight to its refusal-or-reprofile logic
+rather than writing a first row cold. **What it does not close.** `fact_honorarium`'s six columns
+still need a reviewer's judgment before the assistant can query them, and the `bhw_id` role/borrow
+mismatch is still `profile_dataset()`'s to fix, not a reviewer's to work around.
