@@ -6,7 +6,7 @@ import type { NhfrCounts } from "@/lib/db/nhfr";
  *
  * This is the one share this dataset supports, and it is the finding worth leading with: a raw
  * facility count says how much there is, and only this says whether any of it is *where people
- * are*. Nationally 28,511 of 41,958 barangays have a facility, so roughly 13,400 have none.
+ * are*. Nationally 28,490 of 41,958 barangays have a facility, so roughly 13,470 have none.
  *
  * **The unfilled remainder is the point, so it is labelled, not left as empty track.** A bar
  * whose remainder has no legend reads as "the rest is fine"; here the rest is the gap.

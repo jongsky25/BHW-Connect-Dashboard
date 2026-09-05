@@ -1039,7 +1039,6 @@ export type Database = {
       agg_nhfr_by_type: {
         Row: {
           dataset_id: number;
-          facility_major_type: string;
           facility_type: string;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
@@ -1050,7 +1049,6 @@ export type Database = {
         };
         Insert: {
           dataset_id: number;
-          facility_major_type: string;
           facility_type: string;
           geo_code: string;
           geo_level: Database["public"]["Enums"]["geo_level_enum"];
@@ -1061,7 +1059,6 @@ export type Database = {
         };
         Update: {
           dataset_id?: number;
-          facility_major_type?: string;
           facility_type?: string;
           geo_code?: string;
           geo_level?: Database["public"]["Enums"]["geo_level_enum"];

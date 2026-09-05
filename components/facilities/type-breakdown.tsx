@@ -47,14 +47,12 @@ export function TypeBreakdown({ items }: { items: NhfrTypeCount[] }) {
           <tbody>
             {items.map((t) => (
               <tr key={t.facilityType} className="border-b border-border last:border-0">
-                <td className="py-2 pr-3">
-                  <span className="font-medium">{t.facilityType}</span>
-                  {t.facilityMajorType === "Health Related Facility" && (
-                    <span className="ml-2 rounded-full bg-surface px-2 py-0.5 text-xs text-muted">
-                      health-related
-                    </span>
-                  )}
-                </td>
+                {/* No "health-related" badge. The source's `facility_major_type` looks like a
+                    property of the type but is not: 13 of the 45 types appear under both values,
+                    lopsidedly (Rural Health Unit is 2,744 against 1), so it is per-facility
+                    encoding noise and labelling a whole type from it would assert something the
+                    data does not support. */}
+                <td className="py-2 pr-3 font-medium">{t.facilityType}</td>
                 <td className="py-2 pr-3 text-right font-medium tabular-nums">
                   {formatCount(t.nFacilities)}
                 </td>

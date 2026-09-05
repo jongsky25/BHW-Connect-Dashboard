@@ -8,7 +8,12 @@ import {
   type Row,
 } from "./nhfr";
 
-/** National: the September 2026 snapshot's 44,799 facilities across 28,511 of 41,958 barangays. */
+/**
+ * National: the September 2026 snapshot's 44,799 facilities across 28,490 of 41,958 barangays.
+ *
+ * 28,490, not the 28,511 distinct barangay codes the export prints: 21 Sulu barangays appear
+ * under both code vintages and resolve to one barangay each.
+ */
 const national: Row = {
   geo_code: "PH",
   geo_level: "national",
@@ -20,7 +25,7 @@ const national: Row = {
   n_hospital: 1358,
   n_birthing_home: 3565,
   total_bed_capacity: 120000,
-  n_barangays_with_facility: 28511,
+  n_barangays_with_facility: 28490,
   n_barangays: 41958,
 };
 
@@ -60,10 +65,10 @@ describe("toNhfrCounts", () => {
   it("derives barangay coverage against the dim_geo denominator", () => {
     const c = toNhfrCounts(national);
     expect(c.nFacilities).toBe(44799);
-    expect(c.nBarangaysWithFacility).toBe(28511);
+    expect(c.nBarangaysWithFacility).toBe(28490);
     expect(c.nBarangays).toBe(41958);
     expect(c.coveragePct).toBe(68);
-    expect(c.coverageFraction).toBeCloseTo(28511 / 41958);
+    expect(c.coverageFraction).toBeCloseTo(28490 / 41958);
   });
 
   it("reports full coverage without exceeding the bar", () => {

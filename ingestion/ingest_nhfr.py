@@ -53,6 +53,9 @@ SOURCE_VINTAGE = "post-2024 Sulu transfer (Sulu under Region IX)"
 EXPECTED_ROWS = 44799
 EXPECTED_NO_BARANGAY = 108
 EXPECTED_DISTINCT_CITYMUN = 1673
+# Distinct barangay *codes as the source prints them*. Not the same as the number of barangays
+# that end up with a facility: 21 Sulu barangays are listed under both code vintages and resolve
+# to one dim_geo barangay each, so the loaded figure is 28,490.
 EXPECTED_DISTINCT_BARANGAY = 28511
 
 EXPECTED_REGION_COUNTS = {

@@ -79,6 +79,13 @@ export default function FacilitiesMethodology() {
           retroactively move every existing figure for Sulu in every other dataset on this site.
         </p>
         <p className="text-sm text-muted">
+          A consequence worth stating: <strong>21 Sulu barangays are listed twice</strong> in the
+          export, once under each code vintage. Resolving both onto the same barangay is what
+          collapses them, which is why the number of barangays with a facility (28,490) is lower
+          than the number of distinct barangay codes the export prints (28,511). The facilities
+          themselves are not duplicated — each has its own registry code.
+        </p>
+        <p className="text-sm text-muted">
           Some places on the registry have no entry in this site&apos;s geography at all, because
           that geography was built from the 2025 BHW census and a place with facilities but no
           profiled BHW never appeared in it. Four districts of the City of Manila — Binondo, San

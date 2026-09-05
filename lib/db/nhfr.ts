@@ -56,7 +56,6 @@ export type NhfrChild = NhfrCounts & { geoName: string };
 /** One facility-type row of an area's breakdown. */
 export type NhfrTypeCount = {
   facilityType: string;
-  facilityMajorType: string;
   nFacilities: number;
   nGovernment: number;
   nPrivate: number;
@@ -267,7 +266,7 @@ export const getNhfrTypes = cache(
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase
       .from("agg_nhfr_by_type")
-      .select("facility_type, facility_major_type, n_facilities, n_government, n_private")
+      .select("facility_type, n_facilities, n_government, n_private")
       .eq("dataset_id", datasetId)
       .eq("geo_code", geoCode)
       .eq("geo_level", geoLevel)
@@ -276,7 +275,6 @@ export const getNhfrTypes = cache(
     if (error || !data) return [];
     return data.map((row) => ({
       facilityType: row.facility_type,
-      facilityMajorType: row.facility_major_type,
       nFacilities: row.n_facilities,
       nGovernment: row.n_government,
       nPrivate: row.n_private,

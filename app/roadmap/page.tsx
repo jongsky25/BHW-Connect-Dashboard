@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = { title: "Roadmap" };
 
 export default function RoadmapPage() {
@@ -28,6 +30,14 @@ export default function RoadmapPage() {
               how this works
             </a>
           </li>
+          <li>
+            A{" "}
+            <Link href="/facilities" className="underline hover:text-accent">
+              health facilities section
+            </Link>{" "}
+            built on the DOH National Health Facility Registry — 44,799 facilities as of September
+            2026, and how many of each area&apos;s barangays have one at all
+          </li>
           <li>An admin panel for feedback triage, usage dashboards, and content curation (staff-only)</li>
           <li>
             Workload context — &quot;Households per BHW&quot;, the ratio BHWs are actually
@@ -46,7 +56,9 @@ export default function RoadmapPage() {
             and a public ledger of submitted corrections
           </li>
           <li>
-            A second dataset — see the scoping notes below for candidates and how we assess them
+            More datasets alongside the BHW census — see the scoping notes below for candidates
+            and how we assess them. Health facilities (NHFR) is the most recent to land; census
+            population figures and DOH FHSIS service indicators are the next candidates
           </li>
         </ul>
       </section>

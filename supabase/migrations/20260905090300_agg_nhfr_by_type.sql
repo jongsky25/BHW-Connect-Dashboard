@@ -27,7 +27,14 @@ create table if not exists agg_nhfr_by_type (
   -- 'Clinical Laboratory', 'Rural Health Unit'. Not an enum: NHFR is a live registry and adds
   -- types, and a new one should widen a breakdown table rather than fail a load.
   facility_type text not null,
-  facility_major_type text not null,
+
+  -- `facility_major_type` is deliberately NOT carried here, and the reason is a finding rather
+  -- than a simplification. It looks like a property of the type, but it is not: 13 of the 45
+  -- types appear under BOTH 'Health Facility' and 'Health Related Facility', and lopsidedly so —
+  -- Rural Health Unit is 2,744 against 1, Birthing Home 3,562 against 3, Clinical Laboratory
+  -- 4,346 against 3. Those are per-facility encoding inconsistencies in the source, so grouping
+  -- by it here would either split one type across two rows or label a whole type from its
+  -- majority value. It stays on fact_nhfr_facility, where it describes the facility it belongs to.
 
   n_facilities integer not null,
   n_government integer not null default 0,
@@ -67,7 +74,6 @@ fac as (
     g.province_code,
     g.region_code,
     f.facility_type,
-    f.facility_major_type,
     f.ownership_major
   from fact_nhfr_facility f
   join dim_geo g on g.geo_code = f.geo_code
@@ -75,41 +81,40 @@ fac as (
 ),
 rolled as (
   select 'PH' as geo_code, 'national'::geo_level_enum as geo_level,
-         facility_type, facility_major_type,
+         facility_type,
          count(*)::int as n_facilities,
          count(*) filter (where ownership_major = 'Government')::int as n_government,
          count(*) filter (where ownership_major = 'Private')::int as n_private
-    from fac group by facility_type, facility_major_type
+    from fac group by facility_type
   union all
   select region_code, 'region'::geo_level_enum,
-         facility_type, facility_major_type,
+         facility_type,
          count(*)::int,
          count(*) filter (where ownership_major = 'Government')::int,
          count(*) filter (where ownership_major = 'Private')::int
-    from fac group by region_code, facility_type, facility_major_type
+    from fac group by region_code, facility_type
   union all
   select province_code, 'province'::geo_level_enum,
-         facility_type, facility_major_type,
+         facility_type,
          count(*)::int,
          count(*) filter (where ownership_major = 'Government')::int,
          count(*) filter (where ownership_major = 'Private')::int
-    from fac group by province_code, facility_type, facility_major_type
+    from fac group by province_code, facility_type
   union all
   select citymun_code, 'citymun'::geo_level_enum,
-         facility_type, facility_major_type,
+         facility_type,
          count(*)::int,
          count(*) filter (where ownership_major = 'Government')::int,
          count(*) filter (where ownership_major = 'Private')::int
-    from fac group by citymun_code, facility_type, facility_major_type
+    from fac group by citymun_code, facility_type
 )
 insert into agg_nhfr_by_type (
-  dataset_id, geo_code, geo_level, facility_type, facility_major_type,
+  dataset_id, geo_code, geo_level, facility_type,
   n_facilities, n_government, n_private
 )
 select (select dataset_id from ds), r.*
 from rolled r
 on conflict (dataset_id, geo_code, geo_level, facility_type) do update set
-  facility_major_type = excluded.facility_major_type,
   n_facilities = excluded.n_facilities,
   n_government = excluded.n_government,
   n_private = excluded.n_private;

@@ -41,6 +41,7 @@ import { coverageForDisplay } from "@/lib/db/stepzero";
 import { getPeerRank, getPeerRanks } from "@/lib/db/peer-ranks";
 import { getInsights } from "@/lib/db/insights";
 import { getUucPhcCounts } from "@/lib/db/uuc-phc";
+import { getNhfrCounts } from "@/lib/db/nhfr";
 import { getAllDistrictBhwFigures } from "@/lib/db/districts";
 import {
   getBenchmarkContext,
@@ -70,6 +71,7 @@ import { CompletenessFigure } from "@/components/place/completeness-figure";
 import { DataQualityBadge } from "@/components/explore/data-quality-badge";
 import { PeerRankChip } from "@/components/explore/peer-rank-chip";
 import { UucPhcContextChip } from "@/components/uuc-phc/context-chip";
+import { NhfrContextChip } from "@/components/facilities/context-chip";
 import { GeoComparisonFigure } from "@/components/explore/geo-comparison-figure";
 import { DistributionFigure } from "@/components/explore/distribution-figure";
 import {
@@ -237,6 +239,7 @@ export default async function ExplorePage({
     certificationRegion,
     certificationNational,
     uucPhcCounts,
+    nhfrCounts,
     districtMapFigures,
   ] = await Promise.all([
     getChildGeos(NATIONAL_GEO_CODE, "national"),
@@ -310,6 +313,9 @@ export default async function ExplorePage({
     // extra row from an aggregate that already exists, in the same round trip as the rest — it
     // returns null at barangay grain, where `agg_uuc_phc_counts` has no rows.
     getUucPhcCounts(geo.geoCode, geo.geoLevel),
+    // Cross-dataset context (N4): the health infrastructure the DOH registry records here. Same
+    // shape and same cost as the line above, and null at barangay grain for the same reason.
+    getNhfrCounts(geo.geoCode, geo.geoLevel),
     // D3.3 map layer — districts partition the whole country the way regions do, so the layer
     // toggle only makes sense at the national view; every other level fetches nothing.
     geo.geoLevel === "national" ? getAllDistrictBhwFigures() : Promise.resolve([]),
@@ -708,6 +714,11 @@ export default async function ExplorePage({
             a count of barangays projected under it would be a figure that caption's denominator
             cannot carry. */}
           <UucPhcContextChip counts={uucPhcCounts} />
+
+          {/* Cross-dataset context (N4) — the health facilities registered here, beside the
+            workforce figures above. Outside every `PresentationSlide` for the same reason as the
+            chip above. */}
+          <NhfrContextChip counts={nhfrCounts} />
 
           {/* Data-quality grade (E2.5) — one honest letter for how complete the
             profiles behind these figures are, linking the full breakdown. */}
