@@ -9104,6 +9104,18 @@ city/municipality. No new crosswalk was needed at all — including for Sulu, be
    tables"). Nothing on any planned page needed them. Verified: the committed extract contains
    zero email addresses. **Anyone reusing this source should make the same call.**
 
+2a. **The committed copy of the source workbook is redacted too, and that was a correction.**
+   Decision 2 kept the contact columns out of the *database*, but the raw export was committed to
+   `ingestion/data/` following the repo's practice of committing sources — and this repository is
+   public, so that put 18,413 personal email addresses into a public git history for the ~30
+   minutes between the first push and this fix. `ingestion/redact_nhfr_source.py` blanks the six
+   contact columns (landline ×2, fax, email, alternate email, website — 34,645 values), the
+   branch history was rewritten so no commit on it ever carried the unredacted blob, and the
+   branch was force-pushed. Verified: 0 email matches in the workbook XML of every commit on the
+   branch, against 16,580 in the original, and `clean_nhfr.py` produces a byte-identical extract
+   from the redacted copy. **The general rule this sets: "we don't load it" is not the same as
+   "we don't publish it" when the raw source is committed. Check the source file too.**
+
 3. **`geo_code` is city/municipality grain and NOT NULL; `barangay_geo_code` is nullable.** 108 of
    44,799 facilities carry no barangay code. Making barangay the required key would mean dropping
    those 108 or inventing codes for them; every facility has a city/municipality, so every

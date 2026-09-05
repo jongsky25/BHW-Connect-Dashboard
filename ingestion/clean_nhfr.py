@@ -6,6 +6,13 @@ Facility Registry "universe" list, exported from the public site `nhfr.doh.gov.p
 *snapshot*: the dataset slug carries its month (`nhfr-2026-09`) and a later export is a new
 version, not a correction of this one.
 
+**The committed copy of that workbook is redacted.** This repository is public, and the export's
+six contact columns carry personal data (see below). They are blanked by
+`ingestion/redact_nhfr_source.py` before the file is committed — headers kept, so the shape this
+script checks is unchanged, and the extract produced from the redacted copy is byte-identical to
+the one produced from the original, because none of those columns is read here. An operator
+re-running this against a freshly downloaded export will get the same result either way.
+
 This mirrors `ingestion/clean_uuc_phc_indicators.py`: the cleaning step is separate from the load,
 the loader never opens the workbook, and every action taken here is reported rather than applied
 silently.
