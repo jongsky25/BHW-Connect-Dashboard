@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getDistrictDetail, getDistrictDatasetGaps } from "@/lib/db/districts";
+import { getDistrictDetail, getDistrictDatasetGaps, getDistrictIndex } from "@/lib/db/districts";
 import { districtOrdinalLabel } from "@/components/districts/district-ordinal";
 import { DistrictMemberTable } from "@/components/districts/district-member-table";
 import { SourceRefLink } from "@/components/districts/source-ref-link";
+import { CorrectionForm } from "@/components/districts/correction-form";
 
 export const revalidate = 3_600; // matches /districts — a snapshot rebuilt by ingestion
 
@@ -27,9 +28,10 @@ export default async function DistrictDetailPage({
   params: Promise<DistrictParams>;
 }) {
   const { districtCode } = await params;
-  const [detail, datasetGaps] = await Promise.all([
+  const [detail, datasetGaps, districtIndex] = await Promise.all([
     getDistrictDetail(districtCode),
     getDistrictDatasetGaps(),
+    getDistrictIndex(),
   ]);
 
   if (!detail) notFound();
@@ -49,7 +51,7 @@ export default async function DistrictDetailPage({
           This is the per-row receipt for how BHW Connect grouped {detail.districtName} — every
           member below carries the source page it was read from, the exact revision, and how it was
           matched. If a place here looks wrong, please{" "}
-          <a href="/feedback" className="underline hover:text-accent">
+          <a href="#propose-correction" className="underline hover:text-accent">
             tell us
           </a>
           .
@@ -198,6 +200,24 @@ export default async function DistrictDetailPage({
           </a>
           .
         </p>
+      </section>
+
+      <section
+        id="propose-correction"
+        className="flex flex-col gap-3 rounded-lg border border-border p-4"
+      >
+        <h2 className="text-base font-semibold">Propose a correction</h2>
+        <p className="text-sm text-muted">
+          A structured proposal, not a message — it is reviewed against the source above and, once
+          accepted, supersedes the row it corrects rather than overwriting it (the correction
+          history section above is where that history shows up).
+        </p>
+        <CorrectionForm
+          districtCode={detail.districtCode}
+          districtName={detail.districtName}
+          members={detail.members.map((m) => ({ geoCode: m.geoCode, geoName: m.geoName }))}
+          districtOptions={districtIndex.map((d) => ({ code: d.districtCode, name: d.districtName }))}
+        />
       </section>
     </div>
   );
