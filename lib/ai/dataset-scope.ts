@@ -25,7 +25,7 @@ import { UUC_PHC_SYSTEM_PROMPT } from "./uuc-phc-system-prompt";
  * and it scopes the registry tools to that dataset's relations.
  */
 
-export const NARRATIVE_TYPES = ["overview", "uuc_overview"] as const;
+export const NARRATIVE_TYPES = ["overview", "uuc_overview", "facilities_overview"] as const;
 
 /**
  * The `narrative_type` half of `ai_narrative_cache`'s key. It was already in the key and already
@@ -149,15 +149,18 @@ const DISTRICT_SCOPE: DatasetScope = {
  * slug (N5) — so this is the whole tool set: no dataset-specific code, on the district scope's
  * precedent immediately above.
  *
- * No narrative type, deliberately: an AI insight slot for `/facilities` is its own item on the
- * same deferred list this scope pays down only the chat half of (docs/DECISIONS.md, 2026-09-05).
- * Wiring one later is a field addition here, not a rewrite — see the `DatasetScope` field comment.
+ * `narrativeType` pays back the other half of the deferred list the chat-only scope above left
+ * open (docs/DECISIONS.md, 2026-09-05): the AI insight slot for `/facilities`'s area pages. It
+ * was always a field addition rather than a rewrite — see the `DatasetScope` field comment.
  */
 const FACILITIES_SCOPE: DatasetScope = {
   id: "facilities",
   datasetSlug: DATASET_SLUGS.nhfr,
   systemPrompt: FACILITIES_SYSTEM_PROMPT,
   createTools: () => createDatasetTools("public", [DATASET_SLUGS.nhfr]),
+  narrativeType: "facilities_overview",
+  narrativePrompt: ({ geoCode, geoLevel, geoName }) =>
+    `Write a short (2-4 sentence) summary of the health facilities registered in ${geoName} (geo_code ${geoCode}, geoLevel ${geoLevel}) per the DOH National Health Facility Registry. Call listDatasets first to read the dictionaries, then queryDataset on agg_nhfr_counts for this area's n_facilities and barangay coverage, and on agg_nhfr_by_type for the facility types present here. Lead with the facility count, then the barangay coverage — how many of this area's barangays have at least one facility, out of how many it has. Add at most one more grounded finding from agg_nhfr_by_type: which facility type is most common here, remembering a type absent from an area has no row rather than a zero. Never state or imply a percent-licensed figure, and never call a facility with a blank licensing status unlicensed — most facilities here carry no licensing status at all, and that is a gap in what was recorded, not a finding about the facility. One paragraph, plain language, WPSAR tone.`,
   emptyAnswer:
     "I couldn't find a fully grounded answer to that in the registry — try asking about facility counts, types, ownership, or how many of an area's barangays have one. Whether a specific facility is properly licensed is a question for the DOH regional office, not this dashboard.",
 };

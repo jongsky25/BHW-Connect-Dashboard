@@ -9298,3 +9298,33 @@ the `district` and `uuc-phc` ones, and the existing "every scope has its own nar
 assertion was split in two: dataset slug and system prompt stay checked for uniqueness across all
 scopes, while narrative-type uniqueness is now checked only among the scopes that declare one —
 two scopes sharing "no narrative" is expected, not a collision.
+
+## 2026-09-06 — Facilities AI insight: the deferred slot, filled in
+
+The other half of the previous entry's deferral, paid back the way that entry said it would be —
+a field addition to `FACILITIES_SCOPE`, not a rewrite, on `UUC_PHC_SCOPE`'s precedent.
+
+1. **`lib/ai/dataset-scope.ts`** — `"facilities_overview"` added to `NARRATIVE_TYPES`, and
+   `FACILITIES_SCOPE` gained `narrativeType: "facilities_overview"` plus a `narrativePrompt`: lead
+   with the facility count and barangay coverage (`agg_nhfr_counts`), then at most one more finding
+   from `agg_nhfr_by_type`. The prompt restates the same two traps `FACILITIES_SYSTEM_PROMPT`
+   already forbids the chat — no percent-licensed figure, and a blank `licensing_status` is never
+   "unlicensed" — because a narrative is a second place an ungrounded number or a wrong-unlicensed
+   claim could otherwise slip out unaudited by the chat's own rules.
+2. **`app/facilities/[geoLevel]/[geoCode]/page.tsx`** — `AiInsight` mounted with
+   `narrativeType="facilities_overview"` and `methodologyHref="/facilities/methodology#ask"` (the
+   section already added for `AskFacilities`; no new anchor needed). Landing page excluded, on the
+   `uuc-phc` decision this repeats: its single figure is already the page's hero, and a narrative
+   there would restate it at the cost of a provider call on the section's highest-traffic page.
+   Unlike `/uuc-phc` and `/place`, `/facilities`'s area pages carry no presentation-mode
+   (`PresentationProvider`/`PresentationSlide`) wiring at all, so the insight is a plain section
+   here rather than a promoted slide — introducing deck mode for one card was not this slot's job.
+3. **`lib/ai/dataset-scope.test.ts`** — the facilities `describe` block's "carries no narrative"
+   case is replaced with the `uuc-phc` block's shape: asserts the new `narrativeType` and that the
+   prompt names both `agg_nhfr_counts` and `agg_nhfr_by_type` and forbids both traps. The "some
+   scopes (district, facilities) carry none" test description now names only `district`, the one
+   scope left with no `(geoCode, geoLevel)`-shaped narrative to generate.
+
+`components/narrative/ai-insight.tsx` and `lib/ai/narrative.ts` needed no change — both already
+resolve a scope generically from `narrativeType` via `scopeForNarrativeType`, which is the whole
+point of the field being optional rather than a hardcoded union of surfaces.
