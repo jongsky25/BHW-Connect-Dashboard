@@ -19,6 +19,7 @@ import { ChildBreakdown } from "@/components/facilities/child-breakdown";
 import { TypeBreakdown } from "@/components/facilities/type-breakdown";
 import { FacilityList } from "@/components/facilities/facility-list";
 import { AskFacilities } from "@/components/facilities/ask-facilities";
+import { AiInsight } from "@/components/narrative/ai-insight";
 
 // 1 hour. ISR: citymun render on demand; region/province are prerendered. Same reasoning as the
 // landing page — a shorter window bounds how long a transient empty read can stay cached.
@@ -148,6 +149,14 @@ export default async function FacilitiesAreaPage({ params }: { params: Promise<P
               </div>
             )
           )}
+
+          <AiInsight
+            geoCode={geo.geoCode}
+            geoLevel={geo.geoLevel}
+            geoName={geo.geoName}
+            narrativeType="facilities_overview"
+            methodologyHref="/facilities/methodology#ask"
+          />
         </>
       )}
 

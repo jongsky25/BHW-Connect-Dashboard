@@ -34,7 +34,7 @@ describe("dataset scopes", () => {
     }
   });
 
-  it("gives each scope that has a narrative type its own — some scopes (district, facilities) carry none", () => {
+  it("gives each scope that has a narrative type its own — the district scope carries none", () => {
     const withNarrative = allDatasetScopes()
       .map((s) => s.narrativeType)
       .filter((t): t is NonNullable<typeof t> => t !== undefined);
@@ -202,9 +202,21 @@ describe("the facilities scope", () => {
     expect(scope.datasetSlug).not.toBe(datasetScope("district").datasetSlug);
   });
 
-  it("carries no narrative — the AI insight slot is its own deferred item", () => {
-    expect(scope.narrativeType).toBeUndefined();
-    expect(scope.narrativePrompt).toBeUndefined();
+  it("versions its cache and its narrative under the same slug's own type", () => {
+    expect(scope.narrativeType).toBe("facilities_overview");
+  });
+
+  it("asks its narrative for facility counts and coverage, and forbids the percent-licensed trap", () => {
+    expect(scope.narrativePrompt).toBeDefined();
+    const prompt = scope.narrativePrompt!({
+      geoCode: "07",
+      geoLevel: "region",
+      geoName: "Central Visayas",
+    });
+    expect(prompt).toContain("agg_nhfr_counts");
+    expect(prompt).toContain("agg_nhfr_by_type");
+    expect(prompt).toMatch(/never state or imply a percent-licensed figure/i);
+    expect(prompt).toMatch(/never call a facility with a blank licensing status unlicensed/i);
   });
 });
 
