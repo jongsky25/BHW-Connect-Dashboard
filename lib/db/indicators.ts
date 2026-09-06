@@ -398,9 +398,9 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
           )
           .eq("dataset_id", stepzeroId)
           .in("geo_code", geoCodes),
-    // Census population is the preferred per-capita denominator (E4.2); fall back to
-    // StepZero's self-reported population per geo where census data is absent (e.g. LGUs
-    // with no BHW records, or before the census load has run).
+    // StepZero's own self-reported population is the preferred per-capita denominator
+    // (owner decision, 2026-09-06); the PSA census (E4.2) fills in only where StepZero has
+    // no population row for the geo (e.g. LGUs with no BHW records at all).
     popcenId === null
       ? Promise.resolve({ data: null })
       : supabase
@@ -423,7 +423,7 @@ export async function getChildIndicators(geoCodes: string[]): Promise<ChildIndic
     const sz = stepzeroByCode.get(row.geo_code);
     const households = sz?.households ?? null;
     const totalBhw = sz?.n_total_bhw ?? null;
-    const population = censusPopByCode.get(row.geo_code) ?? sz?.population ?? null;
+    const population = sz?.population ?? censusPopByCode.get(row.geo_code) ?? null;
     const householdsPerBhw =
       households !== null && totalBhw !== null && households > 0 && totalBhw > 0
         ? Math.round(households / totalBhw)

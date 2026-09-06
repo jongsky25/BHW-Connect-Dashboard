@@ -70,8 +70,9 @@ export async function getActiveDatasetId(): Promise<number | null> {
 export const DATASET_SLUGS = {
   profiled: "bhw-2025",
   stepzero: "bhw-stepzero-2026",
-  /** PSA 2024 Census of Population — the preferred per-capita denominator (E4.2),
-   * with StepZero's self-reported population as the fallback until it is loaded. */
+  /** PSA 2024 Census of Population (E4.2). StepZero's own self-reported population is
+   * preferred as the per-capita denominator (owner decision, 2026-09-06); this dataset
+   * fills in only where StepZero has no population row for a geo. */
   popcen2024: "psa-popcen-2024",
   /** 2026 encoding-status snapshot — how far individual profiling has progressed
    * (Encode → Validate → Certify). Read only by slug; kept separate from the 2025
