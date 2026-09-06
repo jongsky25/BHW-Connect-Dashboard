@@ -93,6 +93,16 @@ export const DATASET_SLUGS = {
    * publication, so the slug carries the snapshot month: a later export is a new dataset row,
    * not an edit of this one. */
   nhfr: "nhfr-2026-09",
+  /** DOH Field Health Services Information System, 2025 annual release. The *services* layer —
+   * what the health system delivered in each city/municipality — beside the workforce (`/bhw`,
+   * `/place`) and the infrastructure (`/facilities`). Read only by slug like the other companion
+   * datasets (see lib/db/fhsis.ts). The slug carries the year rather than a snapshot month
+   * because FHSIS is an annual publication, `uuc-phc-2025`'s precedent rather than NHFR's; the
+   * 2025 release was still partial at retrieval, which `dim_dataset.source_name` records.
+   *
+   * This dataset never supplies a BHW count: FHSIS's own BHW column is dropped at ingestion and
+   * exists in no table (owner decision, docs/FHSIS_2025_PLAN.md Decision 2). */
+  fhsis: "fhsis-2025",
 } as const;
 
 /**

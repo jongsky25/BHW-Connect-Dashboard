@@ -73,3 +73,11 @@ ingestion/data/dim_geo.csv
 .vscode/
 .idea/
 ingestion/data/agg_population_citymun.csv
+
+# FHSIS 2025 source workbooks (plan F1). Re-pulled by ingestion/fetch_fhsis.py from DOH's
+# public Drive archive; the committed artefacts for this dataset are the cleaned CSVs and the
+# cleaning report (plan Decision 8), plus the manifest below, which is the provenance record.
+ingestion/data/fhsis_2025/*
+!ingestion/data/fhsis_2025/_manifest.json
+ingestion/_qa_report_fhsis.json
+ingestion/_sql_fhsis/

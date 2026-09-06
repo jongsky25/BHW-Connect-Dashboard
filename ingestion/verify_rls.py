@@ -48,6 +48,15 @@ PUBLIC_READ_TABLES = [
     "fact_nhfr_facility",
     "agg_nhfr_counts",
     "agg_nhfr_by_type",
+    # Health services (FHSIS 2025, plan F1). Public because /health-services will publish the
+    # coverage figures and their numerators and denominators. The fact tables are public for the
+    # same reason fact_nhfr_facility is: they are counts of service events and of posts *by
+    # place*, with no person-characteristic breakdown, and the one column that would have been
+    # sensitive to publish — FHSIS's own BHW tally — is dropped at ingestion rather than loaded
+    # and hidden (see ingestion/clean_fhsis.py and plan Decision 2).
+    "ref_fhsis_indicator",
+    "fact_fhsis_indicator",
+    "fact_fhsis_workforce",
 ]
 
 # Known drift, not this increment's to fix: the UUC for PHC tables (fact_uuc_phc_barangay,
