@@ -9751,12 +9751,21 @@ real loaded rows. It has not been run against Supabase because this session has 
 `SUPABASE_DB_URL` and no service-role key. The increment-0.4 workaround for exactly this
 environment (a secret-gated `SECURITY DEFINER` RPC, granted to `anon` for the duration and dropped
 after) was attempted and **refused by the sandbox's permission layer**; the function was dropped
-immediately, so nothing of it remains in the project. One command with the connection string
-finishes the increment:
+immediately, so nothing of it remains in the project.
 
-```
-python ingestion/ingest_fhsis.py --database-url "$SUPABASE_DB_URL"
-```
+**Resolved by moving the load to CI rather than by widening the sandbox.** Verified rather than
+assumed: raw TCP to every Supabase Postgres endpoint (`db.…:5432`, the pooler on `:6543` and
+`:5432`) is refused from the assistant sandbox, which has HTTPS-only egress through an agent
+proxy. So a `SUPABASE_DB_URL` handed to that sandbox would not have worked either — the missing
+piece was never only the credential. `.github/workflows/load-fhsis.yml` runs the loader on a
+GitHub Actions runner, where egress is ordinary and the secret stays in the repository's secret
+store; it is `workflow_dispatch`-only and defaults to `check-only`, so writing to production is
+always a deliberate choice, and `environment: production` is named so required reviewers can be
+attached in settings without editing the workflow. Chosen over the two alternatives on offer: a
+PostgREST loader mode would have bypassed `map_psgc_to_dim_geo()` and forced the geo guard to be
+re-implemented client-side, and pushing 9.2 MB of SQL through the Supabase MCP would have moved
+every row through an assistant's context twice, where one silent truncation corrupts production.
+The job is reusable, which matters because Decision 9 expects this dataset to be re-pulled.
 
 **Two smaller judgment calls.** (1) `fetch_fhsis.py` records a `content_digest` — a SHA-256 over
 every sheet's *cell values* — beside the raw byte hash, because the three Envi files are native

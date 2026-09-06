@@ -409,8 +409,18 @@ end-to-end — `ingest_fhsis.py --database-url` loads all of it in 5 seconds aga
 PostgreSQL 16 carrying the real `dim_geo` snapshot, and every check above was run there on real
 loaded rows — but this session has no `SUPABASE_DB_URL` and no service-role key, and the
 increment-0.4 workaround for that (a secret-gated temporary RPC) was refused by the sandbox's
-permission layer, so the temporary function was dropped again and the live tables are empty. One
-command with the connection string finishes it:
+permission layer, so the temporary function was dropped again and the live tables are empty.
+
+**The load runs from CI instead**, which is the durable answer rather than a one-off: a runner has
+ordinary TCP egress, so `ingest_fhsis.py` runs there unmodified and `SUPABASE_DB_URL` never leaves
+the repository's secret store. `.github/workflows/load-fhsis.yml` is a manual
+`workflow_dispatch` job, defaulting to `check-only` (validates the extracts, writes nothing) with
+`load` as the deliberate choice. Since the archive is mutable and Decision 9 expects this dataset
+to be re-pulled, the job is reusable rather than a one-time fix. It needs `SUPABASE_DB_URL` added
+once under Settings -> Secrets and variables -> Actions, as the transaction-pooler string
+(port 6543).
+
+The equivalent by hand, from anywhere with a direct connection:
 
 ```
 python ingestion/ingest_fhsis.py --database-url "$SUPABASE_DB_URL"
