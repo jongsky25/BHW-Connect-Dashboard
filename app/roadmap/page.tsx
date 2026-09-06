@@ -21,7 +21,9 @@ export default function RoadmapPage() {
           <li>Full methodology, glossary, and data-quality pages</li>
           <li>
             A public index of the 250 legislative districts, sourced from public sources rather
-            than PSA/COMELEC and labeled by match quality
+            than PSA/COMELEC and labeled by match quality, with a per-row source receipt on every
+            district page, a structured public correction form, and a public ledger of submitted
+            corrections
           </li>
           <li>
             Strictly data-grounded AI insights and an &quot;ask the data&quot; chat — every number is
@@ -51,10 +53,6 @@ export default function RoadmapPage() {
         <h2 className="text-lg font-semibold">Coming next</h2>
         <ul className="list-inside list-disc">
           <li>Barangay-level map polygons</li>
-          <li>
-            Per-district pages with a per-row source receipt, a structured public correction form,
-            and a public ledger of submitted corrections
-          </li>
           <li>
             More datasets alongside the BHW census — see the scoping notes below for candidates
             and how we assess them. Health facilities (NHFR) is the most recent to land; census
