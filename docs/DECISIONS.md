@@ -9358,3 +9358,30 @@ the breadcrumb trail) rather than introducing a second ancestor list. `nhfrCapti
 `counts` the same way it does everywhere else — an "N = —" line — so `deckMeta` builds
 unconditionally and the `!counts` branch simply registers no slides; `PresentButton` already
 no-ops when `slides.length === 0`, so no extra guard was needed there.
+
+## 2026-09-06 — Facilities: the PNG one-pager
+
+The last item of the NHFR load's deferred debt list ("Present mode, the PNG one-pager,
+dataset-aware feedback routing and an AI insight slot are likewise not built") — present mode
+landed above, and dataset-aware feedback routing landed in between (`{ prefix: "/facilities",
+slug: DATASET_SLUGS.nhfr }` in `lib/feedback/dataset.ts`), leaving only this one.
+
+`app/facilities/opengraph-image.tsx` and `app/facilities/[geoLevel]/[geoCode]/opengraph-image.tsx`,
+mirroring `app/uuc-phc/opengraph-image.tsx` and its area equivalent (U4's rule): the count is the
+headline, one string per line (Satori throws on a multi-child `<div>` with no explicit `display`),
+and a zero renders as a zero — `agg_nhfr_counts` carries a row for every geography, so an area with
+nothing registered reads "0 health facilities · 0 of N barangays have at least one" rather than
+omitting the line.
+
+**No indicator to strand, so nothing to exclude.** U4's restraint was about a capped/footnoted
+indicator value that a 1200×630 card has nowhere to attach a † to; NHFR carries no such values at
+all (`lib/db/nhfr.ts`'s own doc comment: "there is no denominator to divide by except... coverage").
+The card states the facility count and the barangay-coverage share, both of which are already
+`agg_nhfr_counts` figures with no caveat that could go missing in transit.
+
+Verified by rendering, not just status-checking, since neither Satori's multi-child restriction nor
+a stray un-awaited `params` shows up in lint or typecheck: the landing card renders correctly
+against live counts; the area card's JSX was verified against a disposable scratch route with
+hardcoded values (`getGeoByCode`/`getNhfrCounts` need `NEXT_PUBLIC_SUPABASE_URL`, unavailable in
+this environment — the same 500 the existing `/uuc-phc` and `/place` area cards give here, not a
+defect in the new code) and produces the same well-formed 1200×630 PNG.
