@@ -9251,3 +9251,50 @@ order is `patch_dim_geo_nhfr_gap.py` → `ingest_nhfr.py` → the two aggregate 
 recompute on every run). `verify_rls.py` gained the three new tables; the UUC and district tables
 are still missing from its lists, which is pre-existing drift noted in the file rather than fixed
 here.
+
+
+## 2026-09-06 — Facilities chat: the /uuc-phc U8 equivalent for NHFR
+
+Wired an "Ask the data" chat onto `/facilities`. N5 registered the three NHFR relations with
+`dataset_registry`/`dataset_column` so `queryDataset` could reach them, and named the remaining
+piece explicitly in its own migration comment without recording it here as promised — this entry
+closes that gap and does the work.
+
+Three additions, on the `uuc-phc` (U8) and `district` (D3.4) scopes' precedent — no new tool code,
+because the registry pair is the whole tool set once a dataset is registered:
+
+1. **`lib/ai/scope-id.ts`** — `"facilities"` added to `DATASET_SCOPE_IDS`.
+2. **`lib/ai/facilities-system-prompt.ts`** — `FACILITIES_SYSTEM_PROMPT`, one rule per caveat
+   `dataset_registry.notes_md` already carries on the three NHFR tables (N5): a blank
+   `licensing_status` is never "unlicensed" and never feeds a "% licensed" figure;
+   `facility_major_type` is never a grouping key; Sulu's 177 facilities are named under Region IX
+   but must be rolled up under BARMM (`geo_code`); contact/address columns do not exist in this
+   table at all, not merely hidden; `agg_nhfr_by_type` is sparse by construction, so a missing row
+   means zero only after checking `agg_nhfr_counts.n_facilities`; the four headline type counts
+   never sum to `n_facilities`; and barangay coverage's denominator is `n_barangays`, never
+   `n_facilities`.
+3. **`lib/ai/dataset-scope.ts`** — `FACILITIES_SCOPE`: `datasetSlug: nhfr-2026-09`, the registry
+   pair narrowed to that slug (`createDatasetTools("public", [DATASET_SLUGS.nhfr])`), the new
+   prompt, and its own `emptyAnswer`. Registered in `SCOPES`, which the `Record<DatasetScopeId, ...>`
+   type makes exhaustive by construction.
+4. **`components/facilities/ask-facilities.tsx`** — an `AskFacilities` wrapper around
+   `ChatLauncher`, on `components/uuc-phc/ask-the-list.tsx`'s precedent, mounted on
+   `app/facilities/page.tsx` and `app/facilities/[geoLevel]/[geoCode]/page.tsx`. Its third starter
+   question ("Are the facilities with no licensing status unlicensed?") is deliberately the trap a
+   visitor is most likely to walk into unprompted, so rule 2's answer is the first thing they see.
+5. **`app/facilities/methodology/page.tsx`** gained the `#ask` section `ChatLauncher`'s "how this
+   works" link points to, on the `/uuc-phc/methodology` section's precedent.
+
+No narrative type and no AI insight slot: that remains its own deferred item (the plan's
+"Deferred" section groups it with present mode and the PNG one-pager), and `DatasetScope.narrativeType`
+is already optional for exactly this case — `district` carries none for a different reason (no
+`(geoCode, geoLevel)`-shaped narrative context), and `facilities` now carries none because the
+slot itself hasn't been built yet. Adding one later is a field addition, not a rewrite.
+`app/api/ai/chat/route.ts` needed no change — it already reads `DATASET_SCOPE_IDS` generically and
+resolves everything else through `datasetScope(dataset)`.
+
+`lib/ai/dataset-scope.test.ts` gained a `describe` block for the new scope and prompt, mirroring
+the `district` and `uuc-phc` ones, and the existing "every scope has its own narrative type"
+assertion was split in two: dataset slug and system prompt stay checked for uniqueness across all
+scopes, while narrative-type uniqueness is now checked only among the scopes that declare one —
+two scopes sharing "no narrative" is expected, not a collision.

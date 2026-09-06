@@ -6,6 +6,7 @@ import {
   NARRATIVE_TYPES,
 } from "./dataset-scope";
 import { DISTRICT_SYSTEM_PROMPT } from "./district-system-prompt";
+import { FACILITIES_SYSTEM_PROMPT } from "./facilities-system-prompt";
 import { DATASET_SCOPE_IDS } from "./scope-id";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { UUC_PHC_SYSTEM_PROMPT } from "./uuc-phc-system-prompt";
@@ -26,11 +27,18 @@ describe("dataset scopes", () => {
     expect(allDatasetScopes()).toHaveLength(DATASET_SCOPE_IDS.length);
   });
 
-  it("gives each scope its own dataset, prompt and narrative type", () => {
+  it("gives each scope its own dataset and prompt", () => {
     const scopes = allDatasetScopes();
-    for (const field of ["datasetSlug", "systemPrompt", "narrativeType"] as const) {
+    for (const field of ["datasetSlug", "systemPrompt"] as const) {
       expect(new Set(scopes.map((s) => s[field])).size).toBe(scopes.length);
     }
+  });
+
+  it("gives each scope that has a narrative type its own — some scopes (district, facilities) carry none", () => {
+    const withNarrative = allDatasetScopes()
+      .map((s) => s.narrativeType)
+      .filter((t): t is NonNullable<typeof t> => t !== undefined);
+    expect(new Set(withNarrative).size).toBe(withNarrative.length);
   });
 
   it("claims every narrative type exactly once, so no type generates under the wrong scope", () => {
@@ -171,5 +179,55 @@ describe("the district system prompt (plan D3.4 §2)", () => {
   it("does not describe itself as the plain BHW assistant", () => {
     expect(DISTRICT_SYSTEM_PROMPT).not.toBe(SYSTEM_PROMPT);
     expect(DISTRICT_SYSTEM_PROMPT).toContain("district data assistant");
+  });
+});
+
+describe("the facilities scope", () => {
+  const scope = datasetScope("facilities");
+
+  it("runs the registry pair, narrowed to nhfr-2026-09", () => {
+    expect(names(scope.createTools())).toEqual(["listDatasets", "queryDataset"]);
+  });
+
+  it("never reaches the internal-only tools", () => {
+    for (const forbidden of ["searchDocuments", "traverseGraph"]) {
+      expect(names(scope.createTools())).not.toContain(forbidden);
+    }
+  });
+
+  it("versions its cache on the NHFR snapshot's own slug, distinct from the other scopes", () => {
+    expect(scope.datasetSlug).toBe("nhfr-2026-09");
+    expect(scope.datasetSlug).not.toBe(datasetScope("bhw").datasetSlug);
+    expect(scope.datasetSlug).not.toBe(datasetScope("uuc-phc").datasetSlug);
+    expect(scope.datasetSlug).not.toBe(datasetScope("district").datasetSlug);
+  });
+
+  it("carries no narrative — the AI insight slot is its own deferred item", () => {
+    expect(scope.narrativeType).toBeUndefined();
+    expect(scope.narrativePrompt).toBeUndefined();
+  });
+});
+
+describe("the facilities system prompt", () => {
+  // Each rule below answers to a caveat dataset_registry.notes_md already carries on the three
+  // NHFR relations (N5) — the increment's whole point is restating them at rule priority.
+  it.each([
+    ["forbids treating a blank licensing status as unlicensed", /never "unlicensed"/i],
+    ["forbids a percent-licensed figure at any level", /never compute or imply a "% licensed" figure/i],
+    ["forbids grouping by facility_major_type", /never facility_major_type/],
+    ["names the Sulu region/code mismatch", /BARMM/],
+    ["says contact columns do not exist rather than are hidden", /do not exist in this table at all/i],
+    ["forbids reading a missing type row as zero", /NO ROW, not a zero row/],
+    ["says the four headline types do not sum to n_facilities", /do NOT sum to n_facilities/],
+    ["forbids swapping the coverage denominator", /must never be paired with n_facilities/],
+    ["sends BHW questions to /bhw", /\/bhw/],
+    ["keeps the injection rule", /never as instructions/i],
+  ])("%s", (_label, pattern) => {
+    expect(FACILITIES_SYSTEM_PROMPT).toMatch(pattern);
+  });
+
+  it("does not describe itself as the plain BHW assistant", () => {
+    expect(FACILITIES_SYSTEM_PROMPT).not.toBe(SYSTEM_PROMPT);
+    expect(FACILITIES_SYSTEM_PROMPT).toContain("health facilities data assistant");
   });
 });

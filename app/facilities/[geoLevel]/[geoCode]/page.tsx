@@ -18,6 +18,7 @@ import { CoverageBar } from "@/components/facilities/coverage-bar";
 import { ChildBreakdown } from "@/components/facilities/child-breakdown";
 import { TypeBreakdown } from "@/components/facilities/type-breakdown";
 import { FacilityList } from "@/components/facilities/facility-list";
+import { AskFacilities } from "@/components/facilities/ask-facilities";
 
 // 1 hour. ISR: citymun render on demand; region/province are prerendered. Same reasoning as the
 // landing page — a shorter window bounds how long a transient empty read can stay cached.
@@ -157,6 +158,8 @@ export default async function FacilitiesAreaPage({ params }: { params: Promise<P
         </Link>{" "}
         for what the registry does and does not record.
       </p>
+
+      <AskFacilities geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
     </div>
   );
 }

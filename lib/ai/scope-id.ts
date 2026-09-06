@@ -7,7 +7,7 @@
  * their own, where both sides can import them.
  */
 
-export const DATASET_SCOPE_IDS = ["bhw", "uuc-phc", "district"] as const;
+export const DATASET_SCOPE_IDS = ["bhw", "uuc-phc", "district", "facilities"] as const;
 
 /** Which dataset a chat turn or a narrative is grounded in. */
 export type DatasetScopeId = (typeof DATASET_SCOPE_IDS)[number];
