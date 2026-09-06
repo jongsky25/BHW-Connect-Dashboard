@@ -9591,3 +9591,26 @@ inherited rather than tested: "license-blocked" survived an owner decision that 
 browser" survived nothing longer than one retry with a browser user-agent. The pattern is not bad
 luck, it is that a scoping line, once written, gets quoted forward. The only reliable fix is the
 one that worked here and for NHFR: open the file.
+
+**Follow-through, same day: `docs/FHSIS_2025_PLAN.md`.** With the year fixed at 2025 by the owner and
+the BHW rule settled, the build plan is written on `docs/NHFR_2026_PLAN.md`'s skeleton — clean →
+`dim_dataset` → fact → section → context → registry → chat — as increments F1–F6, with the
+`/uuc-phc` U5–U12 equivalents named as F5/F6 rather than deferred, since deferring them is exactly
+what cost NHFR six follow-up PRs. Two things the plan settles that the scoping entry could not:
+
+- *Store counts, never average a rate.* FHSIS publishes coverage above 100% at city/municipality
+  grain (54 FIC/CIC cells in the 2025 Annual sheet, Capas at 2,233%; 5 in 8ANC) — U3's problem
+  again, but with numerators and denominators present, so the value is stored as published with an
+  `over_100` flag and U3's † rather than capped blind. No `agg_fhsis_*` table exists at all: the
+  source publishes every grain a page renders, and the citymun leaves are known to sum short of the
+  published parents, so a recomputed rollup would be both redundant and wrong. The residual is
+  published instead, per indicator, on the 1.6 discipline.
+- *The BHW column is dropped at cleaning, so it does not exist in any table* — N1's contact-column
+  treatment, with a `check (cadre <> 'bhw')` behind it and a registry note in the NHFR note's words.
+
+**And one stale line found on the way.** `docs/DATASET_SCOPING.md`'s standing recommendation —
+"build the PSA population candidate first" — described a dataset that had already been built:
+`psa-popcen-2024`, `psa-cph-2020` and `psa-sae-poverty-2023` are all loaded (E4.2, E4.4), and
+POPCEN 2024 is already the per-capita denominator. Struck through and superseded in place. It
+matters for FHSIS because it settles Decision 5 of the plan: FHSIS's population and household
+columns are loaded as *the source's* denominators and never promoted to the site's.

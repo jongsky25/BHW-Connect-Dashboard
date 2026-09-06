@@ -135,6 +135,8 @@ that cross-check before anyone had seen the numbers. **Ingest FHSIS for what BHW
   own census as the BHW numerator. A companion sheet carries barangay, RHU and BHS counts, and the
   other program folders carry the service-delivery indicators (immunisation, maternal care,
   infectious disease, environmental health) that were this candidate's original attraction.
+- **Plan: `docs/FHSIS_2025_PLAN.md`** (2026-09-06) — year fixed at 2025 by the owner, the BHW rule
+  carried as its Decision 2, first slice = the PSGC-keyed city/municipality tier.
 - **Verdict: promoted — this is a ready tabular load, not a PDF-extraction project.** The effort
   question this section has carried for months is answered: there is nothing to extract. What
   remains is ordinary increment work (pick the year, pick the program areas, load, aggregate,
@@ -152,10 +154,15 @@ that cross-check before anyone had seen the numbers. **Ingest FHSIS for what BHW
 
 ## Recommendation
 
-**Build the PSA population candidate first.** It's the only one with a confirmed open license and
+~~**Build the PSA population candidate first.** It's the only one with a confirmed open license and
 a PSGC join that should require no new crosswalk work, it's a one-time load rather than an ongoing
 sync, and "per-capita" framing is a genuine, frequently-requested gap in the current dashboard —
-not a speculative nice-to-have. Suggested `dim_dataset` slug: `psa-population-2020`.
+not a speculative nice-to-have. Suggested `dim_dataset` slug: `psa-population-2020`.~~
+**Superseded — it was built while this line stood unchanged.** `psa-popcen-2024` and `psa-cph-2020`
+are loaded (`agg_population`, E4.2), POPCEN 2024 is the site's per-capita denominator, and
+`psa-sae-poverty-2023` (E4.4) is on the Relationships axes. Found on 2026-09-06 while checking
+`dim_dataset` for the FHSIS plan — the same lesson as below, from the other direction: a scoping
+verdict can go stale by being *done* as easily as by being wrong.
 
 ~~NHFR and FHSIS both stay on the roadmap as higher-value, higher-effort follow-ups once DOH
 access/licensing questions are resolved.~~ **Superseded: NHFR shipped 2026-09-05** as
