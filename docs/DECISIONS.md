@@ -9408,3 +9408,35 @@ geo code. `lib/exports/nhfr-figure.test.ts` (13 tests, covering the type-table t
 inverted child sort, the zero-facility and zero-barangay-denominator states, XML-escaping of a
 facility name, and the BHS-naming rule) plus the full suite (1,197 tests), `npm run lint`, and
 `npm run typecheck` all pass.
+
+## 2026-09-06 — Facilities: social-share cards for the section (a second, unrelated "PNG")
+
+Landed concurrently with the entry above, on a separate branch, under the same working title —
+worth reconciling here since both entries otherwise claim to close the same debt item.
+`docs/NHFR_2026_PLAN.md`'s Deferred section named "the PNG one-pager" after `docs/UUC_PHC_2025_PLAN.md`'s
+**U4**, which is specifically `lib/exports/uuc-phc-figure.ts` + `app/api/export/uuc-phc` — the
+downloadable one-page summary sheet the entry above builds the NHFR equivalent of. `opengraph-image.tsx`
+is a different, older convention that `/uuc-phc`, `/place`, `/bhw` and the site root already carry
+independent of U4 — Next.js's per-route social-card file, rendered on link unfurl rather than
+downloaded. `/facilities` simply didn't have one yet, which this closes, but it is not the U4-style
+one-pager the plan deferred; that gap is what the entry above fills.
+
+Both are real, independent, non-conflicting improvements, so both ship: `app/facilities/opengraph-image.tsx`
+and `app/facilities/[geoLevel]/[geoCode]/opengraph-image.tsx`, mirroring `app/uuc-phc/opengraph-image.tsx`
+and its area equivalent: the count is the headline, one string per line (Satori throws on a
+multi-child `<div>` with no explicit `display`), and a zero renders as a zero —
+`agg_nhfr_counts` carries a row for every geography, so an area with nothing registered reads "0
+health facilities · 0 of N barangays have at least one" rather than omitting the line.
+
+**No indicator to strand, so nothing to exclude.** U4's restraint was about a capped/footnoted
+indicator value that a 1200×630 card has nowhere to attach a † to; NHFR carries no such values at
+all (`lib/db/nhfr.ts`'s own doc comment: "there is no denominator to divide by except... coverage").
+The card states the facility count and the barangay-coverage share, both of which are already
+`agg_nhfr_counts` figures with no caveat that could go missing in transit.
+
+Verified by rendering, not just status-checking, since neither Satori's multi-child restriction nor
+a stray un-awaited `params` shows up in lint or typecheck: the landing card renders correctly
+against live counts; the area card's JSX was verified against a disposable scratch route with
+hardcoded values (`getGeoByCode`/`getNhfrCounts` need `NEXT_PUBLIC_SUPABASE_URL`, unavailable in
+that environment — the same 500 the existing `/uuc-phc` and `/place` area cards give there, not a
+defect in the new code) and produces the same well-formed 1200×630 PNG.
