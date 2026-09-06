@@ -3,6 +3,7 @@ import { DATASET_SLUGS } from "@/lib/db/dataset";
 import type { GeoLevel } from "@/lib/filters/schema";
 import { createDatasetTools } from "./dataset-tools";
 import { DISTRICT_SYSTEM_PROMPT } from "./district-system-prompt";
+import { FACILITIES_SYSTEM_PROMPT } from "./facilities-system-prompt";
 import { DATASET_SCOPE_IDS, type DatasetScopeId } from "./scope-id";
 import { SYSTEM_PROMPT } from "./system-prompt";
 import { TOOLS, type Tool } from "./tools";
@@ -142,10 +143,30 @@ const DISTRICT_SCOPE: DatasetScope = {
     "I couldn't find a fully grounded answer to that in the district mapping — try asking about a specific district by name, or which district a city, municipality or barangay belongs to.",
 };
 
+/**
+ * The health-facilities scope (docs/NHFR_2026_PLAN.md §Deferred). The registry pair, narrowed to
+ * `nhfr-2026-09` — `fact_nhfr_facility`, `agg_nhfr_counts` and `agg_nhfr_by_type` all carry that
+ * slug (N5) — so this is the whole tool set: no dataset-specific code, on the district scope's
+ * precedent immediately above.
+ *
+ * No narrative type, deliberately: an AI insight slot for `/facilities` is its own item on the
+ * same deferred list this scope pays down only the chat half of (docs/DECISIONS.md, 2026-09-05).
+ * Wiring one later is a field addition here, not a rewrite — see the `DatasetScope` field comment.
+ */
+const FACILITIES_SCOPE: DatasetScope = {
+  id: "facilities",
+  datasetSlug: DATASET_SLUGS.nhfr,
+  systemPrompt: FACILITIES_SYSTEM_PROMPT,
+  createTools: () => createDatasetTools("public", [DATASET_SLUGS.nhfr]),
+  emptyAnswer:
+    "I couldn't find a fully grounded answer to that in the registry — try asking about facility counts, types, ownership, or how many of an area's barangays have one. Whether a specific facility is properly licensed is a question for the DOH regional office, not this dashboard.",
+};
+
 const SCOPES: Record<DatasetScopeId, DatasetScope> = {
   bhw: BHW_SCOPE,
   "uuc-phc": UUC_PHC_SCOPE,
   district: DISTRICT_SCOPE,
+  facilities: FACILITIES_SCOPE,
 };
 
 export function datasetScope(id: DatasetScopeId): DatasetScope {

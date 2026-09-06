@@ -139,6 +139,29 @@ export default function FacilitiesMethodology() {
         </ul>
       </section>
 
+      <section id="ask" className="flex flex-col gap-2 scroll-mt-6">
+        <h2 className="text-lg font-semibold">Asking this data a question</h2>
+        <p className="text-sm text-muted">
+          The <strong>Ask the data</strong> box on these pages is an AI assistant with no knowledge
+          of its own. Every number it gives you comes from a query it ran against this registry
+          while answering, and any sentence carrying a number it cannot trace back to one of those
+          queries is removed before you see it. It reads only this registry — not the Barangay
+          Health Worker census, which is a separate dashboard at{" "}
+          <Link href="/bhw" className="underline hover:text-accent">
+            BHW Connect
+          </Link>
+          .
+        </p>
+        <p className="text-sm text-muted">
+          <strong>There is one trap it is built to catch rather than fall into.</strong> A blank
+          licensing status is the common case here, not the exception, and it means the source
+          recorded nothing — never that the facility is unlicensed. Ask it whether the unlicensed-
+          looking facilities in an area are actually unlicensed, and it will explain why that
+          question cannot be answered from this registry rather than guess at a compliance rate the
+          data cannot support.
+        </p>
+      </section>
+
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold tracking-tight">Use and attribution</h2>
         <p className="text-sm text-muted">

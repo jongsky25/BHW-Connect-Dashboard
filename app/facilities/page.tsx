@@ -7,6 +7,7 @@ import { FacilityStats } from "@/components/facilities/facility-stats";
 import { CoverageBar } from "@/components/facilities/coverage-bar";
 import { ChildBreakdown } from "@/components/facilities/child-breakdown";
 import { TypeBreakdown } from "@/components/facilities/type-breakdown";
+import { AskFacilities } from "@/components/facilities/ask-facilities";
 
 // 1 hour, matching the other sections and for the same reason: the page is statically
 // prerendered, so a transient empty read during (re)generation would otherwise cache an
@@ -94,6 +95,8 @@ export default async function FacilitiesLanding() {
         for how the {formatCount(counts.nFacilities)} facilities were counted, what the source
         records about licensing, and which columns are deliberately not published here.
       </p>
+
+      <AskFacilities geoCode={NATIONAL_GEO_CODE} geoLevel="national" geoName="Philippines" />
     </div>
   );
 }
