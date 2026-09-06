@@ -724,3 +724,118 @@ describe("the legislative district entries (plan D1.6, D2.6, D3.4)", () => {
     expect(table?.datasetSlug).toBe("ph-legislative-districts");
   });
 });
+
+describe("the NHFR entries (plan N5)", () => {
+  const nhfr = registry.filter((r) => r.datasetSlug === "nhfr-2026-09");
+
+  it("registers all three relations, approved and public", () => {
+    // fact_nhfr_facility, agg_nhfr_counts and agg_nhfr_by_type were loaded live by plan N1/N2 with
+    // no registry entry, so queryDataset refused all three outright regardless of RLS. N5 is the
+    // whole cost of making them queryable.
+    expect(nhfr.map((r) => r.tableName).sort()).toEqual([
+      "agg_nhfr_by_type",
+      "agg_nhfr_counts",
+      "fact_nhfr_facility",
+    ]);
+    for (const row of nhfr) {
+      expect(row.status).toBe("approved");
+      expect(row.exposure).toBe("public");
+      expect(row.docPath).toBe("docs/NHFR_2026_PLAN.md");
+    }
+  });
+
+  it("says licensing_status blank means not stated, never unlicensed — on the table and the column", () => {
+    // 28,247 of 44,799 rows are blank, overwhelmingly Barangay Health Stations, which are not a
+    // licensed facility type at all. The caveat has to be on the column a query actually returns,
+    // not only on the table, the same discipline U3's capped_indicators case established.
+    const table = nhfr.find((r) => r.tableName === "fact_nhfr_facility");
+    expect(table?.notesMd).toMatch(/BLANK MEANS NOT STATED, NEVER "UNLICENSED"/);
+    const column = columns.find(
+      (c) => c.tableName === "fact_nhfr_facility" && c.columnName === "licensing_status",
+    );
+    expect(column?.meaning).toMatch(/NEVER "UNLICENSED"/);
+  });
+
+  it("refuses a percent-licensed figure, on the fact table and on agg_nhfr_counts", () => {
+    // There is no denominator in this export for which facilities are supposed to hold a licence,
+    // so a compliance rate is not computable from either relation.
+    for (const table of ["fact_nhfr_facility", "agg_nhfr_counts"]) {
+      const row = nhfr.find((r) => r.tableName === table);
+      expect(row?.notesMd, table).toMatch(/% licensed/i);
+    }
+  });
+
+  it("warns that facility_major_type is not a reliable grouping key, and keeps it off the aggregate", () => {
+    // 13 of the 45 facility_type values appear under both major-type values in the source
+    // (Rural Health Unit 2,744 against 1), which is per-facility encoding noise rather than a
+    // second classification — an end-to-end run found this breaks agg_nhfr_by_type outright when
+    // grouped on, which is why the column is dropped from that aggregate entirely.
+    const column = columns.find(
+      (c) => c.tableName === "fact_nhfr_facility" && c.columnName === "facility_major_type",
+    );
+    expect(column?.meaning).toMatch(/NOT A RELIABLE GROUPING KEY/);
+    const byType = nhfr.find((r) => r.tableName === "agg_nhfr_by_type");
+    expect(byType?.notesMd).toMatch(/IS DELIBERATELY NOT A COLUMN HERE/);
+    expect(
+      columns.some((c) => c.tableName === "agg_nhfr_by_type" && c.columnName === "facility_major_type"),
+    ).toBe(false);
+  });
+
+  it("says Sulu's facilities resolve to BARMM regardless of the source's own region name", () => {
+    const table = nhfr.find((r) => r.tableName === "fact_nhfr_facility");
+    expect(table?.notesMd).toMatch(/SULU.S 177 FACILITIES/);
+    expect(table?.notesMd).toMatch(/BARMM/);
+    const geoCode = columns.find(
+      (c) => c.tableName === "fact_nhfr_facility" && c.columnName === "geo_code",
+    );
+    expect(geoCode?.meaning).toMatch(/BARMM/);
+  });
+
+  it("says contact and address columns do not exist, rather than are merely hidden", () => {
+    const table = nhfr.find((r) => r.tableName === "fact_nhfr_facility");
+    expect(table?.notesMd).toMatch(/DO NOT EXIST IN THIS TABLE, NOT MERELY HIDDEN/);
+  });
+
+  it("keeps n_barangays_with_facility and n_barangays from being read as facility counts", () => {
+    // n_barangays is every barangay in the area from dim_geo — not a facility count — and is the
+    // coverage denominator; swapping it for n_facilities is the most likely misreading.
+    const nBarangays = columns.find(
+      (c) => c.tableName === "agg_nhfr_counts" && c.columnName === "n_barangays",
+    );
+    expect(nBarangays?.meaning).toMatch(/NOT a facility count/);
+    expect(nBarangays?.meaning).toMatch(/DENOMINATOR/);
+    const withFacility = columns.find(
+      (c) => c.tableName === "agg_nhfr_counts" && c.columnName === "n_barangays_with_facility",
+    );
+    expect(withFacility?.meaning).toMatch(/NUMERATOR/);
+  });
+
+  it("warns the four headline facility-type counts do not sum to n_facilities", () => {
+    const table = nhfr.find((r) => r.tableName === "agg_nhfr_counts");
+    expect(table?.notesMd).toMatch(/DO NOT SUM TO n_facilities/);
+    const headline = columns.find(
+      (c) => c.tableName === "agg_nhfr_counts" && c.columnName === "n_barangay_health_station",
+    );
+    expect(headline?.meaning).toMatch(/DOES NOT.*SUM TO n_facilities/);
+  });
+
+  it("says agg_nhfr_by_type is sparse by construction — an absent row is zero, not missing", () => {
+    const table = nhfr.find((r) => r.tableName === "agg_nhfr_by_type");
+    expect(table?.notesMd).toMatch(/SPARSE BY CONSTRUCTION/);
+    const facilityType = columns.find(
+      (c) => c.tableName === "agg_nhfr_by_type" && c.columnName === "facility_type",
+    );
+    expect(facilityType?.meaning).toMatch(/NO ROW MEANS ZERO/);
+  });
+
+  it("marks surrogate ids unqueryable and every join key as an actual key", () => {
+    const ids = columns.filter((c) => c.tableName.startsWith("fact_nhfr") || c.tableName.startsWith("agg_nhfr"));
+    for (const id of ids.filter((c) => c.columnName === "id")) {
+      expect(id.isQueryable, id.tableName).toBe(false);
+      expect(id.role, id.tableName).toBe("meta");
+    }
+    const joins = ids.filter((c) => c.isJoinKey);
+    expect(joins.length).toBeGreaterThan(0);
+    for (const c of joins) expect(c.joinsTo, `${c.tableName}.${c.columnName}`).toBeTruthy();
+  });
+});
