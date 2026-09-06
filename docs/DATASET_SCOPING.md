@@ -86,57 +86,61 @@ open questions are both answered, and one of them was answered the other way fro
 
 ### 3. DOH FHSIS (Field Health Services Information System)
 
-**Re-scoped 2026-09-06, no data file in hand yet.** This candidate's access verdict was wrong in
-the same direction NHFR's was: "highest access uncertainty" was a *format* problem mistaken for a
-*permission* problem. It is not license-blocked. What it actually needs before a build plan can be
-written, unlike NHFR, is a human downloading one real PDF in a browser — every `doh.gov.ph`
-subdomain returns HTTP 403 to automated fetchers from this environment (confirmed directly; the
-same block `docs/EXPLORE_PAGE_REVIEW.md` already recorded for PSA/DOH/HDX sites in general), so the
-findings below come from independent secondary sources (GHDx's catalog entry, the FOI portal, and
-regional CHD office listings), not from opening an actual report.
+**Re-scoped 2026-09-06, with the actual 2025 file in hand.** This entry has now been wrong twice in
+the same direction NHFR's was, and the correction is the same each time: check it against the data
+rather than against the last person's summary. It is not license-blocked, it is not PDF-only, and
+it does carry PSGC codes.
 
-- **What it adds:** annual tables on notifiable diseases, leading causes of morbidity/mortality,
-  births, immunization, dental health, family planning, maternal/child nutrition, health
-  facilities, and health care personnel — **including a "Ratio of Health Care Workers to
-  Population" table that carries an Active BHW count**, independent of this project's own
-  profiling data. That is exactly the second, official BHW headcount series
-  `docs/EXPLORE_PAGE_REVIEW.md` flagged for reconciliation against `bhw-2025` — a second
-  277,767-vs-278,240-style cross-check story (`/methodology` already has the pattern), not a new
-  kind of finding for this codebase.
+**The rule that governs any FHSIS build, decided by the owner 2026-09-06: never publish FHSIS's BHW
+numbers.** The `Active Barangay Health Workers` column is real and it is tempting — it is also a
+weaker instrument than the dataset this site already exists to publish. The BHW census
+(`bhw-2025`, plus the StepZero quick-count) is the official BHW figure here; FHSIS's headcount is
+whatever LGUs happened to report through their RHUs. The two disagree, and where they disagree
+FHSIS is wrong, not merely different: it puts NCR at 4,454 active BHWs against 3.6M households, and
+Las Piñas at **1**. Publishing that beside this site's own registry would not be a "reconciliation
+story" — it would be this site sowing doubt about its own primary dataset using a source it knows
+to be under-reported. This supersedes `docs/EXPLORE_PAGE_REVIEW.md:443`, which proposed exactly
+that cross-check before anyone had seen the numbers. **Ingest FHSIS for what BHWs work
+*alongside* — never for how many of them there are.**
+
 - **License — settled, not a blocker.** FHSIS reports are Philippine government work
   (IP Code, RA 8293 §176: no copyright in works created by government employees in an official
   capacity), the same basis this repo already relies on for the DOF/BLGF income-classification
-  table. This is also already covered by the owner's blanket decision at
+  table, and already covered by the owner's blanket decision at
   `docs/EXPLORE_ENHANCEMENT_PLAN.md:19` — *"NHFR/FHSIS: use whatever is publicly available online,
-  with citation"* — which this document's older "likely requires a direct DOH request" verdict
-  failed to apply to FHSIS, exactly as it failed to apply to NHFR before that build corrected it.
-- **Access — public, but PDF-only.** National annual reports are posted at
-  `doh.gov.ph` (Publications → Serials → Health Reports and Statistics → FHSIS Annual Reports),
-  confirmed for at least 2014–2023; several regional Centers for Health Development (Ilocos,
-  CALABARZON, Soccsksargen, Western Visayas among them) separately publish their own regional
-  editions, with 2024 regional editions already appearing before a consolidated national one was
-  found. No bulk/tabular export exists at the primary source — reports are PDF only. A dataset
-  titled `field-health-services-information-system-fhsis` does exist on the Open Data Philippines
-  portal (`data.gov.ph`) with at least one CSV resource, but the only date range found associated
-  with it is 2007–2011 (via a search snippet, not opened directly — `data.gov.ph` renders its
-  dataset pages client-side and this session's tools could not render or fetch the resource
-  itself); treat it as probably stale until a human confirms otherwise in a browser.
-- **Geo-join — better than feared, still unverified in an actual table.** GHDx's series
-  description states tables are broken down by **region, province, and city** — a finer grain than
-  `docs/EXPLORE_ENHANCEMENT_PLAN.md`'s E4.6 assumed ("province grain"). Whether "city" means every
-  city/municipality or only HUCs, whether names are clean enough for a name-match join to
-  `dim_geo` (the DOF/BLGF table's precedent) or carry an older naming vintage, and — the single
-  biggest swing factor on effort — **whether the PDF text is extractable or the tables are scanned
-  images needing OCR**, all require opening a real PDF. None of that can be answered from outside
-  a browser.
-- **Verdict: access is no longer the blocker; extraction cost is the open question, and it's now
-  cheap to answer.** The next actionable step is small: a human downloads one recent national (or,
-  failing that, one regional CHD) FHSIS annual report PDF in an actual browser and drops it under
-  `ingestion/data/`. That one file settles the extraction-cost question this section can't, the
-  same way obtaining the actual NHFR export — not a license letter — is what actually unblocked
-  that candidate. Until then this stays a proposal, not a plan: `docs/EXPLORE_ENHANCEMENT_PLAN.md`
-  §E4.6 already names the fallback if extraction turns out unreliable ("skip, document instead"),
-  which is the right posture to keep.
+  with citation"*. This document's older "likely requires a direct DOH request" verdict never
+  applied that decision to FHSIS, exactly as it failed to apply it to NHFR.
+- **Access — public, and machine-readable.** The primary source is not the `doh.gov.ph` pages the
+  earlier passes kept dead-ending on; it is the DOH's own public Drive archive
+  (`https://bit.ly/FHSISPHSannualreports` → folder `16z6srVbGODqmgGHU4_Qg1oDBOglqp_XG`, owned by
+  `fhsisreports@doh.gov.ph`, readable with no login). It holds six subfolders — Annual, Quarterly
+  and Monthly, each in **Excel as well as PDF**. Annual Excel covers **2018 through 2025**;
+  quarterly Excel covers 2025 and 2026. The 2024 release is complete across twelve program areas;
+  **2025 is a partial release** — Demographics and Vital Statistics published, the rest pending as
+  of this writing. The `data.gov.ph` listing under this name is a 2007–2011 relic; ignore it.
+- **Geo-join — clean PSGC, at city/municipality grain.** Verified directly against
+  `Demographic_2025_EB_Final.xlsx` (341 KB, 2025 Demographics folder): a `PSGC` column of 10-digit
+  codes in the same shape NHFR uses, over **1,743 rows — 18 regions, 115 provinces/HUCs, 1,610
+  cities/municipalities**. No name-matching, no OCR, no crosswalk work anticipated. Two handling
+  notes found in the file itself: some codes carry a trailing `.0` from Excel's float coercion and
+  need normalising, and the workbook's two header rows are merged, so the column map has to be
+  built from the group row plus the sub-header row rather than a single header line.
+- **What it adds, given the BHW rule.** Per city/municipality, from the Demographics workbook
+  alone: **population** and **household estimates** (a real denominator — the site currently leans
+  on StepZero's *self-reported* household figures), and the rest of the public health workforce —
+  doctors, nurses, midwives, dentists, medical technologists, nutritionists, sanitary
+  engineers/inspectors — each split LGU-hired versus DOH-hired. That last part is the
+  "BHWs per midwife / per doctor" context `docs/EXPLORE_PAGE_REVIEW.md` filed as blocked on
+  NDHRHIS (dashboard-only, no bulk export); FHSIS supplies it in a spreadsheet, with this site's
+  own census as the BHW numerator. A companion sheet carries barangay, RHU and BHS counts, and the
+  other program folders carry the service-delivery indicators (immunisation, maternal care,
+  infectious disease, environmental health) that were this candidate's original attraction.
+- **Verdict: promoted — this is a ready tabular load, not a PDF-extraction project.** The effort
+  question this section has carried for months is answered: there is nothing to extract. What
+  remains is ordinary increment work (pick the year, pick the program areas, load, aggregate,
+  cite), plus one judgment call worth making deliberately — 2025 is only partly released, so a
+  build either takes complete-2024 or takes partial-2025 and states the gap. The one thing a build
+  must not do is republish the BHW column.
 
 ### 4. PhilAtlas-style reference sites
 
@@ -161,14 +165,18 @@ this document gave for bundling the two — that both need the same DOH relation
 not to apply to NHFR, whose export is simply public. FHSIS may well be the same; it is worth
 re-checking on its own terms rather than inheriting NHFR's old blocked verdict.
 
-**That re-check happened 2026-09-06 (§3 above): FHSIS is the same story.** Public domain by the
-same RA 8293 §176 basis, already pre-approved by the same owner decision, and the "highest access
-uncertainty" this section gave it was really an unverified PDF-extraction-cost question wearing a
-licensing costume. It still isn't recommended ahead of PSA population, though — PSA is a ready
-tabular load with a confirmed-clean PSGC join, while FHSIS's effort hinges on a PDF-extraction
-question nobody has answered yet (native text vs. scanned, and how clean the province/city names
-are), which needs one actual report in hand before it can be scoped further, the same way NHFR's
-own scope firmed up only once its export file was.
+**That re-check happened 2026-09-06 (§3 above), and it moved FHSIS up, not sideways.** Access was
+never the blocker — same RA 8293 §176 basis, same owner decision, already covering it. More to the
+point, the "PDF-extraction cost" this document treated as FHSIS's defining problem does not exist:
+DOH publishes the annual and quarterly reports as **Excel**, PSGC-keyed, down to city/municipality,
+in a public Drive archive nobody in the previous passes had found because they were searching the
+`doh.gov.ph` web pages instead. **FHSIS is now a ready tabular load on the same footing as the PSA
+candidate**, and its Demographics workbook happens to carry population *and* household estimates
+per city/municipality — overlapping much of what candidate #1 was wanted for, in one download.
+Either could go first; FHSIS covers more ground per unit of work, PSA is the more authoritative
+population source (FHSIS's population column is a projection carried for ratio arithmetic, not a
+census). The build rule from §3 travels with it: **never publish FHSIS's BHW counts** — the census
+in this repo is the official BHW figure.
 
 **A lesson worth keeping.** This section carried "blocked on a license answer before any ingestion
 work starts" for months after an owner decision elsewhere in the docs had unblocked it, and

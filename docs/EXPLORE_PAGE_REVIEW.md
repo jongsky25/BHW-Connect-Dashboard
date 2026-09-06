@@ -443,6 +443,10 @@ loads of a few MB each):**
 - **DOH FHSIS annual reports** — public PDFs (the scoping doc's access fear was too pessimistic),
   service-delivery indicators at province grain, **plus an independent official BHW headcount
   series** for reconciliation against this registry. PDF-extraction cost; no PSGC codes.
+  *[Superseded 2026-09-06, `docs/DATASET_SCOPING.md` §3: the BHW headcount half of this is
+  withdrawn — the owner's rule is that FHSIS never supplies BHW counts, and the numbers seen since
+  (NCR 4,454; Las Piñas 1) show why. The mechanics were also wrong in the site's favour: official
+  Excel exists, PSGC-keyed, at city/municipality grain — no extraction cost, finer than province.]*
 - **HDX COD-AB boundaries (`cod-ab-phl`)** — barangay-level (admin-4) boundaries on 2023 10-digit
   PSGC pcodes: effectively the pre-reconciled input for the deferred PMTiles barangay-map work
   (M9). Verify license field on the dataset page.
