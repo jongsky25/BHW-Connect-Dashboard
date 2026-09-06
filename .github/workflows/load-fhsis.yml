@@ -1,0 +1,101 @@
+# Load the FHSIS 2025 extracts into Supabase (plan F1, docs/FHSIS_2025_PLAN.md).
+#
+# **Why this job exists at all.** `ingest_fhsis.py` connects to Postgres directly with psycopg2,
+# which needs raw TCP to port 5432/6543. The assistant sandbox that produced this dataset has
+# HTTPS egress only — every Postgres endpoint refuses connection there — so the loader cannot be
+# run from it whatever credential it is given. That is the same constraint `docs/DECISIONS.md`
+# recorded for increment 0.4, and it is still true. A GitHub Actions runner has ordinary network
+# access, so the loader runs here unmodified and `SUPABASE_DB_URL` never leaves the repository's
+# secret store.
+#
+# It is also the durable answer rather than a one-off: the DOH archive is mutable (Decision 9
+# expects it to move), so this dataset will be re-pulled, re-cleaned and re-loaded more than once.
+#
+# **Manual only, and read-only by default.** `workflow_dispatch` with `mode: check-only` as the
+# default, so an accidental dispatch runs the extract's checks and writes nothing. Choosing `load`
+# is the deliberate act.
+#
+# **What it loads.** The committed extracts — `ingestion/data/fhsis_2025_*_cleaned.csv` and the
+# cleaning summary beside them. It never opens a source workbook (those are gitignored and
+# re-fetched by `ingestion/fetch_fhsis.py`), so this job is reproducible from the repository
+# alone. Re-running is safe: every insert is an upsert on the tables' own unique keys.
+#
+# **What stops a bad load.** All of `ingest_fhsis.py`'s checks are load-blocking and run before
+# any row is written — zero BHW cadre rows (plan Decision 2), the national FIC row reproducing
+# 1,560,924 / 2,392,392, row and `over_100` counts matching the cleaning report, every
+# `indicator_key` present in `ref_fhsis_indicator`, and every `geo_code` resolving. The load runs
+# in one transaction and rolls back if the post-insert verification disagrees.
+name: Load FHSIS 2025
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "check-only validates the extracts and writes nothing; load writes to Supabase"
+        type: choice
+        options:
+          - check-only
+          - load
+        default: check-only
+
+# Never two loads at once, and never cancel one in flight: the transaction is atomic, but a
+# cancelled runner still leaves an operator guessing which run wrote what.
+concurrency:
+  group: load-fhsis
+  cancel-in-progress: false
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    # Attaching required reviewers to a 'production' environment in the repository settings is
+    # what turns `mode: load` into an approval gate. Naming it here does nothing on its own —
+    # an environment with no protection rules is not a gate — but it means that hardening is a
+    # settings change later rather than a workflow edit.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Not `-r ingestion/requirements.txt`: that file covers every ingestion script in the repo
+      # and pulls pymupdf, shapely, pyarrow and rapidfuzz, none of which this loader touches.
+      # psycopg2-binary is the live-load driver; pandas is inherited, because ingest_fhsis.py
+      # imports `batched`/`sql_literal` from ingest.py, which imports pandas at module level.
+      - run: pip install psycopg2-binary pandas
+
+      - name: Fail early if the secret is missing
+        if: inputs.mode == 'load'
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::SUPABASE_DB_URL is not set. Add it under Settings → Secrets and" \
+                 "variables → Actions. Use the transaction pooler connection string (port 6543)."
+            exit 1
+          fi
+
+      # Runs every check in the loader and emits the SQL it would have executed, without opening
+      # a connection. The artifact below is what an operator reads before choosing `load`.
+      - name: Validate the extracts (no database writes)
+        if: inputs.mode == 'check-only'
+        run: python ingestion/ingest_fhsis.py --emit-sql-dir "$RUNNER_TEMP/fhsis_sql"
+
+      - name: Load into Supabase
+        if: inputs.mode == 'load'
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: python ingestion/ingest_fhsis.py --database-url "$DATABASE_URL"
+
+      # The QA report is the run's record of what was checked and what landed; the loader also
+      # writes it into ingestion_batches on a live load. Kept either way, including on failure,
+      # because a failed run's report is the thing that explains the failure.
+      - name: Upload the QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fhsis-qa-report-${{ inputs.mode }}
+          path: ingestion/_qa_report_fhsis.json
+          if-no-files-found: warn
+          retention-days: 30

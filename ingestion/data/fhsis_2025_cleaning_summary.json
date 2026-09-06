@@ -1,0 +1,270 @@
+{
+  "generated_by": "ingestion/clean_fhsis.py",
+  "source_retrieved_at": "2026-09-06T11:09:30+00:00",
+  "workbooks": {
+    "demographics": {
+      "file_id": "1Ef3-GV3M7YWPhOJLZWY_qukLxROLL6JM",
+      "drive_modified_at": "2026-08-24T07:11:43+00:00",
+      "content_digest": "3f40140e624e7e3be0764300f93339d3049948ea183ce58fe6d3de6b69bd1fa5"
+    },
+    "immunization_fic_cic": {
+      "file_id": "1HX57uAX9aktbEmgbt81RhrqsdfJxqV5T",
+      "drive_modified_at": "2026-09-03T09:03:35+00:00",
+      "content_digest": "e54a66248851dc10a8df181b406192db948b0a8cb2509ebb77f6074d3d27faf1"
+    },
+    "maternal_anc8": {
+      "file_id": "1M0rggBNSyW6eNikPvwvu4CrABIFmTtIY",
+      "drive_modified_at": "2026-07-30T09:47:54+00:00",
+      "content_digest": "6392405736239e85d479b502d769692d8240bebdc4b6856e427f80b51ba5509e"
+    },
+    "maternal_anc4": {
+      "file_id": "1BUu8lt-AsQUDMJROjaxCLgYL6onAhq4A",
+      "drive_modified_at": "2026-09-03T06:25:51+00:00",
+      "content_digest": "4d3e4be870bec9a80cd9bfd140a7752f66a886a7402cca79ea9141b74df81183"
+    },
+    "maternal_pnc2": {
+      "file_id": "11tdkuWcifmgmP1SEuH-3LwHacdHQaEq0",
+      "drive_modified_at": "2026-07-29T06:12:54+00:00",
+      "content_digest": "a91353d555ca583411aacbd0f894ba0ed8b059bd72fce38e083da34c3d7f662b"
+    },
+    "envi_water": {
+      "file_id": "1T0ToCiqUUucP8bZwvOH3Lqpf_nLGR9sNP7Yucw_X840",
+      "drive_modified_at": "2026-07-30",
+      "content_digest": "71fbb05c270a872203749a7fa62567c34c95f613b7d528f644d35be96e7c862e"
+    },
+    "envi_sanitation": {
+      "file_id": "10iHGNT3D6D8YPr-AsbMp3dkvJHzcrm3CNyJnx8mz-uo",
+      "drive_modified_at": "2026-07-30",
+      "content_digest": "ca698edee9835e47dc2e3fd085f31435fb636f0c467f90a6ffa8062c23b293dd"
+    },
+    "envi_zod": {
+      "file_id": "14exmLYtq0z0QNdtVRiT7lCTwG_pm1AiNRvl8IWDF6l8",
+      "drive_modified_at": "2026-07-28",
+      "content_digest": "9a3577f45ab0fb7811010d0c29ed8deaee4b44d81c80f3cef759134e8dbea955"
+    },
+    "tb": {
+      "file_id": "1T0b9zhP7pj8qOZ15U6-aYiVXK2Nsfdqc",
+      "drive_modified_at": "2026-07-29T08:32:57+00:00",
+      "content_digest": "78620801e9a7ed985e50adf2e932668915367f06ec02db8c6247942aa3030675"
+    }
+  },
+  "output_rows": {
+    "fhsis_2025_envi_cleaned.csv": 17440,
+    "fhsis_2025_immunization_cleaned.csv": 10464,
+    "fhsis_2025_maternal_cleaned.csv": 13952,
+    "fhsis_2025_tb_cleaned.csv": 38197,
+    "fhsis_2025_workforce_cleaned.csv": 13952,
+    "FHSIS_2025_CLEANING_REPORT.md": 4670
+  },
+  "over_100_by_indicator": {
+    "fic": 40,
+    "cic": 17,
+    "anc4": 538,
+    "anc8": 5,
+    "water_basic": 591,
+    "water_level1": 0,
+    "water_level2": 0,
+    "water_level3": 0,
+    "water_safely_managed": 58,
+    "sanitation_basic": 339,
+    "sanitation_septic": 0,
+    "sanitation_sewer": 0,
+    "sanitation_vip": 0,
+    "sanitation_safely_managed": 128,
+    "tb_notified": 0,
+    "tb_dr_notified": 0,
+    "tb_presumptive_tested": 0,
+    "tb_tpt": 1,
+    "tb_tsr_dstb": 0,
+    "tb_tsr_mdrtb": 0
+  },
+  "not_reported_by_indicator": {
+    "fic": 0,
+    "cic": 0,
+    "anc4": 0,
+    "anc8": 0,
+    "water_basic": 0,
+    "water_level1": 0,
+    "water_level2": 0,
+    "water_level3": 0,
+    "water_safely_managed": 0,
+    "sanitation_basic": 0,
+    "sanitation_septic": 0,
+    "sanitation_sewer": 0,
+    "sanitation_vip": 0,
+    "sanitation_safely_managed": 0,
+    "tb_notified": 18,
+    "tb_dr_notified": 18,
+    "tb_presumptive_tested": 3488,
+    "tb_tpt": 45,
+    "tb_tsr_dstb": 45,
+    "tb_tsr_mdrtb": 45
+  },
+  "sheet_rows": {
+    "Demographic_2025_EB_Final.xlsx [Health Workers]": {
+      "source_rows": 1744,
+      "long_rows": 13952,
+      "geo": {
+        "national": 1,
+        "direct": 1739,
+        "shift_repair": 1,
+        "name_scoped": 1,
+        "name_override": 2
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "9 10 FIC _ CIC_MunCity EB 2025_FInal Annual 2025_NF.xlsx [Annual]": {
+      "source_rows": 1744,
+      "long_rows": 10464,
+      "geo": {
+        "national": 1,
+        "direct": 1739,
+        "shift_repair": 1,
+        "name_scoped": 1,
+        "name_override": 2
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "1. 4ANC_2025_EB_1_nofml.xlsx [Annual]": {
+      "source_rows": 1744,
+      "long_rows": 6976,
+      "geo": {
+        "national": 1,
+        "direct": 1669,
+        "shift_repair": 15,
+        "name_scoped": 57,
+        "name_override": 2
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "1. 8ANC_2025_PH_nofml.xlsx [Annual]": {
+      "source_rows": 1744,
+      "long_rows": 6976,
+      "geo": {
+        "national": 1,
+        "direct": 1669,
+        "shift_repair": 15,
+        "name_scoped": 57,
+        "name_override": 2
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "water_nofml.xlsx [Qtr4]": {
+      "source_rows": 1744,
+      "long_rows": 8720,
+      "geo": {
+        "national": 1,
+        "direct": 1670,
+        "shift_repair": 14,
+        "name_scoped": 57,
+        "name_override": 2
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "sanitation_nofml.xlsx [Qtr4]": {
+      "source_rows": 1744,
+      "long_rows": 8720,
+      "geo": {
+        "national": 1,
+        "direct": 1670,
+        "shift_repair": 14,
+        "name_scoped": 57,
+        "name_override": 2
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "FINAL Tuberculosis_EB_2025.xlsx [Annual]": {
+      "source_rows": 1744,
+      "long_rows": 12172,
+      "geo": {
+        "national": 1,
+        "direct": 1743
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "FINAL Tuberculosis_EB_2025.xlsx [TB-TPT]": {
+      "source_rows": 1744,
+      "long_rows": 8675,
+      "geo": {
+        "national": 1,
+        "direct": 1743
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "FINAL Tuberculosis_EB_2025.xlsx [TSR-DSTB]": {
+      "source_rows": 1744,
+      "long_rows": 8675,
+      "geo": {
+        "national": 1,
+        "direct": 1742,
+        "name_scoped": 1
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    },
+    "FINAL Tuberculosis_EB_2025.xlsx [TSR-MDRTB]": {
+      "source_rows": 1744,
+      "long_rows": 8675,
+      "geo": {
+        "national": 1,
+        "direct": 1742,
+        "name_scoped": 1
+      },
+      "by_level": {
+        "national": 1,
+        "region": 18,
+        "province": 116,
+        "citymun": 1609
+      }
+    }
+  },
+  "reconciliation": {
+    "region_vs_national_nonzero": 0,
+    "province_rows": 3796,
+    "province_rows_reconciling": 3588
+  }
+}

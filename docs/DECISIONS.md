@@ -9666,3 +9666,114 @@ recomputable against the base it was computed on — but they are *the source's*
 *the source's* ratios. No per-capita figure on this site moves onto them. The entry above says not
 to re-litigate that precedence on the strength of "census is more official"; "FHSIS is more recent"
 is the same argument wearing a different hat, and it gets the same answer.
+
+## 2026-09-06 — FHSIS 2025 increment F1: clean, register, load
+
+Built `docs/FHSIS_2025_PLAN.md` increment F1: `fetch_fhsis.py`, `clean_fhsis.py`, five migrations
+plus a lineage delta, `ingest_fhsis.py`, and the three mechanical bits F1 names. The headline
+figures the plan pinned the load to all reproduce exactly — national FIC 1,560,924 of 2,392,392
+(65.25%), projected population 113,146,216, household estimates 27,387,195, 54 FIC/CIC
+city/municipality cells over 100% and 5 in 8ANC.
+
+**The plan was amended in this PR, in six places, because the files are not what it assumed.**
+Every one was found by reading the workbooks column by column, and each is evidenced in
+`docs/FHSIS_2025_CLEANING_REPORT.md`:
+
+- **There is no universal `Annual` sheet.** Demographics has `BGY & BHS` / `Health Workers` and no
+  quarters; the three Envi files have `Qtr1..Qtr4` and no `Annual`; TB has four sheets in one
+  cascade. Envi is read from `Qtr4`, which is the year-end *stock* for a "households with access"
+  measure — summing quarters would count the same household four times.
+- **The header is not always two rows, nor always rows 4 and 5.** Demographics is 4+6 (row 5
+  blank), water 4+5+6, sanitation 4+5+6+7. The column map also has to honour the real merge
+  ranges: a forward-fill overruns a group heading's span at the right-hand end of a row and stamps
+  it onto the check-column block that follows, which is how the first draft mislabelled six
+  columns.
+- **Three named files are not in scope and are not loaded.** 2PNC and Demographics' `BGY & BHS`
+  have **no PSGC column** (146 rows, area-name only) — Tier 2 by the plan's own definition, which
+  Decision 3 defers. `zod_nofml.xlsx` is **2024 data**: all four quarter sheets are titled
+  "Philippines, Nth Quarter 2024" despite sitting in the 2025 folder, and publishing it under a
+  dataset row that says 2025 would be the wrong citation Decision 1 exists to prevent. So `pnc2`
+  and `zod` are not in the F1 dictionary; both load through the same cleaner with no new code when
+  they qualify.
+- **8ANC's `Annual` sheet covers Q3–Q4 2025 only** (its own title says so; the indicator was
+  introduced mid-year). Loaded, because it is the published 2025 figure, but the period is carried
+  in `ref_fhsis_indicator.label` and `numerator_def` so no surface can set it beside 4ANC as
+  though both covered twelve months.
+- **Not every rate is a percentage.** TB case notification and drug-resistant notification are per
+  100,000 population — the national CNR is 473.06, not a 473% overshoot. `ref_fhsis_indicator.unit`
+  records which, and `over_100` is set only for percentage indicators. Flagging a normal
+  notification rate would put a † on an ordinary figure and teach readers to ignore the marker
+  where it means something. This is a real strengthening of Decision 4 rather than an exception to
+  it: the rule is *mark the value, never average it*, and marking the wrong values defeats it.
+- **Decision 3's "Tier 1 joins with no name-matching" was wrong.** About 70 rows per sheet carry a
+  PSGC whose leading zeros were stripped and the value right-padded back to width, so Marcos
+  (`0102813000`) is printed `128130000`. Resolution runs in three counted stages — direct
+  truncation, a shift repair, then a **parent-scoped** name match against the already-resolved
+  region or province using `ingest_population.py`'s existing `variants()`. Result: 0 unresolved
+  rows in every loaded sheet. Scoping to one resolved parent is what keeps this from being the
+  Tier 2 problem in miniature, and every repaired row is listed individually in the report.
+
+**One finding that changes a number rather than a method.** In every sheet that carries it, the
+province row `Surigao del Norte` is printed with `1606701000` — Alegria's code — and the row
+`Alegria` with the province's. Both resolve cleanly, so honouring the code alone files a province's
+3,118 antenatal visits under a municipality that had 9, invisibly. The cleaner therefore uses the
+printed name as a **check on** the code, never as the join key, and overrides only when the name
+resolves inside the same parent to a different geography. That fires on exactly this one row pair;
+36 other rows disagree in wording only ("Region 1" vs `REGION I (ILOCOS REGION)`, "Davao del Oro"
+vs `DAVAO DE ORO`, the BARMM Special Geographic Area's cluster names) and there the code stands.
+Both outcomes are listed in the cleaning report — BUILD_PLAN P15's reconcile-by-rule-and-log
+discipline.
+
+**Decision 4's subtotal residual, measured.** All 46 region-sum-vs-published-national comparisons
+reconcile *exactly*, across all 20 indicators. At province level 3,588 of 3,796 reconcile; for FIC,
+78 of 83 comparable provinces reconcile and each of the other five differs by **precisely one
+city's figure** — City of Cotabato, City of Dagupan, City of Naga, City of Santiago, Ormoc City.
+Those are independent component and highly urbanised cities that `dim_geo` nests under their
+geographic province while the source's province row excludes them, so the usual non-zero residual
+is a classification difference, not missing data. `ref_fhsis_reconciliation` publishes it either
+way; no page derives a parent's figure by summing children.
+
+**Decision 2 is enforced three times, independently.** `clean_fhsis.py` drops the two BHW columns
+and asserts no BHW cadre or indicator key reaches the CSVs; `fact_fhsis_workforce` carries
+`check (cadre <> 'bhw')`; `ingest_fhsis.py` asserts zero BHW cadre rows before it commits. Verified
+live: no BHW-named column exists in any FHSIS relation, and a direct `insert ... cadre = 'bhw'` is
+refused by the constraint. The source's own numbers are why — 270,766 nationally, 4,454 for all of
+NCR, **1 for Las Piñas**.
+
+**Deviation — the live data load did not run, and the tables are empty.** The five migrations and
+the lineage delta are applied to the live project and every structural check passes there (no BHW
+column, the CHECK constraint refusing a BHW row, RLS on with one public-read policy each, the view
+`security_invoker`, `anon` reading all three and refused every write with HTTP 401,
+`verify_rls.py` green, `get_advisors` naming no FHSIS relation). The 94,005-row load itself was
+verified **end-to-end against a local PostgreSQL 16** carrying the real `dim_geo` snapshot —
+`ingest_fhsis.py --database-url` loads all of it in 5 seconds and every F1 check was run there on
+real loaded rows. It has not been run against Supabase because this session has no
+`SUPABASE_DB_URL` and no service-role key. The increment-0.4 workaround for exactly this
+environment (a secret-gated `SECURITY DEFINER` RPC, granted to `anon` for the duration and dropped
+after) was attempted and **refused by the sandbox's permission layer**; the function was dropped
+immediately, so nothing of it remains in the project.
+
+**Resolved by moving the load to CI rather than by widening the sandbox.** Verified rather than
+assumed: raw TCP to every Supabase Postgres endpoint (`db.…:5432`, the pooler on `:6543` and
+`:5432`) is refused from the assistant sandbox, which has HTTPS-only egress through an agent
+proxy. So a `SUPABASE_DB_URL` handed to that sandbox would not have worked either — the missing
+piece was never only the credential. `.github/workflows/load-fhsis.yml` runs the loader on a
+GitHub Actions runner, where egress is ordinary and the secret stays in the repository's secret
+store; it is `workflow_dispatch`-only and defaults to `check-only`, so writing to production is
+always a deliberate choice, and `environment: production` is named so required reviewers can be
+attached in settings without editing the workflow. Chosen over the two alternatives on offer: a
+PostgREST loader mode would have bypassed `map_psgc_to_dim_geo()` and forced the geo guard to be
+re-implemented client-side, and pushing 9.2 MB of SQL through the Supabase MCP would have moved
+every row through an assistant's context twice, where one silent truncation corrupts production.
+The job is reusable, which matters because Decision 9 expects this dataset to be re-pulled.
+
+**Two smaller judgment calls.** (1) `fetch_fhsis.py` records a `content_digest` — a SHA-256 over
+every sheet's *cell values* — beside the raw byte hash, because the three Envi files are native
+Google Sheets that re-render to different bytes on every export: two consecutive pulls of an
+unchanged sheet produce two different SHA-256s. A byte hash there answers "was this rendered
+twice", not "did the data change", so `--check` compares the value digest. The same files also
+send no `Last-Modified`, so their modified date is read from the Drive listing at day precision
+and the manifest records `drive_modified_precision` rather than implying a false exactness.
+(2) The raw workbooks are gitignored and only `_manifest.json` is committed from that directory,
+per Decision 8's naming of the cleaned CSVs and the report as this dataset's reproducible
+artefacts.

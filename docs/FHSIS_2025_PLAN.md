@@ -61,16 +61,41 @@ age band × sex, ~4,000 rows, no PSGC.
 
 ### Workbook mechanics, all found in the files
 
-- **Every workbook has quarterly and annual sheets** (`Qtr1..Qtr4`, `Annual`; some `Annual_a` /
-  `Annual_b` for two halves of one table). This plan loads **Annual** only.
-- **Two merged header rows.** Row 4 carries the indicator group, row 5 the sub-column
-  (`Male | Female | Total | %`, or `LGU Hired | DOH Hired | Total | Ratio`, or the age bands
-  `10-14 | 15-19 | 20-49 | Total`). The column map is built from both rows; a single-row read
-  produces blanks.
+> **Amended 2026-09-06, during F1.** Everything in this section was written before the workbooks
+> were opened column by column. Six of its claims turned out to be wrong about the files DOH
+> actually publishes; each is corrected in place below and the correction is recorded in
+> `docs/DECISIONS.md`. The corrections are what `ingestion/clean_fhsis.py` implements, and
+> `docs/FHSIS_2025_CLEANING_REPORT.md` carries the evidence for each one.
+
+- ~~**Every workbook has quarterly and annual sheets**~~ — **no. The sheet set differs per
+  workbook.** Demographics carries `BGY & BHS` and `Health Workers` and no quarters at all; the
+  three Envi files carry `Qtr1..Qtr4` and **no `Annual`**; TB carries `Annual` plus three more
+  sheets that are part of the same cascade (`TB-TPT`, `TSR-DSTB`, `TSR-MDRTB`). The immunisation
+  and maternal files do have `Annual`. So each sheet is named explicitly in the cleaner rather
+  than derived from a rule. **Envi is read from `Qtr4`**, which is the year-end *stock* for a
+  "households with access" measure — summing four quarters would count the same household four
+  times.
+- ~~**Two merged header rows.** Row 4 … row 5~~ — **the count and the rows both vary.** FIC/CIC,
+  4ANC, 8ANC and all four TB sheets are rows 4+5. Demographics `Health Workers` is rows **4+6**
+  (row 5 is blank). Water is **4+5+6** and sanitation is **4+5+6+7**. A single-row read produces
+  blanks, and so does a two-row read on half of these. The column map must also honour the real
+  merge ranges: forward-filling a group heading across a row overruns its span at the right-hand
+  end and stamps it onto the check-column block that follows.
 - **PSGC arrives as an Excel float on some rows** (`1380100000.0`) and as text on others. Normalise
-  to a 10-digit string, then truncate to `dim_geo`'s widths exactly as `clean_nhfr.py` does.
-- **`DQC` columns are internal QA**, not indicators — "over 100%" flags and source-file checks
-  DOH's own staff used. Read them; never load them as data.
+  to a 10-digit string, then truncate to `dim_geo`'s widths exactly as `clean_nhfr.py` does — but
+  see Decision 3 below: that is not sufficient on its own, because about 70 rows per sheet carry a
+  malformed code.
+- ~~**`DQC` columns are internal QA**, identifiable by that name~~ — **`DQC` is not a reliable
+  label.** 8ANC labels its check block `DQC`; 4ANC leaves the same block unlabelled with
+  sub-headers like `C>=H`; FIC/CIC has two unlabelled trailing columns. The rule is therefore the
+  opposite of "drop the columns called DQC": **only declared columns are carried**, everything
+  else is dropped, and the cleaning report names every dropped column with its header so an
+  unnoticed indicator cannot hide among them.
+- **Not every published rate is a percentage.** TB case notification and drug-resistant
+  notification are **per 100,000 population** — the national CNR is 473.06, which is 535,254 cases
+  against a projected 113,146,216 people, not a 473% overshoot. Everything else is a percentage.
+  `ref_fhsis_indicator.unit` records which, and `over_100` is set only for percentage indicators;
+  marking a normal notification rate would teach readers to ignore the † where it matters.
 - **Sex and age disaggregation is nearly universal.** Immunisation is M/F/Total; maternal care
   and FP are by age band, including **10–14**, i.e. adolescent reproductive-health counts.
 - **Coverage above 100% is published as such.** In the 2025 FIC/CIC Annual sheet, 54 of 3,220
@@ -84,6 +109,27 @@ age band × sex, ~4,000 rows, no PSGC.
   region rows sum exactly to the national row, but the citymun rows sum ~6,400 short of it. This
   is a property of the source (LGUs missing from the leaf table), and the plan publishes the
   residual per indicator rather than choosing a side silently — the 1.6 discipline.
+
+  **Measured in F1, and the shape is more specific than expected.** Every one of the 46
+  region-sum-vs-published-national comparisons reconciles *exactly*, across all 20 indicators.
+  At the province level 3,588 of 3,796 comparisons reconcile exactly; for FIC, 78 of 83 comparable
+  provinces reconcile and each of the other five differs by **precisely the figure of one city** —
+  City of Cotabato, City of Dagupan, City of Naga, City of Santiago, Ormoc City. Those are
+  independent component and highly urbanised cities that `dim_geo` nests under their geographic
+  province while the source's province row excludes them, so the usual non-zero residual is a
+  classification difference rather than missing data. The 33 HUCs that `dim_geo` places at
+  province level have no children at all and are not compared with anything.
+
+- **At least one block of the source has its codes swapped, and only the area name catches it.**
+  In every sheet that carries it, the province row `Surigao del Norte` is printed with
+  `1606701000` — Alegria's code — and the row `Alegria` with `1606700000`, the province's. Both
+  resolve cleanly, so honouring the code alone files a province's 3,118 antenatal visits under a
+  municipality that had 9, invisibly. The cleaner therefore uses the printed name as a **check on**
+  the code (never as the join key) and overrides only when the name resolves, inside the same
+  parent, to a different geography. That fires on exactly this one row pair; 36 other rows
+  disagree in wording only — "Region 1" against `REGION I (ILOCOS REGION)`, "Davao del Oro"
+  against `DAVAO DE ORO`, the BARMM Special Geographic Area's cluster names — and there the code
+  stands. Both outcomes are listed in the cleaning report.
 
 ### Headline figures the load must reproduce
 
@@ -119,12 +165,47 @@ census, and only its denominator from FHSIS.
 **3. First slice = Tier 1 only, and only five program areas of it.** Demographics (minus BHW),
 Immunization, Maternal ANC, Envi, and TB. Three reasons, in order of weight:
 
+> **Amended 2026-09-06, during F1: three of the named files are not Tier 1 and are not loaded.**
+> Reading them settled it by their own contents, not by preference:
+>
+> - **2PNC** (`2. 2PNC_2025_EB_nofml.xlsx`) has **no PSGC column** — 146 rows keyed by area name
+>   only. That is Tier 2 by this plan's own definition, so this decision defers it. `pnc2` is
+>   therefore *not* in the F1 indicator dictionary, and 2PNC arrives with the Tier 2 increment.
+> - **Demographics `BGY & BHS`** likewise has no PSGC column (146 rows). The barangay / RHU / BHS
+>   counts are Tier 2; F1 loads the `Health Workers` sheet only.
+> - **ZOD** (`zod_nofml.xlsx`) is **2024 data**. All four of its quarter sheets are titled
+>   "Philippines, Nth Quarter 2024" — the workbook sits in the 2025 folder but reports the year
+>   before. Loading it under a dataset row that says 2025 would be the wrong citation Decision 1
+>   exists to prevent, so `zod` is not in the dictionary either. It loads through the same cleaner
+>   with no new code once DOH publishes the 2025 table.
+>
+> One file is loaded with a caveat rather than dropped: **8ANC's `Annual` sheet is titled
+> "Philippines, Q3-Q4 2025"** and covers the second half of the year only, because 8ANC was
+> introduced mid-year. It is the published 2025 figure, so it is loaded — but the period is
+> carried in `ref_fhsis_indicator.label` and `numerator_def`, and no surface may set an 8ANC rate
+> beside a 4ANC rate as though both covered twelve months.
+>
+> Net effect on the slice: **20 indicators across four program areas** (immunization, maternal,
+> envi, tb) plus the workforce table, from six sheets across five workbooks.
+
 - *`docs/AI_ASSISTANT_PLAN.md` §5 decision #6* — a dataset earns tables for what a page actually
   renders, and the section below renders these. Forty-five workbooks loaded because they exist
   would be a warehouse, not a section.
-- *The join.* Tier 1 joins on `dim_geo.geo_code` with no name-matching. Tier 2 needs the
-  province-scoped matcher and its manual-fixups file, which is real work with a known failure mode
-  (`ingest_population.py`'s Manila and Maguindanao residuals). It is deferred, not refused.
+- *The join.* Tier 1 joins on `dim_geo.geo_code`. Tier 2 needs the province-scoped matcher and its
+  manual-fixups file, which is real work with a known failure mode (`ingest_population.py`'s
+  Manila and Maguindanao residuals). It is deferred, not refused.
+
+  **Amended 2026-09-06: "with no name-matching" was wrong.** About 70 rows per sheet carry a PSGC
+  whose leading zeros have been stripped and the value right-padded back to width, so Ilocos
+  Norte's Marcos (`0102813000`) is printed as `128130000`. Resolution therefore runs in three
+  stages, each counted separately in the cleaning report: direct truncation (1,669–1,743 rows per
+  sheet), a shift repair for one lost leading zero (0–15 rows), then a **parent-scoped** name match
+  against the already-resolved region or province using `ingest_population.py`'s existing
+  `variants()` (0–57 rows, all in Region I plus three province rows). The result is **0 unresolved
+  rows in every loaded sheet**, which is what the F1 check requires. Scoping the name match to one
+  already-resolved parent is what keeps it from being the Tier 2 problem in miniature: "San
+  Nicolas" cannot match the San Nicolas in another province, and every repaired row is listed
+  individually in the report.
 - *The story.* FIC, antenatal care and safe water are three of the four criterion-(d) indicators
   `/uuc-phc` already publishes and explains (`/uuc-phc/criteria`). FHSIS at citymun grain is the
   universal counterpart to that targeted list, and the section can say so in one sentence a
@@ -214,15 +295,27 @@ same migration as `create table`, never opened then locked (0.3 guardrail).
 
 ```
 ref_fhsis_indicator                           -- hand-written dictionary, seeded in migration
-  indicator_key text primary key              -- e.g. 'fic', 'cic', 'anc4', 'anc8', 'pnc2',
-                                              --      'water_basic', 'water_safely_managed',
-                                              --      'sanitation_basic', 'zod', 'tb_notified',
+  indicator_key text primary key              -- F1 seeds 20: 'fic', 'cic', 'anc4', 'anc8',
+                                              --      'water_basic', 'water_level1..3',
+                                              --      'water_safely_managed',
+                                              --      'sanitation_basic', 'sanitation_septic',
+                                              --      'sanitation_sewer', 'sanitation_vip',
+                                              --      'sanitation_safely_managed',
+                                              --      'tb_notified', 'tb_dr_notified',
+                                              --      'tb_presumptive_tested', 'tb_tpt',
+                                              --      'tb_tsr_dstb', 'tb_tsr_mdrtb'.
+                                              -- NOT 'pnc2' and NOT 'zod' — see Decision 3's
+                                              -- 2026-09-06 amendment: 2PNC has no PSGC column
+                                              -- (Tier 2) and the ZOD workbook is 2024 data.
                                               --      'tb_confirmed', 'tb_tpt', 'tb_tsr_dstb', ...
   program_area text not null                  -- 'immunization' | 'maternal' | 'envi' | 'tb' | ...
   label text not null                         -- "Fully immunised children (FIC)"
   numerator_def text not null                 -- as the workbook's row-4 header states it
   denominator_def text not null               -- "Projected population 0-12 months" etc.
-  unit text not null                          -- 'percent (0-100, may exceed)'
+  unit text not null                          -- 'percent (0-100, may exceed)' or
+                                              -- 'cases per 100,000 population' — the TB
+                                              -- notification rates are the latter, and over_100
+                                              -- is set only for the percentage indicators
   source_workbook text not null               -- the file name in the 2025 folder
   uuc_criterion_d boolean not null default false  -- FIC / pre-natal / water: the UUC overlap
 
@@ -233,6 +326,9 @@ fact_fhsis_indicator
   geo_level geo_level_enum not null           -- national | region | province | citymun
   indicator_key text not null references ref_fhsis_indicator (indicator_key)
   breakdown text not null default 'total'     -- total | male | female | 10-14 | 15-19 | 20-49
+                                              --   | 0-14 | 15+   (the last two added in F1: TB's
+                                              --   treatment and preventive-treatment tables split
+                                              --   by a different pair of bands)
   numerator integer                           -- as published; null where the sheet is blank
   denominator integer                         -- as published (the projection), nullable
   rate_pct numeric                            -- as published, unrounded; may exceed 100
@@ -274,11 +370,12 @@ debt.
 | Artefact | What it is |
 |---|---|
 | `ingestion/fetch_fhsis.py` | Pulls the named 2025 workbooks from the Drive folder by file id (`uc?export=download` for `.xlsx`, `/export?format=xlsx` for native Sheets) into `ingestion/data/fhsis_2025/`, recording id + modified date. Committed alongside because the archive is mutable — the same reason `redact_nhfr_source.py` exists |
-| `ingestion/clean_fhsis.py` | Per workbook: read the Annual sheet, merge the two header rows into a column map, normalise PSGC, drop DQC columns, **drop the BHW columns**, unpivot to long format, compute `over_100`, emit `ingestion/data/fhsis_2025_<area>_cleaned.csv` and `docs/FHSIS_2025_CLEANING_REPORT.md` (per-workbook provenance, >100% counts, subtotal residuals, unmatched PSGC) |
+| `ingestion/clean_fhsis.py` | Per sheet (named explicitly, not "the Annual sheet" — see the amended mechanics above): merge the two-to-four header rows into a column map using the real merge ranges, resolve PSGC in three stages, carry only declared columns, **drop the BHW columns**, unpivot to long format, compute `over_100`, emit `ingestion/data/fhsis_2025_<area>_cleaned.csv`, `docs/FHSIS_2025_CLEANING_REPORT.md` (per-workbook provenance, >100% counts, subtotal residuals, every geography repair listed individually) and `ingestion/data/fhsis_2025_cleaning_summary.json`, the machine-readable twin the loader re-checks so "matches the cleaning report" is enforced rather than retyped |
 | `supabase/migrations/<ts>_ref_fhsis_indicator.sql` | Dictionary table + seed rows, RLS |
 | `<ts>_fact_fhsis_indicator.sql`, `<ts>_fact_fhsis_workforce.sql` | Tables + indexes + RLS in one block each |
 | `<ts>_seed_dim_dataset_fhsis.sql` | The `dim_dataset` row per Decision 1, `on conflict (slug) do nothing` |
-| `<ts>_ref_fhsis_reconciliation.sql` | The view |
+| `<ts>_ref_fhsis_reconciliation.sql` | The view (`security_invoker`, on `ref_uuc_phc_provincial`'s precedent) |
+| `<ts>_seed_kb_lineage_fhsis_delta.sql` | The lineage delta for the four new relations. In F1 rather than F4 — unlike NHFR, which shipped its tables with no lineage in N1/N2 and paid it back in N5. Registry rows and their `has-column` / `joins-on` edges stay in F4 |
 | `ingestion/ingest_fhsis.py` | Loader on `ingest_nhfr.py`'s shape: re-validates the CSVs, resolves `geo_code` via `map_psgc_to_dim_geo`, live load or `--emit-sql-dir`, QA report to `ingestion_batches` |
 
 The loader's checks are **load-blocking**: every `indicator_key` exists in `ref_fhsis_indicator`;
@@ -296,6 +393,38 @@ fact_fhsis_workforce where cadre = 'bhw'` is 0 and the column list of every FHSI
 no BHW field; the national FIC row matches; `ref_fhsis_reconciliation` shows the Demographics
 region-sum residual as 0 and names the citymun shortfall; `anon` can select all three tables and
 write none; `python ingestion/verify_rls.py` green.
+
+**F1 status, 2026-09-06.** Built and verified. The extract is 80,053 indicator rows and 13,952
+workforce rows across 1,744 geographies, 0 unresolved; national FIC reproduces
+1,560,924 / 2,392,392 (65.25%); 54 FIC/CIC city/municipality cells exceed 100% and 5 in 8ANC,
+both exactly as this plan predicted; all 46 region-sum-vs-national comparisons reconcile to 0.
+The five migrations and the lineage delta are applied to the live project, and every *structural*
+check passes there: no BHW-named column in any FHSIS relation, `cadre = 'bhw'` refused by the
+CHECK constraint, RLS on with one public-read policy each, the view `security_invoker`, `anon`
+reads all three and is refused every write (HTTP 401), `verify_rls.py` green, and
+`get_advisors` naming no FHSIS relation.
+
+**The 94,005-row data load has not been run against the live project.** It is verified
+end-to-end — `ingest_fhsis.py --database-url` loads all of it in 5 seconds against a local
+PostgreSQL 16 carrying the real `dim_geo` snapshot, and every check above was run there on real
+loaded rows — but this session has no `SUPABASE_DB_URL` and no service-role key, and the
+increment-0.4 workaround for that (a secret-gated temporary RPC) was refused by the sandbox's
+permission layer, so the temporary function was dropped again and the live tables are empty.
+
+**The load runs from CI instead**, which is the durable answer rather than a one-off: a runner has
+ordinary TCP egress, so `ingest_fhsis.py` runs there unmodified and `SUPABASE_DB_URL` never leaves
+the repository's secret store. `.github/workflows/load-fhsis.yml` is a manual
+`workflow_dispatch` job, defaulting to `check-only` (validates the extracts, writes nothing) with
+`load` as the deliberate choice. Since the archive is mutable and Decision 9 expects this dataset
+to be re-pulled, the job is reusable rather than a one-time fix. It needs `SUPABASE_DB_URL` added
+once under Settings -> Secrets and variables -> Actions, as the transaction-pooler string
+(port 6543).
+
+The equivalent by hand, from anywhere with a direct connection:
+
+```
+python ingestion/ingest_fhsis.py --database-url "$SUPABASE_DB_URL"
+```
 
 ### F2 — `lib/db/fhsis.ts` and the `/health-services` section
 
