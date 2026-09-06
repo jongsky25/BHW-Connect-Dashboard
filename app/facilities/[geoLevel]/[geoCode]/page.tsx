@@ -20,6 +20,7 @@ import { CoverageBar } from "@/components/facilities/coverage-bar";
 import { ChildBreakdown } from "@/components/facilities/child-breakdown";
 import { TypeBreakdown } from "@/components/facilities/type-breakdown";
 import { FacilityList } from "@/components/facilities/facility-list";
+import { DownloadLinks } from "@/components/facilities/download-links";
 import { AskFacilities } from "@/components/facilities/ask-facilities";
 import { AiInsight } from "@/components/narrative/ai-insight";
 import { PresentationProvider } from "@/components/present/presentation-context";
@@ -150,6 +151,9 @@ export default async function FacilitiesAreaPage({ params }: { params: Promise<P
                       health facility.
                     </p>
                   )}
+                </div>
+                <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4">
+                  <DownloadLinks geoLevel={geo.geoLevel} geoCode={geo.geoCode} />
                 </div>
               </section>
             </PresentationSlide>

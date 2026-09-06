@@ -9358,3 +9358,53 @@ the breadcrumb trail) rather than introducing a second ancestor list. `nhfrCapti
 `counts` the same way it does everywhere else — an "N = —" line — so `deckMeta` builds
 unconditionally and the `!counts` branch simply registers no slides; `PresentButton` already
 no-ops when `slides.length === 0`, so no extra guard was needed there.
+
+## 2026-09-06 — Facilities: the PNG one-pager, the last item of the NHFR deferral list
+
+`lib/exports/nhfr-figure.ts` + `app/api/export/facilities`, mirroring `uuc-phc-figure.ts` — same
+canvas, same resvg path, same bundled-font constraint — but with two bars, not one: `lib/db/nhfr.ts`
+supports exactly two exhaustive binary splits (barangay coverage, ownership), and neither aggregate
+table carries a third one to draw. `composeNhfrFigureSvg` is split out as a pure function of
+already-fetched data (`buildNhfrFigure` does the fetching), so its content rules are unit-tested
+rather than only eyeballed — `uuc-phc-figure.ts`'s `wrapNames` is the only export it could test.
+
+- **No licensing figure, anywhere on the sheet.** Neither `agg_nhfr_counts` nor `agg_nhfr_by_type`
+  carries a licensing column — `FacilityStats`' "no % licensed tile" rule isn't a choice this sheet
+  could reverse even if it wanted to. The footer states the omission instead of leaving it silent,
+  in the same words the rule is stated elsewhere: a blank never means unlicensed.
+- **The facility-type table reuses `agg_nhfr_by_type`'s own order** (already sorted descending by
+  count) rather than re-sorting, capped at 20 rows with the omitted count and its facility total
+  named — the same "+N more" discipline `uuc-phc-figure.ts`'s child table and barangay-name list
+  both use.
+- **The child table's sort had to be inverted from `uuc-phc-figure.ts`'s.** That sheet ranks by
+  share descending; `ChildBreakdown` on `/facilities` ranks by coverage *ascending* (least-covered
+  first, nulls last) because a raw count just re-ranks areas by size and the question this dataset
+  answers is where there is nothing. Copying uuc-phc's sort verbatim would have made the PNG and
+  the on-screen table disagree about which area to look at first — copied the comparator instead.
+- **The city/municipality leaf names facilities, not barangays** — the one real divergence from
+  uuc-phc's citymun sheet, which names listed barangays because that dataset's leaf answer is
+  membership. NHFR's leaf answer is "which facilities, and what kind," and a city can carry
+  hundreds of them where a town carries dozens of barangays. Named individually: every facility
+  other than a Barangay Health Station, capped at 40 (`wrapNames` again), with the station count
+  stated rather than silently absorbed into the omission — BHS is already a numbered row in the
+  facility-type table above it, so nothing is actually lost by not naming those individually.
+- **A real bug caught by rendering and looking, not by any test or type check:** the first render
+  of the licensing-caveat footer line ran to 161 characters and overflowed the canvas edge —
+  `uuc-phc-figure.ts`'s own footer-overflow fix (`docs/DECISIONS.md`'s "footerLines, plural") is a
+  documented failure mode of this exact SVG-composition style, and this file reproduced it anyway
+  on a new sentence. Fixed the same way: four short footer lines instead of three longer ones.
+- **`next.config.ts`'s `outputFileTracingIncludes` was missing an entry for `/api/export/uuc-phc`**,
+  found while adding this route's own entry. That route rasterizes through the identical
+  `resvgFont()` path and would have shipped the same blank-text-on-Vercel failure the comment above
+  the block describes; added both entries in this change.
+
+**Verify.** Rendered and visually inspected against the live `bhw-connect` Supabase project (not
+just unit fixtures): national (18 regions, all present; CAR near the middle of the coverage
+ranking), Region IV-A/CALABARZON (the largest region, 5,490 facilities), a single-city province
+(Pateros, 14 facilities, 1-row child table), and Quezon City (784 facilities, the largest
+city/municipality — exercises both the type-table cap and the named-facility cap). 400 on missing
+params and on `geoLevel=barangay` (the registry publishes nothing at that grain); 404 on an unknown
+geo code. `lib/exports/nhfr-figure.test.ts` (13 tests, covering the type-table truncation line, the
+inverted child sort, the zero-facility and zero-barangay-denominator states, XML-escaping of a
+facility name, and the BHS-naming rule) plus the full suite (1,197 tests), `npm run lint`, and
+`npm run typecheck` all pass.

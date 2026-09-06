@@ -13,6 +13,7 @@ import { FacilityStats } from "@/components/facilities/facility-stats";
 import { CoverageBar } from "@/components/facilities/coverage-bar";
 import { ChildBreakdown } from "@/components/facilities/child-breakdown";
 import { TypeBreakdown } from "@/components/facilities/type-breakdown";
+import { DownloadLinks } from "@/components/facilities/download-links";
 import { AskFacilities } from "@/components/facilities/ask-facilities";
 import { PresentationProvider } from "@/components/present/presentation-context";
 import { PresentationSlide } from "@/components/present/presentation-slide";
@@ -90,6 +91,9 @@ export default async function FacilitiesLanding() {
                 {formatCount(withoutFacility)} barangays have no registered health facility at
                 all.
               </p>
+            </div>
+            <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4">
+              <DownloadLinks geoLevel="national" geoCode={NATIONAL_GEO_CODE} />
             </div>
           </section>
         </PresentationSlide>
