@@ -80,7 +80,7 @@ export const GLOSSARY = {
   census_population: {
     term: "Census population",
     definition:
-      "The official resident count from the Philippine Statistics Authority (PSA) census — the 2024 Census of Population (POPCEN) for the current figure, with the 2020 Census of Population and Housing (CPH) also available. It is the preferred denominator for per-resident rates; where an area has no matching census entry, the approximate self-reported StepZero population is used instead. The finest census grain here is city/municipality.",
+      "The official resident count from the Philippine Statistics Authority (PSA) census — the 2024 Census of Population (POPCEN) for the current figure, with the 2020 Census of Population and Housing (CPH) also available. Per-resident rates here prefer the BHW program's own StepZero population figure; the census fills in only where an area has no StepZero population at all. The finest census grain here is city/municipality.",
   },
   households_per_bhw: {
     term: "Households per BHW",
@@ -110,7 +110,7 @@ export const GLOSSARY = {
   bhw_per_1000: {
     term: "BHWs per 1,000 residents",
     definition:
-      "Total BHWs divided by the area's population, times 1,000 — how many health workers serve each 1,000 people. Population is self-reported in the StepZero barangay sheets, so treat it as approximate until census data replaces it. Higher means denser BHW coverage.",
+      "Total BHWs divided by the area's population, times 1,000 — how many health workers serve each 1,000 people. Population is StepZero's own self-reported barangay figure, the same source as the BHW counts it divides; where StepZero has no population for an area, the PSA census count is used instead. Higher means denser BHW coverage.",
   },
   poverty_incidence: {
     term: "Poverty incidence",

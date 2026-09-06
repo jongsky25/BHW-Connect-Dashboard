@@ -154,14 +154,22 @@ it* — applied to a source that, unlike the UUC workbook, gives us the parts:
   suppressed, but rendering them beside a place name is a separate decision from loading them.
 
 **5. FHSIS's population and household columns are stored as the source's denominators, never
-promoted to the site's.** `docs/DATASET_SCOPING.md`'s standing recommendation ("build PSA
-population first") was stale when this plan was written — `psa-popcen-2024`, `psa-cph-2020` and
-`psa-sae-poverty-2023` are already loaded (`agg_population`, `agg_poverty`), and E4.2 already made
-POPCEN 2024 the per-capita denominator. FHSIS's `Population 2025` is a DOH projection carried for
-its own ratio arithmetic; its `Number of Household Estimates` likewise. They are loaded because a
-published rate must be recomputable against the base it was computed on — and because they are
-the denominators of the workforce ratios — but no BHW-per-capita figure anywhere on the site
-switches to them. The methodology page names both denominators and which figure uses which.
+promoted to the site's.** The site's per-capita denominator was settled the same day this plan was
+written, and settled *against* the reflex this decision has to resist: **StepZero's own
+self-reported population is the denominator, permanently; PSA census is the fallback and the
+cross-check** (`docs/DECISIONS.md`, 2026-09-06 — an owner decision that explicitly reverses E4.2's
+swap and asks not to be re-litigated). The reasoning transfers to FHSIS unchanged and with more
+force: StepZero's population is the BHW program's own count on the same barangay roster as the BHW
+figures it divides, and FHSIS's `Population 2025` is neither — it is a DOH projection carried for
+DOH's own ratio arithmetic, from a third collection entirely. Its `Number of Household Estimates`
+likewise.
+
+Both are loaded, for two narrow reasons: a published rate must be recomputable against the base it
+was computed on, and they are the denominators of the workforce ratios this dataset publishes. **No
+per-capita or per-household figure anywhere else on the site moves onto them** — not the map, not
+`getBhwOverview`, not `householdsPerBhw`. "FHSIS is more recent" is the same argument as "census is
+more official" wearing a different hat, and the decision above already answered it. The methodology
+page names all three denominators and which figure uses which.
 
 **6. The identity rule holds: FHSIS never goes on the map.** External variables appear (a) in
 their own section, (b) as **Relationships axes** at citymun grain on poverty's exact precedent
@@ -361,8 +369,10 @@ capitals the way the NHFR note carries the contact-column and licensing rules; t
 `fact_fhsis_indicator` says: rates may exceed 100 and `over_100` marks them; **never average
 `rate_pct`** — read the published row for the area instead; `breakdown = 'total'` unless the
 question asks for a sex or age split; a missing (geo, indicator) pair is *not reported*, not zero;
-denominators are DOH projections, not census population, and BHW-per-capita figures on this site
-use `agg_population`, not these.
+denominators are DOH projections — not census population and not StepZero's, so they are this
+dataset's own base and nothing else's. BHW-per-capita figures on this site read StepZero's
+population (`agg_bhw_stepzero_counts`), with `agg_population` as the fallback, per the 2026-09-06
+owner decision; never these columns.
 
 **Verify:** `queryDataset` accepts the three tables; a regression case asks for "how many BHWs
 does FHSIS report" and the assistant answers that FHSIS carries no BHW count here and points at

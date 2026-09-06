@@ -22,7 +22,18 @@ work?).
 
 ## Candidates
 
-### 1. PSA Census of Population and Housing (barangay population) — recommended
+### 1. PSA Census of Population and Housing (barangay population) — **built, as a fallback**
+
+**Status as of 2026-09-06: loaded, but not the primary denominator.** The "Update" note above
+already covers why this wasn't the blocking gap it looked like — StepZero's own population column
+made "BHWs per 1,000 residents" buildable without it. It was loaded anyway on 2026-07-21 (E4.2,
+`docs/DECISIONS.md`) as `psa-popcen-2024` + `psa-cph-2020`, and briefly became the *preferred*
+denominator with StepZero as fallback. The owner reversed that on 2026-09-06, final: StepZero's own
+self-reported population — the BHW program's own count, on the same barangay roster as the BHW
+figures it divides — is preferred again, and this dataset fills in only where StepZero has no
+population row for a geo at all, plus serving as a cross-check (`docs/POPULATION_RECONCILIATION.md`
+carries the match rates). This is now settled; do not swap the precedence again without a fresh
+owner decision.
 
 - **What it adds:** population counts per barangay/citymun/province/region. On its own this isn't
   a BHW dataset — its value is entirely as a **denominator**: "BHWs per 1,000 residents" is a much
@@ -157,12 +168,9 @@ that cross-check before anyone had seen the numbers. **Ingest FHSIS for what BHW
 ~~**Build the PSA population candidate first.** It's the only one with a confirmed open license and
 a PSGC join that should require no new crosswalk work, it's a one-time load rather than an ongoing
 sync, and "per-capita" framing is a genuine, frequently-requested gap in the current dashboard —
-not a speculative nice-to-have. Suggested `dim_dataset` slug: `psa-population-2020`.~~
-**Superseded — it was built while this line stood unchanged.** `psa-popcen-2024` and `psa-cph-2020`
-are loaded (`agg_population`, E4.2), POPCEN 2024 is the site's per-capita denominator, and
-`psa-sae-poverty-2023` (E4.4) is on the Relationships axes. Found on 2026-09-06 while checking
-`dim_dataset` for the FHSIS plan — the same lesson as below, from the other direction: a scoping
-verdict can go stale by being *done* as easily as by being wrong.
+not a speculative nice-to-have. Suggested `dim_dataset` slug: `psa-population-2020`.~~ **Superseded:
+built 2026-07-21** as `psa-popcen-2024` + `psa-cph-2020` (§1 above), and settled into its final role
+— StepZero-preferred, census-fallback — on 2026-09-06.
 
 ~~NHFR and FHSIS both stay on the roadmap as higher-value, higher-effort follow-ups once DOH
 access/licensing questions are resolved.~~ **Superseded: NHFR shipped 2026-09-05** as

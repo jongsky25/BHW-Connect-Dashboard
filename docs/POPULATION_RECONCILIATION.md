@@ -7,6 +7,14 @@ up from the matched city/municipality leaves via `dim_geo`'s own parentage. Matc
 the run itself live in `ingestion/ingest_population.py`; the machine-readable residual list is
 `ingestion/_qa_report_population.json` (regenerate with `--verify`). Nothing is silently dropped.
 
+**Role, as of 2026-09-06 (owner decision, `docs/DECISIONS.md`).** This data no longer backs the
+app's per-capita denominator by default. StepZero's own self-reported population — the BHW
+program's own count, gathered on the same barangay roster as the BHW figures it divides — is
+preferred; `agg_population` fills in only where StepZero has no population row for a geo at all.
+Everything below (the match rates, the residuals, the reconciliation choices) still stands: it is
+what makes this dataset trustworthy in that fallback role, and it remains available as a
+cross-check against StepZero's figures.
+
 ## Headline match rate
 
 | Source | census_year | citymun matched | national roll-up | PSA published | delta |

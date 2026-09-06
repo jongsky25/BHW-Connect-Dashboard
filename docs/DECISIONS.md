@@ -9525,6 +9525,53 @@ files with no diff and regenerates the report; `lib/geo/facility-points.test.ts`
 builder including the truncation, null-barangay, foreign-barangay and no-centroid paths; lint,
 typecheck and the full unit suite green.
 
+## 2026-09-06 — Final: StepZero's own population, not PSA census, is the per-capita denominator
+
+Closes a question this repo had answered twice, in opposite directions, without ever recording a
+reason to prefer one over the other for good. **2026-07-19** decided "BHWs per 1,000 residents"
+would use StepZero's own self-reported population — no PSA dataset needed. **2026-07-21** (E4.2)
+loaded PSA census population anyway and, without revisiting that first decision, made it the
+*preferred* denominator with StepZero demoted to a fallback. The owner has now reversed E4.2's
+swap, explicitly, as final: **StepZero's own population is the denominator, permanently.** PSA
+census stays loaded and wired in, but strictly as what it was originally scoped to be — a fallback
+for the geos StepZero has no population row for, and a cross-check.
+
+**Why StepZero over census, stated plainly this time.** It is the BHW program's own count,
+collected on the same barangay roster, by the same reporting process, as the BHW figures it
+divides — "42 BHWs, 1,900 residents" are two numbers from one source describing one place. The PSA
+census is a general-population count, independently sourced and matched in afterward by name
+(`docs/POPULATION_RECONCILIATION.md`): 99.3%/98.7% match rates, a national shortfall of about 1-2%
+from LGUs `dim_geo` has no row for at all, and all of Manila's census population collapsed onto one
+province node rather than its 16 `dim_geo` districts. Those are reconciliation-report footnotes for
+a fallback source; they are the wrong footnotes for a number every "per 1,000 residents" figure on
+the site depends on by default.
+
+**What changed.** The coalesce order flips in both places that compute it:
+- `lib/db/stepzero.ts` (`getBhwOverview`) — `stepzero?.population ?? censusPop ?? null`, was the
+  reverse.
+- `lib/db/indicators.ts` (the batched map-indicator query) — same flip, same reasoning.
+
+Comments, the `census_population` and `bhw_per_1000` glossary terms, the map indicator's caption,
+`/methodology`'s per-capita paragraph, `docs/POPULATION_RECONCILIATION.md`, and
+`docs/DATASET_SCOPING.md`'s candidate #1 entry all updated to state the current precedence rather
+than describe either superseded decision. Nothing in the schema, the loaded rows, or
+`ingestion/ingest_population.py` changed — this is a read-order decision, not a data change, so
+E4.2's reconciliation work stays exactly as valid as it was for the role it now has.
+
+**Not touched, and still open:** the household-side ratio (`householdsPerBhw`) was never affected
+by any of this — it has only ever read StepZero's own `households` column, since PSA's 2020 CPH
+household table was never loaded (`docs/POPULATION_RECONCILIATION.md`'s "Not yet loaded" section).
+That stays the one real gap in this area, not a candidate for the precedence question closed here.
+
+**This is final.** Do not swap this precedence again on the strength of "census is more official"
+or similar reasoning without a fresh, explicit owner decision — that reasoning is exactly what
+produced the 2026-07-21 swap this entry reverses, and re-litigating it a third time is the failure
+mode this entry exists to close off.
+
+**Verify:** `npm run lint`, `npm run typecheck`, `npm test` — green; no test asserted the old
+precedence directly (`lib/db/benchmark-context.test.ts` and friends mock `population` as an opaque
+value, not exercise the coalesce), so none needed changing.
+
 ## 2026-09-06 — FHSIS re-scoped against the actual file, and the rule that FHSIS never supplies BHW counts
 
 `docs/DATASET_SCOPING.md` §3 carried FHSIS as "highest potential value, highest access
@@ -9608,9 +9655,14 @@ what cost NHFR six follow-up PRs. Two things the plan settles that the scoping e
 - *The BHW column is dropped at cleaning, so it does not exist in any table* — N1's contact-column
   treatment, with a `check (cadre <> 'bhw')` behind it and a registry note in the NHFR note's words.
 
-**And one stale line found on the way.** `docs/DATASET_SCOPING.md`'s standing recommendation —
-"build the PSA population candidate first" — described a dataset that had already been built:
-`psa-popcen-2024`, `psa-cph-2020` and `psa-sae-poverty-2023` are all loaded (E4.2, E4.4), and
-POPCEN 2024 is already the per-capita denominator. Struck through and superseded in place. It
-matters for FHSIS because it settles Decision 5 of the plan: FHSIS's population and household
-columns are loaded as *the source's* denominators and never promoted to the site's.
+**And a denominator question that closed the same day, next door.** While checking `dim_dataset`
+for this plan, `docs/DATASET_SCOPING.md`'s standing "build the PSA population candidate first"
+recommendation turned out to describe a dataset built back on 2026-07-21 — and the entry above
+this one then settled what that dataset is *for*: **StepZero's own population is the per-capita
+denominator, permanently; PSA census is the fallback and the cross-check.** That closes the plan's
+Decision 5 more firmly than it was drafted. FHSIS ships its own `Population 2025` and
+`Number of Household Estimates` columns, and they are loaded — a published rate has to be
+recomputable against the base it was computed on — but they are *the source's* denominators for
+*the source's* ratios. No per-capita figure on this site moves onto them. The entry above says not
+to re-litigate that precedence on the strength of "census is more official"; "FHSIS is more recent"
+is the same argument wearing a different hat, and it gets the same answer.

@@ -116,8 +116,12 @@ export type BhwOverview = {
    * (E2.1). Surfaced alongside — never averaged with — the verified per-person
    * `pctAccredited`, as a data-quality triangulation. Null without StepZero. */
   pctRegisteredAccredited: number | null;
-  /** Total BHWs per 1,000 residents (E2.1); population is StepZero
-   * self-reported. Null when either input is missing or zero. */
+  /** Total BHWs per 1,000 residents (E2.1); population is StepZero's own
+   * self-reported figure — the BHW program's own count, tied to the same
+   * barangay roster as the BHW numbers it divides. The PSA census fills in
+   * only where StepZero has no population row for the area (owner decision,
+   * 2026-09-06 — see docs/DECISIONS.md). Null when either input is missing
+   * or zero. */
   bhwPer1000: number | null;
 };
 
@@ -172,8 +176,10 @@ export const getBhwOverview = cache(
       coverageExceedsBase = validatedProfiles > base;
     }
 
-    // Census population (E4.2) preferred; StepZero self-reported population is the fallback.
-    const population = censusPop ?? stepzero?.population ?? null;
+    // StepZero's own self-reported population is preferred (owner decision, 2026-09-06 —
+    // it is the BHW program's own count, tied to the same roster as the BHW figures it
+    // divides); the PSA census (E4.2) fills in only where StepZero has no row at all.
+    const population = stepzero?.population ?? censusPop ?? null;
     const households = stepzero?.households ?? null;
     const totalBhw = stepzero?.nTotalBhw ?? null;
 
