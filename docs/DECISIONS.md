@@ -9571,3 +9571,98 @@ mode this entry exists to close off.
 **Verify:** `npm run lint`, `npm run typecheck`, `npm test` — green; no test asserted the old
 precedence directly (`lib/db/benchmark-context.test.ts` and friends mock `population` as an opaque
 value, not exercise the coalesce), so none needed changing.
+
+## 2026-09-06 — FHSIS re-scoped against the actual file, and the rule that FHSIS never supplies BHW counts
+
+`docs/DATASET_SCOPING.md` §3 carried FHSIS as "highest potential value, highest access
+uncertainty," inheriting NHFR's old "needs a DOH relationship" verdict. That entry itself predicted
+the fix — *"FHSIS may well be the same; it is worth re-checking on its own terms"* — so this is
+that re-check, done twice over in one sitting: first from secondary sources, then, once the real
+source turned up, against the file.
+
+**The owner's rule, and why it is the most important line in this entry.** Asked directly, the
+owner ruled that **FHSIS's BHW data is never to be used: the BHW census in this repo is the
+official BHW figure.** FHSIS does carry an `Active Barangay Health Workers` column, and it is
+exactly the "independent official BHW headcount series" `docs/EXPLORE_PAGE_REVIEW.md:443` proposed
+reconciling against `bhw-2025`. Having now seen the numbers, that proposal was made blind and is
+withdrawn: FHSIS reports **270,766** active BHWs nationally, but records NCR at 4,454 against 3.6
+million households and Las Piñas at **1**. It is not a second opinion, it is a worse instrument —
+a tally of what LGUs filed through their RHUs, not a registry. Publishing it beside this site's own
+census would read as the site undercutting its own primary dataset with a source it knows to be
+under-reported, which is the opposite of the 277,767-vs-278,240 reconciliation's purpose (that one
+compares two accountings *of the same collection*, and explains the gap; this would compare a
+census against a shortfall and explain nothing). **FHSIS is ingested for what BHWs work alongside,
+never for how many of them there are.**
+
+**The access verdict was wrong, and so was the format verdict that replaced it.** Two corrections
+worth keeping separate, because they were found by different means:
+
+- *License was never the blocker.* Philippine government work (IP Code, RA 8293 §176), the same
+  basis already used for the DOF/BLGF income table, and already inside the owner's blanket
+  `docs/EXPLORE_ENHANCEMENT_PLAN.md:19` decision covering NHFR **and FHSIS**. Nobody had applied
+  that decision to the FHSIS row.
+- *It is not PDF-only.* The `doh.gov.ph` pages every earlier pass searched are a dead end (and
+  return 403 to a bare user-agent, which is what produced this session's first, also-wrong,
+  "no automated access" finding — a normal browser UA gets through fine). The actual source is the
+  DOH's public Drive archive, `https://bit.ly/FHSISPHSannualreports` → folder
+  `16z6srVbGODqmgGHU4_Qg1oDBOglqp_XG`, owned by `fhsisreports@doh.gov.ph` and readable with no
+  login: Annual, Quarterly and Monthly reports, **each in Excel as well as PDF**. Annual Excel runs
+  2018–2025; 2024 is complete across twelve program areas and 2025 is partially released
+  (Demographics and Vital Statistics out, the rest pending).
+
+**Verified against `Demographic_2025_EB_Final.xlsx` (341 KB), not inferred.** A `PSGC` column of
+10-digit codes in NHFR's shape, across **1,743 rows — 18 regions, 115 provinces/HUCs, 1,610
+cities/municipalities**. Per city/municipality it carries population, household estimates, and the
+public health workforce (doctors, nurses, midwives, dentists, medical technologists, nutritionists,
+sanitary engineers and inspectors) each split LGU-hired versus DOH-hired — which is the
+"BHWs per midwife/doctor" context `docs/EXPLORE_PAGE_REVIEW.md` had filed as blocked on NDHRHIS,
+available here in a spreadsheet with this site's own census as the numerator. Household estimates
+are the other prize: the site currently leans on StepZero's *self-reported* household figures.
+Two file-handling notes for whoever builds it: some PSGC values carry a trailing `.0` from Excel
+float coercion, and the header is two merged rows, so the column map must come from the group row
+plus the sub-header row. Internal consistency checks out — the 18 region rows sum exactly to the
+national total — though citymun rows sum ~6,400 short of it, so a build states that gap rather than
+implying the citymun rows are exhaustive.
+
+**Consequence.** FHSIS moves from "highest access uncertainty / PDF-extraction project" to a ready
+tabular load on the same footing as the PSA population candidate, and `docs/DATASET_SCOPING.md` §3
+and its Recommendation are rewritten to say so. No build plan yet — the deliberate open choice is
+complete-2024 versus partial-2025, which is an owner call, not a scoping one. The regional CHD
+annual PDFs (e.g. Ilocos 2024, 86pp) were also confirmed public and native-text, extractable by
+coordinate-grouped word positions rather than OCR; that finding is now moot for ingestion and is
+recorded only so nobody re-derives it.
+
+**A method note, since this section has now been wrong three times.** Each wrong verdict was
+inherited rather than tested: "license-blocked" survived an owner decision that unblocked it,
+"PDF-only" survived a public Excel archive, and this session's own "403, needs a human with a
+browser" survived nothing longer than one retry with a browser user-agent. The pattern is not bad
+luck, it is that a scoping line, once written, gets quoted forward. The only reliable fix is the
+one that worked here and for NHFR: open the file.
+
+**Follow-through, same day: `docs/FHSIS_2025_PLAN.md`.** With the year fixed at 2025 by the owner and
+the BHW rule settled, the build plan is written on `docs/NHFR_2026_PLAN.md`'s skeleton — clean →
+`dim_dataset` → fact → section → context → registry → chat — as increments F1–F6, with the
+`/uuc-phc` U5–U12 equivalents named as F5/F6 rather than deferred, since deferring them is exactly
+what cost NHFR six follow-up PRs. Two things the plan settles that the scoping entry could not:
+
+- *Store counts, never average a rate.* FHSIS publishes coverage above 100% at city/municipality
+  grain (54 FIC/CIC cells in the 2025 Annual sheet, Capas at 2,233%; 5 in 8ANC) — U3's problem
+  again, but with numerators and denominators present, so the value is stored as published with an
+  `over_100` flag and U3's † rather than capped blind. No `agg_fhsis_*` table exists at all: the
+  source publishes every grain a page renders, and the citymun leaves are known to sum short of the
+  published parents, so a recomputed rollup would be both redundant and wrong. The residual is
+  published instead, per indicator, on the 1.6 discipline.
+- *The BHW column is dropped at cleaning, so it does not exist in any table* — N1's contact-column
+  treatment, with a `check (cadre <> 'bhw')` behind it and a registry note in the NHFR note's words.
+
+**And a denominator question that closed the same day, next door.** While checking `dim_dataset`
+for this plan, `docs/DATASET_SCOPING.md`'s standing "build the PSA population candidate first"
+recommendation turned out to describe a dataset built back on 2026-07-21 — and the entry above
+this one then settled what that dataset is *for*: **StepZero's own population is the per-capita
+denominator, permanently; PSA census is the fallback and the cross-check.** That closes the plan's
+Decision 5 more firmly than it was drafted. FHSIS ships its own `Population 2025` and
+`Number of Household Estimates` columns, and they are loaded — a published rate has to be
+recomputable against the base it was computed on — but they are *the source's* denominators for
+*the source's* ratios. No per-capita figure on this site moves onto them. The entry above says not
+to re-litigate that precedence on the strength of "census is more official"; "FHSIS is more recent"
+is the same argument wearing a different hat, and it gets the same answer.

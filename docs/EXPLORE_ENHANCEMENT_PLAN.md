@@ -358,10 +358,19 @@ Re-verify each download URL in a browser first (research pass hit bot-blocks; so
   record the limitation; do not geocode addresses.
 
 ### E4.6 FHSIS extracts (cited)
-- Lowest priority. Extract the BHW headcount + selected service-delivery tables from the public
+- ~~Lowest priority. Extract the BHW headcount + selected service-delivery tables from the public
   annual-report PDFs at province grain → `agg_fhsis` + a methodology reconciliation note
   extending the existing 277,767-vs-278,240 story. Skip if PDF extraction proves unreliable —
-  document instead.
+  document instead.~~
+- **Superseded 2026-09-06 on both halves — see `docs/DATASET_SCOPING.md` §3.** (1) **The BHW
+  headcount is not to be extracted at all.** The owner's rule is that this repo's BHW census is
+  the official BHW figure and FHSIS never supplies one; its column reports NCR at 4,454 and Las
+  Piñas at 1, so a "reconciliation note" against it would undercut the census rather than explain
+  it. Take the *other* cadres (doctors, nurses, midwives, …) as context for the census's own
+  numerator, and the service-delivery tables on their own terms. (2) **There is no PDF extraction
+  to be unreliable.** DOH publishes these as PSGC-keyed Excel down to city/municipality in a
+  public Drive archive (`https://bit.ly/FHSISPHSannualreports`), so the "skip if extraction proves
+  unreliable" fallback is moot and the province-grain assumption was too coarse.
 
 **Verify (phase):** every join reports unmatched-code counts committed to `docs/` (1.6 style);
 `/methodology` lists every source with license + retrieval date; footer/dataset attribution
