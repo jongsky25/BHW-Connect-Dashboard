@@ -5,5 +5,6 @@ psycopg2-binary
 # E4.3 income-reclassification loader (build_income_reclass.py)
 pymupdf
 rapidfuzz
-# reconcile_boundaries.py / build_district_boundaries.py (D3.2) polygon dissolves
+# reconcile_boundaries.py / build_district_boundaries.py (D3.2) polygon dissolves, and
+# build_barangay_centroids.py (N7) representative points
 shapely

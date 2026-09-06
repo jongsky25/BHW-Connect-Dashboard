@@ -69,6 +69,13 @@ export type NhfrFacility = {
   ownershipMajor: string;
   ownershipSub: string | null;
   barangayName: string | null;
+  /**
+   * The barangay's `dim_geo` code, resolved at load — null for the 108 national rows whose source
+   * carries no barangay PSGC. This is the join key the facility point map places a facility by
+   * (`lib/geo/facility-points.ts`); a null is a facility that cannot be mapped, and the map says
+   * so rather than dropping it quietly.
+   */
+  barangayGeoCode: string | null;
   bedCapacity: number;
   licensingStatus: string | null;
 };
@@ -302,7 +309,7 @@ export const getNhfrFacilities = cache(async (citymunCode: string): Promise<Nhfr
   const { data, error } = await supabase
     .from("fact_nhfr_facility")
     .select(
-      "facility_code, facility_name, facility_type, ownership_major, ownership_sub, source_barangay_name, bed_capacity, licensing_status",
+      "facility_code, facility_name, facility_type, ownership_major, ownership_sub, barangay_geo_code, source_barangay_name, bed_capacity, licensing_status",
     )
     .eq("dataset_id", datasetId)
     .eq("geo_code", citymunCode)
@@ -317,6 +324,7 @@ export const getNhfrFacilities = cache(async (citymunCode: string): Promise<Nhfr
     ownershipMajor: row.ownership_major,
     ownershipSub: row.ownership_sub,
     barangayName: row.source_barangay_name,
+    barangayGeoCode: row.barangay_geo_code,
     bedCapacity: row.bed_capacity,
     licensingStatus: row.licensing_status,
   }));

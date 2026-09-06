@@ -1,0 +1,5562 @@
+{
+  "source": "https://raw.githubusercontent.com/faeldon/philippines-json-maps/master/2023/geojson/municities/hires/bgysubmuns-municity-*.0.1.json",
+  "citymuns_in_dim_geo": 1655,
+  "barangays_in_dim_geo": 41991,
+  "citymuns_missing_from_source": [
+    {
+      "geo_code": "1380601",
+      "geo_name": "TONDO I/II",
+      "status": 404
+    },
+    {
+      "geo_code": "1380602",
+      "geo_name": "BINONDO",
+      "status": 404
+    },
+    {
+      "geo_code": "1380603",
+      "geo_name": "QUIAPO",
+      "status": 404
+    },
+    {
+      "geo_code": "1380604",
+      "geo_name": "SAN NICOLAS",
+      "status": 404
+    },
+    {
+      "geo_code": "1380605",
+      "geo_name": "SANTA CRUZ",
+      "status": 404
+    },
+    {
+      "geo_code": "1380606",
+      "geo_name": "SAMPALOC",
+      "status": 404
+    },
+    {
+      "geo_code": "1380607",
+      "geo_name": "SAN MIGUEL",
+      "status": 404
+    },
+    {
+      "geo_code": "1380608",
+      "geo_name": "ERMITA",
+      "status": 404
+    },
+    {
+      "geo_code": "1380609",
+      "geo_name": "INTRAMUROS",
+      "status": 404
+    },
+    {
+      "geo_code": "1380610",
+      "geo_name": "MALATE",
+      "status": 404
+    },
+    {
+      "geo_code": "1380611",
+      "geo_name": "PACO",
+      "status": 404
+    },
+    {
+      "geo_code": "1380612",
+      "geo_name": "PANDACAN",
+      "status": 404
+    },
+    {
+      "geo_code": "1380613",
+      "geo_name": "PORT AREA",
+      "status": 404
+    },
+    {
+      "geo_code": "1380614",
+      "geo_name": "SANTA ANA",
+      "status": 404
+    }
+  ],
+  "barangays_without_centroid": [
+    {
+      "geo_code": "0102910008",
+      "geo_name": "POBLACION SUR",
+      "citymun_code": "0102910",
+      "citymun_name": "GREGORIO DEL PILAR"
+    },
+    {
+      "geo_code": "0205008007",
+      "geo_name": "GABUT",
+      "citymun_code": "0205008",
+      "citymun_name": "DUPAX DEL SUR"
+    },
+    {
+      "geo_code": "0304903075",
+      "geo_name": "SAN ROQUE SUR",
+      "citymun_code": "0304903",
+      "citymun_name": "CITY OF CABANATUAN"
+    },
+    {
+      "geo_code": "0504117022",
+      "geo_name": "NAGARAO",
+      "citymun_code": "0504117",
+      "citymun_name": "PLACER"
+    },
+    {
+      "geo_code": "0802614008",
+      "geo_name": "BARANGAY 1 (POB.)",
+      "citymun_code": "0802614",
+      "citymun_name": "MASLOG"
+    },
+    {
+      "geo_code": "0908304019",
+      "geo_name": "GUINTOLAN",
+      "citymun_code": "0908304",
+      "citymun_name": "IMELDA"
+    },
+    {
+      "geo_code": "1206317017",
+      "geo_name": "JUAN-LORETO TAMAYO",
+      "citymun_code": "1206317",
+      "citymun_name": "TUPI"
+    },
+    {
+      "geo_code": "1380100189",
+      "geo_name": "BARANGAY 176-A",
+      "citymun_code": "1380100",
+      "citymun_name": "CITY OF CALOOCAN"
+    },
+    {
+      "geo_code": "1380100190",
+      "geo_name": "BARANGAY 176-B",
+      "citymun_code": "1380100",
+      "citymun_name": "CITY OF CALOOCAN"
+    },
+    {
+      "geo_code": "1380100191",
+      "geo_name": "BARANGAY 176-C",
+      "citymun_code": "1380100",
+      "citymun_name": "CITY OF CALOOCAN"
+    },
+    {
+      "geo_code": "1380100192",
+      "geo_name": "BARANGAY 176-D",
+      "citymun_code": "1380100",
+      "citymun_name": "CITY OF CALOOCAN"
+    },
+    {
+      "geo_code": "1380100193",
+      "geo_name": "BARANGAY 176-E",
+      "citymun_code": "1380100",
+      "citymun_name": "CITY OF CALOOCAN"
+    },
+    {
+      "geo_code": "1380100194",
+      "geo_name": "BARANGAY 176-F",
+      "citymun_code": "1380100",
+      "citymun_name": "CITY OF CALOOCAN"
+    },
+    {
+      "geo_code": "1380601001",
+      "geo_name": "BARANGAY 1",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601002",
+      "geo_name": "BARANGAY 2",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601003",
+      "geo_name": "BARANGAY 3",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601004",
+      "geo_name": "BARANGAY 4",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601005",
+      "geo_name": "BARANGAY 5",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601006",
+      "geo_name": "BARANGAY 6",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601007",
+      "geo_name": "BARANGAY 7",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601008",
+      "geo_name": "BARANGAY 8",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601009",
+      "geo_name": "BARANGAY 9",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601010",
+      "geo_name": "BARANGAY 10",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601011",
+      "geo_name": "BARANGAY 11",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601012",
+      "geo_name": "BARANGAY 12",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601013",
+      "geo_name": "BARANGAY 13",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601014",
+      "geo_name": "BARANGAY 14",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601015",
+      "geo_name": "BARANGAY 15",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601016",
+      "geo_name": "BARANGAY 16",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601017",
+      "geo_name": "BARANGAY 17",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601018",
+      "geo_name": "BARANGAY 18",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601019",
+      "geo_name": "BARANGAY 19",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601020",
+      "geo_name": "BARANGAY 20",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601025",
+      "geo_name": "BARANGAY 25",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601026",
+      "geo_name": "BARANGAY 26",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601028",
+      "geo_name": "BARANGAY 28",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601029",
+      "geo_name": "BARANGAY 29",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601030",
+      "geo_name": "BARANGAY 30",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601031",
+      "geo_name": "BARANGAY 31",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601032",
+      "geo_name": "BARANGAY 32",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601033",
+      "geo_name": "BARANGAY 33",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601034",
+      "geo_name": "BARANGAY 34",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601035",
+      "geo_name": "BARANGAY 35",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601036",
+      "geo_name": "BARANGAY 36",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601037",
+      "geo_name": "BARANGAY 37",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601038",
+      "geo_name": "BARANGAY 38",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601039",
+      "geo_name": "BARANGAY 39",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601041",
+      "geo_name": "BARANGAY 41",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601042",
+      "geo_name": "BARANGAY 42",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601043",
+      "geo_name": "BARANGAY 43",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601044",
+      "geo_name": "BARANGAY 44",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601045",
+      "geo_name": "BARANGAY 45",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601046",
+      "geo_name": "BARANGAY 46",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601047",
+      "geo_name": "BARANGAY 47",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601048",
+      "geo_name": "BARANGAY 48",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601049",
+      "geo_name": "BARANGAY 49",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601050",
+      "geo_name": "BARANGAY 50",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601051",
+      "geo_name": "BARANGAY 51",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601052",
+      "geo_name": "BARANGAY 52",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601053",
+      "geo_name": "BARANGAY 53",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601054",
+      "geo_name": "BARANGAY 54",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601055",
+      "geo_name": "BARANGAY 55",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601056",
+      "geo_name": "BARANGAY 56",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601057",
+      "geo_name": "BARANGAY 57",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601058",
+      "geo_name": "BARANGAY 58",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601059",
+      "geo_name": "BARANGAY 59",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601060",
+      "geo_name": "BARANGAY 60",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601061",
+      "geo_name": "BARANGAY 61",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601062",
+      "geo_name": "BARANGAY 62",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601063",
+      "geo_name": "BARANGAY 63",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601064",
+      "geo_name": "BARANGAY 64",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601065",
+      "geo_name": "BARANGAY 65",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601066",
+      "geo_name": "BARANGAY 66",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601067",
+      "geo_name": "BARANGAY 67",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601068",
+      "geo_name": "BARANGAY 68",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601069",
+      "geo_name": "BARANGAY 69",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601070",
+      "geo_name": "BARANGAY 70",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601071",
+      "geo_name": "BARANGAY 71",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601072",
+      "geo_name": "BARANGAY 72",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601073",
+      "geo_name": "BARANGAY 73",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601074",
+      "geo_name": "BARANGAY 74",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601075",
+      "geo_name": "BARANGAY 75",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601076",
+      "geo_name": "BARANGAY 76",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601077",
+      "geo_name": "BARANGAY 77",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601078",
+      "geo_name": "BARANGAY 78",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601079",
+      "geo_name": "BARANGAY 79",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601080",
+      "geo_name": "BARANGAY 80",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601081",
+      "geo_name": "BARANGAY 81",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601082",
+      "geo_name": "BARANGAY 82",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601083",
+      "geo_name": "BARANGAY 83",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601084",
+      "geo_name": "BARANGAY 84",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601085",
+      "geo_name": "BARANGAY 85",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601086",
+      "geo_name": "BARANGAY 86",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601087",
+      "geo_name": "BARANGAY 87",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601088",
+      "geo_name": "BARANGAY 88",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601089",
+      "geo_name": "BARANGAY 89",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601090",
+      "geo_name": "BARANGAY 90",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601091",
+      "geo_name": "BARANGAY 91",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601092",
+      "geo_name": "BARANGAY 92",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601093",
+      "geo_name": "BARANGAY 93",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601094",
+      "geo_name": "BARANGAY 94",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601095",
+      "geo_name": "BARANGAY 95",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601096",
+      "geo_name": "BARANGAY 96",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601097",
+      "geo_name": "BARANGAY 97",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601098",
+      "geo_name": "BARANGAY 98",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601099",
+      "geo_name": "BARANGAY 99",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601100",
+      "geo_name": "BARANGAY 100",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601101",
+      "geo_name": "BARANGAY 101",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601102",
+      "geo_name": "BARANGAY 102",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601103",
+      "geo_name": "BARANGAY 103",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601104",
+      "geo_name": "BARANGAY 104",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601105",
+      "geo_name": "BARANGAY 105",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601106",
+      "geo_name": "BARANGAY 106",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601107",
+      "geo_name": "BARANGAY 107",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601108",
+      "geo_name": "BARANGAY 108",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601109",
+      "geo_name": "BARANGAY 109",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601110",
+      "geo_name": "BARANGAY 110",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601111",
+      "geo_name": "BARANGAY 111",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601112",
+      "geo_name": "BARANGAY 112",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601116",
+      "geo_name": "BARANGAY 116",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601117",
+      "geo_name": "BARANGAY 117",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601118",
+      "geo_name": "BARANGAY 118",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601119",
+      "geo_name": "BARANGAY 119",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601120",
+      "geo_name": "BARANGAY 120",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601121",
+      "geo_name": "BARANGAY 121",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601122",
+      "geo_name": "BARANGAY 122",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601123",
+      "geo_name": "BARANGAY 123",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601124",
+      "geo_name": "BARANGAY 124",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601125",
+      "geo_name": "BARANGAY 125",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601126",
+      "geo_name": "BARANGAY 126",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601127",
+      "geo_name": "BARANGAY 127",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601128",
+      "geo_name": "BARANGAY 128",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601129",
+      "geo_name": "BARANGAY 129",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601130",
+      "geo_name": "BARANGAY 130",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601131",
+      "geo_name": "BARANGAY 131",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601132",
+      "geo_name": "BARANGAY 132",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601133",
+      "geo_name": "BARANGAY 133",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601134",
+      "geo_name": "BARANGAY 134",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601135",
+      "geo_name": "BARANGAY 135",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601136",
+      "geo_name": "BARANGAY 136",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601137",
+      "geo_name": "BARANGAY 137",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601138",
+      "geo_name": "BARANGAY 138",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601139",
+      "geo_name": "BARANGAY 139",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601140",
+      "geo_name": "BARANGAY 140",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601141",
+      "geo_name": "BARANGAY 141",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601142",
+      "geo_name": "BARANGAY 142",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601143",
+      "geo_name": "BARANGAY 143",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601144",
+      "geo_name": "BARANGAY 144",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601145",
+      "geo_name": "BARANGAY 145",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601146",
+      "geo_name": "BARANGAY 146",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601147",
+      "geo_name": "BARANGAY 147",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601148",
+      "geo_name": "BARANGAY 148",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601149",
+      "geo_name": "BARANGAY 149",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601150",
+      "geo_name": "BARANGAY 150",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601151",
+      "geo_name": "BARANGAY 151",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601152",
+      "geo_name": "BARANGAY 152",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601153",
+      "geo_name": "BARANGAY 153",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601154",
+      "geo_name": "BARANGAY 154",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601155",
+      "geo_name": "BARANGAY 155",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601156",
+      "geo_name": "BARANGAY 156",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601157",
+      "geo_name": "BARANGAY 157",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601158",
+      "geo_name": "BARANGAY 158",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601159",
+      "geo_name": "BARANGAY 159",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601160",
+      "geo_name": "BARANGAY 160",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601161",
+      "geo_name": "BARANGAY 161",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601162",
+      "geo_name": "BARANGAY 162",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601163",
+      "geo_name": "BARANGAY 163",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601164",
+      "geo_name": "BARANGAY 164",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601165",
+      "geo_name": "BARANGAY 165",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601166",
+      "geo_name": "BARANGAY 166",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601167",
+      "geo_name": "BARANGAY 167",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601168",
+      "geo_name": "BARANGAY 168",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601169",
+      "geo_name": "BARANGAY 169",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601170",
+      "geo_name": "BARANGAY 170",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601171",
+      "geo_name": "BARANGAY 171",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601172",
+      "geo_name": "BARANGAY 172",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601173",
+      "geo_name": "BARANGAY 173",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601174",
+      "geo_name": "BARANGAY 174",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601175",
+      "geo_name": "BARANGAY 175",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601176",
+      "geo_name": "BARANGAY 176",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601177",
+      "geo_name": "BARANGAY 177",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601178",
+      "geo_name": "BARANGAY 178",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601179",
+      "geo_name": "BARANGAY 179",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601180",
+      "geo_name": "BARANGAY 180",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601181",
+      "geo_name": "BARANGAY 181",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601182",
+      "geo_name": "BARANGAY 182",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601183",
+      "geo_name": "BARANGAY 183",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601184",
+      "geo_name": "BARANGAY 184",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601185",
+      "geo_name": "BARANGAY 185",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601186",
+      "geo_name": "BARANGAY 186",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601187",
+      "geo_name": "BARANGAY 187",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601188",
+      "geo_name": "BARANGAY 188",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601189",
+      "geo_name": "BARANGAY 189",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601190",
+      "geo_name": "BARANGAY 190",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601191",
+      "geo_name": "BARANGAY 191",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601192",
+      "geo_name": "BARANGAY 192",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601193",
+      "geo_name": "BARANGAY 193",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601194",
+      "geo_name": "BARANGAY 194",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601195",
+      "geo_name": "BARANGAY 195",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601196",
+      "geo_name": "BARANGAY 196",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601197",
+      "geo_name": "BARANGAY 197",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601198",
+      "geo_name": "BARANGAY 198",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601199",
+      "geo_name": "BARANGAY 199",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601200",
+      "geo_name": "BARANGAY 200",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601201",
+      "geo_name": "BARANGAY 201",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601202",
+      "geo_name": "BARANGAY 202",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601203",
+      "geo_name": "BARANGAY 202-A",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601204",
+      "geo_name": "BARANGAY 203",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601205",
+      "geo_name": "BARANGAY 204",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601206",
+      "geo_name": "BARANGAY 205",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601207",
+      "geo_name": "BARANGAY 206",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601208",
+      "geo_name": "BARANGAY 207",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601209",
+      "geo_name": "BARANGAY 208",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601210",
+      "geo_name": "BARANGAY 209",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601211",
+      "geo_name": "BARANGAY 210",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601212",
+      "geo_name": "BARANGAY 211",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601213",
+      "geo_name": "BARANGAY 212",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601214",
+      "geo_name": "BARANGAY 213",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601215",
+      "geo_name": "BARANGAY 214",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601216",
+      "geo_name": "BARANGAY 215",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601217",
+      "geo_name": "BARANGAY 216",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601218",
+      "geo_name": "BARANGAY 217",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601219",
+      "geo_name": "BARANGAY 218",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601220",
+      "geo_name": "BARANGAY 219",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601221",
+      "geo_name": "BARANGAY 220",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601222",
+      "geo_name": "BARANGAY 221",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601223",
+      "geo_name": "BARANGAY 222",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601224",
+      "geo_name": "BARANGAY 223",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601225",
+      "geo_name": "BARANGAY 224",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601226",
+      "geo_name": "BARANGAY 225",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601227",
+      "geo_name": "BARANGAY 226",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601228",
+      "geo_name": "BARANGAY 227",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601229",
+      "geo_name": "BARANGAY 228",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601230",
+      "geo_name": "BARANGAY 229",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601231",
+      "geo_name": "BARANGAY 230",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601232",
+      "geo_name": "BARANGAY 231",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601233",
+      "geo_name": "BARANGAY 232",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601234",
+      "geo_name": "BARANGAY 233",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601235",
+      "geo_name": "BARANGAY 234",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601236",
+      "geo_name": "BARANGAY 235",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601237",
+      "geo_name": "BARANGAY 236",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601238",
+      "geo_name": "BARANGAY 237",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601239",
+      "geo_name": "BARANGAY 238",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601240",
+      "geo_name": "BARANGAY 239",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601241",
+      "geo_name": "BARANGAY 240",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601242",
+      "geo_name": "BARANGAY 241",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601243",
+      "geo_name": "BARANGAY 242",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601244",
+      "geo_name": "BARANGAY 243",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601245",
+      "geo_name": "BARANGAY 244",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601246",
+      "geo_name": "BARANGAY 245",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601247",
+      "geo_name": "BARANGAY 246",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601248",
+      "geo_name": "BARANGAY 247",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601249",
+      "geo_name": "BARANGAY 248",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601250",
+      "geo_name": "BARANGAY 249",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601251",
+      "geo_name": "BARANGAY 250",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601252",
+      "geo_name": "BARANGAY 251",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601253",
+      "geo_name": "BARANGAY 252",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601254",
+      "geo_name": "BARANGAY 253",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601255",
+      "geo_name": "BARANGAY 254",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601256",
+      "geo_name": "BARANGAY 255",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601257",
+      "geo_name": "BARANGAY 256",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601258",
+      "geo_name": "BARANGAY 257",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601259",
+      "geo_name": "BARANGAY 258",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601260",
+      "geo_name": "BARANGAY 259",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601261",
+      "geo_name": "BARANGAY 260",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601262",
+      "geo_name": "BARANGAY 261",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601263",
+      "geo_name": "BARANGAY 262",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601264",
+      "geo_name": "BARANGAY 263",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601265",
+      "geo_name": "BARANGAY 264",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601266",
+      "geo_name": "BARANGAY 265",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601267",
+      "geo_name": "BARANGAY 266",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380601268",
+      "geo_name": "BARANGAY 267",
+      "citymun_code": "1380601",
+      "citymun_name": "TONDO I/II"
+    },
+    {
+      "geo_code": "1380602001",
+      "geo_name": "BARANGAY 287",
+      "citymun_code": "1380602",
+      "citymun_name": "BINONDO"
+    },
+    {
+      "geo_code": "1380602002",
+      "geo_name": "BARANGAY 288",
+      "citymun_code": "1380602",
+      "citymun_name": "BINONDO"
+    },
+    {
+      "geo_code": "1380602003",
+      "geo_name": "BARANGAY 289",
+      "citymun_code": "1380602",
+      "citymun_name": "BINONDO"
+    },
+    {
+      "geo_code": "1380602005",
+      "geo_name": "BARANGAY 291",
+      "citymun_code": "1380602",
+      "citymun_name": "BINONDO"
+    },
+    {
+      "geo_code": "1380602006",
+      "geo_name": "BARANGAY 292",
+      "citymun_code": "1380602",
+      "citymun_name": "BINONDO"
+    },
+    {
+      "geo_code": "1380602009",
+      "geo_name": "BARANGAY 295",
+      "citymun_code": "1380602",
+      "citymun_name": "BINONDO"
+    },
+    {
+      "geo_code": "1380602010",
+      "geo_name": "BARANGAY 296",
+      "citymun_code": "1380602",
+      "citymun_name": "BINONDO"
+    },
+    {
+      "geo_code": "1380603003",
+      "geo_name": "BARANGAY 383",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603004",
+      "geo_name": "BARANGAY 384",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603005",
+      "geo_name": "BARANGAY 385",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603006",
+      "geo_name": "BARANGAY 386",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603007",
+      "geo_name": "BARANGAY 387",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603008",
+      "geo_name": "BARANGAY 388",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603009",
+      "geo_name": "BARANGAY 389",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603010",
+      "geo_name": "BARANGAY 390",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603011",
+      "geo_name": "BARANGAY 391",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603012",
+      "geo_name": "BARANGAY 392",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603013",
+      "geo_name": "BARANGAY 393",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603014",
+      "geo_name": "BARANGAY 394",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603015",
+      "geo_name": "BARANGAY 306",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603016",
+      "geo_name": "BARANGAY 307",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603017",
+      "geo_name": "BARANGAY 308",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380603018",
+      "geo_name": "BARANGAY 309",
+      "citymun_code": "1380603",
+      "citymun_name": "QUIAPO"
+    },
+    {
+      "geo_code": "1380604001",
+      "geo_name": "BARANGAY 268",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604002",
+      "geo_name": "BARANGAY 269",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604003",
+      "geo_name": "BARANGAY 270",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604004",
+      "geo_name": "BARANGAY 271",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604005",
+      "geo_name": "BARANGAY 272",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604006",
+      "geo_name": "BARANGAY 273",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604007",
+      "geo_name": "BARANGAY 274",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604008",
+      "geo_name": "BARANGAY 275",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604009",
+      "geo_name": "BARANGAY 276",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604014",
+      "geo_name": "BARANGAY 281",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604015",
+      "geo_name": "BARANGAY 282",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604016",
+      "geo_name": "BARANGAY 283",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604017",
+      "geo_name": "BARANGAY 284",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604018",
+      "geo_name": "BARANGAY 285",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380604019",
+      "geo_name": "BARANGAY 286",
+      "citymun_code": "1380604",
+      "citymun_name": "SAN NICOLAS"
+    },
+    {
+      "geo_code": "1380605001",
+      "geo_name": "BARANGAY 297",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605002",
+      "geo_name": "BARANGAY 298",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605003",
+      "geo_name": "BARANGAY 299",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605004",
+      "geo_name": "BARANGAY 300",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605005",
+      "geo_name": "BARANGAY 301",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605006",
+      "geo_name": "BARANGAY 302",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605007",
+      "geo_name": "BARANGAY 303",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605008",
+      "geo_name": "BARANGAY 304",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605009",
+      "geo_name": "BARANGAY 305",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605012",
+      "geo_name": "BARANGAY 310",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605013",
+      "geo_name": "BARANGAY 311",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605014",
+      "geo_name": "BARANGAY 312",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605015",
+      "geo_name": "BARANGAY 313",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605016",
+      "geo_name": "BARANGAY 314",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605017",
+      "geo_name": "BARANGAY 315",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605018",
+      "geo_name": "BARANGAY 316",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605019",
+      "geo_name": "BARANGAY 317",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605020",
+      "geo_name": "BARANGAY 318",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605021",
+      "geo_name": "BARANGAY 319",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605022",
+      "geo_name": "BARANGAY 320",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605023",
+      "geo_name": "BARANGAY 321",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605024",
+      "geo_name": "BARANGAY 322",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605025",
+      "geo_name": "BARANGAY 323",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605026",
+      "geo_name": "BARANGAY 324",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605027",
+      "geo_name": "BARANGAY 325",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605028",
+      "geo_name": "BARANGAY 326",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605029",
+      "geo_name": "BARANGAY 327",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605030",
+      "geo_name": "BARANGAY 328",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605031",
+      "geo_name": "BARANGAY 329",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605032",
+      "geo_name": "BARANGAY 330",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605033",
+      "geo_name": "BARANGAY 331",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605034",
+      "geo_name": "BARANGAY 332",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605035",
+      "geo_name": "BARANGAY 333",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605036",
+      "geo_name": "BARANGAY 334",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605037",
+      "geo_name": "BARANGAY 335",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605038",
+      "geo_name": "BARANGAY 336",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605039",
+      "geo_name": "BARANGAY 337",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605040",
+      "geo_name": "BARANGAY 338",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605041",
+      "geo_name": "BARANGAY 339",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605042",
+      "geo_name": "BARANGAY 340",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605043",
+      "geo_name": "BARANGAY 341",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605044",
+      "geo_name": "BARANGAY 342",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605045",
+      "geo_name": "BARANGAY 343",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605046",
+      "geo_name": "BARANGAY 344",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605047",
+      "geo_name": "BARANGAY 345",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605048",
+      "geo_name": "BARANGAY 346",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605049",
+      "geo_name": "BARANGAY 347",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605050",
+      "geo_name": "BARANGAY 348",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605051",
+      "geo_name": "BARANGAY 349",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605052",
+      "geo_name": "BARANGAY 350",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605053",
+      "geo_name": "BARANGAY 351",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605054",
+      "geo_name": "BARANGAY 352",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605055",
+      "geo_name": "BARANGAY 353",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605056",
+      "geo_name": "BARANGAY 354",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605057",
+      "geo_name": "BARANGAY 355",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605058",
+      "geo_name": "BARANGAY 356",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605059",
+      "geo_name": "BARANGAY 357",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605060",
+      "geo_name": "BARANGAY 358",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605061",
+      "geo_name": "BARANGAY 359",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605062",
+      "geo_name": "BARANGAY 360",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605063",
+      "geo_name": "BARANGAY 361",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605064",
+      "geo_name": "BARANGAY 362",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605065",
+      "geo_name": "BARANGAY 363",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605066",
+      "geo_name": "BARANGAY 364",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605067",
+      "geo_name": "BARANGAY 365",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605069",
+      "geo_name": "BARANGAY 366",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605070",
+      "geo_name": "BARANGAY 367",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605071",
+      "geo_name": "BARANGAY 368",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605072",
+      "geo_name": "BARANGAY 369",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605073",
+      "geo_name": "BARANGAY 370",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605074",
+      "geo_name": "BARANGAY 371",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605075",
+      "geo_name": "BARANGAY 372",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605076",
+      "geo_name": "BARANGAY 373",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605077",
+      "geo_name": "BARANGAY 374",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605078",
+      "geo_name": "BARANGAY 375",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605079",
+      "geo_name": "BARANGAY 376",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605080",
+      "geo_name": "BARANGAY 377",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605081",
+      "geo_name": "BARANGAY 378",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605082",
+      "geo_name": "BARANGAY 379",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605083",
+      "geo_name": "BARANGAY 380",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605084",
+      "geo_name": "BARANGAY 381",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380605085",
+      "geo_name": "BARANGAY 382",
+      "citymun_code": "1380605",
+      "citymun_name": "SANTA CRUZ"
+    },
+    {
+      "geo_code": "1380606001",
+      "geo_name": "BARANGAY 395",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606002",
+      "geo_name": "BARANGAY 396",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606003",
+      "geo_name": "BARANGAY 397",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606004",
+      "geo_name": "BARANGAY 398",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606005",
+      "geo_name": "BARANGAY 399",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606006",
+      "geo_name": "BARANGAY 400",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606007",
+      "geo_name": "BARANGAY 401",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606008",
+      "geo_name": "BARANGAY 402",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606009",
+      "geo_name": "BARANGAY 403",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606010",
+      "geo_name": "BARANGAY 404",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606011",
+      "geo_name": "BARANGAY 405",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606012",
+      "geo_name": "BARANGAY 406",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606013",
+      "geo_name": "BARANGAY 407",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606014",
+      "geo_name": "BARANGAY 408",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606015",
+      "geo_name": "BARANGAY 409",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606016",
+      "geo_name": "BARANGAY 410",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606017",
+      "geo_name": "BARANGAY 411",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606018",
+      "geo_name": "BARANGAY 412",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606019",
+      "geo_name": "BARANGAY 413",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606020",
+      "geo_name": "BARANGAY 414",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606021",
+      "geo_name": "BARANGAY 415",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606022",
+      "geo_name": "BARANGAY 416",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606023",
+      "geo_name": "BARANGAY 417",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606024",
+      "geo_name": "BARANGAY 418",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606025",
+      "geo_name": "BARANGAY 419",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606026",
+      "geo_name": "BARANGAY 420",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606027",
+      "geo_name": "BARANGAY 421",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606028",
+      "geo_name": "BARANGAY 422",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606029",
+      "geo_name": "BARANGAY 423",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606030",
+      "geo_name": "BARANGAY 424",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606031",
+      "geo_name": "BARANGAY 425",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606032",
+      "geo_name": "BARANGAY 426",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606033",
+      "geo_name": "BARANGAY 427",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606034",
+      "geo_name": "BARANGAY 428",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606035",
+      "geo_name": "BARANGAY 429",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606036",
+      "geo_name": "BARANGAY 430",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606037",
+      "geo_name": "BARANGAY 431",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606038",
+      "geo_name": "BARANGAY 432",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606039",
+      "geo_name": "BARANGAY 433",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606040",
+      "geo_name": "BARANGAY 434",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606041",
+      "geo_name": "BARANGAY 435",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606042",
+      "geo_name": "BARANGAY 436",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606043",
+      "geo_name": "BARANGAY 437",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606044",
+      "geo_name": "BARANGAY 438",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606045",
+      "geo_name": "BARANGAY 439",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606046",
+      "geo_name": "BARANGAY 440",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606047",
+      "geo_name": "BARANGAY 441",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606048",
+      "geo_name": "BARANGAY 442",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606049",
+      "geo_name": "BARANGAY 443",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606050",
+      "geo_name": "BARANGAY 444",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606051",
+      "geo_name": "BARANGAY 445",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606052",
+      "geo_name": "BARANGAY 446",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606053",
+      "geo_name": "BARANGAY 447",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606054",
+      "geo_name": "BARANGAY 448",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606055",
+      "geo_name": "BARANGAY 449",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606056",
+      "geo_name": "BARANGAY 450",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606057",
+      "geo_name": "BARANGAY 451",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606058",
+      "geo_name": "BARANGAY 452",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606059",
+      "geo_name": "BARANGAY 453",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606060",
+      "geo_name": "BARANGAY 454",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606061",
+      "geo_name": "BARANGAY 455",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606062",
+      "geo_name": "BARANGAY 456",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606063",
+      "geo_name": "BARANGAY 457",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606064",
+      "geo_name": "BARANGAY 458",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606065",
+      "geo_name": "BARANGAY 459",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606066",
+      "geo_name": "BARANGAY 460",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606067",
+      "geo_name": "BARANGAY 461",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606068",
+      "geo_name": "BARANGAY 462",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606069",
+      "geo_name": "BARANGAY 463",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606070",
+      "geo_name": "BARANGAY 464",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606071",
+      "geo_name": "BARANGAY 465",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606072",
+      "geo_name": "BARANGAY 466",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606073",
+      "geo_name": "BARANGAY 467",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606074",
+      "geo_name": "BARANGAY 468",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606075",
+      "geo_name": "BARANGAY 469",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606076",
+      "geo_name": "BARANGAY 470",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606077",
+      "geo_name": "BARANGAY 471",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606078",
+      "geo_name": "BARANGAY 472",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606079",
+      "geo_name": "BARANGAY 473",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606080",
+      "geo_name": "BARANGAY 474",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606081",
+      "geo_name": "BARANGAY 475",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606082",
+      "geo_name": "BARANGAY 476",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606083",
+      "geo_name": "BARANGAY 477",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606084",
+      "geo_name": "BARANGAY 478",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606085",
+      "geo_name": "BARANGAY 479",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606086",
+      "geo_name": "BARANGAY 480",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606087",
+      "geo_name": "BARANGAY 481",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606088",
+      "geo_name": "BARANGAY 482",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606089",
+      "geo_name": "BARANGAY 483",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606090",
+      "geo_name": "BARANGAY 484",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606091",
+      "geo_name": "BARANGAY 485",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606092",
+      "geo_name": "BARANGAY 486",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606093",
+      "geo_name": "BARANGAY 487",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606094",
+      "geo_name": "BARANGAY 488",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606095",
+      "geo_name": "BARANGAY 489",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606096",
+      "geo_name": "BARANGAY 490",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606097",
+      "geo_name": "BARANGAY 491",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606098",
+      "geo_name": "BARANGAY 492",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606099",
+      "geo_name": "BARANGAY 493",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606100",
+      "geo_name": "BARANGAY 494",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606101",
+      "geo_name": "BARANGAY 495",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606102",
+      "geo_name": "BARANGAY 496",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606103",
+      "geo_name": "BARANGAY 497",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606104",
+      "geo_name": "BARANGAY 498",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606105",
+      "geo_name": "BARANGAY 499",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606106",
+      "geo_name": "BARANGAY 500",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606107",
+      "geo_name": "BARANGAY 501",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606108",
+      "geo_name": "BARANGAY 502",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606109",
+      "geo_name": "BARANGAY 503",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606110",
+      "geo_name": "BARANGAY 504",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606111",
+      "geo_name": "BARANGAY 505",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606112",
+      "geo_name": "BARANGAY 506",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606113",
+      "geo_name": "BARANGAY 507",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606114",
+      "geo_name": "BARANGAY 508",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606115",
+      "geo_name": "BARANGAY 509",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606116",
+      "geo_name": "BARANGAY 510",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606117",
+      "geo_name": "BARANGAY 511",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606118",
+      "geo_name": "BARANGAY 512",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606119",
+      "geo_name": "BARANGAY 513",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606120",
+      "geo_name": "BARANGAY 514",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606121",
+      "geo_name": "BARANGAY 515",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606122",
+      "geo_name": "BARANGAY 516",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606123",
+      "geo_name": "BARANGAY 517",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606124",
+      "geo_name": "BARANGAY 518",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606125",
+      "geo_name": "BARANGAY 519",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606126",
+      "geo_name": "BARANGAY 520",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606127",
+      "geo_name": "BARANGAY 521",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606128",
+      "geo_name": "BARANGAY 522",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606129",
+      "geo_name": "BARANGAY 523",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606130",
+      "geo_name": "BARANGAY 524",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606131",
+      "geo_name": "BARANGAY 525",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606132",
+      "geo_name": "BARANGAY 526",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606133",
+      "geo_name": "BARANGAY 527",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606134",
+      "geo_name": "BARANGAY 528",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606135",
+      "geo_name": "BARANGAY 529",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606136",
+      "geo_name": "BARANGAY 530",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606137",
+      "geo_name": "BARANGAY 531",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606138",
+      "geo_name": "BARANGAY 532",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606139",
+      "geo_name": "BARANGAY 533",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606140",
+      "geo_name": "BARANGAY 534",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606141",
+      "geo_name": "BARANGAY 535",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606142",
+      "geo_name": "BARANGAY 536",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606143",
+      "geo_name": "BARANGAY 537",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606144",
+      "geo_name": "BARANGAY 538",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606145",
+      "geo_name": "BARANGAY 539",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606146",
+      "geo_name": "BARANGAY 540",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606147",
+      "geo_name": "BARANGAY 541",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606148",
+      "geo_name": "BARANGAY 542",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606149",
+      "geo_name": "BARANGAY 543",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606150",
+      "geo_name": "BARANGAY 544",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606151",
+      "geo_name": "BARANGAY 545",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606152",
+      "geo_name": "BARANGAY 546",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606153",
+      "geo_name": "BARANGAY 547",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606154",
+      "geo_name": "BARANGAY 548",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606155",
+      "geo_name": "BARANGAY 549",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606156",
+      "geo_name": "BARANGAY 550",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606157",
+      "geo_name": "BARANGAY 551",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606158",
+      "geo_name": "BARANGAY 552",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606159",
+      "geo_name": "BARANGAY 553",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606160",
+      "geo_name": "BARANGAY 554",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606161",
+      "geo_name": "BARANGAY 555",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606162",
+      "geo_name": "BARANGAY 556",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606163",
+      "geo_name": "BARANGAY 557",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606164",
+      "geo_name": "BARANGAY 558",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606165",
+      "geo_name": "BARANGAY 559",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606166",
+      "geo_name": "BARANGAY 560",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606167",
+      "geo_name": "BARANGAY 561",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606168",
+      "geo_name": "BARANGAY 562",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606169",
+      "geo_name": "BARANGAY 563",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606170",
+      "geo_name": "BARANGAY 564",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606171",
+      "geo_name": "BARANGAY 565",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606172",
+      "geo_name": "BARANGAY 566",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606173",
+      "geo_name": "BARANGAY 567",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606174",
+      "geo_name": "BARANGAY 568",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606175",
+      "geo_name": "BARANGAY 569",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606176",
+      "geo_name": "BARANGAY 570",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606177",
+      "geo_name": "BARANGAY 571",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606178",
+      "geo_name": "BARANGAY 572",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606179",
+      "geo_name": "BARANGAY 573",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606180",
+      "geo_name": "BARANGAY 574",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606181",
+      "geo_name": "BARANGAY 575",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606182",
+      "geo_name": "BARANGAY 576",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606183",
+      "geo_name": "BARANGAY 577",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606184",
+      "geo_name": "BARANGAY 578",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606185",
+      "geo_name": "BARANGAY 579",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606186",
+      "geo_name": "BARANGAY 580",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606187",
+      "geo_name": "BARANGAY 581",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606188",
+      "geo_name": "BARANGAY 582",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606189",
+      "geo_name": "BARANGAY 583",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606190",
+      "geo_name": "BARANGAY 584",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606191",
+      "geo_name": "BARANGAY 585",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606192",
+      "geo_name": "BARANGAY 586",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606193",
+      "geo_name": "BARANGAY 587",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606194",
+      "geo_name": "BARANGAY 587-A",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606195",
+      "geo_name": "BARANGAY 588",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606196",
+      "geo_name": "BARANGAY 589",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606197",
+      "geo_name": "BARANGAY 590",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606198",
+      "geo_name": "BARANGAY 591",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606199",
+      "geo_name": "BARANGAY 592",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606200",
+      "geo_name": "BARANGAY 593",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606201",
+      "geo_name": "BARANGAY 594",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606202",
+      "geo_name": "BARANGAY 595",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606203",
+      "geo_name": "BARANGAY 596",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606204",
+      "geo_name": "BARANGAY 597",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606205",
+      "geo_name": "BARANGAY 598",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606206",
+      "geo_name": "BARANGAY 599",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606207",
+      "geo_name": "BARANGAY 600",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606208",
+      "geo_name": "BARANGAY 601",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606209",
+      "geo_name": "BARANGAY 602",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606210",
+      "geo_name": "BARANGAY 603",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606211",
+      "geo_name": "BARANGAY 604",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606212",
+      "geo_name": "BARANGAY 605",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606213",
+      "geo_name": "BARANGAY 606",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606214",
+      "geo_name": "BARANGAY 607",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606215",
+      "geo_name": "BARANGAY 608",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606216",
+      "geo_name": "BARANGAY 609",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606217",
+      "geo_name": "BARANGAY 610",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606218",
+      "geo_name": "BARANGAY 611",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606219",
+      "geo_name": "BARANGAY 612",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606220",
+      "geo_name": "BARANGAY 613",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606221",
+      "geo_name": "BARANGAY 614",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606222",
+      "geo_name": "BARANGAY 615",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606223",
+      "geo_name": "BARANGAY 616",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606224",
+      "geo_name": "BARANGAY 617",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606225",
+      "geo_name": "BARANGAY 618",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606226",
+      "geo_name": "BARANGAY 619",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606227",
+      "geo_name": "BARANGAY 620",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606228",
+      "geo_name": "BARANGAY 621",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606229",
+      "geo_name": "BARANGAY 622",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606230",
+      "geo_name": "BARANGAY 623",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606231",
+      "geo_name": "BARANGAY 624",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606232",
+      "geo_name": "BARANGAY 625",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606233",
+      "geo_name": "BARANGAY 626",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606234",
+      "geo_name": "BARANGAY 627",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606235",
+      "geo_name": "BARANGAY 628",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606236",
+      "geo_name": "BARANGAY 629",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606237",
+      "geo_name": "BARANGAY 630",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606238",
+      "geo_name": "BARANGAY 631",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606239",
+      "geo_name": "BARANGAY 632",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606240",
+      "geo_name": "BARANGAY 633",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606241",
+      "geo_name": "BARANGAY 634",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606242",
+      "geo_name": "BARANGAY 635",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380606243",
+      "geo_name": "BARANGAY 636",
+      "citymun_code": "1380606",
+      "citymun_name": "SAMPALOC"
+    },
+    {
+      "geo_code": "1380607002",
+      "geo_name": "BARANGAY 638",
+      "citymun_code": "1380607",
+      "citymun_name": "SAN MIGUEL"
+    },
+    {
+      "geo_code": "1380607005",
+      "geo_name": "BARANGAY 641",
+      "citymun_code": "1380607",
+      "citymun_name": "SAN MIGUEL"
+    },
+    {
+      "geo_code": "1380607009",
+      "geo_name": "BARANGAY 645",
+      "citymun_code": "1380607",
+      "citymun_name": "SAN MIGUEL"
+    },
+    {
+      "geo_code": "1380608001",
+      "geo_name": "BARANGAY 659",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608002",
+      "geo_name": "BARANGAY 659-A",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608003",
+      "geo_name": "BARANGAY 660",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608004",
+      "geo_name": "BARANGAY 660-A",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608005",
+      "geo_name": "BARANGAY 661",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608008",
+      "geo_name": "BARANGAY 666",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608009",
+      "geo_name": "BARANGAY 667",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608010",
+      "geo_name": "BARANGAY 668",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608011",
+      "geo_name": "BARANGAY 669",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608012",
+      "geo_name": "BARANGAY 670",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380608013",
+      "geo_name": "BARANGAY 663",
+      "citymun_code": "1380608",
+      "citymun_name": "ERMITA"
+    },
+    {
+      "geo_code": "1380609001",
+      "geo_name": "BARANGAY 654",
+      "citymun_code": "1380609",
+      "citymun_name": "INTRAMUROS"
+    },
+    {
+      "geo_code": "1380609002",
+      "geo_name": "BARANGAY 655",
+      "citymun_code": "1380609",
+      "citymun_name": "INTRAMUROS"
+    },
+    {
+      "geo_code": "1380609003",
+      "geo_name": "BARANGAY 656",
+      "citymun_code": "1380609",
+      "citymun_name": "INTRAMUROS"
+    },
+    {
+      "geo_code": "1380609004",
+      "geo_name": "BARANGAY 657",
+      "citymun_code": "1380609",
+      "citymun_name": "INTRAMUROS"
+    },
+    {
+      "geo_code": "1380609005",
+      "geo_name": "BARANGAY 658",
+      "citymun_code": "1380609",
+      "citymun_name": "INTRAMUROS"
+    },
+    {
+      "geo_code": "1380610004",
+      "geo_name": "BARANGAY 689",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610005",
+      "geo_name": "BARANGAY 690",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610006",
+      "geo_name": "BARANGAY 691",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610007",
+      "geo_name": "BARANGAY 692",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610008",
+      "geo_name": "BARANGAY 693",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610009",
+      "geo_name": "BARANGAY 694",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610010",
+      "geo_name": "BARANGAY 695",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610011",
+      "geo_name": "BARANGAY 696",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610012",
+      "geo_name": "BARANGAY 697",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610013",
+      "geo_name": "BARANGAY 698",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610014",
+      "geo_name": "BARANGAY 699",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610015",
+      "geo_name": "BARANGAY 700",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610016",
+      "geo_name": "BARANGAY 701",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610017",
+      "geo_name": "BARANGAY 702",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610018",
+      "geo_name": "BARANGAY 703",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610019",
+      "geo_name": "BARANGAY 704",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610020",
+      "geo_name": "BARANGAY 705",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610021",
+      "geo_name": "BARANGAY 706",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610022",
+      "geo_name": "BARANGAY 707",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610023",
+      "geo_name": "BARANGAY 708",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610024",
+      "geo_name": "BARANGAY 709",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610025",
+      "geo_name": "BARANGAY 710",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610026",
+      "geo_name": "BARANGAY 711",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610027",
+      "geo_name": "BARANGAY 712",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610028",
+      "geo_name": "BARANGAY 713",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610029",
+      "geo_name": "BARANGAY 714",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610030",
+      "geo_name": "BARANGAY 715",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610031",
+      "geo_name": "BARANGAY 716",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610032",
+      "geo_name": "BARANGAY 717",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610033",
+      "geo_name": "BARANGAY 718",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610034",
+      "geo_name": "BARANGAY 719",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610035",
+      "geo_name": "BARANGAY 720",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610036",
+      "geo_name": "BARANGAY 721",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610037",
+      "geo_name": "BARANGAY 722",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610038",
+      "geo_name": "BARANGAY 723",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610039",
+      "geo_name": "BARANGAY 724",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610040",
+      "geo_name": "BARANGAY 725",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610041",
+      "geo_name": "BARANGAY 726",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610042",
+      "geo_name": "BARANGAY 727",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610043",
+      "geo_name": "BARANGAY 728",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610044",
+      "geo_name": "BARANGAY 729",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610045",
+      "geo_name": "BARANGAY 730",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610046",
+      "geo_name": "BARANGAY 731",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610047",
+      "geo_name": "BARANGAY 732",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610048",
+      "geo_name": "BARANGAY 733",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610052",
+      "geo_name": "BARANGAY 738",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610053",
+      "geo_name": "BARANGAY 739",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610054",
+      "geo_name": "BARANGAY 740",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610055",
+      "geo_name": "BARANGAY 741",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610056",
+      "geo_name": "BARANGAY 742",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610057",
+      "geo_name": "BARANGAY 743",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610058",
+      "geo_name": "BARANGAY 744",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610059",
+      "geo_name": "BARANGAY 688",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610060",
+      "geo_name": "BARANGAY 735",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610061",
+      "geo_name": "BARANGAY 736",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610062",
+      "geo_name": "BARANGAY 737",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380610063",
+      "geo_name": "BARANGAY 734",
+      "citymun_code": "1380610",
+      "citymun_name": "MALATE"
+    },
+    {
+      "geo_code": "1380611001",
+      "geo_name": "BARANGAY 662",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611004",
+      "geo_name": "BARANGAY 664-A",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611005",
+      "geo_name": "BARANGAY 671",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611006",
+      "geo_name": "BARANGAY 672",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611007",
+      "geo_name": "BARANGAY 673",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611008",
+      "geo_name": "BARANGAY 674",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611009",
+      "geo_name": "BARANGAY 675",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611010",
+      "geo_name": "BARANGAY 676",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611011",
+      "geo_name": "BARANGAY 677",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611012",
+      "geo_name": "BARANGAY 678",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611013",
+      "geo_name": "BARANGAY 679",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611014",
+      "geo_name": "BARANGAY 680",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611015",
+      "geo_name": "BARANGAY 681",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611016",
+      "geo_name": "BARANGAY 682",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611017",
+      "geo_name": "BARANGAY 683",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611018",
+      "geo_name": "BARANGAY 684",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611019",
+      "geo_name": "BARANGAY 685",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611023",
+      "geo_name": "BARANGAY 809",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611024",
+      "geo_name": "BARANGAY 810",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611025",
+      "geo_name": "BARANGAY 811",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611026",
+      "geo_name": "BARANGAY 812",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611027",
+      "geo_name": "BARANGAY 813",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611028",
+      "geo_name": "BARANGAY 814",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611029",
+      "geo_name": "BARANGAY 815",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611030",
+      "geo_name": "BARANGAY 816",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611031",
+      "geo_name": "BARANGAY 817",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611032",
+      "geo_name": "BARANGAY 818",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611034",
+      "geo_name": "BARANGAY 819",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611035",
+      "geo_name": "BARANGAY 820",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611036",
+      "geo_name": "BARANGAY 821",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611037",
+      "geo_name": "BARANGAY 822",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611038",
+      "geo_name": "BARANGAY 823",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611039",
+      "geo_name": "BARANGAY 824",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611040",
+      "geo_name": "BARANGAY 825",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611041",
+      "geo_name": "BARANGAY 826",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611042",
+      "geo_name": "BARANGAY 827",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611043",
+      "geo_name": "BARANGAY 828",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611044",
+      "geo_name": "BARANGAY 829",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611045",
+      "geo_name": "BARANGAY 830",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611046",
+      "geo_name": "BARANGAY 831",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611047",
+      "geo_name": "BARANGAY 832",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611048",
+      "geo_name": "BARANGAY 686",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380611049",
+      "geo_name": "BARANGAY 687",
+      "citymun_code": "1380611",
+      "citymun_name": "PACO"
+    },
+    {
+      "geo_code": "1380612001",
+      "geo_name": "BARANGAY 833",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612002",
+      "geo_name": "BARANGAY 834",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612003",
+      "geo_name": "BARANGAY 835",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612004",
+      "geo_name": "BARANGAY 836",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612005",
+      "geo_name": "BARANGAY 837",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612006",
+      "geo_name": "BARANGAY 838",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612007",
+      "geo_name": "BARANGAY 839",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612008",
+      "geo_name": "BARANGAY 840",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612009",
+      "geo_name": "BARANGAY 841",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612010",
+      "geo_name": "BARANGAY 842",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612011",
+      "geo_name": "BARANGAY 843",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612012",
+      "geo_name": "BARANGAY 844",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612013",
+      "geo_name": "BARANGAY 845",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612014",
+      "geo_name": "BARANGAY 846",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612015",
+      "geo_name": "BARANGAY 847",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612016",
+      "geo_name": "BARANGAY 848",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612017",
+      "geo_name": "BARANGAY 849",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612018",
+      "geo_name": "BARANGAY 850",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612019",
+      "geo_name": "BARANGAY 851",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612020",
+      "geo_name": "BARANGAY 852",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612021",
+      "geo_name": "BARANGAY 853",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612023",
+      "geo_name": "BARANGAY 855",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612024",
+      "geo_name": "BARANGAY 856",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612025",
+      "geo_name": "BARANGAY 857",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612026",
+      "geo_name": "BARANGAY 858",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612027",
+      "geo_name": "BARANGAY 859",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612028",
+      "geo_name": "BARANGAY 860",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612029",
+      "geo_name": "BARANGAY 861",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612030",
+      "geo_name": "BARANGAY 862",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612031",
+      "geo_name": "BARANGAY 863",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612032",
+      "geo_name": "BARANGAY 864",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612033",
+      "geo_name": "BARANGAY 865",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612034",
+      "geo_name": "BARANGAY 867",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612035",
+      "geo_name": "BARANGAY 868",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612036",
+      "geo_name": "BARANGAY 870",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612037",
+      "geo_name": "BARANGAY 871",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612038",
+      "geo_name": "BARANGAY 872",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380612039",
+      "geo_name": "BARANGAY 869",
+      "citymun_code": "1380612",
+      "citymun_name": "PANDACAN"
+    },
+    {
+      "geo_code": "1380613001",
+      "geo_name": "BARANGAY 649",
+      "citymun_code": "1380613",
+      "citymun_name": "PORT AREA"
+    },
+    {
+      "geo_code": "1380613002",
+      "geo_name": "BARANGAY 650",
+      "citymun_code": "1380613",
+      "citymun_name": "PORT AREA"
+    },
+    {
+      "geo_code": "1380613003",
+      "geo_name": "BARANGAY 651",
+      "citymun_code": "1380613",
+      "citymun_name": "PORT AREA"
+    },
+    {
+      "geo_code": "1380613004",
+      "geo_name": "BARANGAY 652",
+      "citymun_code": "1380613",
+      "citymun_name": "PORT AREA"
+    },
+    {
+      "geo_code": "1380613005",
+      "geo_name": "BARANGAY 653",
+      "citymun_code": "1380613",
+      "citymun_name": "PORT AREA"
+    },
+    {
+      "geo_code": "1380614002",
+      "geo_name": "BARANGAY 745",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614003",
+      "geo_name": "BARANGAY 746",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614004",
+      "geo_name": "BARANGAY 747",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614005",
+      "geo_name": "BARANGAY 748",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614006",
+      "geo_name": "BARANGAY 749",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614007",
+      "geo_name": "BARANGAY 750",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614008",
+      "geo_name": "BARANGAY 751",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614009",
+      "geo_name": "BARANGAY 752",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614010",
+      "geo_name": "BARANGAY 753",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614011",
+      "geo_name": "BARANGAY 755",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614012",
+      "geo_name": "BARANGAY 756",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614013",
+      "geo_name": "BARANGAY 757",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614014",
+      "geo_name": "BARANGAY 758",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614015",
+      "geo_name": "BARANGAY 759",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614016",
+      "geo_name": "BARANGAY 760",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614017",
+      "geo_name": "BARANGAY 761",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614018",
+      "geo_name": "BARANGAY 762",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614019",
+      "geo_name": "BARANGAY 763",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614020",
+      "geo_name": "BARANGAY 764",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614021",
+      "geo_name": "BARANGAY 765",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614022",
+      "geo_name": "BARANGAY 766",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614023",
+      "geo_name": "BARANGAY 767",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614024",
+      "geo_name": "BARANGAY 768",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614025",
+      "geo_name": "BARANGAY 769",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614026",
+      "geo_name": "BARANGAY 770",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614027",
+      "geo_name": "BARANGAY 771",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614028",
+      "geo_name": "BARANGAY 772",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614029",
+      "geo_name": "BARANGAY 773",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614030",
+      "geo_name": "BARANGAY 774",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614031",
+      "geo_name": "BARANGAY 775",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614032",
+      "geo_name": "BARANGAY 776",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614033",
+      "geo_name": "BARANGAY 777",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614034",
+      "geo_name": "BARANGAY 778",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614035",
+      "geo_name": "BARANGAY 779",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614036",
+      "geo_name": "BARANGAY 780",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614037",
+      "geo_name": "BARANGAY 781",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614038",
+      "geo_name": "BARANGAY 782",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614039",
+      "geo_name": "BARANGAY 783",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614040",
+      "geo_name": "BARANGAY 784",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614041",
+      "geo_name": "BARANGAY 785",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614042",
+      "geo_name": "BARANGAY 786",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614043",
+      "geo_name": "BARANGAY 787",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614044",
+      "geo_name": "BARANGAY 788",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614045",
+      "geo_name": "BARANGAY 789",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614046",
+      "geo_name": "BARANGAY 790",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614047",
+      "geo_name": "BARANGAY 791",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614048",
+      "geo_name": "BARANGAY 792",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614049",
+      "geo_name": "BARANGAY 793",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614050",
+      "geo_name": "BARANGAY 794",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614051",
+      "geo_name": "BARANGAY 795",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614052",
+      "geo_name": "BARANGAY 796",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614053",
+      "geo_name": "BARANGAY 797",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614054",
+      "geo_name": "BARANGAY 798",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614055",
+      "geo_name": "BARANGAY 799",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614056",
+      "geo_name": "BARANGAY 800",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614057",
+      "geo_name": "BARANGAY 801",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614058",
+      "geo_name": "BARANGAY 802",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614059",
+      "geo_name": "BARANGAY 803",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614060",
+      "geo_name": "BARANGAY 804",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614061",
+      "geo_name": "BARANGAY 805",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614062",
+      "geo_name": "BARANGAY 806",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614063",
+      "geo_name": "BARANGAY 807",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614064",
+      "geo_name": "BARANGAY 866",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614066",
+      "geo_name": "BARANGAY 873",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614067",
+      "geo_name": "BARANGAY 874",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614068",
+      "geo_name": "BARANGAY 875",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614069",
+      "geo_name": "BARANGAY 876",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614070",
+      "geo_name": "BARANGAY 877",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614071",
+      "geo_name": "BARANGAY 878",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614072",
+      "geo_name": "BARANGAY 879",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614073",
+      "geo_name": "BARANGAY 880",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614074",
+      "geo_name": "BARANGAY 881",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614075",
+      "geo_name": "BARANGAY 882",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614076",
+      "geo_name": "BARANGAY 883",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614077",
+      "geo_name": "BARANGAY 884",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614078",
+      "geo_name": "BARANGAY 885",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614079",
+      "geo_name": "BARANGAY 886",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614080",
+      "geo_name": "BARANGAY 887",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614081",
+      "geo_name": "BARANGAY 888",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614082",
+      "geo_name": "BARANGAY 889",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614083",
+      "geo_name": "BARANGAY 890",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614084",
+      "geo_name": "BARANGAY 891",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614085",
+      "geo_name": "BARANGAY 892",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614086",
+      "geo_name": "BARANGAY 893",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614087",
+      "geo_name": "BARANGAY 894",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614088",
+      "geo_name": "BARANGAY 895",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614089",
+      "geo_name": "BARANGAY 896",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614090",
+      "geo_name": "BARANGAY 897",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614091",
+      "geo_name": "BARANGAY 898",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614092",
+      "geo_name": "BARANGAY 899",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614093",
+      "geo_name": "BARANGAY 900",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614094",
+      "geo_name": "BARANGAY 901",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614095",
+      "geo_name": "BARANGAY 902",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614096",
+      "geo_name": "BARANGAY 903",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614097",
+      "geo_name": "BARANGAY 904",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614098",
+      "geo_name": "BARANGAY 905",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614099",
+      "geo_name": "BARANGAY 754",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614100",
+      "geo_name": "BARANGAY 808",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1380614101",
+      "geo_name": "BARANGAY 818-A",
+      "citymun_code": "1380614",
+      "citymun_name": "SANTA ANA"
+    },
+    {
+      "geo_code": "1400104001",
+      "geo_name": "DUCLIGAN",
+      "citymun_code": "1400104",
+      "citymun_name": "BUCLOC"
+    },
+    {
+      "geo_code": "1400106007",
+      "geo_name": "PADANGITAN",
+      "citymun_code": "1400106",
+      "citymun_name": "DANGLAS"
+    },
+    {
+      "geo_code": "1400106008",
+      "geo_name": "PANGAL",
+      "citymun_code": "1400106",
+      "citymun_name": "DANGLAS"
+    },
+    {
+      "geo_code": "1606801027",
+      "geo_name": "GUINHALINAN",
+      "citymun_code": "1606801",
+      "citymun_name": "BAROBO"
+    },
+    {
+      "geo_code": "1903617146",
+      "geo_name": "ANGOYAO",
+      "citymun_code": "1903617",
+      "citymun_name": "CITY OF MARAWI (CAPITAL)"
+    },
+    {
+      "geo_code": "1903617147",
+      "geo_name": "SULTAN COROBONG",
+      "citymun_code": "1903617",
+      "citymun_name": "CITY OF MARAWI (CAPITAL)"
+    },
+    {
+      "geo_code": "1903617148",
+      "geo_name": "SULTAN PANOROGANAN",
+      "citymun_code": "1903617",
+      "citymun_name": "CITY OF MARAWI (CAPITAL)"
+    },
+    {
+      "geo_code": "1999904007",
+      "geo_name": "DUNGUAN",
+      "citymun_code": "1999904",
+      "citymun_name": "NABALAWAG"
+    },
+    {
+      "geo_code": "1999908009",
+      "geo_name": "MACABUAL",
+      "citymun_code": "1999908",
+      "citymun_name": "TUGUNAN"
+    },
+    {
+      "geo_code": "1999908010",
+      "geo_name": "PANICUPAN",
+      "citymun_code": "1999908",
+      "citymun_name": "TUGUNAN"
+    }
+  ],
+  "source_features_unmatched": [
+    {
+      "geo_code": "0908311008",
+      "citymun_code": "0908311"
+    },
+    {
+      "geo_code": "1380100176",
+      "citymun_code": "1380100"
+    },
+    {
+      "geo_code": "1606801010",
+      "citymun_code": "1606801"
+    },
+    {
+      "geo_code": "1903617016",
+      "citymun_code": "1903617"
+    },
+    {
+      "geo_code": "1903617040",
+      "citymun_code": "1903617"
+    },
+    {
+      "geo_code": "1903617052",
+      "citymun_code": "1903617"
+    },
+    {
+      "geo_code": "1903617099",
+      "citymun_code": "1903617"
+    },
+    {
+      "geo_code": "1903617119",
+      "citymun_code": "1903617"
+    },
+    {
+      "geo_code": "1999906008",
+      "citymun_code": "1999906"
+    },
+    {
+      "geo_code": "1999907007",
+      "citymun_code": "1999907"
+    },
+    {
+      "geo_code": "1999908003",
+      "citymun_code": "1999908"
+    }
+  ],
+  "placed": 41085
+}
