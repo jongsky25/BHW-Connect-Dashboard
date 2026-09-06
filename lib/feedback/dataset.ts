@@ -24,6 +24,7 @@ const SECTIONS: readonly { prefix: string; slug: string }[] = [
   // The 2025 BHW Census: its landing page and the per-place profiles built from it.
   { prefix: "/bhw", slug: DATASET_SLUGS.profiled },
   { prefix: "/place", slug: DATASET_SLUGS.profiled },
+  { prefix: "/facilities", slug: DATASET_SLUGS.nhfr },
 ];
 
 export function datasetSlugForPath(pagePath: string | null | undefined): string | null {

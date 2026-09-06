@@ -14,6 +14,8 @@ describe("datasetSlugForPath", () => {
     expect(datasetSlugForPath("/profiling-status/region/07")).toBe("bhw-profiling-status-2026");
     expect(datasetSlugForPath("/bhw")).toBe("bhw-2025");
     expect(datasetSlugForPath("/place/citymun/0102804")).toBe("bhw-2025");
+    expect(datasetSlugForPath("/facilities")).toBe("nhfr-2026-09");
+    expect(datasetSlugForPath("/facilities/region/14")).toBe("nhfr-2026-09");
   });
 
   it("returns null on multi-dataset surfaces rather than picking one", () => {
