@@ -9328,3 +9328,33 @@ a field addition to `FACILITIES_SCOPE`, not a rewrite, on `UUC_PHC_SCOPE`'s prec
 `components/narrative/ai-insight.tsx` and `lib/ai/narrative.ts` needed no change — both already
 resolve a scope generically from `narrativeType` via `scopeForNarrativeType`, which is the whole
 point of the field being optional rather than a hardcoded union of surfaces.
+
+## 2026-09-06 — Facilities: Present mode
+
+Wired `PresentationProvider`/`PresentationSlide`/`PresentButton` onto `app/facilities/page.tsx`
+and `app/facilities/[geoLevel]/[geoCode]/page.tsx`, the last item of the debt the NHFR load
+recorded up front ("Present mode, the PNG one-pager, dataset-aware feedback routing and an AI
+insight slot are likewise not built") — the AI insight slot was filled first, as its own entry
+above notes, leaving this one. `/uuc-phc`'s deck is the direct precedent: a section with its own
+identity gets its own `brandLabel` rather than presenting under "BHW Connect".
+
+`NHFR_BRAND_LABEL` and `nhfrCaption` already existed in `lib/db/nhfr.ts` (N4/N5's precedent, one
+step ahead of this wiring), so `deckMeta` needed no new dataset code — just assembling the same
+shape `/uuc-phc` and `/place` already build.
+
+**Landing page**: three slides — `coverage` (stats + coverage bar), `types` (facility-type
+breakdown), `regions` (the region `ChildBreakdown`). The methodology paragraph and `AskFacilities`
+stay outside the deck, on both existing pages' precedent (a chat launcher is not a finding).
+
+**Area page**: `coverage`, `types`, then a conditional slide — `facility-list` at
+city/municipality, `areas` (titled from `CHILD_HEADING`) everywhere else — and finally `ai-insight`,
+wrapping the `AiInsight` block that had been sitting as a plain, un-decked section since the prior
+entry. This is the gap the task named directly: that slot was added as a plain section specifically
+because this wiring didn't exist yet. `PresentButton` sits beside the page's own `<h1>`, inside the
+provider, matching where `/uuc-phc` and `/place/*` put it.
+
+`deckMeta.filterChips` uses `crumbAncestors` (region/province/citymun names already computed for
+the breadcrumb trail) rather than introducing a second ancestor list. `nhfrCaption` handles a null
+`counts` the same way it does everywhere else — an "N = —" line — so `deckMeta` builds
+unconditionally and the `!counts` branch simply registers no slides; `PresentButton` already
+no-ops when `slides.length === 0`, so no extra guard was needed there.
