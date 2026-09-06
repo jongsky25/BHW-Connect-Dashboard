@@ -5,11 +5,13 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PORTAL_CRUMB, FACILITIES_CRUMB } from "@/lib/nav/breadcrumbs";
 import { getGeoAncestors, getGeoByCode } from "@/lib/db/geo";
 import {
+  NHFR_BRAND_LABEL,
   getNhfrChildren,
   getNhfrCounts,
   getNhfrFacilities,
   getNhfrStaticParams,
   getNhfrTypes,
+  nhfrCaption,
 } from "@/lib/db/nhfr";
 import { GEO_LEVELS, type GeoLevel } from "@/lib/filters/schema";
 import { formatCount } from "@/lib/format";
@@ -20,6 +22,9 @@ import { TypeBreakdown } from "@/components/facilities/type-breakdown";
 import { FacilityList } from "@/components/facilities/facility-list";
 import { AskFacilities } from "@/components/facilities/ask-facilities";
 import { AiInsight } from "@/components/narrative/ai-insight";
+import { PresentationProvider } from "@/components/present/presentation-context";
+import { PresentationSlide } from "@/components/present/presentation-slide";
+import { PresentButton } from "@/components/present/present-button";
 
 // 1 hour. ISR: citymun render on demand; region/province are prerendered. Same reasoning as the
 // landing page — a shorter window bounds how long a transient empty read can stay cached.
@@ -93,82 +98,106 @@ export default async function FacilitiesAreaPage({ params }: { params: Promise<P
     ? Math.max(0, counts.nBarangays - counts.nBarangaysWithFacility)
     : 0;
 
+  // Title-slide facts for presentation mode (serializable, server → client). brandLabel keeps the
+  // deck from presenting this dataset under the BHW Census's name (UUC_PHC_BRAND_LABEL's
+  // precedent).
+  const deckMeta = {
+    pageLabel: "Area profile",
+    areaName: geo.geoName,
+    filterChips: crumbAncestors.map((a) => a.geoName),
+    captionLine: nhfrCaption(counts, geo.geoName),
+    brandLabel: NHFR_BRAND_LABEL,
+  };
+
   return (
-    <div className="flex flex-col gap-8">
-      {/* Built here rather than by the layout's SiteBreadcrumbs because the ancestor names come
-          from the database. */}
-      <Breadcrumbs
-        items={[
-          PORTAL_CRUMB,
-          FACILITIES_CRUMB,
-          ...crumbAncestors.map((a) => ({
-            label: a.geoName,
-            href: `/facilities/${a.geoLevel}/${a.geoCode}`,
-          })),
-          { label: geo.geoName },
-        ]}
-      />
+    <PresentationProvider meta={deckMeta}>
+      <div className="flex flex-col gap-8">
+        {/* Built here rather than by the layout's SiteBreadcrumbs because the ancestor names come
+            from the database. */}
+        <Breadcrumbs
+          items={[
+            PORTAL_CRUMB,
+            FACILITIES_CRUMB,
+            ...crumbAncestors.map((a) => ({
+              label: a.geoName,
+              href: `/facilities/${a.geoLevel}/${a.geoCode}`,
+            })),
+            { label: geo.geoName },
+          ]}
+        />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geo.geoName}</h1>
-      </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{geo.geoName}</h1>
+          <PresentButton variant="secondary" />
+        </div>
 
-      {!counts ? (
-        <p className="text-muted">Facility data is not available for this area right now.</p>
-      ) : (
-        <>
-          <section className="rounded-lg border border-border bg-background p-5 sm:p-6">
-            <FacilityStats counts={counts} />
-            <div className="mt-6 border-t border-border pt-5">
-              <h2 className="text-sm font-semibold">Barangays with at least one facility</h2>
-              <div className="mt-3">
-                <CoverageBar counts={counts} />
-              </div>
-              {withoutFacility > 0 && (
-                <p className="mt-3 text-xs text-muted">
-                  {formatCount(withoutFacility)}{" "}
-                  {withoutFacility === 1 ? "barangay has" : "barangays have"} no registered health
-                  facility.
-                </p>
-              )}
-            </div>
-          </section>
+        {!counts ? (
+          <p className="text-muted">Facility data is not available for this area right now.</p>
+        ) : (
+          <>
+            <PresentationSlide id="coverage" title="Barangays with at least one facility">
+              <section className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                <FacilityStats counts={counts} />
+                <div className="mt-6 border-t border-border pt-5">
+                  <h2 className="text-sm font-semibold">Barangays with at least one facility</h2>
+                  <div className="mt-3">
+                    <CoverageBar counts={counts} />
+                  </div>
+                  {withoutFacility > 0 && (
+                    <p className="mt-3 text-xs text-muted">
+                      {formatCount(withoutFacility)}{" "}
+                      {withoutFacility === 1 ? "barangay has" : "barangays have"} no registered
+                      health facility.
+                    </p>
+                  )}
+                </div>
+              </section>
+            </PresentationSlide>
 
-          <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-            <TypeBreakdown items={types} />
-          </div>
-
-          {isCitymun ? (
-            <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-              <FacilityList facilities={facilities} expectedCount={counts.nFacilities} />
-            </div>
-          ) : (
-            childHeading && (
+            <PresentationSlide id="types" title="Facility types">
               <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-                <ChildBreakdown heading={childHeading} items={children} />
+                <TypeBreakdown items={types} />
               </div>
-            )
-          )}
+            </PresentationSlide>
 
-          <AiInsight
-            geoCode={geo.geoCode}
-            geoLevel={geo.geoLevel}
-            geoName={geo.geoName}
-            narrativeType="facilities_overview"
-            methodologyHref="/facilities/methodology#ask"
-          />
-        </>
-      )}
+            {isCitymun ? (
+              <PresentationSlide id="facility-list" title="Facilities">
+                <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                  <FacilityList facilities={facilities} expectedCount={counts.nFacilities} />
+                </div>
+              </PresentationSlide>
+            ) : (
+              childHeading && (
+                <PresentationSlide id="areas" title={childHeading}>
+                  <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                    <ChildBreakdown heading={childHeading} items={children} />
+                  </div>
+                </PresentationSlide>
+              )
+            )}
 
-      <p className="text-sm text-muted">
-        Source: DOH National Health Facility Registry, September 2026 snapshot. See the{" "}
-        <Link href="/facilities/methodology" className="underline hover:text-accent">
-          methodology
-        </Link>{" "}
-        for what the registry does and does not record.
-      </p>
+            <PresentationSlide id="ai-insight" title="AI insight">
+              <AiInsight
+                geoCode={geo.geoCode}
+                geoLevel={geo.geoLevel}
+                geoName={geo.geoName}
+                narrativeType="facilities_overview"
+                methodologyHref="/facilities/methodology#ask"
+              />
+            </PresentationSlide>
+          </>
+        )}
 
-      <AskFacilities geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
-    </div>
+        <p className="text-sm text-muted">
+          Source: DOH National Health Facility Registry, September 2026 snapshot. See the{" "}
+          <Link href="/facilities/methodology" className="underline hover:text-accent">
+            methodology
+          </Link>{" "}
+          for what the registry does and does not record.
+        </p>
+
+        <AskFacilities geoCode={geo.geoCode} geoLevel={geo.geoLevel} geoName={geo.geoName} />
+      </div>
+    </PresentationProvider>
   );
 }
