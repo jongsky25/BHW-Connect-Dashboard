@@ -26,7 +26,8 @@ workforce works alongside — as a normal dataset increment on the existing path
 (ingest → `dim_dataset` → fact → aggregate → section), exactly as `uuc-phc-2025` was built.
 
 **Scope (owner-selected):** core dataset + section. No AI chat, no present mode, no PNG one-pager
-in this pass — the `/uuc-phc` U5–U12 equivalents are deliberately deferred (see §Deferred).
+in this pass — the `/uuc-phc` U5–U12 equivalents are deliberately deferred (see §Deferred; by
+2026-09-06 all but the point map have since been built).
 
 ---
 
@@ -251,6 +252,11 @@ the *allowlist* for AI chat — `queryDataset` refuses a table with no approved 
 NHFR is unreachable from chat until this lands), present mode, PNG one-pager, dataset-aware
 feedback routing, AI insight slot. Recorded as known debt in `docs/DECISIONS.md` rather than left
 implicit — that is precisely the debt the UUC build had to pay back in U5.
+
+**Paid back since:** the registry rows (N5), AI chat wiring (N6), the AI insight slot, present
+mode, dataset-aware feedback routing, and the PNG one-pager (`lib/exports/nhfr-figure.ts` +
+`app/api/export/facilities`) are all built — see their dated `docs/DECISIONS.md` entries. The one
+piece of this list still deferred is the facility **point map**, below.
 
 A facility **point map** is also deferred: `components/maps/choropleth-map.tsx` is polygon-only
 (`fill`/`line` paint driven by quantile bins) and a point layer with clustering is a genuine

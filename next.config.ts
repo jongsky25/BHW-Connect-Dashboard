@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
     "/api/export/png": ["./lib/exports/fonts/*.ttf"],
     "/api/export/pptx": ["./lib/exports/fonts/*.ttf"],
     "/api/export/profiling-status": ["./lib/exports/fonts/*.ttf"],
+    "/api/export/facilities": ["./lib/exports/fonts/*.ttf"],
+    // Missing until now: this route rasterizes with the same resvg + bundled-font path and hit
+    // the identical blank-text failure on Vercel (its docblock names DejaVu Sans as the fix, but
+    // the include list here never named this route).
+    "/api/export/uuc-phc": ["./lib/exports/fonts/*.ttf"],
   },
 };
 

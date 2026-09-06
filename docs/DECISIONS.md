@@ -9359,19 +9359,74 @@ the breadcrumb trail) rather than introducing a second ancestor list. `nhfrCapti
 unconditionally and the `!counts` branch simply registers no slides; `PresentButton` already
 no-ops when `slides.length === 0`, so no extra guard was needed there.
 
-## 2026-09-06 — Facilities: the PNG one-pager
+## 2026-09-06 — Facilities: the PNG one-pager, the last item of the NHFR deferral list
 
-The last item of the NHFR load's deferred debt list ("Present mode, the PNG one-pager,
-dataset-aware feedback routing and an AI insight slot are likewise not built") — present mode
-landed above, and dataset-aware feedback routing landed in between (`{ prefix: "/facilities",
-slug: DATASET_SLUGS.nhfr }` in `lib/feedback/dataset.ts`), leaving only this one.
+`lib/exports/nhfr-figure.ts` + `app/api/export/facilities`, mirroring `uuc-phc-figure.ts` — same
+canvas, same resvg path, same bundled-font constraint — but with two bars, not one: `lib/db/nhfr.ts`
+supports exactly two exhaustive binary splits (barangay coverage, ownership), and neither aggregate
+table carries a third one to draw. `composeNhfrFigureSvg` is split out as a pure function of
+already-fetched data (`buildNhfrFigure` does the fetching), so its content rules are unit-tested
+rather than only eyeballed — `uuc-phc-figure.ts`'s `wrapNames` is the only export it could test.
 
-`app/facilities/opengraph-image.tsx` and `app/facilities/[geoLevel]/[geoCode]/opengraph-image.tsx`,
-mirroring `app/uuc-phc/opengraph-image.tsx` and its area equivalent (U4's rule): the count is the
-headline, one string per line (Satori throws on a multi-child `<div>` with no explicit `display`),
-and a zero renders as a zero — `agg_nhfr_counts` carries a row for every geography, so an area with
-nothing registered reads "0 health facilities · 0 of N barangays have at least one" rather than
-omitting the line.
+- **No licensing figure, anywhere on the sheet.** Neither `agg_nhfr_counts` nor `agg_nhfr_by_type`
+  carries a licensing column — `FacilityStats`' "no % licensed tile" rule isn't a choice this sheet
+  could reverse even if it wanted to. The footer states the omission instead of leaving it silent,
+  in the same words the rule is stated elsewhere: a blank never means unlicensed.
+- **The facility-type table reuses `agg_nhfr_by_type`'s own order** (already sorted descending by
+  count) rather than re-sorting, capped at 20 rows with the omitted count and its facility total
+  named — the same "+N more" discipline `uuc-phc-figure.ts`'s child table and barangay-name list
+  both use.
+- **The child table's sort had to be inverted from `uuc-phc-figure.ts`'s.** That sheet ranks by
+  share descending; `ChildBreakdown` on `/facilities` ranks by coverage *ascending* (least-covered
+  first, nulls last) because a raw count just re-ranks areas by size and the question this dataset
+  answers is where there is nothing. Copying uuc-phc's sort verbatim would have made the PNG and
+  the on-screen table disagree about which area to look at first — copied the comparator instead.
+- **The city/municipality leaf names facilities, not barangays** — the one real divergence from
+  uuc-phc's citymun sheet, which names listed barangays because that dataset's leaf answer is
+  membership. NHFR's leaf answer is "which facilities, and what kind," and a city can carry
+  hundreds of them where a town carries dozens of barangays. Named individually: every facility
+  other than a Barangay Health Station, capped at 40 (`wrapNames` again), with the station count
+  stated rather than silently absorbed into the omission — BHS is already a numbered row in the
+  facility-type table above it, so nothing is actually lost by not naming those individually.
+- **A real bug caught by rendering and looking, not by any test or type check:** the first render
+  of the licensing-caveat footer line ran to 161 characters and overflowed the canvas edge —
+  `uuc-phc-figure.ts`'s own footer-overflow fix (`docs/DECISIONS.md`'s "footerLines, plural") is a
+  documented failure mode of this exact SVG-composition style, and this file reproduced it anyway
+  on a new sentence. Fixed the same way: four short footer lines instead of three longer ones.
+- **`next.config.ts`'s `outputFileTracingIncludes` was missing an entry for `/api/export/uuc-phc`**,
+  found while adding this route's own entry. That route rasterizes through the identical
+  `resvgFont()` path and would have shipped the same blank-text-on-Vercel failure the comment above
+  the block describes; added both entries in this change.
+
+**Verify.** Rendered and visually inspected against the live `bhw-connect` Supabase project (not
+just unit fixtures): national (18 regions, all present; CAR near the middle of the coverage
+ranking), Region IV-A/CALABARZON (the largest region, 5,490 facilities), a single-city province
+(Pateros, 14 facilities, 1-row child table), and Quezon City (784 facilities, the largest
+city/municipality — exercises both the type-table cap and the named-facility cap). 400 on missing
+params and on `geoLevel=barangay` (the registry publishes nothing at that grain); 404 on an unknown
+geo code. `lib/exports/nhfr-figure.test.ts` (13 tests, covering the type-table truncation line, the
+inverted child sort, the zero-facility and zero-barangay-denominator states, XML-escaping of a
+facility name, and the BHS-naming rule) plus the full suite (1,197 tests), `npm run lint`, and
+`npm run typecheck` all pass.
+
+## 2026-09-06 — Facilities: social-share cards for the section (a second, unrelated "PNG")
+
+Landed concurrently with the entry above, on a separate branch, under the same working title —
+worth reconciling here since both entries otherwise claim to close the same debt item.
+`docs/NHFR_2026_PLAN.md`'s Deferred section named "the PNG one-pager" after `docs/UUC_PHC_2025_PLAN.md`'s
+**U4**, which is specifically `lib/exports/uuc-phc-figure.ts` + `app/api/export/uuc-phc` — the
+downloadable one-page summary sheet the entry above builds the NHFR equivalent of. `opengraph-image.tsx`
+is a different, older convention that `/uuc-phc`, `/place`, `/bhw` and the site root already carry
+independent of U4 — Next.js's per-route social-card file, rendered on link unfurl rather than
+downloaded. `/facilities` simply didn't have one yet, which this closes, but it is not the U4-style
+one-pager the plan deferred; that gap is what the entry above fills.
+
+Both are real, independent, non-conflicting improvements, so both ship: `app/facilities/opengraph-image.tsx`
+and `app/facilities/[geoLevel]/[geoCode]/opengraph-image.tsx`, mirroring `app/uuc-phc/opengraph-image.tsx`
+and its area equivalent: the count is the headline, one string per line (Satori throws on a
+multi-child `<div>` with no explicit `display`), and a zero renders as a zero —
+`agg_nhfr_counts` carries a row for every geography, so an area with nothing registered reads "0
+health facilities · 0 of N barangays have at least one" rather than omitting the line.
 
 **No indicator to strand, so nothing to exclude.** U4's restraint was about a capped/footnoted
 indicator value that a 1200×630 card has nowhere to attach a † to; NHFR carries no such values at
@@ -9383,5 +9438,5 @@ Verified by rendering, not just status-checking, since neither Satori's multi-ch
 a stray un-awaited `params` shows up in lint or typecheck: the landing card renders correctly
 against live counts; the area card's JSX was verified against a disposable scratch route with
 hardcoded values (`getGeoByCode`/`getNhfrCounts` need `NEXT_PUBLIC_SUPABASE_URL`, unavailable in
-this environment — the same 500 the existing `/uuc-phc` and `/place` area cards give here, not a
+that environment — the same 500 the existing `/uuc-phc` and `/place` area cards give there, not a
 defect in the new code) and produces the same well-formed 1200×630 PNG.
