@@ -9524,3 +9524,53 @@ fact.
 files with no diff and regenerates the report; `lib/geo/facility-points.test.ts` covers the pure
 builder including the truncation, null-barangay, foreign-barangay and no-centroid paths; lint,
 typecheck and the full unit suite green.
+
+## 2026-09-06 — Re-scoping DOH FHSIS: the access question was never the real one
+
+`docs/DATASET_SCOPING.md` §3 carried FHSIS as "highest potential value, highest access
+uncertainty," bundled with NHFR's old "needs a DOH relationship" verdict — the same mistaken
+verdict NHFR itself carried until someone actually checked it against
+`docs/EXPLORE_ENHANCEMENT_PLAN.md:19`'s owner decision. That entry already predicted this: *"FHSIS
+may well be the same; it is worth re-checking on its own terms rather than inheriting NHFR's old
+blocked verdict."* This is that re-check.
+
+**Findings, from independent secondary sources — GHDx's catalog record, the FOI portal, and
+regional Centers for Health Development listings — not from an opened report.** Every
+`doh.gov.ph` subdomain returned HTTP 403 to this session's fetch tools (confirmed directly via
+`curl`, matching `docs/EXPLORE_PAGE_REVIEW.md`'s existing note that PSA/DOH/HDX sites partially
+block automated fetchers), and a headless-browser workaround was refused by this session's
+permission classifier — so nothing below substitutes for a human opening an actual PDF.
+
+- **License is not the blocker.** FHSIS annual reports are Philippine government work (IP Code, RA
+  8293 §176 — no copyright in works of government employees acting in an official capacity), the
+  same basis already used here for the DOF/BLGF income-classification table, and already
+  pre-approved by the owner's blanket decision covering "NHFR/FHSIS" together. The scoping doc's
+  "likely requires a direct DOH request" line was never re-tested against that decision, the exact
+  gap that also kept NHFR mis-filed as blocked for months.
+- **Public and PDF-only.** National annual reports are posted at `doh.gov.ph` (confirmed for at
+  least 2014–2023), and several regional CHD offices publish their own regional editions
+  independently (2024 editions already exist for at least two regions ahead of any national
+  consolidated one found). No bulk export exists — PDF is the only format at the primary source.
+  A `data.gov.ph` listing with a CSV resource exists under the same name, but the only date range
+  attached to it that surfaced is 2007–2011; likely stale, unverifiable from this session since
+  `data.gov.ph` renders dataset pages client-side.
+- **The content is better than the plan assumed.** GHDx's series description states FHSIS tables
+  break down by **region, province, and city** — finer than `docs/EXPLORE_ENHANCEMENT_PLAN.md`
+  E4.6's "province grain" assumption — and includes a "Ratio of Health Care Workers to Population"
+  table carrying an **Active BHW count**, independent of this project's own profiling pipeline.
+  That is the second official BHW headcount `docs/EXPLORE_PAGE_REVIEW.md` wanted for a
+  reconciliation story on the shape of the existing 277,767-vs-278,240 one.
+- **What's still unverified, and why it's the real question now:** whether a given year's PDF is
+  native text or a scanned image needing OCR (the single biggest effort swing), and whether
+  province/city names in the tables are clean enough for a name-match join to `dim_geo`. Neither
+  is answerable without opening a real file.
+
+**Verdict, and the concrete next step.** Access is settled; what remains is a cheap,
+one-file question, not a licensing negotiation. Updated `docs/DATASET_SCOPING.md` §3 and its
+Recommendation section in place (NHFR-entry-update precedent) rather than writing a full build
+plan: unlike NHFR, there is no export file in hand yet to scope against. The next actionable step
+is a human downloading one recent national or regional FHSIS annual report PDF in an actual
+browser into `ingestion/data/` — that single file is what actually unblocks this candidate, the
+same way obtaining NHFR's export, not a license letter, is what unblocked that one. PSA population
+remains the recommended next build regardless: it's a ready tabular load with a confirmed-clean
+PSGC join, while FHSIS's cost still hinges on that unanswered extraction question.
