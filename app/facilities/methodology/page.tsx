@@ -95,6 +95,33 @@ export default function FacilitiesMethodology() {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold tracking-tight">The map on city pages</h2>
+        <p className="text-sm text-muted">
+          <strong>The registry records no coordinates.</strong> It says which barangay a facility
+          is in, and nothing more precise than that. So the map on a city or municipality page
+          draws one circle per <em>barangay</em>, at a point inside the barangay&apos;s own
+          boundary, sized by how many facilities are registered there. A circle is a barangay, not
+          a building — nothing on this site shows where a health facility stands within its
+          barangay, because the source does not know.
+        </p>
+        <p className="text-sm text-muted">
+          Barangays with no registered facility are drawn too, as empty rings. They are the reason
+          the map exists: the coverage figure on every page says how many barangays have nothing,
+          and the map is the same figure with the empty ones in their actual places.
+        </p>
+        <p className="text-sm text-muted">
+          The barangay boundaries come from the same community-maintained, PSA-derived boundary set
+          this site uses for its region, province and city maps (2023 PSGC series). It covers 41,085
+          of this site&apos;s 41,991 barangays. Of the 906 it does not cover, 883 are the City of
+          Manila&apos;s sub-municipalities, which that boundary set has no barangay outlines for in
+          any of its published vintages; Manila&apos;s facility pages therefore show the facility
+          list with no map above it, rather than a map missing every point. Everywhere else, a
+          barangay that cannot be placed is counted out loud beneath the map, and the facility list
+          below it is complete either way.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold tracking-tight">What is deliberately not published</h2>
         <p className="text-sm text-muted">
           The source export carries contact columns — email addresses, landline and fax numbers,

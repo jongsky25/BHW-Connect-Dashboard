@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PORTAL_CRUMB, FACILITIES_CRUMB } from "@/lib/nav/breadcrumbs";
-import { getGeoAncestors, getGeoByCode } from "@/lib/db/geo";
+import { getChildGeos, getGeoAncestors, getGeoByCode } from "@/lib/db/geo";
+import { getProvinceBarangayCentroids } from "@/lib/geo/barangay-centroids";
+import { buildFacilityPoints } from "@/lib/geo/facility-points";
 import {
   NHFR_BRAND_LABEL,
   getNhfrChildren,
@@ -20,6 +22,7 @@ import { CoverageBar } from "@/components/facilities/coverage-bar";
 import { ChildBreakdown } from "@/components/facilities/child-breakdown";
 import { TypeBreakdown } from "@/components/facilities/type-breakdown";
 import { FacilityList } from "@/components/facilities/facility-list";
+import { FacilityMap } from "@/components/facilities/facility-map";
 import { DownloadLinks } from "@/components/facilities/download-links";
 import { AskFacilities } from "@/components/facilities/ask-facilities";
 import { AiInsight } from "@/components/narrative/ai-insight";
@@ -82,17 +85,35 @@ export default async function FacilitiesAreaPage({ params }: { params: Promise<P
   if (geo.geoLevel === "barangay") notFound();
 
   const isCitymun = geo.geoLevel === "citymun";
-  const [counts, children, types, facilities, ancestors] = await Promise.all([
+  const [counts, children, types, facilities, ancestors, barangays] = await Promise.all([
     getNhfrCounts(geo.geoCode, geo.geoLevel),
     getNhfrChildren(geo.geoCode, geo.geoLevel),
     getNhfrTypes(geo.geoCode, geo.geoLevel),
     isCitymun ? getNhfrFacilities(geo.geoCode) : Promise.resolve([]),
     getGeoAncestors(geo.geoCode, geo.geoLevel),
+    // The map's barangays come from dim_geo, not from the facility rows: a barangay with no
+    // facility has no row to be found in, and those are exactly the ones the map exists to show.
+    isCitymun ? getChildGeos(geo.geoCode, "citymun") : Promise.resolve([]),
   ]);
 
   const crumbAncestors = [ancestors.region, ancestors.province, ancestors.citymun].filter(
     (a): a is NonNullable<typeof a> => a !== null && a.geoCode !== geo.geoCode,
   );
+
+  // Point-map data, city/municipality only. Higher levels get the choropleth-shaped question
+  // ("how many, per area") answered by ChildBreakdown; a national canvas of 42,000 barangay dots
+  // would be neither readable nor within the mobile payload budget (BUILD_PLAN §5).
+  const pointData =
+    isCitymun && counts && barangays.length > 0
+      ? buildFacilityPoints({
+          barangays,
+          centroids: ancestors.province
+            ? await getProvinceBarangayCentroids(ancestors.province.geoCode)
+            : new Map(),
+          facilities,
+          expectedFacilities: counts.nFacilities,
+        })
+      : null;
 
   const childHeading = CHILD_HEADING[geo.geoLevel];
   const withoutFacility = counts
@@ -165,11 +186,33 @@ export default async function FacilitiesAreaPage({ params }: { params: Promise<P
             </PresentationSlide>
 
             {isCitymun ? (
-              <PresentationSlide id="facility-list" title="Facilities">
-                <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
-                  <FacilityList facilities={facilities} expectedCount={counts.nFacilities} />
-                </div>
-              </PresentationSlide>
+              <>
+                {/* Rendered only when there is something to place. A city/municipality whose
+                    barangays are all missing from the boundary source (Manila's 14
+                    sub-municipalities — see docs/BARANGAY_CENTROID_RECONCILIATION.md) gets no
+                    empty map frame; the facility list below is the whole figure there. */}
+                {pointData && pointData.points.length > 0 && (
+                  <PresentationSlide id="facility-map" title="Which barangays have facilities">
+                    <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                      <FacilityMap
+                        data={pointData}
+                        areaName={geo.geoName}
+                        outlineUrl={
+                          ancestors.province
+                            ? `/geo/citymun/${ancestors.province.geoCode}.json`
+                            : null
+                        }
+                        outlineGeoCode={geo.geoCode}
+                      />
+                    </div>
+                  </PresentationSlide>
+                )}
+                <PresentationSlide id="facility-list" title="Facilities">
+                  <div className="rounded-lg border border-border bg-background p-5 sm:p-6">
+                    <FacilityList facilities={facilities} expectedCount={counts.nFacilities} />
+                  </div>
+                </PresentationSlide>
+              </>
             ) : (
               childHeading && (
                 <PresentationSlide id="areas" title={childHeading}>

@@ -9440,3 +9440,87 @@ against live counts; the area card's JSX was verified against a disposable scrat
 hardcoded values (`getGeoByCode`/`getNhfrCounts` need `NEXT_PUBLIC_SUPABASE_URL`, unavailable in
 that environment — the same 500 the existing `/uuc-phc` and `/place` area cards give there, not a
 defect in the new code) and produces the same well-formed 1200×630 PNG.
+
+## 2026-09-06 — Increment N7: the facility point map
+
+Closes the last item on `docs/NHFR_2026_PLAN.md` §Deferred. The deferral's two reasons were both
+correct and both had to be answered, not waved past.
+
+**A dot is a barangay, not a facility.** This is the decision the whole increment turns on. The
+NHFR export carries no lat/long — only PSGC codes — so the plan's own framing was that points
+"would have to be placed at barangay centroids, which is a different claim than a facility
+location." One dot per facility at its barangay's centroid would draw twelve identical dots for a
+barangay with twelve facilities and assert twelve distinct locations the registry does not know;
+clustering, the obvious answer, only hides that at low zoom and re-asserts it on zoom-in. So the
+claim was changed rather than disclaimed: **one point per barangay**, at the barangay's own
+representative point, sized by the facilities registered in it. The map now answers a question the
+data can answer — which barangays have facilities and which have none — and the sentence "a circle
+is a barangay, not a building" sits beside the picture, not on `/facilities/methodology`, because a
+map is persuasive enough that the correction has to be where the reading happens.
+
+**Barangays with zero facilities are drawn, hollow.** `agg_nhfr_counts`' coverage figure already
+says how many barangays have nothing; the empty rings are that figure in its actual places, and
+that is the only thing this map adds over the bar already on the page. A map of only the filled
+barangays would show a town that looks entirely served.
+
+**City/municipality pages only.** That is the level whose accessible equivalent already exists as
+real DOM directly beneath the canvas — `FacilityList`, every facility with its type and barangay —
+which is what BUILD_PLAN §4.3 requires of a decorative map, and the level at which a barangay
+centroid is close enough to the truth to be worth drawing. Region/province keep `ChildBreakdown`;
+42,000 dots on a national canvas is neither readable nor inside §5's mobile payload budget.
+
+**A new component, not a widened `ChoroplethMap`.** The plan called this "a genuine divergence, not
+a reuse" and it is: circle paint driven by a per-feature radius rather than `fill`/`line` paint
+driven by quantile bins, no selection, no drill (`/facilities/barangay/*` 404s by design, so there
+is nowhere to drill to). What `components/maps/point-map.tsx` does copy from the choropleth is the
+posture — `aria-hidden` canvas, every injected control out of the tab order, cooperative gestures,
+no basemap tiles — not its internals. Radius is area-proportional (∝ √n) so four facilities get
+four times the ink, not sixteen.
+
+**Centroids are a boundary artefact, on `reconcile_boundaries.py`'s exact model.**
+`ingestion/build_barangay_centroids.py` fetches level 4 of the same `faeldon/philippines-json-maps`
+2023 series, one file per city/municipality, and reconciles two-way against `dim_geo` into
+`docs/BARANGAY_CENTROID_RECONCILIATION.md`. Three calls inside it worth recording:
+
+- **`hires`, not `lowres`.** The lower-resolution builds simplify small barangays to a *null*
+  geometry — Adams, Ilocos Norte is null in both `lowres` and `medres` and survives only in
+  `hires`. A dropped geometry is a barangay silently missing from a map, the exact failure §4.3
+  exists to prevent. Nothing but a point survives the script, so the fidelity costs the app nothing
+  and the ~125 MB of downloads is paid once.
+- **`shapely.representative_point()` of the largest part**, not an area centroid: a centroid is not
+  guaranteed to fall inside its own polygon, and for a crescent-shaped or multi-island barangay it
+  can land in the sea or inside a neighbour.
+- **`18302` (City of Bacolod) added to the NIR crosswalk.** `reconcile_boundaries.py` crosswalks
+  `18045`/`18046`/`18061` but has no entry for Bacolod, correctly — as an HUC it is province-level
+  in `dim_geo` and the source has no province polygon for it to crosswalk. Its *barangays* do
+  exist, under the pre-NIR `06302`, so this script needs the entry that one does not.
+
+**Coverage 41,085 of 41,991 barangays (97.84%), and the gap is named on the page.** 883 of the 906
+misses are the City of Manila's 14 sub-municipalities, for which the source publishes no level-4
+file in any vintage (2011, 2019, 2023) — Manila's own file answers 200 with an empty
+`GeometryCollection`. A Manila page renders the facility list with **no map above it** rather than
+an empty frame. Everywhere else an unplaceable barangay is counted out loud beneath the map. No
+centroid was invented to close a gap: a fabricated point lands somewhere real on a map, which is
+worse than an honest absence.
+
+**Output is not GeoJSON, and is not fetched by the browser.** `public/geo/barangay-centroids/<province>.json`
+is `{"<barangay geo_code>": [lon, lat]}` — 1.6 MB across 117 province files where the Feature
+envelope would have been ~6 MB. The server reads the one province file it needs
+(`lib/geo/barangay-centroids.ts`, process-lifetime cached on `lib/geo/locator.ts`'s precedent),
+joins it to facility counts, and hands the client an array proportional to the one city on screen
+rather than to its province.
+
+**No new table, no new query, and a shortfall that cannot hide.** Per-barangay counts are folded in
+memory from the facility list the page already loads (`getNhfrFacilities` gains
+`barangay_geo_code`); the barangay roster comes from `getChildGeos`, which the map needs because a
+barangay with no facility has no fact row to be found in. That list is bounded at 1,000 rows
+(largest city/municipality today: 784), so the point builder counts against
+`agg_nhfr_counts.n_facilities` rather than `facilities.length` — every way a facility can fall off
+the map (null barangay code, another area's code, a barangay with no centroid, a truncated list)
+collapses into one printed "n facilities are not on the map", because to a reader they are the same
+fact.
+
+**Verify:** `python ingestion/build_barangay_centroids.py` re-run reproduces the committed province
+files with no diff and regenerates the report; `lib/geo/facility-points.test.ts` covers the pure
+builder including the truncation, null-barangay, foreign-barangay and no-centroid paths; lint,
+typecheck and the full unit suite green.

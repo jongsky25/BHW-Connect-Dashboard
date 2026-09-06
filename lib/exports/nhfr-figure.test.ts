@@ -105,6 +105,7 @@ function facility(overrides: Partial<NhfrFacility> = {}): NhfrFacility {
     ownershipMajor: "Government",
     ownershipSub: null,
     barangayName: "Poblacion",
+    barangayGeoCode: "1234567001",
     bedCapacity: 25,
     licensingStatus: null,
     ...overrides,
